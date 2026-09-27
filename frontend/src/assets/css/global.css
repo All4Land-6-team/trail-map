@@ -15,11 +15,3 @@ body {
   min-height: 100vh;
   margin: 0;
 }
-
-.app-shell {
-  display: grid;
-  min-height: 100vh;
-  place-content: center;
-  padding: 24px;
-  text-align: center;
-}
