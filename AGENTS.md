@@ -1,19 +1,25 @@
 # 프로젝트 작업 규칙
 
-## Frontend
+## 공통
 
-- 페이지 전용 UI는 `frontend/src/pages/<PageName>/components`에 둔다.
-- 여러 페이지에서 재사용하는 UI는 `frontend/src/components`에 둔다.
-- MapLibre 공용 컴포넌트와 지도 공용 코드는 `frontend/src/components/map`에 둔다.
-- API 요청은 `frontend/src/api`, 재사용 Hook은 `frontend/src/hooks`에 둔다.
-- 공용 타입은 `frontend/src/types`, 순수 유틸 함수는 `frontend/src/utils`에 둔다.
-- 고정 설정값은 `frontend/src/constants`에 둔다.
-- 비밀값은 커밋하지 않고 `.env.example`에 키 이름과 예시만 둔다.
+- 프론트엔드 작업은 `frontend/AGENTS.md`, 백엔드 작업은 `backend/AGENTS.md`의 세부 규칙을 따른다.
+- 비밀값, API 키, DB 비밀번호는 커밋하지 않는다.
+- 로컬 원본·가공 데이터는 프로젝트 루트의 `data/`에 두고 커밋하지 않는다.
 
-## Backend
+## 컨벤션
 
-- 공통 설정·응답·예외·감사 엔티티는 `backend/src/main/java/com/all4land/trailmap/global`에 둔다.
-- 실제 기능 코드는 `backend/src/main/java/com/all4land/trailmap/domain/<기능명>`에 둔다.
-- 일반 CRUD는 Spring Data JPA를 사용한다.
-- 공간 데이터·대량·특수 SQL은 JdbcTemplate 또는 JDBC와 PostGIS SQL을 사용한다.
-- 비밀값은 `application-secret.properties`에 두며 Git에 커밋하지 않는다.
+### 커밋 메시지 규칙
+
+- `<type>: <작업 내용>` 형식으로 작성한다.
+- `<type>`은 영문 소문자로, 작업 내용은 한글로 간결하게 작성한다.
+- 한 커밋에는 하나의 작업 목적만 담는다.
+- 마침표를 붙이지 않는다.
+- 예시: `feat: 산행 경로 조회 추가`
+- 예시: `fix: 지도 마커 표시 오류 수정`
+- 예시: `chore: Apache ECharts 의존성 추가`
+
+### 커밋 타입 표 (추후 추가 예정)
+
+| 타입 | 설명 | 예시 |
+| --- | --- | --- |
+| 추후 추가 예정 | `feat`, `fix` 등을 포함한 타입 정의를 팀 합의 후 작성한다. | - |
