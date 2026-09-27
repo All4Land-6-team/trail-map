@@ -22,7 +22,7 @@ Java 21, Spring Boot, PostgreSQL/PostGIS 기반 백엔드입니다.
 ## 코드 규칙
 
 - 공통 설정·응답·예외·감사 엔티티는 `global`에 둡니다.
-- 기능 코드는 `feature/<기능명>` 아래에 생성합니다.
+- 기능 코드는 `domain/<기능명>` 아래에 생성합니다.
 - 일반 CRUD는 Spring Data JPA를 사용합니다.
 - 공간 데이터·대량·특수 SQL은 JdbcTemplate 또는 JDBC와 PostGIS SQL을 사용합니다.
 - `application-secret.properties`와 실제 비밀값은 커밋하지 않습니다.
