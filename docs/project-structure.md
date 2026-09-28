@@ -5,7 +5,8 @@ trail-map/
 ├─ frontend/                 # React + Vite + TypeScript
 ├─ backend/                  # Java 21 + Spring Boot
 ├─ docs/                     # 프로젝트 문서
-└─ AGENTS.md                 # AI 작업 시 적용할 짧은 규칙
+├─ data/                     # 로컬 원본·가공 데이터, Git 제외
+└─ AGENTS.md                 # 공통 AI 작업·Git 규칙
 ```
 
 ## Frontend
@@ -62,6 +63,8 @@ frontend/
 
 ```text
 backend/
+├─ docs/
+│  └─ migration.md            # Flyway·PostGIS·DB 변경 규칙
 ├─ src/
 │  ├─ main/
 │  │  ├─ java/com/all4land/trailmap/
@@ -77,13 +80,17 @@ backend/
 │  │  │  │     ├─ entity/
 │  │  │  │     ├─ repository/
 │  │  │  │     ├─ service/
-│  │  │  │     └─ web/
-│  │  │  │        ├─ controller/
-│  │  │  │        └─ dto/
+│  │  │  │     ├─ controller/
+│  │  │  │     ├─ dto/
+│  │  │  │     │  ├─ request/
+│  │  │  │     │  └─ response/
+│  │  │  │     ├─ error/
+│  │  │  │     └─ exception/
 │  │  │  └─ TrailMapApplication.java
 │  │  └─ resources/
 │  │     ├─ application.properties
-│  │     └─ application-secret.properties
+│  │     ├─ application-secret.properties
+│  │     └─ db/migration/        # Flyway SQL 파일 위치
 │  └─ test/
 │     ├─ java/
 │     └─ resources/application-test.properties
@@ -101,18 +108,23 @@ backend/
 | `global/exception` | 공통 예외 타입과 전역 예외 처리 |
 | `global/response` | API 공통 성공·실패 응답 형식 |
 | `global/response/code` | 성공·실패 응답 코드와 메시지 정의 |
-| `domain` | 실제 서비스 도메인 코드를 둘 위치. 새 기능은 `domain/<기능명>`으로 생성 |
+| `domain` | 실제 서비스 도메인 코드를 둘 위치. 새 도메인은 `domain/<도메인명>`으로 생성 |
 | `domain/example` | 실제 도메인 패키지 구조 예시 |
 | `domain/example/entity` | JPA 엔티티와 도메인 모델 |
 | `domain/example/repository` | JPA Repository, JdbcTemplate/JDBC 기반 데이터 접근 코드 |
 | `domain/example/service` | 비즈니스 로직과 트랜잭션 처리 |
-| `domain/example/web/controller` | HTTP 요청을 받는 REST Controller |
-| `domain/example/web/dto` | API 요청·응답 DTO |
+| `domain/example/controller` | HTTP 요청을 받는 REST Controller |
+| `domain/example/dto/request` | API 요청 DTO |
+| `domain/example/dto/response` | API 응답 DTO |
+| `domain/example/error` | 도메인 오류 코드 |
+| `domain/example/exception` | 도메인 예외 |
 | `TrailMapApplication.java` | Spring Boot 애플리케이션 진입점 |
 | `application.properties` | Git에 포함하는 공통 Spring 설정 |
 | `application-secret.properties` | DB·R2 실제 키를 두는 로컬 파일. Git에 포함하지 않음 |
 | `application-test.properties` | H2 기반 테스트 프로필 설정 |
-| `build.gradle` | Java 21, Spring Boot, JPA, JDBC, PostgreSQL, R2 SDK 등 의존성 설정 |
+| `docs/migration.md` | DB schema·PostGIS·Flyway migration 상세 규칙 |
+| `resources/db/migration` | Flyway migration SQL 파일 위치 |
+| `build.gradle` | Java 21, Spring Boot, JPA, JDBC, Flyway, PostgreSQL, R2 SDK 등 의존성 설정 |
 | `gradlew`, `gradlew.bat` | 팀 전체가 동일한 Gradle 버전으로 실행하는 Wrapper |
 
 ## 비밀 설정 규칙
