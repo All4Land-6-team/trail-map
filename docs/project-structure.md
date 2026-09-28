@@ -124,7 +124,7 @@ backend/
 | `application-test.properties` | H2 기반 테스트 프로필 설정 |
 | `docs/migration.md` | DB schema·PostGIS·Flyway migration 상세 규칙 |
 | `resources/db/migration` | Flyway migration SQL 파일 위치 |
-| `build.gradle` | Java 21, Spring Boot, JPA, JDBC, PostgreSQL, R2 SDK 등 의존성 설정 |
+| `build.gradle` | Java 21, Spring Boot, JPA, JDBC, Flyway, PostgreSQL, R2 SDK 등 의존성 설정 |
 | `gradlew`, `gradlew.bat` | 팀 전체가 동일한 Gradle 버전으로 실행하는 Wrapper |
 
 ## 비밀 설정 규칙
