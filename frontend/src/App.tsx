@@ -1,5 +1,7 @@
+import BaseMap from './components/map/BaseMap'
+
 function App() {
-  return null
+  return <BaseMap />
 }
 
 export default App
