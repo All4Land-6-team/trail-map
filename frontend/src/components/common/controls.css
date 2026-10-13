@@ -1,0 +1,153 @@
+:root {
+  --af-green: #19765b;
+  --af-green-dark: #145c49;
+  --af-ink: #173d32;
+  --af-line: #d4e0d3;
+  --af-chip-border: #c8ddce;
+  --af-muted: #8b9c91;
+  --af-disabled-background: #f1f4f0;
+  --af-disabled-foreground: #83978a;
+  --af-danger: #94495a;
+}
+
+.af-button,
+.af-chip,
+.af-select,
+.af-checkbox {
+  font-family: "Noto Sans KR", sans-serif;
+  cursor: pointer;
+}
+
+.af-button:focus-visible,
+.af-chip:focus-visible,
+.af-select:focus-visible,
+.af-field__input:focus-visible,
+.af-checkbox__input:focus-visible + .af-checkbox__box {
+  outline: 2px solid var(--af-green);
+  outline-offset: 2px;
+}
+
+.af-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--af-green);
+}
+
+.af-button--full-width { width: 100%; }
+.af-button--secondary {
+  color: var(--af-ink);
+  background: #fff;
+  border-color: var(--af-chip-border);
+}
+.af-button:disabled {
+  color: var(--af-disabled-foreground);
+  background: var(--af-disabled-background);
+  border-color: transparent;
+  cursor: not-allowed;
+}
+.af-button__icon { display: inline-flex; flex: none; align-items: center; }
+
+.af-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 31px;
+  padding: 0 14px;
+  border: 1px solid var(--af-chip-border);
+  border-radius: 999px;
+  white-space: nowrap;
+  color: var(--af-green-dark);
+  background: #fff;
+}
+.af-chip--selected { color: #fff; background: var(--af-green); border-color: var(--af-green); }
+.af-chip--action { height: 33px; gap: 8px; padding: 0 14px 0 13px; border-color: var(--af-line); }
+.af-chip:disabled { opacity: .5; cursor: not-allowed; }
+.af-chip__icon { display: inline-flex; flex: none; align-items: center; }
+
+.af-field { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.af-field__label { color: var(--af-ink); }
+.af-field__box {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--af-line);
+  border-radius: 8px;
+  background: #fff;
+}
+.af-field--error .af-field__box { border-color: var(--af-danger); }
+.af-field__box:focus-within { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.af-field--error .af-field__box:focus-within { outline-color: var(--af-danger); }
+.af-field__input {
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: var(--af-ink);
+  background: transparent;
+  font: 500 14px/20px "Noto Sans KR", sans-serif;
+}
+.af-field__input:focus-visible { outline: 0; }
+.af-field__input::placeholder { color: var(--af-muted); opacity: 1; }
+.af-field__icon { display: inline-flex; flex: none; align-items: center; margin-left: 8px; }
+.af-field__helper { color: var(--af-danger); }
+
+.af-select-wrap { position: relative; display: inline-flex; width: 100%; }
+.af-select {
+  width: 100%;
+  min-height: 33px;
+  padding: 0 36px 0 12px;
+  appearance: none;
+  border: 1px solid var(--af-line);
+  border-radius: 999px;
+  color: var(--af-green-dark);
+  background: #fff;
+  font: 500 12px/18px "Noto Sans KR", sans-serif;
+  letter-spacing: -0.02em;
+}
+.af-select__icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; display: flex; color: var(--af-green-dark); }
+.af-select:disabled { opacity: .5; cursor: not-allowed; }
+
+.af-checkbox { position: relative; display: inline-flex; align-items: center; gap: 6px; width: max-content; color: var(--af-ink); }
+.af-checkbox__input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.af-checkbox__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border: 1.3px solid #767676;
+  border-radius: 3px;
+  background: #fff;
+  pointer-events: none;
+}
+.af-checkbox__input:checked + .af-checkbox__box { border-color: var(--af-green); background: var(--af-green); }
+.af-checkbox__input:not(:checked) + .af-checkbox__box .af-icon { display: none; }
+.af-checkbox__input:disabled { cursor: not-allowed; }
+.af-checkbox:has(.af-checkbox__input:disabled) { opacity: .5; }
+.af-checkbox__label { pointer-events: none; }
+
+.af-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 27px;
+  padding: 0 10px;
+  border: 1px solid var(--af-chip-border);
+  border-radius: 999px;
+  white-space: nowrap;
+  color: var(--af-green-dark);
+  background: #fff;
+}
