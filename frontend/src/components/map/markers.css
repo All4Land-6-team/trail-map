@@ -1,0 +1,77 @@
+.af-map-action,
+.af-spot-marker,
+.af-mountain-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font-family: "Noto Sans KR", sans-serif;
+  cursor: pointer;
+}
+.af-map-action:focus-visible,
+.af-spot-marker:focus-visible,
+.af-mountain-marker:focus-visible {
+  outline: 2px solid var(--af-green);
+  outline-offset: 2px;
+}
+.af-map-action {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--af-line);
+  border-radius: 8px;
+  color: var(--af-green);
+  background: #fff;
+}
+.af-map-action--brand {
+  border-color: var(--af-green);
+  color: #fff;
+  background: var(--af-green);
+}
+.af-map-action:disabled,
+.af-spot-marker:disabled,
+.af-mountain-marker:disabled { opacity: .5; cursor: not-allowed; }
+
+.af-spot-marker {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: #fff;
+}
+.af-spot-marker[data-kind="photo"] { color: #b34d6a; }
+.af-spot-marker[data-kind="shelter"] { color: #b06428; }
+.af-spot-marker[data-kind="water"] { color: #1876ab; }
+.af-spot-marker[data-kind="restroom"] { color: #7755ad; }
+
+.af-mountain-marker {
+  gap: 8px;
+  height: 42px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--af-line);
+  border-radius: 10px;
+  color: var(--af-ink);
+  background: #fff;
+  white-space: nowrap;
+}
+.af-mountain-marker .af-icon { color: var(--af-green); }
+.af-mountain-marker[aria-pressed="true"] {
+  border: 1.5px solid var(--af-green);
+  color: var(--af-green-dark);
+  background: #f8faf7;
+}
+
+.af-distance-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--af-line);
+  border-radius: 14px;
+  color: var(--af-ink);
+  background: #fff;
+  white-space: nowrap;
+  font: 700 12px/14px "Noto Sans KR", sans-serif;
+}
