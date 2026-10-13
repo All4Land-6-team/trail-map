@@ -47,6 +47,14 @@
   background: #fff;
   border-color: var(--af-chip-border);
 }
+.af-button--compact {
+  min-width: 111px;
+  min-height: 25px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--af-green-dark);
+  background: #e3f0e6;
+}
 .af-button:disabled {
   color: var(--af-disabled-foreground);
   background: var(--af-disabled-background);
@@ -54,6 +62,22 @@
   cursor: not-allowed;
 }
 .af-button__icon { display: inline-flex; flex: none; align-items: center; }
+
+.af-icon-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border: 0;
+  color: var(--af-muted);
+  background: transparent;
+  cursor: pointer;
+}
+.af-icon-toggle:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.af-icon-toggle:disabled { opacity: .5; cursor: not-allowed; }
+.af-icon-toggle__asset { display: block; width: 21px; height: 21px; }
 
 .af-chip {
   display: inline-flex;
