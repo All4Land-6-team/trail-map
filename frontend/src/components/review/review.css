@@ -1,0 +1,16 @@
+.af-rating-input { display: inline-flex; align-items: center; gap: 2px; min-height: 52px; padding: 8px 6px; box-sizing: border-box; }
+.af-rating-input__star { display: grid; place-items: center; width: 26px; height: 36px; padding: 0; border: 0; color: #de9b09; background: transparent; font: 28px/1 sans-serif; cursor: pointer; }
+.af-rating-input__star:focus-visible, .af-photo-slot:focus-visible, .af-photo-slot__remove:focus-visible, .af-spot-type-tile:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.af-rating-input__star:disabled { opacity: .5; cursor: not-allowed; }
+.af-multiline-field { display: block; width: 100%; min-height: 132px; padding: 12px; box-sizing: border-box; resize: vertical; border: 1px solid var(--af-line); border-radius: 15px; color: var(--af-ink); background: #fff; font: 400 14px/22px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-multiline-field::placeholder { color: var(--af-muted); opacity: 1; }
+.af-multiline-field:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.af-photo-picker { display: flex; gap: 16px; overflow-x: auto; }
+.af-photo-slot { position: relative; flex: none; height: 86px; border: 0; border-radius: 12px; background: #f8faf7; }
+.af-photo-slot--photo { width: 128px; }
+.af-photo-slot--add { display: grid; place-items: center; width: 58px; cursor: pointer; }
+.af-photo-slot__image { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.af-photo-slot__remove { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: #8b9c91; font: 16px/1 sans-serif; cursor: pointer; }
+.af-spot-type-selector { display: flex; flex-wrap: wrap; gap: 16px; }
+.af-spot-type-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 66px; height: 60px; padding: 0; box-sizing: border-box; border: 1px solid var(--af-line); border-radius: 12px; color: var(--af-ink); background: #fff; font: 500 12px/1 "Noto Sans KR", sans-serif; cursor: pointer; }
+.af-spot-type-tile--selected { border: 2px solid var(--af-green); color: var(--af-green); font-weight: 700; }
