@@ -3,7 +3,7 @@ import { Icon } from "../common/Icon";
 import "../common/controls.css";
 import "./overlay.css";
 
-export type BottomSheetProps = HTMLAttributes<HTMLElement> & {
+export type BottomSheetProps = Omit<HTMLAttributes<HTMLElement>, "content"> & {
   title: string;
   description?: string;
   showHandle?: boolean;
