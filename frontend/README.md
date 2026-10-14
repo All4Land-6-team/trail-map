@@ -25,3 +25,10 @@ npm run dev
 - `constants`: API 주소, 지도 기본 좌표·줌 같은 고정값
 
 `.env` 파일은 커밋하지 않고 `.env.example`을 복사해 사용합니다.
+
+## 환경 변수
+
+| 이름 | 설명 | 기본값 |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | 백엔드 API 주소 | `http://localhost:8080` |
+| `VITE_MAP_STYLE_URL` | 배경지도 스타일 주소 (MapLibre 스타일 JSON) | OpenFreeMap Liberty |
