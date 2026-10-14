@@ -15,6 +15,29 @@ setWorkerUrl(workerUrl)
 function BaseMap() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [hasLoadError, setHasLoadError] = useState(false)
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
+  const [hasStaticCacheMiss, setHasStaticCacheMiss] = useState(false)
+
+  useEffect(() => {
+    const updateConnection = () => {
+      const offline = !navigator.onLine
+      setIsOffline(offline)
+      if (!offline) setHasStaticCacheMiss(false)
+    }
+    const handleWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'STATIC_GEO_CACHE_MISS') setHasStaticCacheMiss(true)
+    }
+
+    window.addEventListener('online', updateConnection)
+    window.addEventListener('offline', updateConnection)
+    navigator.serviceWorker?.addEventListener('message', handleWorkerMessage)
+
+    return () => {
+      window.removeEventListener('online', updateConnection)
+      window.removeEventListener('offline', updateConnection)
+      navigator.serviceWorker?.removeEventListener('message', handleWorkerMessage)
+    }
+  }, [])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -35,9 +58,20 @@ function BaseMap() {
 
   return <div className="base-map-shell">
     <div ref={containerRef} className="base-map" aria-label="남한 배경지도" />
-    {hasLoadError && <div className="base-map__notice" role="status">
-      <span>지도를 불러오는 중 문제가 발생했습니다. 네트워크 상태를 확인해 주세요.</span>
-      <button type="button" aria-label="지도 오류 알림 닫기" onClick={() => setHasLoadError(false)}>×</button>
+    {(isOffline || hasLoadError || hasStaticCacheMiss) && <div className="base-map__notices" aria-live="polite">
+      {isOffline && <div className="base-map__notice">
+        오프라인입니다. 앱 화면과 저장된 정적 정보는 계속 사용할 수 있지만, 배경지도는 브라우저에 남은 부분만 보일 수 있습니다. 실시간 정보는 연결 후 다시 확인해 주세요.
+      </div>}
+      {hasLoadError && <div className="base-map__notice">
+        <span>{isOffline
+          ? '이 지역의 지도가 저장되어 있지 않거나 불러올 수 없습니다.'
+          : '지도를 불러오는 중 문제가 발생했습니다. 네트워크 상태를 확인해 주세요.'}</span>
+        <button type="button" aria-label="지도 오류 알림 닫기" onClick={() => setHasLoadError(false)}>×</button>
+      </div>}
+      {hasStaticCacheMiss && <div className="base-map__notice">
+        <span>이 지역의 등산로·시설물 정보는 저장되어 있지 않습니다. 연결 후 다시 조회해 주세요.</span>
+        <button type="button" aria-label="미저장 정보 알림 닫기" onClick={() => setHasStaticCacheMiss(false)}>×</button>
+      </div>}
     </div>}
   </div>
 }

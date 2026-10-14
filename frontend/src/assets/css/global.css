@@ -25,15 +25,21 @@ body {
   height: 100dvh;
 }
 
-.base-map__notice {
+.base-map__notices {
   position: absolute;
   z-index: 1;
-  top: 64px;
+  top: 12px;
   right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(360px, calc(100vw - 24px));
+}
+
+.base-map__notice {
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: min(360px, calc(100vw - 24px));
   padding: 10px 12px;
   border: 1px solid #e3d1b2;
   border-radius: 8px;
