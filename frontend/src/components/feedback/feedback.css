@@ -1,5 +1,7 @@
 .af-toast {
   display: inline-flex;
+  width: max-content;
+  max-width: 100%;
   align-items: center;
   min-height: 40px;
   padding: 11px 16px;
@@ -13,6 +15,7 @@
 .af-nearby-alert {
   display: flex;
   width: 100%;
+  max-width: 252px;
   min-height: 64px;
   align-items: center;
   justify-content: space-between;

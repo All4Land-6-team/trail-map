@@ -28,6 +28,9 @@
   color: #fff;
   background: var(--af-green);
 }
+.af-map-action--dimension { font: 700 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-map-action--dimension[data-dimension-mode="2D"] { border-color: var(--af-green); color: #fff; background: var(--af-green); }
+.af-map-action__dimension { display: block; }
 .af-map-action:disabled,
 .af-spot-marker:disabled,
 .af-mountain-marker:disabled { opacity: .5; cursor: not-allowed; }

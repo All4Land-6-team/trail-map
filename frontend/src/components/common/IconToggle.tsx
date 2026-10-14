@@ -29,7 +29,9 @@ export function IconToggle({
     }}
     className={["af-icon-toggle", className].filter(Boolean).join(" ")}>
     {isSelected
-      ? <img className="af-icon-toggle__asset" src={icon === "save" ? bagSelected : calendarSelected} alt="" />
+      ? <span className="af-icon-toggle__selected" aria-hidden="true">
+        <img className="af-icon-toggle__asset" src={icon === "save" ? bagSelected : calendarSelected} alt="" />
+      </span>
       : <Icon name={icon === "save" ? "Bag" : "CalendarPlus"} size={21} color="currentColor" />}
   </button>;
 }

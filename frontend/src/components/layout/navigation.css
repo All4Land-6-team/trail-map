@@ -65,13 +65,11 @@
 .af-bottom-nav {
   display: flex;
   width: 100%;
-  min-height: 72px;
+  min-height: 70px;
   padding: 12px 9px 0;
   border-top: 1px solid #e1e9df;
   background: #fff;
 }
-.af-bottom-nav--home { min-height: 90px; padding-top: 13px; }
-.af-bottom-nav--community { min-height: 70px; }
 .af-bottom-nav__item {
   display: flex;
   flex: 1 1 0;

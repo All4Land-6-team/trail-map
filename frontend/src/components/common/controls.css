@@ -77,7 +77,8 @@
 }
 .af-icon-toggle:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
 .af-icon-toggle:disabled { opacity: .5; cursor: not-allowed; }
-.af-icon-toggle__asset { display: block; width: 21px; height: 21px; }
+.af-icon-toggle__selected { display: grid; width: 21px; height: 21px; place-items: center; }
+.af-icon-toggle__asset { display: block; width: auto; height: auto; max-width: 21px; max-height: 21px; }
 
 .af-chip {
   display: inline-flex;
@@ -124,12 +125,16 @@
 }
 .af-field__input:focus-visible { outline: 0; }
 .af-field__input::placeholder { color: var(--af-muted); opacity: 1; }
+.af-field__input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
 .af-field__icon { display: inline-flex; flex: none; align-items: center; margin-left: 8px; }
+.af-field__icon-button { justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.af-field__icon-button:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; border-radius: 6px; }
 .af-field__helper { color: var(--af-danger); }
 
-.af-select-wrap { position: relative; display: inline-flex; width: 100%; }
+.af-select-wrap { position: relative; display: inline-flex; width: max-content; max-width: 100%; }
 .af-select {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   min-height: 33px;
   padding: 0 36px 0 12px;
   appearance: none;
