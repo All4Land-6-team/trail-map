@@ -3,7 +3,9 @@
 .af-bottom-sheet__handle { width: 36px; height: 4px; border-radius: 2px; background: #c9d9c9; }
 .af-bottom-sheet__title-row { display: flex; align-items: center; justify-content: space-between; min-height: 32px; }
 .af-bottom-sheet__title { margin: 0; color: var(--af-ink); font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
-.af-bottom-sheet__close { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; color: var(--af-muted); background: transparent; cursor: pointer; }
+.af-bottom-sheet__title-group { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.af-bottom-sheet__title-icon { display: grid; flex: none; place-items: center; }
+.af-bottom-sheet__close {display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; color: var(--af-muted); background: transparent; cursor: pointer; }
 .af-bottom-sheet__close:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
 .af-bottom-sheet__description { margin: 0; color: var(--af-muted); font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .af-bottom-sheet__content { width: 100%; min-height: 100px; }
@@ -14,3 +16,9 @@
 .af-confirm-dialog__body { color: #617b6c; }
 .af-confirm-dialog__actions { display: flex; gap: 12px; width: 100%; padding-top: 14px; }
 .af-confirm-dialog__actions > .af-button { flex: 1; min-width: 0; padding-inline: 8px; }
+.af-overlay-layer { position: fixed; inset: 0; z-index: 100; display: flex; justify-content: center; box-sizing: border-box; }
+.af-overlay-layer--center { align-items: center; padding: 16px; }
+.af-overlay-layer--bottom { align-items: flex-end; padding-bottom: var(--af-overlay-bottom-offset, 0px); }
+.af-overlay-layer__dim { position: absolute; inset: 0; background: rgb(23 61 50 / 28%); }
+.af-overlay-layer__panel { position: relative; display: flex; justify-content: center; width: 100%; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; outline: none; }
+.af-overlay-layer--center > .af-overlay-layer__panel { width: auto; max-width: 100%; }
