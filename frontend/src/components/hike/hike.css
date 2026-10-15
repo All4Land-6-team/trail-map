@@ -1,0 +1,21 @@
+.af-calendar { width: 100%; min-height: 350px; padding: 12px 13px 18px; box-sizing: border-box; border: 1px solid var(--af-line); border-radius: 18px; background: #fff; font-family: "Noto Sans KR", sans-serif; }
+.af-calendar__header { display: flex; align-items: center; justify-content: space-between; height: 30px; color: var(--af-ink); font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-calendar__nav { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; color: var(--af-green); background: transparent; cursor: pointer; }
+.af-calendar__nav:focus-visible, .af-calendar__day:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.af-calendar__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-auto-rows: 45px; margin-top: 18px; }
+.af-calendar__weekday { display: grid; place-items: center; color: var(--af-muted); font: 500 12px/18px "Noto Sans KR", sans-serif; }
+.af-calendar__blank { width: 100%; height: 44px; }
+.af-calendar__day { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: min(44px, 100%); height: 44px; justify-self: center; padding: 3px; border: 0; border-radius: 50%; color: var(--af-ink); background: #fff; font: 500 12px/18px "Noto Sans KR", sans-serif; cursor: pointer; }
+.af-calendar__day--selected { color: #fff; background: var(--af-green); }
+.af-calendar__dot { width: 4px; height: 4px; flex: none; border-radius: 50%; background: var(--af-green); }
+.af-calendar__day--selected .af-calendar__dot { background: #fff; }
+.af-progress-summary { display: flex; flex-direction: column; gap: 8px; width: 100%; min-height: 128px; padding: 10px 12px; box-sizing: border-box; background: #fff; color: var(--af-ink); font-family: "Noto Sans KR", sans-serif; }
+.af-progress-summary h2 { margin: 0; font: 700 16px/24px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-progress-summary__distances { display: flex; justify-content: space-between; gap: 8px; min-height: 20px; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-progress-summary__track { width: 100%; height: 4px; overflow: hidden; border-radius: 2px; background: #f8faf7; }
+.af-progress-summary__track > span { display: block; height: 100%; border-radius: inherit; background: var(--af-green); }
+.af-progress-summary p { margin: 0; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-schedule-card { display: flex; flex-direction: column; gap: 8px; width: 100%; min-height: 112px; padding: 10px 12px; box-sizing: border-box; border: 1px solid var(--af-line); border-radius: 15px; background: #fff; font-family: "Noto Sans KR", sans-serif; }
+.af-schedule-card__time { color: var(--af-green-dark); font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-schedule-card__course { overflow: hidden; margin: 0; color: var(--af-ink); font: 700 16px/24px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.af-schedule-card__distance { margin: 0; color: var(--af-muted); font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }

@@ -1,0 +1,25 @@
+.af-icon {
+  box-sizing: border-box;
+  display: inline-block;
+  flex: none;
+  overflow: visible;
+  position: relative;
+  vertical-align: middle;
+}
+
+.af-icon__layer,
+.af-icon__glyph {
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+}
+
+.af-icon__glyph {
+  background-color: currentColor;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+}

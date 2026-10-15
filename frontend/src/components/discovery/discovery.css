@@ -1,0 +1,37 @@
+.af-search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--af-line);
+  border-radius: 15px;
+  background: #fff;
+  box-sizing: border-box;
+}
+.af-search-field:focus-within { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.af-search-field__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--af-ink);
+  font: 700 16px/24px "Noto Sans KR", sans-serif;
+  letter-spacing: -.02em;
+}
+.af-search-field__input::placeholder { color: var(--af-muted); opacity: 1; }
+.af-search-field__input::-webkit-search-cancel-button { display: none; }
+.af-search-field__action {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.af-search-field__action:focus-visible { outline: 2px solid var(--af-green); border-radius: 8px; }
