@@ -1,4 +1,4 @@
-import { ConfirmOverlay } from "../overlay";
+import { ConfirmOverlay } from "./ConfirmOverlay";
 
 export type HikeEndConfirmProps = {
   /** 종료 확정 → 기록 저장 후 HIKE-08 등산 완료로 이동 */

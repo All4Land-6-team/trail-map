@@ -1,4 +1,4 @@
-import { ConfirmOverlay } from "../overlay";
+import { ConfirmOverlay } from "./ConfirmOverlay";
 
 export type ScheduleReplaceConfirmProps = {
   /** 이미 일정이 있는 날짜 (예: 2026-10-03) */

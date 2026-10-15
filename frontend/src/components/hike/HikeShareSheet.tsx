@@ -1,5 +1,6 @@
 import { Icon } from "../common/Icon";
-import { BottomSheet, OverlayLayer } from "../overlay";
+import { BottomSheet } from "../overlay";
+import { OverlayLayer } from "./OverlayLayer";
 import "./hike.css";
 
 export type HikeShareSheetProps = {

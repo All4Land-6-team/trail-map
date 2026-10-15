@@ -5,8 +5,9 @@ import { deleteSchedule, findSchedule, saveSchedule } from "../../store/hikeSche
 import type { HikeSchedule } from "../../types/hike";
 import { Button } from "../common/Button";
 import { Field } from "../common/Field";
-import { Icon } from "../common/Icon";
-import { BottomSheet, ConfirmOverlay, OverlayLayer } from "../overlay";
+import { BottomSheet } from "../overlay";
+import { ConfirmOverlay } from "./ConfirmOverlay";
+import { OverlayLayer } from "./OverlayLayer";
 import { ScheduleReplaceConfirm } from "./ScheduleReplaceConfirm";
 import "./hike.css";
 
@@ -108,8 +109,8 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
             state={feedback?.field === "date" ? "error" : date ? "value" : "empty"}
             aria-describedby={feedback?.field === "date" ? describedBy : undefined}
             onChange={event => onDateChange(event.target.value)} />
-          <Field type="time" label="등산 시작 시간" helper="" placeholder="--:--" value={time}
-            icon={<Icon name="Clock" size={20} color="#83978a" />}
+          {/* 시간 입력은 브라우저 기본 시계 버튼으로 선택기를 연다 */}
+          <Field type="time" label="등산 시작 시간" helper="" placeholder="--:--" value={time} showIcon={false}
             state={feedback?.field === "time" ? "error" : time ? "value" : "empty"}
             aria-describedby={feedback?.field === "time" ? describedBy : undefined}
             onChange={event => onTimeChange(event.target.value)} />

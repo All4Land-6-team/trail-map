@@ -23,12 +23,11 @@ export function Field({
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = id ?? generatedId;
   const isError = state === "error";
-  // 날짜·시간 입력은 아이콘 버튼으로 브라우저 선택기를 연다.
-  const isPicker = type === "date" || type === "time";
+  const isDate = type === "date";
   const helperVisible = (showHelper || isError) && Boolean(helper);
   const helperId = `${inputId}-helper`;
 
-  function openPicker() {
+  function openDatePicker() {
     const input = inputRef.current;
     if (!input) return;
     input.focus();
@@ -46,9 +45,9 @@ export function Field({
         placeholder={placeholder} aria-invalid={isError || undefined}
         aria-describedby={[ariaDescribedBy, helperVisible && helperId].filter(Boolean).join(" ") || undefined}
         className={["af-field__input", className].filter(Boolean).join(" ")} />
-      {showIcon && (isPicker
+      {showIcon && (isDate
         ? <button type="button" className="af-field__icon af-field__icon-button"
-          aria-label={type === "time" ? "시간 선택 열기" : "날짜 선택 달력 열기"} onClick={openPicker}>
+          aria-label="날짜 선택 달력 열기" onClick={openDatePicker}>
           {icon ?? <Icon name="Calendar" size={20} color="#83978a" />}
         </button>
         : <span className="af-field__icon" aria-hidden="true">

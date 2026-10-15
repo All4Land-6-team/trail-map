@@ -1,5 +1,5 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
-import "./overlay.css";
+import "./hike.css";
 
 export type OverlayLayerProps = {
   children: ReactNode;

@@ -1,5 +1,7 @@
 export { Calendar } from "./Calendar";
 export type { CalendarProps } from "./Calendar";
+export { ConfirmOverlay } from "./ConfirmOverlay";
+export type { ConfirmOverlayProps } from "./ConfirmOverlay";
 export { HikeAlertConfirm } from "./HikeAlertConfirm";
 export type { HikeAlertConfirmProps } from "./HikeAlertConfirm";
 export { HikeEndConfirm } from "./HikeEndConfirm";
@@ -8,6 +10,8 @@ export { HikeRouteMap } from "./HikeRouteMap";
 export type { HikeRouteMapProps, SpotFilter } from "./HikeRouteMap";
 export { HikeShareSheet } from "./HikeShareSheet";
 export type { HikeShareSheetProps } from "./HikeShareSheet";
+export { OverlayLayer } from "./OverlayLayer";
+export type { OverlayLayerProps } from "./OverlayLayer";
 export { LocationPermissionSheet } from "./LocationPermissionSheet";
 export type { LocationPermissionSheetProps } from "./LocationPermissionSheet";
 export { ProgressSummary } from "./ProgressSummary";

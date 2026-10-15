@@ -1,4 +1,4 @@
-import { ConfirmOverlay } from "../overlay";
+import { ConfirmOverlay } from "./ConfirmOverlay";
 
 export type HikeAlertConfirmProps = {
   /** 받기 → 알림 토글 기본 ON으로 HIKE-05 등산 중 이동 */

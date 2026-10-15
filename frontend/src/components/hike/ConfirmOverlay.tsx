@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useSingleFlight } from "../../hooks/useSingleFlight";
-import { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
+import { ConfirmDialog, type ConfirmDialogProps } from "../overlay";
 import { OverlayLayer } from "./OverlayLayer";
 
 export type ConfirmOverlayProps = Omit<ConfirmDialogProps, "onConfirm" | "onCancel" | "confirmDisabled"> & {
