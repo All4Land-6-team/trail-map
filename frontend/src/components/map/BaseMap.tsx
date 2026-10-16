@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import {
+  Map as MapLibreMap,
+  NavigationControl,
+  setWorkerUrl,
+  type LngLatBoundsLike,
+  type MapOptions,
+} from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import {
@@ -12,11 +18,44 @@ import {
 // MapLibre 6은 워커 파일이 분리되어 있어 Vite가 번들한 주소를 직접 지정한다
 setWorkerUrl(workerUrl)
 
-function BaseMap() {
+export type MapRoute = {
+  id: string
+  color: string
+  coordinates: [longitude: number, latitude: number][]
+}
+
+export type BaseMapProps = {
+  ariaLabel?: string
+  bounds?: LngLatBoundsLike
+  center?: [longitude: number, latitude: number]
+  className?: string
+  routes?: readonly MapRoute[]
+  showNavigationControl?: boolean
+  zoom?: number
+}
+
+const EMPTY_ROUTES: readonly MapRoute[] = []
+
+function BaseMap({
+  ariaLabel = '남한 배경지도',
+  bounds,
+  center,
+  className,
+  routes = EMPTY_ROUTES,
+  showNavigationControl = true,
+  zoom,
+}: BaseMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<MapLibreMap | null>(null)
+  const renderedRouteIdsRef = useRef<string[]>([])
+  const routesRef = useRef(routes)
   const [hasLoadError, setHasLoadError] = useState(false)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [hasStaticCacheMiss, setHasStaticCacheMiss] = useState(false)
+
+  useEffect(() => {
+    routesRef.current = routes
+  }, [routes])
 
   useEffect(() => {
     const updateConnection = () => {
@@ -42,22 +81,61 @@ function BaseMap() {
   useEffect(() => {
     if (!containerRef.current) return
 
-    const map = new MapLibreMap({
+    const mapOptions: MapOptions = {
       container: containerRef.current,
       style: BASE_MAP_STYLE_URL,
-      bounds: SOUTH_KOREA_BOUNDS,
       minZoom: MAP_MIN_ZOOM,
       maxZoom: MAP_MAX_ZOOM,
-    })
+      ...(bounds
+        ? { bounds }
+        : center
+          ? { center, zoom: zoom ?? 13 }
+          : { bounds: SOUTH_KOREA_BOUNDS }),
+    }
 
-    map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+    const map = new MapLibreMap(mapOptions)
+    mapRef.current = map
+
+    if (showNavigationControl) {
+      map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+    }
+
+    map.on('load', () => {
+      renderedRouteIdsRef.current = replaceMapRoutes(
+        map,
+        renderedRouteIdsRef.current,
+        routesRef.current,
+      )
+    })
     map.on('error', () => setHasLoadError(true))
 
-    return () => map.remove()
-  }, [])
+    return () => {
+      mapRef.current = null
+      renderedRouteIdsRef.current = []
+      map.remove()
+    }
+  }, [bounds, center, showNavigationControl, zoom])
 
-  return <div className="base-map-shell">
-    <div ref={containerRef} className="base-map" aria-label="남한 배경지도" />
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    const updateRoutes = () => {
+      if (!map.isStyleLoaded()) return
+      map.off('styledata', updateRoutes)
+      renderedRouteIdsRef.current = replaceMapRoutes(map, renderedRouteIdsRef.current, routesRef.current)
+    }
+
+    if (map.isStyleLoaded()) updateRoutes()
+    else map.on('styledata', updateRoutes)
+
+    return () => {
+      map.off('styledata', updateRoutes)
+    }
+  }, [routes])
+
+  return <div className={["base-map-shell", className].filter(Boolean).join(' ')}>
+    <div ref={containerRef} className="base-map" aria-label={ariaLabel} />
     {(isOffline || hasLoadError || hasStaticCacheMiss) && <div className="base-map__notices" aria-live="polite">
       {isOffline && <div className="base-map__notice">
         오프라인입니다. 앱 화면과 저장된 정적 정보는 계속 사용할 수 있지만, 배경지도는 브라우저에 남은 부분만 보일 수 있습니다. 실시간 정보는 연결 후 다시 확인해 주세요.
@@ -74,6 +152,47 @@ function BaseMap() {
       </div>}
     </div>}
   </div>
+}
+
+function replaceMapRoutes(
+  map: MapLibreMap,
+  renderedRouteIds: readonly string[],
+  routes: readonly MapRoute[],
+) {
+  renderedRouteIds.forEach((sourceId) => {
+    if (map.getLayer(sourceId)) map.removeLayer(sourceId)
+    if (map.getSource(sourceId)) map.removeSource(sourceId)
+  })
+
+  return routes.map((route) => {
+    const sourceId = `course-route-${route.id}`
+    map.addSource(sourceId, {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: route.coordinates,
+        },
+      },
+    })
+    map.addLayer({
+      id: sourceId,
+      type: 'line',
+      source: sourceId,
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+      },
+      paint: {
+        'line-color': route.color,
+        'line-opacity': 0.95,
+        'line-width': 4,
+      },
+    })
+    return sourceId
+  })
 }
 
 export default BaseMap
