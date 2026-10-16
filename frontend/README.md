@@ -59,14 +59,14 @@ npm run dev
 
 `src/store/courseSelectionStore.ts`의 `useSavedCourseIds`, `getSavedCourseIds`, `setCourseSaved`, `subscribeSavedCourses`가 코스 목록·상세·등산 담기 화면의 공통 접점입니다. 담기·해제 시 Toast를 표시하며 같은 탭의 화면 이동 동안 유지하고 새로고침하면 초기화합니다. 다른 등산 담기 브랜치의 페이지는 통합 시 이 저장소를 사용하도록 연결해야 합니다.
 
-`CourseListPage`의 `onCourseOpen`·`onScheduleOpen`은 `{ mountainId, courseId }`를 전달합니다. 콜백이 없으면 아래 경로에 ID를 전달하고 연결 예정 Toast를 표시합니다.
+`CourseListPage`의 `onCourseOpen`·`onScheduleOpen`은 `{ mountainId, courseId }`를 전달합니다. 콜백이 없으면 아래 경로에 ID를 전달합니다. 상세 경로는 실제 코스 상세 화면을 열며, 일정 경로는 담당 화면 통합 전까지 연결 예정 Toast를 표시합니다.
 
 | 선택 | 경로 | 통합 작업 |
 | --- | --- | --- |
 | 코스 상세 | `#mountains/{mountainId}/courses/{courseId}` | #19 코스 상세 |
 | 일정 등록 | `#mountains/{mountainId}/courses/{courseId}/schedule` | 공통 일정 등록 시트 |
 
-이번 작업은 후속 화면 자체를 구현하지 않습니다. App은 해당 경로에서도 목록을 유지하며, 후속 화면 통합 시 이 분기를 교체하거나 콜백으로 담당 화면을 연결합니다. 일정 버튼은 실제 등록이 완료되기 전까지 등록 완료 상태로 바꾸지 않습니다.
+App은 상세 경로에서 `CourseDetailPage`를 렌더링합니다. 일정 경로는 현재 상세 화면과 연결 예정 안내를 표시하며, 담당 화면 통합 시 이 분기를 교체하거나 콜백으로 연결합니다. 일정 버튼은 실제 등록이 완료되기 전까지 등록 완료 상태로 바꾸지 않습니다.
 
 ### 확인
 
@@ -79,6 +79,45 @@ npm run build
 ```
 
 `test:courses`는 시간·거리·급경사 경계, 정렬, 거리 손잡이 간격, Chip 해제, 화면 이동 ID, 담기 공유 저장소를 검사합니다.
+
+## 코스 상세·스팟·통제정보 (FLOW-04·05)
+
+- 02에서 백운대 코스의 상세 버튼을 누르거나 `#mountains/bukhansan/courses/bukhansan-baegundae`에 접속합니다. 목록으로 돌아가면 코스 ID를 쿼리에 전달해 선택을 유지합니다.
+- 최대 폭 390px·중앙 정렬·100dvh 기준입니다. 시트의 손잡이를 터치·마우스로 드래그하거나 초점을 맞추고 ↑·↓·Home·End 키로 높이를 조절합니다. 하단 담기·일정 버튼은 고정하고 본문만 스크롤합니다.
+- 고도·경사도 그래프는 #14 ECharts 구현의 모듈 등록·SVG 렌더링·크기 관찰 방식을 `components/chart/CourseProfileChart.tsx`에 확장했습니다. `types/chart.ts`는 #14와 동일 단위의 공용 고도 타입입니다.
+- 그래프 터치·마우스 Drag·←·→·Home·End 조작은 가장 가까운 동일 샘플의 거리·고도·경사도·지도 좌표를 선택합니다. 고도와 경사도를 개별 표시하며, Figma V4 정책에 따라 마지막 항목 해제는 거부하고 안내 Toast를 표시합니다.
+- 코스 후기는 별도 진입 버튼 없이 그래프 아래의 본문을 스크롤해 확인합니다.
+- 스팟은 전체 6곳(쉼터 2·음수대 1·화장실 1·사진 스팟 2) 예시입니다. 카테고리에 따라 지도 마커·개수·목록을 함께 바꾸고, 특정 카테고리에서는 마커 이름을 표시합니다. 지도와 목록 선택이 동기화되며, 선택 시 해당 지도 위치로 이동합니다.
+- 스팟 탭·카테고리·선택 ID를 URL 쿼리에 보존하여 새로고침과 담당 후기 화면에서의 복귀에 사용합니다. 스팟 탭에서 Escape를 누르면 코스 상세 탭으로 복귀합니다.
+- 통제정보는 `통제정보 이미지 추가 예정` Placeholder를 표시하고 스팟 마커를 숨깁니다. 데이터 미연결 상태를 `통제 없음`으로 표시하지 않습니다.
+- `api/courseDetailMock.ts`의 프로필·스팟·후기는 화면 개발용 합성 데이터입니다. 거리·상승 고도·최고 고도·급경사 비율은 02의 같은 코스 데이터를 그대로 사용합니다. 지도에도 `경로·분석 예시`를 표시합니다. 실제 등산로·시설·DEM 분석값·실시간 정보가 아닙니다.
+- 분석 미준비 코스 ID에 직접 접속하면 분석 없음·후기 없음·스팟 없음 상태를 표시하고, 존재하지 않거나 산이 일치하지 않는 ID는 찾을 수 없음 상태를 표시합니다.
+- 02의 지도 경로·지도 버튼 코드는 `components/map/CourseRouteMap.tsx`로 공용화했습니다. 기존 `CourseMap`은 이 컴포넌트를 사용하며, 상세는 프로필 위치와 스팟 마커를 추가합니다.
+
+### 담당 화면과의 연결
+
+`CourseDetailPage`는 아래 콜백을 통합 접점으로 제공합니다. 현재 기본 동작은 실제 등록·후기 이동을 수행하지 않고 연결 예정 안내를 표시합니다.
+
+| 연결 | 전달 정보 | 준비 범위 |
+| --- | --- | --- |
+| `onScheduleOpen` | `{ mountainId, courseId }` | 일정 등록·수정 담당 화면 연결 |
+| `onSpotOpen` | `{ mountainId, courseId, spotId, category, returnPath }` | COMM-03 스팟 후기 화면과 같은 카테고리 복귀 |
+| `hasSchedule` | 실제 일정 존재 여부 | 등록된 일정이 있을 때만 `일정 변경` 표시 |
+
+담기는 02와 동일한 메모리 저장소를 사용하며 새로고침하면 초기화됩니다. 장바구니 담당 화면도 통합 시 같은 저장소를 구독해야 합니다. 새 패키지나 환경 변수·DB 설정은 추가하지 않습니다.
+
+### 확인
+
+```powershell
+npm run test:course-detail
+npm run test:courses
+npm run test:home
+npm run test:offline
+npm run lint -- src
+npm run build
+```
+
+`test:course-detail`은 그래프 샘플 선택·경계·지도 좌표 보간·마지막 표시 항목 유지·스팟 필터·후기 복귀 경로를 검사합니다. 브라우저에서는 목록→상세 이동, 그래프·지도 연동, 시트 드래그와 후기 스크롤, 담기 공유, 카테고리·통제정보, 빈 상태와 320×480·390×844·1280×900 배치를 확인합니다.
 
 ## 폴더 규칙
 
