@@ -1,12 +1,8 @@
 import { useState } from "react";
+import { toLocalDateKey } from "../../utils/dateTime";
 import { Icon } from "../common/Icon";
 import "../common/controls.css";
 import "./hike.css";
-
-function dateKey(date: Date | string): string {
-  if (typeof date === "string") return date.slice(0, 10);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
 
 function monthStart(value: Date | string): Date {
   if (value instanceof Date) return new Date(value.getFullYear(), value.getMonth(), 1);
@@ -49,7 +45,7 @@ export function Calendar({
   const displayedMonth = monthStart(month ?? internalMonth);
   const firstWeekday = displayedMonth.getDay();
   const daysInMonth = new Date(displayedMonth.getFullYear(), displayedMonth.getMonth() + 1, 0).getDate();
-  const scheduled = new Set(scheduledDates.map(dateKey));
+  const scheduled = new Set(scheduledDates.map(toLocalDateKey));
 
   function moveMonth(offset: number) {
     const next = new Date(displayedMonth.getFullYear(), displayedMonth.getMonth() + offset, 1);
@@ -75,8 +71,8 @@ export function Calendar({
       {Array.from({ length: daysInMonth }, (_, index) => {
         const day = index + 1;
         const date = new Date(displayedMonth.getFullYear(), displayedMonth.getMonth(), day);
-        const key = dateKey(date);
-        return <CalendarDay key={key} day={day} date={date} selected={dateKey(selectedDate) === key}
+        const key = toLocalDateKey(date);
+        return <CalendarDay key={key} day={day} date={date} selected={toLocalDateKey(selectedDate) === key}
           scheduled={scheduled.has(key)} onClick={onDateSelect} />;
       })}
     </div>

@@ -10,6 +10,7 @@ export type CartCourse = {
   mountain: string;
   distanceKm: number;
   durationMinutes: number;
+  averageSlopePercent?: number;
   color: string;
   routeCoordinates: [longitude: number, latitude: number][];
   elevationProfile: ElevationPoint[];

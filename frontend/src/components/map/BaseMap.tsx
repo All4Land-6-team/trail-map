@@ -5,6 +5,7 @@ import {
   setWorkerUrl,
   type LngLatBoundsLike,
   type MapOptions,
+  type PaddingOptions,
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -22,11 +23,13 @@ export type MapRoute = {
   id: string
   color: string
   coordinates: [longitude: number, latitude: number][]
+  showEndpoint?: boolean
 }
 
 export type BaseMapProps = {
   ariaLabel?: string
   bounds?: LngLatBoundsLike
+  fitBoundsPadding?: number | PaddingOptions
   center?: [longitude: number, latitude: number]
   className?: string
   routes?: readonly MapRoute[]
@@ -41,6 +44,7 @@ function BaseMap({
   bounds,
   center,
   className,
+  fitBoundsPadding,
   routes = EMPTY_ROUTES,
   showNavigationControl = true,
   zoom,
@@ -87,7 +91,7 @@ function BaseMap({
       minZoom: MAP_MIN_ZOOM,
       maxZoom: MAP_MAX_ZOOM,
       ...(bounds
-        ? { bounds }
+        ? { bounds, fitBoundsOptions: fitBoundsPadding ? { padding: fitBoundsPadding } : undefined }
         : center
           ? { center, zoom: zoom ?? 13 }
           : { bounds: SOUTH_KOREA_BOUNDS }),
@@ -114,7 +118,7 @@ function BaseMap({
       renderedRouteIdsRef.current = []
       map.remove()
     }
-  }, [bounds, center, showNavigationControl, zoom])
+  }, [bounds, center, fitBoundsPadding, showNavigationControl, zoom])
 
   useEffect(() => {
     const map = mapRef.current
@@ -160,6 +164,8 @@ function replaceMapRoutes(
   routes: readonly MapRoute[],
 ) {
   renderedRouteIds.forEach((sourceId) => {
+    const endpointLayerId = `${sourceId}-endpoint`
+    if (map.getLayer(endpointLayerId)) map.removeLayer(endpointLayerId)
     if (map.getLayer(sourceId)) map.removeLayer(sourceId)
     if (map.getSource(sourceId)) map.removeSource(sourceId)
   })
@@ -169,12 +175,22 @@ function replaceMapRoutes(
     map.addSource(sourceId, {
       type: 'geojson',
       data: {
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates: route.coordinates,
-        },
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: { kind: 'route' },
+            geometry: { type: 'LineString', coordinates: route.coordinates },
+          },
+          ...(route.showEndpoint && route.coordinates.length > 0 ? [{
+            type: 'Feature' as const,
+            properties: { kind: 'endpoint' },
+            geometry: {
+              type: 'Point' as const,
+              coordinates: route.coordinates.at(-1)!,
+            },
+          }] : []),
+        ],
       },
     })
     map.addLayer({
@@ -191,6 +207,20 @@ function replaceMapRoutes(
         'line-width': 4,
       },
     })
+    if (route.showEndpoint) {
+      map.addLayer({
+        id: `${sourceId}-endpoint`,
+        type: 'circle',
+        source: sourceId,
+        filter: ['==', ['get', 'kind'], 'endpoint'],
+        paint: {
+          'circle-color': '#ffffff',
+          'circle-radius': 5,
+          'circle-stroke-color': route.color,
+          'circle-stroke-width': 2.5,
+        },
+      })
+    }
     return sourceId
   })
 }

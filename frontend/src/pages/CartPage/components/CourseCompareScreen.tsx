@@ -11,12 +11,14 @@ import { useDraggableCartSheet } from "./useDraggableCartSheet";
 type CourseCompareScreenProps = {
   courses: readonly CartCourse[];
   onBack: () => void;
+  onViewMetrics: () => void;
   onNavigate: (destination: BottomDestination) => void;
 };
 
 export function CourseCompareScreen({
   courses,
   onBack,
+  onViewMetrics,
   onNavigate,
 }: CourseCompareScreenProps) {
   const mapRoutes = useMemo<MapRoute[]>(() => courses.map((course) => ({
@@ -65,7 +67,9 @@ export function CourseCompareScreen({
         handleProps={sheet.handleProps}
         content={(
           <div className="cart-compare-content">
-            <span className="cart-metrics-link" aria-hidden="true">비교표 ›</span>
+            <button type="button" className="cart-metrics-link" onClick={onViewMetrics}>
+              비교표 ›
+            </button>
             <div className="cart-course-legend" aria-label="코스 범례">
               {courses.map((course) => (
                 <span key={course.id}>
