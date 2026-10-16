@@ -1,0 +1,36 @@
+import type { HomeMountain } from "./home";
+
+export type CourseDifficulty = "beginner" | "intermediate" | "advanced";
+export type CourseSort = "difficulty" | "name";
+export type Course = {
+  id: string;
+  mountainId: string;
+  name: string;
+  routeLabel: string;
+  difficulty: CourseDifficulty | null;
+  distanceKm: number;
+  durationMinutes: number;
+  elevationGainMeters: number | null;
+  peakElevationMeters: number | null;
+  steepRatioPercent: number | null;
+  analysisStatus: "ready" | "pending";
+  detailAvailable: boolean;
+  routeCoordinates: [longitude: number, latitude: number][];
+};
+
+export type CourseFilters = {
+  difficulty: CourseDifficulty | "all";
+  duration: "all" | "under2" | "2to4";
+  minDistanceKm: number;
+  maxDistanceKm: number;
+  steepRatio: "all" | "20" | "10";
+};
+export type DetailedCourseFilters = Omit<CourseFilters, "difficulty">;
+export type CourseDiscoveryData = { mountain: HomeMountain; courses: readonly Course[] };
+export type CourseDiscoveryState =
+  | { status: "loading" }
+  | { status: "success"; data: CourseDiscoveryData }
+  | { status: "missing" | "error" };
+
+/** 후속 코스 상세·일정 등록 화면에 전달하는 최소 정보. */
+export type CourseRequest = { mountainId: string; courseId: string };

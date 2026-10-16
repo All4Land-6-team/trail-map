@@ -90,6 +90,8 @@
 .af-page-indicator { display: inline-flex; align-items: center; gap: 10px; }
 .af-page-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--af-line); }
 .af-page-dot--selected { background: var(--af-green); }
+.af-page-indicator__button { display: grid; flex: none; width: 14px; height: 20px; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; cursor: pointer; }
+.af-page-indicator__button:focus-visible { outline: 2px solid var(--af-green); outline-offset: 1px; }
 
 .af-top-bar {
   display: flex;
