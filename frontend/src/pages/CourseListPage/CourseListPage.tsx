@@ -52,7 +52,6 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     if (onCourseOpen) onCourseOpen(request);
     else {
       navigateFromHome(coursePaths.detail(request));
-      notify("코스 상세 화면은 다음 단계에서 연결됩니다.");
     }
   }
   function openSchedule(course: Course) {

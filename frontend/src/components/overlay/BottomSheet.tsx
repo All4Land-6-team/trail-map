@@ -14,15 +14,17 @@ export type BottomSheetProps = Omit<HTMLAttributes<HTMLElement>, "content"> & {
   footer?: ReactNode;
   headerAction?: ReactNode;
   onClose?: () => void;
+  handleProps?: HTMLAttributes<HTMLDivElement>;
 };
 
 export function BottomSheet({
   title, description, showHandle = true, showClose = true, showDescription = true,
-  showFooter = false, content, footer, headerAction, onClose, className, ...rest
+  showFooter = false, content, footer, headerAction, onClose, handleProps, className, ...rest
 }: BottomSheetProps) {
   return <section {...rest} aria-label={rest["aria-label"] ?? title}
     className={["af-bottom-sheet", className].filter(Boolean).join(" ")}>
-    {showHandle && <div className="af-bottom-sheet__handle-row" aria-hidden="true"><span className="af-bottom-sheet__handle" /></div>}
+    {showHandle && <div {...handleProps} className={["af-bottom-sheet__handle-row", handleProps?.className].filter(Boolean).join(" ")}
+      aria-hidden={handleProps ? undefined : true}><span className="af-bottom-sheet__handle" /></div>}
     <div className="af-bottom-sheet__title-row">
       <h2 className="af-bottom-sheet__title">{title}</h2>
       {headerAction}
