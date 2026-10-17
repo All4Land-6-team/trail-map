@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ComponentType } from 'react'
-import BaseMap from './components/map/BaseMap'
+import { HomePage } from './pages/HomePage/HomePage'
 import { routePath, useHashRoute } from './hooks/useHashRoute'
 import { HikeActivePage } from './pages/HikeActivePage/HikeActivePage'
 import { HikeCalendarPage } from './pages/HikeCalendarPage/HikeCalendarPage'
@@ -31,7 +31,9 @@ function App() {
   const HikePage = hikeRoutes[routePath(route)]
   // 주소의 ?값이 바뀌어도 화면을 새로 그리도록 전체 주소를 key로 쓴다.
   if (HikePage) return <HikePage key={route} />
-  return <BaseMap />
+  const preview = import.meta.env.DEV ? new URLSearchParams(window.location.search) : null
+  const schedule = preview?.get('preview') === 'home' ? preview.get('schedule') : null
+  return <HomePage previewSchedule={schedule === 'none' || schedule === 'active' ? schedule : undefined} />
 }
 
 export default App

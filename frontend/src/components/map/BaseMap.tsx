@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import { MapLibreMap, NavigationControl, setWorkerUrl, type PaddingOptions } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import {
@@ -12,11 +12,22 @@ import {
 // MapLibre 6은 워커 파일이 분리되어 있어 Vite가 번들한 주소를 직접 지정한다
 setWorkerUrl(workerUrl)
 
-function BaseMap() {
+export type BaseMapProps = {
+  className?: string
+  fitBoundsPadding?: number | PaddingOptions
+  showNavigationControl?: boolean
+  /** 지도 생성·해제 시 알린다. 레이어를 추가할 때는 load 이벤트를 기다린다. */
+  onMapReady?: (map: MapLibreMap | null) => void
+}
+
+function BaseMap({ className, fitBoundsPadding, showNavigationControl = true, onMapReady }: BaseMapProps = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const onMapReadyRef = useRef(onMapReady)
   const [hasLoadError, setHasLoadError] = useState(false)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [hasStaticCacheMiss, setHasStaticCacheMiss] = useState(false)
+
+  useEffect(() => { onMapReadyRef.current = onMapReady }, [onMapReady])
 
   useEffect(() => {
     const updateConnection = () => {
@@ -42,21 +53,32 @@ function BaseMap() {
   useEffect(() => {
     if (!containerRef.current) return
 
-    const map = new MapLibreMap({
-      container: containerRef.current,
-      style: BASE_MAP_STYLE_URL,
-      bounds: SOUTH_KOREA_BOUNDS,
-      minZoom: MAP_MIN_ZOOM,
-      maxZoom: MAP_MAX_ZOOM,
-    })
+    let map: MapLibreMap
+    try {
+      map = new MapLibreMap({
+        container: containerRef.current,
+        style: BASE_MAP_STYLE_URL,
+        bounds: SOUTH_KOREA_BOUNDS,
+        minZoom: MAP_MIN_ZOOM,
+        maxZoom: MAP_MAX_ZOOM,
+        fitBoundsOptions: fitBoundsPadding ? { padding: fitBoundsPadding } : undefined,
+      })
+    } catch {
+      const frame = requestAnimationFrame(() => setHasLoadError(true))
+      return () => cancelAnimationFrame(frame)
+    }
 
-    map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+    if (showNavigationControl) map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
     map.on('error', () => setHasLoadError(true))
+    onMapReadyRef.current?.(map)
 
-    return () => map.remove()
-  }, [])
+    return () => {
+      onMapReadyRef.current?.(null)
+      map.remove()
+    }
+  }, [fitBoundsPadding, showNavigationControl])
 
-  return <div className="base-map-shell">
+  return <div className={["base-map-shell", className].filter(Boolean).join(' ')}>
     <div ref={containerRef} className="base-map" aria-label="남한 배경지도" />
     {(isOffline || hasLoadError || hasStaticCacheMiss) && <div className="base-map__notices" aria-live="polite">
       {isOffline && <div className="base-map__notice">
