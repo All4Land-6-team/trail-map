@@ -6,3 +6,5 @@ export { MountainMarker } from "./MountainMarker";
 export type { MountainMarkerProps } from "./MountainMarker";
 export { DistanceBubble } from "./DistanceBubble";
 export type { DistanceBubbleProps } from "./DistanceBubble";
+export { default as BaseMap } from "./BaseMap";
+export type { BaseMapProps, MapRoute } from "./BaseMap";

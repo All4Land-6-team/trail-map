@@ -1,6 +1,7 @@
 .af-bottom-sheet { display: flex; flex-direction: column; gap: 12px; width: 100%; padding: 10px 16px 18px; box-sizing: border-box; border-radius: 24px; background: #fff; font-family: "Noto Sans KR", sans-serif; }
 .af-bottom-sheet__handle-row { display: grid; place-items: center; height: 8px; }
 .af-bottom-sheet__handle { width: 36px; height: 4px; border-radius: 2px; background: #c9d9c9; }
+.af-bottom-sheet__body { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: inherit; }
 .af-bottom-sheet__title-row { display: flex; align-items: center; justify-content: space-between; min-height: 32px; }
 .af-bottom-sheet__title { margin: 0; color: var(--af-ink); font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .af-bottom-sheet__close { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; color: var(--af-muted); background: transparent; cursor: pointer; }
