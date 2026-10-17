@@ -54,7 +54,7 @@
 .af-schedule-sheet .af-bottom-sheet__close { color: var(--af-green); }
 .af-schedule-sheet .af-bottom-sheet__description { margin-top: 6px; color: #617b6c; }
 .af-schedule-sheet .af-bottom-sheet__content { flex: 1 1 auto; min-height: 0; margin-top: 16px; }
-.af-schedule-sheet__form { display: flex; flex-direction: column; gap: 26px; }
+.af-schedule-sheet__form { display: flex; flex-direction: column; gap: 12px; }
 .af-schedule-sheet__feedback { min-height: 18px; margin: 8px 0 0; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .af-schedule-sheet__feedback--error { color: var(--af-danger); }
 .af-schedule-sheet__feedback--success { color: var(--af-green); }
@@ -86,3 +86,7 @@
 .af-overlay-layer__dim { position: absolute; inset: 0; background: rgb(23 61 50 / 28%); }
 .af-overlay-layer__panel { position: relative; display: flex; justify-content: center; width: 100%; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; outline: none; }
 .af-overlay-layer--center > .af-overlay-layer__panel { width: auto; max-width: 100%; }
+/* 바텀시트는 화면(.hike-page)과 같은 최대 폭 480px 안에 띄운다 */
+.af-overlay-layer--bottom > .af-overlay-layer__panel { max-width: 480px; }
+/* 하단 내비게이션 위에 띄우는 바텀시트. 내비게이션은 어둡게 비쳐 보인다 (Figma FLOW-06 · HIKE-04 · HIKE-09) */
+.af-overlay-layer--above-nav { padding-bottom: var(--af-overlay-nav-offset, 0px); }

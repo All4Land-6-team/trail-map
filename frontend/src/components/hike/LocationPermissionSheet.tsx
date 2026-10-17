@@ -22,7 +22,7 @@ export type LocationPermissionSheetProps = {
 export function LocationPermissionSheet({ notice, onRetry, retrying = false, onDismiss }: LocationPermissionSheetProps) {
   const titleId = useId();
   const descriptionId = useId();
-  return <OverlayLayer placement="bottom" onDismiss={onDismiss}>
+  return <OverlayLayer placement="bottom" aboveNav onDismiss={onDismiss}>
     <section className="af-bottom-sheet af-location-sheet" role="dialog" aria-modal="true"
       aria-labelledby={titleId} aria-describedby={descriptionId} aria-busy={retrying}>
       <div className="af-bottom-sheet__handle-row" aria-hidden="true"><span className="af-bottom-sheet__handle" /></div>

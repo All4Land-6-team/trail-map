@@ -10,6 +10,10 @@ export type DatePickerProps = Omit<CalendarProps, "today"> & {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   today?: string;
+  /** 값이 없을 때 칸에 보여 줄 안내 글자 */
+  placeholder?: string;
+  /** 입력 오류 상태 (빨간 테두리) */
+  invalid?: boolean;
 };
 
 export function DatePicker({
@@ -23,6 +27,8 @@ export function DatePicker({
   open: controlledOpen,
   onOpenChange,
   today = toLocalDateKey(new Date()),
+  placeholder = "연도-월-일",
+  invalid = false,
 }: DatePickerProps) {
   const panelId = useId();
   const labelId = useId();
@@ -48,7 +54,8 @@ export function DatePicker({
       <button
         ref={triggerRef}
         type="button"
-        className="af-picker-field"
+        className={invalid ? "af-picker-field af-picker-field--error" : "af-picker-field"}
+        aria-invalid={invalid || undefined}
         aria-expanded={open}
         aria-controls={panelId}
         aria-haspopup="dialog"
@@ -56,7 +63,9 @@ export function DatePicker({
         disabled={disabled}
         onClick={() => setOpen(!open)}
       >
-        <span id={valueId}>{formatDateDisplay(value)}</span>
+        {value
+          ? <span id={valueId}>{formatDateDisplay(value)}</span>
+          : <span id={valueId} className="af-picker-field__placeholder">{placeholder}</span>}
         <Icon name="Calendar" size={20} color="#83978a" />
       </button>
       {open && (

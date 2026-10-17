@@ -21,6 +21,12 @@ export type DateTimePickerProps = {
   timeLabel?: string;
   today?: string;
   onPickerOpenChange?: (picker: "date" | "time" | null) => void;
+  /** 값이 없을 때 칸에 보여 줄 안내 글자 */
+  datePlaceholder?: string;
+  timePlaceholder?: string;
+  /** 입력 오류 상태 (빨간 테두리) */
+  dateInvalid?: boolean;
+  timeInvalid?: boolean;
 };
 
 export function DateTimePicker({
@@ -36,6 +42,10 @@ export function DateTimePicker({
   timeLabel = "시간",
   today,
   onPickerOpenChange,
+  datePlaceholder,
+  timePlaceholder,
+  dateInvalid = false,
+  timeInvalid = false,
 }: DateTimePickerProps) {
   const [activePicker, setActivePicker] = useState<"date" | "time" | null>(null);
 
@@ -55,6 +65,8 @@ export function DateTimePicker({
         isDateDisabled={isDateDisabled}
         disabled={disabled}
         today={today}
+        placeholder={datePlaceholder}
+        invalid={dateInvalid}
         open={activePicker === "date"}
         onOpenChange={(open) => setPicker("date", open)}
         onChange={(date) => onChange({ ...value, date })}
@@ -65,6 +77,8 @@ export function DateTimePicker({
         minTime={minTime}
         minuteStep={minuteStep}
         disabled={disabled}
+        placeholder={timePlaceholder}
+        invalid={timeInvalid}
         open={activePicker === "time"}
         onOpenChange={(open) => setPicker("time", open)}
         onChange={(time) => onChange({ ...value, time })}
