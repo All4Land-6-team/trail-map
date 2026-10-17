@@ -1,5 +1,6 @@
-import { lazy, Suspense, type ComponentType } from 'react'
+import { lazy, Suspense, useState, type ComponentType } from 'react'
 import type { BottomDestination } from './components/layout'
+import type { PlannedHike } from './types/hiking'
 import { HomePage } from './pages/HomePage/HomePage'
 import { CourseListPage } from './pages/CourseListPage/CourseListPage'
 import { readCourseRoute } from './routes/courseRoutes'
@@ -14,6 +15,7 @@ import { HikeDetailPage } from './pages/HikeDetailPage/HikeDetailPage'
 import { HikeTodayPage } from './pages/HikeTodayPage/HikeTodayPage'
 
 const CartPage = lazy(() => import('./pages/CartPage/CartPage').then(({ CartPage: Page }) => ({ default: Page })))
+const HikingStatusPage = lazy(() => import('./pages/HikePage/HikePage').then(({ HikePage: Page }) => ({ default: Page })))
 
 // 개발 서버에서만 ?preview=hike-status로 FLOW-06 일정 시트와 상태 화면을 확인한다.
 const HikeStatusPreviewPage = import.meta.env.DEV
@@ -32,19 +34,49 @@ const hikeRoutes: Record<string, ComponentType> = {
 
 function App() {
   const route = useHashRoute()
+  const [plannedHikes, setPlannedHikes] = useState<PlannedHike[]>([])
+
+  function navigateFromBottom(destination: BottomDestination) {
+    window.location.hash = destination === 'home' ? '' : destination === 'saved' ? 'cart' : destination
+  }
+
+  function planHike(plannedHike: PlannedHike) {
+    setPlannedHikes((current) => [
+      ...current.filter((schedule) => schedule.date !== plannedHike.date),
+      plannedHike,
+    ])
+  }
+
   if (HikeStatusPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'hike-status') {
     return <Suspense fallback={null}><HikeStatusPreviewPage /></Suspense>
   }
+
   if (routePath(route) === 'cart' || routePath(route).startsWith('cart/')) {
     return <Suspense fallback={<main className="app-route-loading" aria-busy="true">화면을 불러오는 중이에요</main>}>
-      <CartPage route={`#${route}`} onNavigateOutsideCart={(destination: BottomDestination) => {
-        window.location.hash = destination === 'home' ? '' : destination
-      }} />
+      <CartPage
+        route={`#${route}`}
+        plannedHikes={plannedHikes}
+        onPlanHike={planHike}
+        onNavigateOutsideCart={navigateFromBottom}
+      />
     </Suspense>
   }
-  const HikePage = hikeRoutes[routePath(route)]
+
+  if (routePath(route) === 'myHikes' || routePath(route).startsWith('hike/')) {
+    return <Suspense fallback={<main className="app-route-loading" aria-busy="true">등산 화면을 불러오는 중이에요</main>}>
+      <HikingStatusPage
+        key={route}
+        route={`#${route}`}
+        plannedHikes={plannedHikes}
+        onNavigate={navigateFromBottom}
+        onBack={() => { window.location.hash = 'myHikes' }}
+        onFinish={() => { window.location.hash = 'myHikes?completed=1' }}
+      />
+    </Suspense>
+  }
+  const HikeRoutePage = hikeRoutes[routePath(route)]
   // 주소의 ?값이 바뀌어도 화면을 새로 그리도록 전체 주소를 key로 쓴다.
-  if (HikePage) return <HikePage key={route} />
+  if (HikeRoutePage) return <HikeRoutePage key={route} />
   const courseRoute = readCourseRoute(route)
   if (courseRoute?.courseId) return <CourseDetailPage key={`${courseRoute.mountainId}/${courseRoute.courseId}`}
     mountainId={courseRoute.mountainId} courseId={courseRoute.courseId} view={readCourseDetailView(route)}

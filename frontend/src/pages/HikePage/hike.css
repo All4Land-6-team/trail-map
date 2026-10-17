@@ -1,0 +1,100 @@
+.hike-screen {
+  position: relative;
+  width: min(100%, 390px);
+  height: 100dvh;
+  margin: 0 auto;
+  overflow: hidden;
+  color: var(--af-ink);
+  background: #eef5eb;
+  font-family: "Noto Sans KR", sans-serif;
+}
+
+.hike-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hike-map .base-map { height: 100%; }
+.hike-map .maplibregl-control-container { display: none; }
+.hike-topbar { position: absolute; z-index: 5; top: 16px; left: 16px; width: calc(100% - 32px); }
+.hike-filter-row {
+  position: absolute;
+  z-index: 5;
+  top: 82px;
+  left: 12px;
+  display: flex;
+  width: calc(100% - 12px);
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.hike-filter-row::-webkit-scrollbar { display: none; }
+.hike-filter-row .af-chip { height: 34px; padding-inline: 14px; }
+.hike-map-actions { position: absolute; z-index: 5; top: 128px; right: 17px; display: flex; flex-direction: column; gap: 6px; }
+.hike-map-actions .af-map-action { border: 0; border-radius: 12px; color: var(--af-green-dark); background: #fff; box-shadow: 0 3px 5px rgba(23, 71, 54, .1); }
+.hike-map-actions .af-map-action--dimension { color: var(--af-green-dark); background: #fff; }
+.hike-demo-spots { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
+.hike-demo-spot { position: absolute; pointer-events: auto; }
+.hike-demo-spot--photo-one { top: 205px; right: 67px; }
+.hike-demo-spot--shelter { top: 250px; right: 99px; }
+.hike-demo-spot--water { top: 292px; right: 138px; }
+.hike-demo-spot--restroom { top: 344px; right: 205px; }
+.hike-bottom-nav { position: absolute; z-index: 12; right: 0; bottom: 0; left: 0; height: calc(72px + env(safe-area-inset-bottom)); }
+.hike-bottom-nav .af-bottom-nav { height: 100%; box-sizing: border-box; padding-bottom: env(safe-area-inset-bottom); }
+
+.hike-today-sheet,
+.hike-progress-sheet,
+.hike-permission-sheet {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  left: 0;
+  gap: 0;
+  padding: 10px 18px 18px;
+  border-radius: 25px 25px 0 0;
+  box-shadow: 0 -8px 12px rgba(23, 71, 54, .06);
+}
+.hike-today-sheet { min-height: 282px; }
+.hike-progress-sheet { min-height: 275px; }
+.hike-today-sheet .af-bottom-sheet__handle,
+.hike-progress-sheet .af-bottom-sheet__handle,
+.hike-permission-sheet .af-bottom-sheet__handle { width: 40px; background: #ccd9cc; }
+.hike-today-sheet .af-bottom-sheet__body,
+.hike-progress-sheet .af-bottom-sheet__body,
+.hike-permission-sheet .af-bottom-sheet__body { gap: 4px; }
+.hike-today-sheet .af-bottom-sheet__description,
+.hike-progress-sheet .af-bottom-sheet__description { order: -1; color: #617b6c; font-size: 11px; line-height: 16px; }
+.hike-today-sheet .af-bottom-sheet__content,
+.hike-progress-sheet .af-bottom-sheet__content,
+.hike-permission-sheet .af-bottom-sheet__content { min-height: 0; }
+.hike-today-content,
+.hike-progress-content { display: flex; height: 100%; flex-direction: column; }
+.hike-today-content > span:first-child { margin-top: 2px; }
+.hike-today-divider { height: 1px; margin: 14px 0 10px; background: #e1e9df; }
+.hike-sunset-row { display: flex; align-items: center; gap: 8px; color: #617b6c; }
+.hike-today-content > .af-button { margin-top: auto; }
+.hike-progress-meta { display: flex; justify-content: space-between; margin-top: 12px; }
+.hike-progress-meta > :last-child { color: #617b6c; }
+.hike-progress-track { height: 4px; margin-top: 8px; border-radius: 2px; background: #c9d9c9; overflow: hidden; }
+.hike-progress-track span { display: block; width: 48%; height: 100%; border-radius: inherit; background: var(--af-green); }
+.hike-progress-content .hike-sunset-row { margin-top: 28px; }
+.hike-progress-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: auto; }
+.hike-finish-button { border-color: #c89b95; color: #a64d4d; }
+
+.hike-permission-layer { z-index: 20; }
+.hike-permission-sheet { min-height: 207px; padding: 10px 20px 18px; }
+.hike-permission-sheet--blocked { min-height: 277px; }
+.hike-permission-sheet .af-bottom-sheet__handle-row { height: 12px; }
+.hike-permission-sheet .af-bottom-sheet__title-row { min-height: 58px; }
+.hike-permission-icon { display: grid; width: 44px; height: 44px; flex: none; place-items: center; border-radius: 50%; color: #d77a2b; background: #fff4e8; }
+.hike-permission-content { display: flex; flex-direction: column; gap: 14px; }
+.hike-permission-content p { margin: 2px 0 0; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-permission-warning { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid #efc79e; border-radius: 10px; color: #a65818; background: #fff7ed; }
+.hike-permission-warning strong { font: 700 12px/18px "Noto Sans KR", sans-serif; }
+.hike-permission-warning span { font: 400 10px/14px "Noto Sans KR", sans-serif; }
+
+.hike-confirm-layer { display: grid; z-index: 25; place-items: center; }
+.hike-end-dialog { min-height: 170px; transform: translateY(-7px); }
+
+@media (max-height: 720px) {
+  .hike-filter-row { top: 76px; }
+  .hike-map-actions { top: 122px; }
+  .hike-progress-sheet { min-height: 245px; }
+}

@@ -3,6 +3,7 @@
 .af-bottom-sheet__handle { width: 36px; height: 4px; border-radius: 2px; background: #c9d9c9; }
 .af-bottom-sheet__body { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: inherit; }
 .af-bottom-sheet__title-row { display: flex; align-items: center; justify-content: space-between; min-height: 32px; }
+.af-bottom-sheet__title-group { display: flex; min-width: 0; align-items: center; gap: 12px; }
 .af-bottom-sheet__title { margin: 0; color: var(--af-ink); font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .af-bottom-sheet__close { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; color: var(--af-muted); background: transparent; cursor: pointer; }
 .af-bottom-sheet__close:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
@@ -15,3 +16,4 @@
 .af-confirm-dialog__body { color: #617b6c; }
 .af-confirm-dialog__actions { display: flex; gap: 12px; width: 100%; padding-top: 14px; }
 .af-confirm-dialog__actions > .af-button { flex: 1; min-width: 0; padding-inline: 8px; }
+.af-modal-layer { position: absolute; z-index: 30; inset: 0; background: rgba(23, 61, 50, .28); }

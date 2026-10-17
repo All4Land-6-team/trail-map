@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build && node scripts/inject-precache.mjs",
     "lint": "oxlint",
     "test:picker": "node --experimental-strip-types --test tests/date-time-picker.test.mjs",
+    "test:hiking": "node --experimental-strip-types --test tests/hiking-status.test.mjs",
     "test:offline": "node --test tests/service-worker.test.cjs",
     "test:home": "node --test tests/home-discovery.test.mjs",
     "test:courses": "node --test tests/course-discovery.test.mjs",

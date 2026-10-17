@@ -5,6 +5,7 @@ import "./overlay.css";
 
 export type BottomSheetProps = Omit<HTMLAttributes<HTMLElement>, "content"> & {
   title: string;
+  titleLeading?: ReactNode;
   description?: string;
   showHandle?: boolean;
   showClose?: boolean;
@@ -19,7 +20,7 @@ export type BottomSheetProps = Omit<HTMLAttributes<HTMLElement>, "content"> & {
 };
 
 export function BottomSheet({
-  title, description, showHandle = true, showClose = true, showDescription = true,
+  title, titleLeading, description, showHandle = true, showClose = true, showDescription = true,
   showFooter = false, content, footer, headerAction, bodyHidden = false, handleProps, onClose, className, ...rest
 }: BottomSheetProps) {
   const {
@@ -41,7 +42,10 @@ export function BottomSheet({
     )}
     <div className="af-bottom-sheet__body" aria-hidden={bodyHidden || undefined} inert={bodyHidden || undefined}>
       <div className="af-bottom-sheet__title-row">
-        <h2 className="af-bottom-sheet__title">{title}</h2>
+        <div className="af-bottom-sheet__title-group">
+          {titleLeading}
+          <h2 className="af-bottom-sheet__title">{title}</h2>
+        </div>
         {headerAction}
         {showClose && <button type="button" className="af-bottom-sheet__close" aria-label="닫기" onClick={onClose}>
           <Icon name="Close" size={24} color="currentColor" />

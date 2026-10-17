@@ -4,6 +4,7 @@ import { Typography } from "../../../components/common/Typography";
 import { BottomNavigation, TopBar, type BottomDestination } from "../../../components/layout";
 import { BaseMap, type MapRoute } from "../../../components/map";
 import { BottomSheet } from "../../../components/overlay";
+import type { PlannedHike } from "../../../types/hiking";
 import { formatCourseDuration } from "../data";
 import type { CartCourse, ElevationChartSeries } from "../types";
 import { CourseElevationChart } from "./CourseElevationChart";
@@ -15,6 +16,8 @@ type CourseDetailScreenProps = {
   onBack: () => void;
   onKeepCart: () => void;
   onNavigate: (destination: BottomDestination) => void;
+  plannedHikes: readonly PlannedHike[];
+  onPlanHike: (plannedHike: PlannedHike) => void;
 };
 
 const DETAIL_MAP_PADDING = { top: 118, right: 36, bottom: 430, left: 36 };
@@ -24,6 +27,8 @@ export function CourseDetailScreen({
   onBack,
   onKeepCart,
   onNavigate,
+  plannedHikes,
+  onPlanHike,
 }: CourseDetailScreenProps) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const mapRoutes = useMemo<MapRoute[]>(() => [{
@@ -101,8 +106,17 @@ export function CourseDetailScreen({
         <ScheduleRegistrationSheet
           courses={[course]}
           initialCourseId={course.id}
+          existingSchedules={plannedHikes}
           onClose={() => setScheduleOpen(false)}
-          onConfirm={() => onNavigate("myHikes")}
+          onConfirm={(_, schedule) => {
+            onPlanHike({
+              ...schedule,
+              courseId: course.id,
+              mountain: course.mountain,
+              courseName: course.name,
+            });
+            onNavigate("myHikes");
+          }}
         />
       )}
     </main>
