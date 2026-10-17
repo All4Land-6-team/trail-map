@@ -1,0 +1,11 @@
+.hike-detail-page__sheet { padding-bottom: 16px; }
+.hike-detail-page__info { margin: 20px 0 0; border-top: 1px solid #e3ece2; }
+.hike-detail-page__info > div { display: flex; align-items: center; justify-content: space-between; min-height: 36px; border-bottom: 1px solid #e3ece2; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-detail-page__info dt { color: #617b6c; }
+.hike-detail-page__info dd { margin: 0; color: var(--af-ink); font-weight: 500; }
+.hike-detail-page__actions { display: flex; gap: 10px; margin-top: 22px; }
+.hike-detail-page__actions .af-button { min-height: 40px; border: 0; border-radius: 10px; color: var(--af-green); background: #e5efe3; }
+.hike-detail-page__cancel { display: block; min-height: 36px; margin: 12px auto 0; padding: 0 12px; border: 0; color: var(--af-muted); background: transparent; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; cursor: pointer; }
+.hike-detail-page__cancel:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; border-radius: 6px; }
+.hike-detail-page__toast { bottom: 300px; }
+.hike-page__empty-state .af-top-bar { align-self: stretch; }

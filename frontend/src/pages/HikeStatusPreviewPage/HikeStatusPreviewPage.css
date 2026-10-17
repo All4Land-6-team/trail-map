@@ -1,0 +1,5 @@
+.hike-status-preview { display: flex; flex-direction: column; gap: 12px; max-width: 390px; min-height: 100dvh; margin: 0 auto; padding: 24px 16px; box-sizing: border-box; background: #f3f7f0; }
+.hike-status-preview__title { margin: 0 0 8px; color: var(--af-ink); font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-status-preview__group { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--af-line); border-radius: 16px; background: #fff; }
+.hike-status-preview__subtitle { margin: 0; color: var(--af-ink); font: 700 14px/20px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-status-preview__note { margin: 0; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
