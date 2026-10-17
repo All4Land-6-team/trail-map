@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Map as MapLibreMap,
+  MapLibreMap,
   NavigationControl,
   setWorkerUrl,
   type LngLatBoundsLike,
   type MapOptions,
+  type PaddingOptions,
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -18,20 +19,23 @@ import {
 // MapLibre 6은 워커 파일이 분리되어 있어 Vite가 번들한 주소를 직접 지정한다
 setWorkerUrl(workerUrl)
 
-export type MapRoute = {
-  id: string
-  color: string
-  coordinates: [longitude: number, latitude: number][]
-}
-
 export type BaseMapProps = {
   ariaLabel?: string
   bounds?: LngLatBoundsLike
   center?: [longitude: number, latitude: number]
   className?: string
+  fitBoundsPadding?: number | PaddingOptions
   routes?: readonly MapRoute[]
   showNavigationControl?: boolean
   zoom?: number
+  /** 지도 생성·해제 시 알린다. 레이어를 추가할 때는 load 이벤트를 기다린다. */
+  onMapReady?: (map: MapLibreMap | null) => void
+}
+
+export type MapRoute = {
+  id: string
+  color: string
+  coordinates: [longitude: number, latitude: number][]
 }
 
 const EMPTY_ROUTES: readonly MapRoute[] = []
@@ -41,21 +45,23 @@ function BaseMap({
   bounds,
   center,
   className,
+  fitBoundsPadding,
   routes = EMPTY_ROUTES,
   showNavigationControl = true,
   zoom,
-}: BaseMapProps) {
+  onMapReady,
+}: BaseMapProps = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
+  const onMapReadyRef = useRef(onMapReady)
   const renderedRouteIdsRef = useRef<string[]>([])
   const routesRef = useRef(routes)
   const [hasLoadError, setHasLoadError] = useState(false)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [hasStaticCacheMiss, setHasStaticCacheMiss] = useState(false)
 
-  useEffect(() => {
-    routesRef.current = routes
-  }, [routes])
+  useEffect(() => { onMapReadyRef.current = onMapReady }, [onMapReady])
+  useEffect(() => { routesRef.current = routes }, [routes])
 
   useEffect(() => {
     const updateConnection = () => {
@@ -81,25 +87,28 @@ function BaseMap({
   useEffect(() => {
     if (!containerRef.current) return
 
-    const mapOptions: MapOptions = {
-      container: containerRef.current,
-      style: BASE_MAP_STYLE_URL,
-      minZoom: MAP_MIN_ZOOM,
-      maxZoom: MAP_MAX_ZOOM,
-      ...(bounds
-        ? { bounds }
-        : center
-          ? { center, zoom: zoom ?? 13 }
-          : { bounds: SOUTH_KOREA_BOUNDS }),
+    let map: MapLibreMap
+    try {
+      const mapOptions: MapOptions = {
+        container: containerRef.current,
+        style: BASE_MAP_STYLE_URL,
+        minZoom: MAP_MIN_ZOOM,
+        maxZoom: MAP_MAX_ZOOM,
+        fitBoundsOptions: fitBoundsPadding ? { padding: fitBoundsPadding } : undefined,
+        ...(bounds
+          ? { bounds }
+          : center
+            ? { center, zoom: zoom ?? 13 }
+            : { bounds: SOUTH_KOREA_BOUNDS }),
+      }
+      map = new MapLibreMap(mapOptions)
+    } catch {
+      const frame = requestAnimationFrame(() => setHasLoadError(true))
+      return () => cancelAnimationFrame(frame)
     }
 
-    const map = new MapLibreMap(mapOptions)
+    if (showNavigationControl) map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
     mapRef.current = map
-
-    if (showNavigationControl) {
-      map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
-    }
-
     map.on('load', () => {
       renderedRouteIdsRef.current = replaceMapRoutes(
         map,
@@ -108,13 +117,15 @@ function BaseMap({
       )
     })
     map.on('error', () => setHasLoadError(true))
+    onMapReadyRef.current?.(map)
 
     return () => {
+      onMapReadyRef.current?.(null)
       mapRef.current = null
       renderedRouteIdsRef.current = []
       map.remove()
     }
-  }, [bounds, center, showNavigationControl, zoom])
+  }, [bounds, center, fitBoundsPadding, showNavigationControl, zoom])
 
   useEffect(() => {
     const map = mapRef.current
@@ -171,20 +182,14 @@ function replaceMapRoutes(
       data: {
         type: 'Feature',
         properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates: route.coordinates,
-        },
+        geometry: { type: 'LineString', coordinates: route.coordinates },
       },
     })
     map.addLayer({
       id: sourceId,
       type: 'line',
       source: sourceId,
-      layout: {
-        'line-cap': 'round',
-        'line-join': 'round',
-      },
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': route.color,
         'line-opacity': 0.95,

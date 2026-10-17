@@ -75,6 +75,26 @@
   background: #f8faf7;
 }
 
+.af-mountain-marker--point,
+.af-mountain-marker--point[aria-pressed="true"] {
+  height: 30px;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.af-mountain-marker__point { display: block; flex: none; }
+.af-mountain-marker--point .af-mountain-marker__label {
+  display: block;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(23, 71, 54, .05);
+}
+.af-mountain-marker--point[aria-pressed="true"] .af-mountain-marker__label { box-shadow: 0 0 0 2px var(--af-green); }
+.af-mountain-marker--point:focus-visible { outline: 0; }
+.af-mountain-marker--point:focus-visible .af-mountain-marker__label { outline: 2px solid var(--af-green); outline-offset: 3px; }
+
 .af-distance-bubble {
   display: inline-flex;
   align-items: center;
