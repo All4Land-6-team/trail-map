@@ -1,0 +1,32 @@
+.course-map { position: absolute; inset: 0; overflow: hidden; }
+.course-map__base, .course-map__base .base-map { width: 100%; height: 100%; }
+.course-map__actions { position: absolute; z-index: 2; top: calc(93px + env(safe-area-inset-top)); right: 20px; display: flex; flex-direction: column; gap: 9px; }
+.course-map__actions .af-map-action { width: 45px; height: 45px; border-color: transparent; border-radius: 14px; box-shadow: 0 5px 7px rgb(23 71 54 / 6%); }
+.course-map__actions .af-map-action--dimension { color: var(--af-green-dark); background: #fff; font-size: 14px; line-height: 20px; }
+.course-map__actions [data-icon-name="Locate"] { width: 22px !important; height: 22px !important; }
+.course-map__summit { position: absolute; z-index: 1; display: flex; align-items: center; gap: 8px; transform: translate(-8px, -8px); pointer-events: none; color: #617b6c; font-size: 12px; line-height: 18px; white-space: nowrap; }
+.course-map__summit img { display: block; flex: none; }
+.course-map__example { position: absolute; bottom: 25px; left: 12px; padding: 3px 6px; border-radius: 5px; color: #617b6c; background: rgb(255 255 255 / 92%); font-size: 10px; pointer-events: none; }
+.course-map__base .base-map__notices { z-index: 3; top: calc(78px + env(safe-area-inset-top)); right: 75px; left: 12px; width: auto; max-height: calc(100% - 105px); overflow-y: auto; }
+.course-map__base .maplibregl-ctrl-attrib { font-size: 10px; }
+.course-map--detail .course-map__actions { top: calc(88px + env(safe-area-inset-top)); right: 16px; gap: 7px; }
+.course-map--detail .af-map-action { width: 38px; height: 38px; border-radius: 13px; }
+.course-map--detail[data-map-mode="3D"] .af-map-action--dimension { color: #fff; background: var(--af-green); }
+.course-map--detail .course-map__summit { gap: 7px; transform: translate(-6.5px, -6.5px); font-size: 10px; }
+.course-map--detail .course-map__peak { position: absolute; bottom: 9px; left: -12px; }
+.course-map__profile-point { position: absolute; z-index: 3; pointer-events: none; transform: translate(-9px, -7px); }
+.course-map__profile-point img { display: block; }
+.course-map__spot { position: absolute; z-index: 4; transform: translate(-50%, -50%); }
+.course-map__spot[aria-pressed="true"] { z-index: 5; box-shadow: 0 0 0 2px rgb(77 77 77 / 22%); }
+.af-spot-marker--compact .af-spot-marker__symbol { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; }
+.af-spot-marker--compact[data-kind="shelter"] .af-spot-marker__symbol { background: #fff4e8; }
+.af-spot-marker--compact[data-kind="water"] .af-spot-marker__symbol { background: #e8f5fc; }
+.af-spot-marker--compact[data-kind="photo"] .af-spot-marker__symbol { background: #fff0f5; }
+.af-spot-marker--compact[data-kind="restroom"] .af-spot-marker__symbol { width: 23px; height: 23px; background: #f2ebfa; }
+.af-spot-marker__wc { font-size: 12px; line-height: 18px; font-weight: 500; letter-spacing: -.02em; }
+.af-spot-marker--compact[data-kind="restroom"] { width: 33px; height: 33px; }
+.af-spot-marker__label { position: absolute; top: 3px; left: calc(100% + 4px); padding: 2px 6px; border-radius: 5px; background: #fff; color: var(--af-ink); font-size: 10px; line-height: 16px; white-space: nowrap; box-shadow: 0 1px 5px rgb(23 71 54 / 8%); }
+@media (max-height: 580px) {
+  .course-map--detail .course-map__actions { top: 76px; right: 10px; flex-direction: row; }
+  .course-map--detail .af-map-action { width: 32px; height: 32px; }
+}

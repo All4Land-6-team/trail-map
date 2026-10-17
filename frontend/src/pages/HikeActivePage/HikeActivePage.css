@@ -1,0 +1,27 @@
+.hike-active-page__nearby { position: absolute; z-index: 2; right: 16px; bottom: 44px; max-width: min(252px, calc(100% - 32px)); box-shadow: 0 3px 5px rgba(23, 71, 54, .1); }
+.hike-active-page__toast { bottom: 270px; }
+
+/* 지도 위로 25px 겹쳐 올라오는 진행 시트 (Figma sheet 257px) */
+.hike-progress-sheet { position: relative; z-index: 3; flex: none; margin-top: -25px; padding: 28px 20px 20px; border-radius: 25px 25px 0 0; color: var(--af-ink); background: #fff; box-shadow: 0 -8px 12px rgba(23, 71, 54, .06); }
+.hike-progress-sheet__handle { position: absolute; top: 10px; left: 50%; width: 40px; height: 4px; border-radius: 10px; background: #ccd9cc; transform: translateX(-50%); }
+.hike-progress-sheet__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.hike-progress-sheet__stage { margin: 0; font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-progress-sheet__course { overflow: hidden; color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.hike-progress-sheet__distances { display: flex; justify-content: space-between; margin-top: 14px; font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-progress-sheet__track { height: 4px; margin-top: 6px; overflow: hidden; border-radius: 2px; background: #dde7db; }
+.hike-progress-sheet__track > span { display: block; height: 100%; border-radius: inherit; background: var(--af-green); }
+.hike-progress-sheet__sunset { display: flex; align-items: center; gap: 6px; min-height: 42px; margin-top: 12px; padding-bottom: 12px; border-bottom: 1px solid #e3ece2; font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-progress-sheet__bell { display: grid; width: 40px; height: 40px; margin-left: auto; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.hike-progress-sheet__bell:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.hike-progress-sheet__actions { display: flex; gap: 12px; margin-top: 24px; }
+.hike-progress-sheet__actions .af-button { min-height: 38px; border-radius: 10px; }
+.hike-progress-sheet__descent { flex: 1 1 auto; }
+.hike-progress-sheet__end { flex: 0 0 112px; border-color: #d9a7a7; color: #aa5050; }
+.hike-progress-sheet__actions > .hike-progress-sheet__end:only-child { flex: 1 1 auto; }
+
+/* HIKE-07 하산 중: 남은 거리만, 회색 진행 바, 중립 색 종료 버튼 */
+.hike-progress-sheet--descent .hike-progress-sheet__distances { justify-content: flex-start; }
+.hike-progress-sheet--descent .hike-progress-sheet__track > span { background: #a6aaa7; }
+.hike-progress-sheet--descent .hike-progress-sheet__sunset { min-height: 36px; }
+.hike-progress-sheet--descent .hike-progress-sheet__actions { margin-top: 14px; }
+.hike-progress-sheet--descent .hike-progress-sheet__end { border-color: var(--af-line); color: var(--af-ink); }

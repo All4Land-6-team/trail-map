@@ -1,0 +1,12 @@
+.hike-calendar-page__body { display: flex; flex-direction: column; padding: 16px 16px 24px; }
+.hike-calendar-page__calendar { margin-top: 27px; }
+.hike-calendar-page__day { display: flex; flex-direction: column; gap: 14px; margin-top: 23px; }
+.hike-calendar-page__date { margin: 0; color: var(--af-ink); font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-calendar-page__empty { margin: 0; padding: 24px 16px; border: 1px solid var(--af-line); border-radius: 16px; color: #617b6c; background: #fff; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: center; }
+
+.hike-plan-card { display: flex; width: 100%; min-height: 113px; align-items: center; gap: 8px; padding: 13px 9px 13px 13px; border: 1px solid var(--af-line); border-radius: 16px; color: var(--af-green); background: #fff; text-align: left; cursor: pointer; }
+.hike-plan-card:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.hike-plan-card__copy { display: flex; flex: 1 1 auto; min-width: 0; flex-direction: column; align-items: flex-start; }
+.hike-plan-card__time { display: inline-flex; min-width: 58px; height: 24px; align-items: center; justify-content: center; padding: 0 10px; border-radius: 12px; color: var(--af-green); background: #e2f0e6; font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-plan-card__title { max-width: 100%; margin-top: 13px; overflow: hidden; color: var(--af-ink); font: 700 16px/24px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.hike-plan-card__distance { margin-top: 7px; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
