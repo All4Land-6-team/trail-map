@@ -15,7 +15,14 @@ export type TimePickerProps = {
   disabled?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** 값이 없을 때 칸에 보여 줄 안내 글자 */
+  placeholder?: string;
+  /** 입력 오류 상태 (빨간 테두리) */
+  invalid?: boolean;
 };
+
+/** 값이 없을 때 시간 목록을 여는 기준 (오전 9시) */
+const EMPTY_TIME_BASE = { period: "AM" as Period, hour: 9, minute: 0 };
 
 function parseTime(value: string) {
   const [hour24, minute] = value.split(":").map(Number);
@@ -40,6 +47,8 @@ export function TimePicker({
   disabled = false,
   open: controlledOpen,
   onOpenChange,
+  placeholder = "--:--",
+  invalid = false,
 }: TimePickerProps) {
   const panelId = useId();
   const labelId = useId();
@@ -49,7 +58,10 @@ export function TimePicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const wasOpenRef = useRef(false);
-  const selected = parseTime(value);
+  // 값이 비어 있으면 아무것도 선택되지 않은 상태로 보여 주고, 고를 때는 오전 9시를 기준으로 한다.
+  const parsed = value ? parseTime(value) : null;
+  const selected = parsed ?? EMPTY_TIME_BASE;
+  const selectedMinute = value ? parseTime(value).minute : undefined;
   const normalizedMinuteStep = Math.min(60, Math.max(1, minuteStep));
   const hours = Array.from({ length: 12 }, (_, index) => index + 1);
   const minutes = useMemo(() => {
@@ -57,14 +69,16 @@ export function TimePicker({
       { length: Math.ceil(60 / normalizedMinuteStep) },
       (_, index) => index * normalizedMinuteStep,
     ).filter((minute) => minute < 60);
-    if (!options.includes(selected.minute)) options.push(selected.minute);
+    if (selectedMinute !== undefined && !options.includes(selectedMinute)) options.push(selectedMinute);
     return options.sort((a, b) => a - b);
-  }, [normalizedMinuteStep, selected.minute]);
+  }, [normalizedMinuteStep, selectedMinute]);
 
   useEffect(() => {
     if (open) {
       requestAnimationFrame(() => {
-        panelRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]:not(:disabled)')?.focus();
+        const panel = panelRef.current;
+        (panel?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]:not(:disabled)')
+          ?? panel?.querySelector<HTMLButtonElement>("button:not(:disabled)"))?.focus();
       });
     } else if (wasOpenRef.current) {
       triggerRef.current?.focus();
@@ -118,7 +132,8 @@ export function TimePicker({
       <button
         ref={triggerRef}
         type="button"
-        className="af-picker-field"
+        className={invalid ? "af-picker-field af-picker-field--error" : "af-picker-field"}
+        aria-invalid={invalid || undefined}
         aria-expanded={open}
         aria-controls={panelId}
         aria-haspopup="dialog"
@@ -126,7 +141,9 @@ export function TimePicker({
         disabled={disabled}
         onClick={() => setOpen(!open)}
       >
-        <span id={valueId}>{formatTimeDisplay(value)}</span>
+        {value
+          ? <span id={valueId}>{formatTimeDisplay(value)}</span>
+          : <span id={valueId} className="af-picker-field__placeholder">{placeholder}</span>}
         <Icon name="Clock" size={20} color="#83978a" />
       </button>
       {open && (
@@ -144,7 +161,7 @@ export function TimePicker({
                 <button
                   type="button"
                   key={period}
-                  aria-pressed={selected.period === period}
+                  aria-pressed={parsed?.period === period}
                   disabled={!periodHasOption(period)}
                   onClick={() => selectPeriod(period)}
                 >{period === "AM" ? "오전" : "오후"}</button>
@@ -158,7 +175,7 @@ export function TimePicker({
                 <button
                   type="button"
                   key={hour}
-                  aria-pressed={selected.hour === hour}
+                  aria-pressed={parsed?.hour === hour}
                   disabled={!hourHasOption(hour)}
                   onClick={() => selectHour(hour)}
                 >{String(hour).padStart(2, "0")}</button>
@@ -172,7 +189,7 @@ export function TimePicker({
                 <button
                   type="button"
                   key={minute}
-                  aria-pressed={selected.minute === minute}
+                  aria-pressed={parsed?.minute === minute}
                   disabled={!isCandidateAllowed(selected.period, selected.hour, minute)}
                   onClick={() => onChange(toTimeValue(selected.period, selected.hour, minute))}
                 >{String(minute).padStart(2, "0")}</button>

@@ -18,6 +18,9 @@
 .af-picker-field:focus-visible,
 .af-picker-calendar button:focus-visible,
 .af-picker-panel button:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.af-picker-field__placeholder { color: var(--af-muted); }
+.af-picker-field--error { border-color: var(--af-danger); }
+.af-picker-field--error:focus-visible { outline-color: var(--af-danger); }
 .af-picker-field:disabled { color: var(--af-disabled-foreground); background: var(--af-disabled-background); cursor: not-allowed; }
 .af-picker-panel {
   padding: 12px;
