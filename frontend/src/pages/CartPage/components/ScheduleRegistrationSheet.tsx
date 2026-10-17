@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/common/Button";
 import {
   DateTimePicker,
@@ -8,7 +8,8 @@ import {
   toLocalDateKey,
 } from "../../../components/common/DateTimePicker";
 import { Typography } from "../../../components/common/Typography";
-import { BottomSheet } from "../../../components/overlay";
+import { BottomSheet, ConfirmDialog, ModalLayer } from "../../../components/overlay";
+import type { PlannedHike } from "../../../types/hiking";
 import { formatCourseDuration } from "../data";
 import type { CartCourse } from "../types";
 
@@ -19,6 +20,7 @@ type ScheduleRegistrationSheetProps = {
   onClose: () => void;
   initialDate?: string;
   initialTime?: string;
+  existingSchedules?: readonly PlannedHike[];
   onConfirm: (courseId: string, schedule: HikingScheduleValue) => void;
 };
 
@@ -54,6 +56,7 @@ export function ScheduleRegistrationSheet({
   selectCourseFirst = false,
   initialDate = getDefaultHikeDate(),
   initialTime = "09:00",
+  existingSchedules = [],
   onClose,
   onConfirm,
 }: ScheduleRegistrationSheetProps) {
@@ -62,8 +65,8 @@ export function ScheduleRegistrationSheet({
   const [scheduleDate, setScheduleDate] = useState(initialDate);
   const [scheduleTime, setScheduleTime] = useState(initialTime);
   const [activePicker, setActivePicker] = useState<"date" | "time" | null>(null);
+  const [replacementSchedule, setReplacementSchedule] = useState<PlannedHike | null>(null);
   const [now, setNow] = useState(() => new Date());
-  const overlayRef = useRef<HTMLDivElement>(null);
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === selectedCourseId) ?? courses[0],
     [courses, selectedCourseId],
@@ -80,49 +83,23 @@ export function ScheduleRegistrationSheet({
     };
   }, []);
 
-  useEffect(() => {
-    const overlay = overlayRef.current;
-    if (!overlay) return;
-    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const siblings = Array.from(overlay.parentElement?.children ?? []).filter((element) => element !== overlay) as HTMLElement[];
-    const siblingInertState = siblings.map((element) => element.inert);
-    siblings.forEach((element) => { element.inert = true; });
-    const frameId = requestAnimationFrame(() => {
-      overlay.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
-    });
-    return () => {
-      cancelAnimationFrame(frameId);
-      siblings.forEach((element, index) => { element.inert = siblingInertState[index]; });
-      previouslyFocused?.focus();
-    };
-  }, []);
-
-  function handleDialogKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-      return;
-    }
-    if (event.key !== "Tab") return;
-    const focusable = Array.from(overlayRef.current?.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
-    ) ?? []).filter((element) => !element.closest('[inert]'));
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
   if (!selectedCourse) return null;
 
+  function submitSchedule() {
+    const freshValidity = getScheduleValidity(scheduleDate, scheduleTime, new Date());
+    if (!freshValidity.valid) return;
+    const existing = existingSchedules.find((schedule) => (
+      schedule.date === scheduleDate && schedule.courseId !== selectedCourse.id
+    ));
+    if (existing) {
+      setReplacementSchedule(existing);
+      return;
+    }
+    onConfirm(selectedCourse.id, { date: scheduleDate, time: scheduleTime });
+  }
+
   return (
-    <div ref={overlayRef} className="cart-schedule-overlay" role="presentation" onKeyDown={handleDialogKeyDown}>
+    <ModalLayer className="cart-schedule-overlay" onDismiss={onClose}>
       <BottomSheet
         role="dialog"
         aria-modal="true"
@@ -191,8 +168,7 @@ export function ScheduleRegistrationSheet({
                 setStep("schedule");
                 setActivePicker(null);
               } else {
-                const freshValidity = getScheduleValidity(scheduleDate, scheduleTime, new Date());
-                if (freshValidity.valid) onConfirm(selectedCourse.id, { date: scheduleDate, time: scheduleTime });
+                submitSchedule();
               }
             }}
           >
@@ -200,6 +176,19 @@ export function ScheduleRegistrationSheet({
           </Button>
         )}
       />
-    </div>
+      {replacementSchedule && (
+        <ModalLayer className="cart-replacement-overlay" onDismiss={() => setReplacementSchedule(null)}>
+          <ConfirmDialog
+            className="cart-replacement-dialog"
+            title={`${scheduleDate}에는 이미 '${replacementSchedule.mountain} · ${replacementSchedule.courseName}' 일정이 있어요.`}
+            body="새 일정으로 바꿀까요?"
+            cancelLabel="취소"
+            confirmLabel="확인"
+            onCancel={() => setReplacementSchedule(null)}
+            onConfirm={() => onConfirm(selectedCourse.id, { date: scheduleDate, time: scheduleTime })}
+          />
+        </ModalLayer>
+      )}
+    </ModalLayer>
   );
 }
