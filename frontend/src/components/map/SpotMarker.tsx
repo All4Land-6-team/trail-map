@@ -6,6 +6,8 @@ import "./markers.css";
 export type SpotKind = "photo" | "shelter" | "water" | "restroom";
 export type SpotMarkerProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   kind?: SpotKind;
+  compact?: boolean;
+  label?: string;
 };
 
 const spotDefinitions: Record<SpotKind, { icon: IconName; label: string }> = {
@@ -16,13 +18,16 @@ const spotDefinitions: Record<SpotKind, { icon: IconName; label: string }> = {
 };
 
 export function SpotMarker({
-  kind = "photo", className, "aria-label": ariaLabel,
+  kind = "photo", compact = false, label, className, "aria-label": ariaLabel,
   type = "button", ...rest
 }: SpotMarkerProps) {
   const spot = spotDefinitions[kind];
   return <button {...rest} type={type} data-kind={kind}
     aria-label={ariaLabel ?? spot.label}
-    className={["af-spot-marker", className].filter(Boolean).join(" ")}>
-    <Icon name={spot.icon} size={18} color="currentColor" />
+    className={["af-spot-marker", compact && "af-spot-marker--compact", className].filter(Boolean).join(" ")}>
+    {compact ? <span className="af-spot-marker__symbol">{kind === "restroom" ? <span className="af-spot-marker__wc">WC</span>
+      : <Icon name={spot.icon} size={14} color="currentColor" />}</span>
+      : <Icon name={spot.icon} size={18} color="currentColor" />}
+    {label && <span className="af-spot-marker__label">{label}</span>}
   </button>;
 }

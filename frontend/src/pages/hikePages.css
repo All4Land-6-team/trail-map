@@ -1,0 +1,24 @@
+/* 내 등산 화면(HIKE-01~09) 공통 골격: 모바일 폭 고정 + 하단 내비게이션 */
+.hike-page { position: relative; display: flex; flex-direction: column; width: 100%; max-width: 480px; height: 100dvh; margin: 0 auto; overflow: hidden; background: #f3f8f1; font-family: "Noto Sans KR", sans-serif; }
+.hike-page__body { position: relative; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.hike-page__nav { flex: none; padding-bottom: env(safe-area-inset-bottom); }
+.hike-page__toast { position: absolute; z-index: 5; bottom: 16px; left: 50%; transform: translateX(-50%); }
+
+/* 지도 + 하단 시트 화면 (HIKE-02·03·05·07) */
+.hike-map-page { background: #f3f7f0; }
+.hike-map-page__body { display: flex; flex-direction: column; overflow: hidden; }
+.hike-map-page__map { position: relative; flex: 1 1 auto; min-height: 240px; }
+.hike-map-page__top { position: absolute; z-index: 2; top: 16px; right: 0; left: 0; display: flex; flex-direction: column; gap: 11px; pointer-events: none; }
+.hike-map-page__top > * { pointer-events: auto; }
+.hike-map-page__top .af-top-bar { width: auto; margin: 0 16px; }
+.hike-map-page__tools { position: absolute; z-index: 2; top: 127px; right: 17px; display: flex; flex-direction: column; gap: 6px; }
+.hike-map-page__tools .af-map-action { border-color: transparent; border-radius: 12px; box-shadow: 0 3px 5px rgba(23, 71, 54, .1); }
+/* 시트가 지도 아래쪽 25px을 덮으므로 지도 출처 표시를 그 위로 올린다 */
+.hike-map-page__map .maplibregl-ctrl-bottom-left { bottom: 25px; }
+/* 지도 위로 25px 겹쳐 올라오는 하단 시트 */
+.hike-map-sheet { position: relative; z-index: 3; flex: none; margin-top: -25px; padding: 28px 20px 20px; border-radius: 25px 25px 0 0; color: var(--af-ink); background: #fff; box-shadow: 0 -8px 12px rgba(23, 71, 54, .06); }
+.hike-map-sheet::before { position: absolute; top: 10px; left: 50%; width: 40px; height: 4px; border-radius: 10px; background: #ccd9cc; transform: translateX(-50%); content: ""; }
+.hike-map-sheet__eyebrow { margin: 0; color: var(--af-green); font: 700 10px/14px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-map-sheet__title { margin: 8px 0 0; font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-page__empty-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px 20px; color: #617b6c; font: 400 13px/20px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: center; }
+.hike-page__empty-state p { margin: 0; }

@@ -19,3 +19,70 @@
 .af-schedule-card__time { color: var(--af-green-dark); font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .af-schedule-card__course { overflow: hidden; margin: 0; color: var(--af-ink); font: 700 16px/24px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
 .af-schedule-card__distance { margin: 0; color: var(--af-muted); font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.af-location-sheet { gap: 0; padding: 10px 20px 20px; border-radius: 25px 25px 0 0; }
+.af-location-sheet .af-bottom-sheet__title-row { min-height: 44px; margin-top: 12px; }
+.af-location-sheet .af-location-sheet__title-row { justify-content: flex-start; align-items: flex-start; gap: 12px; }
+.af-location-sheet .af-bottom-sheet__title { padding-top: 4px; }
+.af-location-sheet .af-bottom-sheet__content { min-height: 0; margin-top: 14px; }
+.af-location-sheet .af-bottom-sheet__footer { min-height: 0; margin-top: 16px; }
+.af-location-sheet .af-bottom-sheet__footer > .af-button { min-height: 43px; }
+.af-location-sheet__icon { display: grid; flex: none; width: 44px; height: 44px; place-items: center; border-radius: 50%; background: #fff4e8; }
+.af-location-sheet__description { margin: 0; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-location-sheet__notice { display: flex; flex-direction: column; gap: 1px; margin-top: 16px; padding: 10px 12px 12px; border: 1px solid #f0d6b8; border-radius: 12px; color: #8a4a12; background: #fff4e8; }
+.af-location-sheet__notice-title { font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-location-sheet__notice-body { margin: 0; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+/* 등산 코스 지도 (HikeRouteMap) */
+.hike-route-map { position: absolute; inset: 0; background: #eef5eb; }
+/* MapLibre가 컨테이너에 position: relative를 넣으므로 크기는 width/height로 준다 */
+.hike-route-map__canvas { width: 100%; height: 100%; }
+.hike-route-map__error { position: absolute; z-index: 1; bottom: 110px; left: 16px; max-width: 220px; margin: 0; padding: 8px 10px; border-radius: 10px; color: #617b6c; background: rgba(255, 255, 255, .92); font: 400 11px/16px "Noto Sans KR", sans-serif; }
+.hike-route-map__current { display: block; width: 11px; height: 11px; border: 2px solid #fff; border-radius: 50%; background: var(--af-green); box-shadow: 0 0 0 2px var(--af-green); }
+.hike-route-map__peak { display: inline-flex; align-items: center; gap: 13px; color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-route-map__peak > span { width: 10px; height: 10px; box-sizing: border-box; border: 2px solid var(--af-green); border-radius: 50%; background: #fff; }
+
+/* 지도 위 스팟 필터 (HIKE-03·05) */
+.af-spot-filters { display: flex; gap: 7px; padding: 0 12px; overflow-x: auto; scrollbar-width: none; }
+.af-spot-filters::-webkit-scrollbar { display: none; }
+.af-spot-filters .af-chip { flex: none; }
+
+/* FLOW-06 일정 등록/수정/삭제 · HIKE-09 일정 수정 (Figma sheet 390×480) */
+.af-schedule-sheet { gap: 0; min-height: min(480px, 100dvh); padding: 10px 20px 24px; border-radius: 25px 25px 0 0; }
+.af-schedule-sheet--edit { min-height: 0; }
+.af-schedule-sheet .af-bottom-sheet__title-row { margin-top: 12px; }
+.af-schedule-sheet .af-bottom-sheet__close { color: var(--af-green); }
+.af-schedule-sheet .af-bottom-sheet__description { margin-top: 6px; color: #617b6c; }
+.af-schedule-sheet .af-bottom-sheet__content { flex: 1 1 auto; min-height: 0; margin-top: 16px; }
+.af-schedule-sheet__form { display: flex; flex-direction: column; gap: 26px; }
+.af-schedule-sheet__feedback { min-height: 18px; margin: 8px 0 0; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-schedule-sheet__feedback--error { color: var(--af-danger); }
+.af-schedule-sheet__feedback--success { color: var(--af-green); }
+.af-schedule-sheet .af-bottom-sheet__footer { margin-top: 24px; }
+.af-schedule-sheet .af-bottom-sheet__footer .af-button { min-height: 43px; border-radius: 10px; }
+.af-schedule-sheet__actions { display: flex; gap: 10px; }
+.af-schedule-sheet__delete { border-color: #d9a7a7; color: #aa5050; }
+
+/* HIKE-06 공유 선택 오버레이 */
+.af-share-sheet { padding: 10px 20px 26px; border-radius: 25px 25px 0 0; }
+.af-share-sheet .af-bottom-sheet__close { width: 30px; height: 30px; border-radius: 8px; color: var(--af-green); background: #e8f2e8; }
+.af-share-sheet .af-bottom-sheet__content { min-height: 0; margin-top: 6px; }
+.af-share-sheet__option { display: flex; width: 100%; align-items: center; gap: 12px; padding: 12px 14px 12px 12px; border: 1px solid var(--af-line); border-radius: 12px; color: var(--af-ink); background: #fff; text-align: left; cursor: pointer; }
+.af-share-sheet__option:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.af-share-sheet__option-icon { display: grid; width: 36px; height: 36px; flex: none; place-items: center; border-radius: 10px; background: #e8f2e8; }
+.af-share-sheet__option-icon > span { width: 8px; height: 8px; border-radius: 50%; background: var(--af-green); }
+.af-share-sheet__option-copy { display: flex; flex: 1 1 auto; min-width: 0; flex-direction: column; gap: 2px; }
+.af-share-sheet__option-copy strong { font: 700 14px/20px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-share-sheet__option-copy span { color: #617b6c; font: 500 13px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+/* HIKE-09: 버튼을 입력란 바로 아래에 둔다 (Figma) */
+.af-schedule-sheet--edit .af-bottom-sheet__content { flex: none; }
+.af-schedule-sheet--edit .af-schedule-sheet__feedback:empty { display: none; }
+.af-schedule-sheet--edit .af-bottom-sheet__footer { margin-top: 20px; }
+
+/* 확인 창·바텀시트를 띄우는 오버레이 (OverlayLayer) */
+.af-overlay-layer { position: fixed; inset: 0; z-index: 100; display: flex; justify-content: center; box-sizing: border-box; }
+.af-overlay-layer--center { align-items: center; padding: 16px; }
+.af-overlay-layer--bottom { align-items: flex-end; }
+.af-overlay-layer__dim { position: absolute; inset: 0; background: rgb(23 61 50 / 28%); }
+.af-overlay-layer__panel { position: relative; display: flex; justify-content: center; width: 100%; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; outline: none; }
+.af-overlay-layer--center > .af-overlay-layer__panel { width: auto; max-width: 100%; }

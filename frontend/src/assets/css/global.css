@@ -17,24 +17,6 @@ body {
   background: #e8eeea;
 }
 
-button,
-input,
-select,
-textarea { font: inherit; }
-
-#root { min-height: 100dvh; }
-
-.app-route-loading {
-  display: grid;
-  width: min(100%, 390px);
-  min-height: 100dvh;
-  margin: 0 auto;
-  place-items: center;
-  color: #617b6c;
-  background: #f3f8f1;
-  font-size: 14px;
-}
-
 .base-map-shell {
   position: relative;
 }

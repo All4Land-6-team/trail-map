@@ -13,6 +13,7 @@ export type CourseCardProps = {
   duration: string;
   elevationGain: string;
   peakElevation: string;
+  detailsAvailable?: boolean;
   saved?: boolean;
   scheduled?: boolean;
   onSavedChange?: (selected: boolean) => void;
@@ -23,7 +24,7 @@ export type CourseCardProps = {
 
 export function CourseCard({
   title, route, difficulty, controlStatus, distance, duration,
-  elevationGain, peakElevation, saved, scheduled,
+  elevationGain, peakElevation, detailsAvailable = true, saved, scheduled,
   onSavedChange, onScheduledChange, onOpen, className,
 }: CourseCardProps) {
   const metrics = [
@@ -36,8 +37,8 @@ export function CourseCard({
     <div className="af-course-card__heading">
       <h3 className="af-course-card__title">{title}</h3>
       <div className="af-course-card__actions">
-        <IconToggle icon="save" selected={saved} onSelectedChange={onSavedChange} />
-        <IconToggle icon="schedule" selected={scheduled} onSelectedChange={onScheduledChange} />
+        <IconToggle icon="save" aria-label={`${title} 등산 담기`} selected={saved} onSelectedChange={onSavedChange} />
+        <IconToggle icon="schedule" aria-label={`${title} 일정 등록`} selected={scheduled} onSelectedChange={onScheduledChange} />
       </div>
     </div>
     <p className="af-course-card__route">{route}</p>
@@ -48,6 +49,8 @@ export function CourseCard({
         <span className="af-course-card__metric-label">{metric.label}</span>
       </div>)}
     </div>
-    <div className="af-course-card__footer"><Button size="compact" onClick={onOpen}>코스 상세 보기</Button></div>
+    <div className="af-course-card__footer"><Button size="compact" disabled={!detailsAvailable} onClick={onOpen}>
+      {detailsAvailable ? "코스 상세 보기" : "상세 준비 중"}
+    </Button></div>
   </article>;
 }
