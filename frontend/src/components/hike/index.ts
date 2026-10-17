@@ -23,4 +23,6 @@ export type { ScheduleReplaceConfirmProps } from "./ScheduleReplaceConfirm";
 export { ScheduleSheet } from "./ScheduleSheet";
 export type { ScheduleCourse, ScheduleSaveResult, ScheduleSheetProps } from "./ScheduleSheet";
 export { SpotFilterChips } from "./SpotFilterChips";
+export { TimeSelectField } from "./TimeSelectField";
+export type { TimeSelectFieldProps } from "./TimeSelectField";
 export type { SpotFilterChipsProps } from "./SpotFilterChips";

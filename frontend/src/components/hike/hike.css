@@ -86,3 +86,18 @@
 .af-overlay-layer__dim { position: absolute; inset: 0; background: rgb(23 61 50 / 28%); }
 .af-overlay-layer__panel { position: relative; display: flex; justify-content: center; width: 100%; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; outline: none; }
 .af-overlay-layer--center > .af-overlay-layer__panel { width: auto; max-width: 100%; }
+/* 날짜·시간 칸 전체를 눌러 선택 창을 연다 */
+.af-schedule-sheet__picker-field .af-field__input { cursor: pointer; }
+
+/* 등산 시작 시간 선택 (TimeSelectField): 공용 Field 모양 + 10분 단위 목록 */
+.af-time-select { position: relative; }
+.af-time-select__trigger { justify-content: space-between; text-align: left; cursor: pointer; }
+.af-time-select__trigger:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.af-time-select__value { display: flex; align-items: center; }
+.af-time-select__value--empty { color: var(--af-muted); }
+.af-time-select__panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 220px; padding: 8px; border: 1px solid var(--af-line); border-radius: 12px; background: #fff; box-shadow: 0 10px 15px rgb(23 71 54 / 18%); }
+.af-time-select__column { display: flex; flex-direction: column; gap: 2px; min-height: 0; max-height: 204px; overflow-y: auto; scrollbar-width: thin; }
+.af-time-select__option { flex: none; min-height: 34px; padding: 0 8px; border: 0; border-radius: 8px; color: var(--af-ink); background: transparent; font: 500 14px/20px "Noto Sans KR", sans-serif; cursor: pointer; }
+.af-time-select__option:hover { background: #eef5ea; }
+.af-time-select__option[aria-pressed="true"] { color: #fff; background: var(--af-green); }
+.af-time-select__option:focus-visible { outline: 2px solid var(--af-green); outline-offset: -2px; }

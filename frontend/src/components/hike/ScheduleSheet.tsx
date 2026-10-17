@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent, type MouseEvent } from "react";
 import { toDateKey } from "../../api/hikeMock";
 import { useSingleFlight } from "../../hooks/useSingleFlight";
 import { deleteSchedule, findSchedule, saveSchedule } from "../../store/hikeScheduleStore";
@@ -9,6 +9,7 @@ import { BottomSheet } from "../overlay";
 import { ConfirmOverlay } from "./ConfirmOverlay";
 import { OverlayLayer } from "./OverlayLayer";
 import { ScheduleReplaceConfirm } from "./ScheduleReplaceConfirm";
+import { TimeSelectField } from "./TimeSelectField";
 import "./hike.css";
 
 export type ScheduleCourse = Pick<HikeSchedule, "courseId" | "mountainName" | "courseName" | "distanceKm">;
@@ -34,6 +35,18 @@ export type ScheduleSheetProps = {
   onSaved?: (schedule: HikeSchedule, result: ScheduleSaveResult) => void;
   onDeleted?: (schedule: HikeSchedule) => void;
 };
+
+/** 등산 시작 시간의 분은 10분 단위로 고른다. */
+const MINUTE_STEP = 10;
+
+/** 날짜 칸을 누르면 브라우저 날짜 선택 창을 연다. 지원하지 않는 브라우저는 기존처럼 직접 입력한다. */
+function openNativePicker(event: MouseEvent<HTMLInputElement>) {
+  try {
+    event.currentTarget.showPicker?.();
+  } catch {
+    // 이미 열려 있거나 브라우저가 막으면 그대로 둔다.
+  }
+}
 
 type Feedback = { tone: "error" | "success"; message: string; field?: "date" | "time" };
 
@@ -62,14 +75,16 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
   const hasSchedule = current !== undefined;
   const title = isEdit ? "등산 일정 수정" : "등산 일정 등록";
 
+  // 안내 문구는 시트를 연 목적 기준이다. 신규 등록으로 열었으면 다시 확정해도 등록 문구를 유지한다 (Figma FLOW-06 등록 성공).
+  const successMessage = (saved: HikeSchedule) => openedWithSchedule || isEdit
+    ? "일정이 수정되었습니다."
+    : `${saved.date} ${saved.startTime} · ${saved.courseName} 일정이 등록되었습니다.`;
+
   const commit = (next: HikeSchedule, replaced: boolean) => {
     saveSchedule(next, current?.date);
     setCurrent(next);
     setPendingReplace(null);
-    setFeedback({
-      tone: "success",
-      message: hasSchedule ? "일정이 수정되었습니다." : `${next.date} ${next.startTime} · ${next.courseName} 일정이 등록되었습니다.`,
-    });
+    setFeedback({ tone: "success", message: successMessage(next) });
     onSaved?.(next, { created: !hasSchedule, replaced });
   };
 
@@ -78,6 +93,11 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
     const error = validate(date, time, today);
     if (error) {
       setFeedback(error);
+      return;
+    }
+    // 방금 저장한 값 그대로 다시 확정하면 다시 저장하지 않고 안내만 유지한다.
+    if (current && current.date === date && current.startTime === time && !openedWithSchedule && !isEdit) {
+      setFeedback({ tone: "success", message: successMessage(current) });
       return;
     }
     const next: HikeSchedule = { ...course, date, startTime: time };
@@ -105,15 +125,16 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
         role="dialog" aria-modal="true" title={title} showDescription={!isEdit}
         description={`${course.mountainName} · ${course.courseName}`} onClose={onClose}
         content={<form id={`${feedbackId}-form`} className="af-schedule-sheet__form" noValidate onSubmit={event => void submit(event)}>
+          {/* 아이콘뿐 아니라 칸 어디를 눌러도 날짜 선택 창이 열린다 */}
           <Field type="date" label="등산할 날짜" helper="" min={today} value={date}
+            containerClassName="af-schedule-sheet__picker-field" onClick={openNativePicker}
             state={feedback?.field === "date" ? "error" : date ? "value" : "empty"}
             aria-describedby={feedback?.field === "date" ? describedBy : undefined}
             onChange={event => onDateChange(event.target.value)} />
-          {/* 시간 입력은 브라우저 기본 시계 버튼으로 선택기를 연다 */}
-          <Field type="time" label="등산 시작 시간" helper="" placeholder="--:--" value={time} showIcon={false}
-            state={feedback?.field === "time" ? "error" : time ? "value" : "empty"}
-            aria-describedby={feedback?.field === "time" ? describedBy : undefined}
-            onChange={event => onTimeChange(event.target.value)} />
+          {/* 분은 10분 단위(00·10·20·30·40·50)로만 고른다 */}
+          <TimeSelectField label="등산 시작 시간" value={time} minuteStep={MINUTE_STEP}
+            error={feedback?.field === "time"} aria-describedby={feedback?.field === "time" ? describedBy : undefined}
+            onChange={onTimeChange} />
           <p id={feedbackId} className={`af-schedule-sheet__feedback af-schedule-sheet__feedback--${feedback?.tone ?? "none"}`}
             role={feedback?.tone === "error" ? "alert" : "status"}>{feedback?.message}</p>
         </form>}
