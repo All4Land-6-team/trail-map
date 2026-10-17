@@ -3,6 +3,7 @@ import type { BottomDestination } from "../../components/layout";
 import { savedCourses } from "./data";
 import { CartHomeScreen } from "./components/CartHomeScreen";
 import { CourseSelectionScreen } from "./components/CourseSelectionScreen";
+import type { PlannedHike } from "../../types/hiking";
 import "./cart.css";
 
 const CourseCompareScreen = lazy(() => import("./components/CourseCompareScreen").then(
@@ -18,9 +19,11 @@ const ComparisonMetricsScreen = lazy(() => import("./components/ComparisonMetric
 type CartPageProps = {
   route: string;
   onNavigateOutsideCart: (destination: BottomDestination) => void;
+  plannedHikes: readonly PlannedHike[];
+  onPlanHike: (plannedHike: PlannedHike) => void;
 };
 
-export function CartPage({ route, onNavigateOutsideCart }: CartPageProps) {
+export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHike }: CartPageProps) {
   const [selectedCourseIds, setSelectedCourseIds] = useState<Set<string>>(
     () => new Set(savedCourses.map((course) => course.id)),
   );
@@ -81,6 +84,8 @@ export function CartPage({ route, onNavigateOutsideCart }: CartPageProps) {
           onCourseDetail={(courseId) => navigate(`cart/course/${courseId}?from=metrics`)}
           onKeepCart={() => navigate("cart")}
           onNavigate={handleBottomNavigation}
+          plannedHikes={plannedHikes}
+          onPlanHike={onPlanHike}
         />
       </Suspense>
     );
@@ -97,6 +102,8 @@ export function CartPage({ route, onNavigateOutsideCart }: CartPageProps) {
           onBack={() => navigate(detailOrigin === "metrics" ? "cart/metrics" : "cart/bukhansan")}
           onKeepCart={() => navigate("cart")}
           onNavigate={handleBottomNavigation}
+          plannedHikes={plannedHikes}
+          onPlanHike={onPlanHike}
         />
       </Suspense>
     );

@@ -5,6 +5,7 @@ import { BottomNavigation, TopBar, type BottomDestination } from "../../../compo
 import { formatCourseDuration } from "../data";
 import type { CartCourse } from "../types";
 import { ScheduleRegistrationSheet } from "./ScheduleRegistrationSheet";
+import type { PlannedHike } from "../../../types/hiking";
 
 type ComparisonMetricsScreenProps = {
   courses: readonly CartCourse[];
@@ -12,6 +13,8 @@ type ComparisonMetricsScreenProps = {
   onCourseDetail: (courseId: string) => void;
   onKeepCart: () => void;
   onNavigate: (destination: BottomDestination) => void;
+  plannedHikes: readonly PlannedHike[];
+  onPlanHike: (plannedHike: PlannedHike) => void;
 };
 
 type Metric = {
@@ -46,6 +49,8 @@ export function ComparisonMetricsScreen({
   onCourseDetail,
   onKeepCart,
   onNavigate,
+  plannedHikes,
+  onPlanHike,
 }: ComparisonMetricsScreenProps) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const mountainName = courses[0]?.mountain ?? "산";
@@ -126,8 +131,19 @@ export function ComparisonMetricsScreen({
         <ScheduleRegistrationSheet
           courses={courses}
           selectCourseFirst
+          existingSchedules={plannedHikes}
           onClose={() => setScheduleOpen(false)}
-          onConfirm={() => onNavigate("myHikes")}
+          onConfirm={(courseId, schedule) => {
+            const course = courses.find((item) => item.id === courseId);
+            if (!course) return;
+            onPlanHike({
+              ...schedule,
+              courseId,
+              mountain: course.mountain,
+              courseName: course.name,
+            });
+            onNavigate("myHikes");
+          }}
         />
       )}
     </main>
