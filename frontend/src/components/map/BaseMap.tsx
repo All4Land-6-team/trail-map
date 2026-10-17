@@ -36,6 +36,7 @@ export type MapRoute = {
   id: string
   color: string
   coordinates: [longitude: number, latitude: number][]
+  showEndpoint?: boolean
 }
 
 const EMPTY_ROUTES: readonly MapRoute[] = []
@@ -171,6 +172,8 @@ function replaceMapRoutes(
   routes: readonly MapRoute[],
 ) {
   renderedRouteIds.forEach((sourceId) => {
+    const endpointLayerId = `${sourceId}-endpoint`
+    if (map.getLayer(endpointLayerId)) map.removeLayer(endpointLayerId)
     if (map.getLayer(sourceId)) map.removeLayer(sourceId)
     if (map.getSource(sourceId)) map.removeSource(sourceId)
   })
@@ -180,9 +183,22 @@ function replaceMapRoutes(
     map.addSource(sourceId, {
       type: 'geojson',
       data: {
-        type: 'Feature',
-        properties: {},
-        geometry: { type: 'LineString', coordinates: route.coordinates },
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: { kind: 'route' },
+            geometry: { type: 'LineString', coordinates: route.coordinates },
+          },
+          ...(route.showEndpoint && route.coordinates.length > 0 ? [{
+            type: 'Feature' as const,
+            properties: { kind: 'endpoint' },
+            geometry: {
+              type: 'Point' as const,
+              coordinates: route.coordinates.at(-1)!,
+            },
+          }] : []),
+        ],
       },
     })
     map.addLayer({
@@ -196,6 +212,20 @@ function replaceMapRoutes(
         'line-width': 4,
       },
     })
+    if (route.showEndpoint) {
+      map.addLayer({
+        id: `${sourceId}-endpoint`,
+        type: 'circle',
+        source: sourceId,
+        filter: ['==', ['get', 'kind'], 'endpoint'],
+        paint: {
+          'circle-color': '#ffffff',
+          'circle-radius': 5,
+          'circle-stroke-color': route.color,
+          'circle-stroke-width': 2.5,
+        },
+      })
+    }
     return sourceId
   })
 }

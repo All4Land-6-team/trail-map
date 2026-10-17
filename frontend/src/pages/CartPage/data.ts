@@ -10,6 +10,7 @@ export const savedCourses: readonly CartCourse[] = [
     mountain: "북한산",
     distanceKm: 5.6,
     durationMinutes: 160,
+    averageSlopePercent: 8,
     color: "#1b6a53",
     routeCoordinates: [
       [126.955, 37.636], [126.963, 37.644], [126.972, 37.651],
@@ -32,6 +33,7 @@ export const savedCourses: readonly CartCourse[] = [
     mountain: "북한산",
     distanceKm: 3.8,
     durationMinutes: 120,
+    averageSlopePercent: 10,
     color: "#5b8bd6",
     routeCoordinates: [
       [126.948, 37.641], [126.956, 37.648], [126.966, 37.655],

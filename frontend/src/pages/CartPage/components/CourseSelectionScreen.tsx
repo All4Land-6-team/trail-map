@@ -14,6 +14,7 @@ type CourseSelectionScreenProps = {
   selectedCourseIds: ReadonlySet<string>;
   onBack: () => void;
   onCompare: () => void;
+  onCourseDetail: (courseId: string) => void;
   onNavigate: (destination: BottomDestination) => void;
   onToggleCourse: (courseId: string) => void;
 };
@@ -23,6 +24,7 @@ export function CourseSelectionScreen({
   selectedCourseIds,
   onBack,
   onCompare,
+  onCourseDetail,
   onNavigate,
   onToggleCourse,
 }: CourseSelectionScreenProps) {
@@ -97,9 +99,14 @@ export function CourseSelectionScreen({
                       </Typography>
                     </span>
                   </button>
-                  <span className="cart-course-detail" aria-hidden="true">
+                  <button
+                    type="button"
+                    className="cart-course-detail"
+                    aria-label={`${course.name} 상세 보기`}
+                    onClick={() => onCourseDetail(course.id)}
+                  >
                     <Icon name="ChevronRight" size={20} color="currentColor" />
-                  </span>
+                  </button>
                 </div>
               );
             })}

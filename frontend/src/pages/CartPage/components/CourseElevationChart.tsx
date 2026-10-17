@@ -9,9 +9,15 @@ registerEChartsModules([LineChart, AriaComponent, GridComponent, TooltipComponen
 
 type CourseElevationChartProps = {
   series: readonly ElevationChartSeries[];
+  ariaDescription?: string;
+  ariaLabel?: string;
 };
 
-export function CourseElevationChart({ series }: CourseElevationChartProps) {
+export function CourseElevationChart({
+  series,
+  ariaDescription = "선택한 코스들의 거리별 고도를 비교한 선 그래프",
+  ariaLabel = "코스별 고도 프로필",
+}: CourseElevationChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -20,7 +26,7 @@ export function CourseElevationChart({ series }: CourseElevationChartProps) {
     const chart = init(chartRef.current, undefined, { renderer: "svg" });
     chart.setOption({
       animation: false,
-      aria: { enabled: true, description: "선택한 코스들의 거리별 고도를 비교한 선 그래프" },
+      aria: { enabled: true, description: ariaDescription },
       grid: { top: 10, right: 6, bottom: 22, left: 30 },
       tooltip: { trigger: "axis" },
       xAxis: {
@@ -63,7 +69,7 @@ export function CourseElevationChart({ series }: CourseElevationChartProps) {
       resizeObserver.disconnect();
       chart.dispose();
     };
-  }, [series]);
+  }, [ariaDescription, series]);
 
-  return <div ref={chartRef} className="cart-elevation-chart" role="img" aria-label="코스별 고도 프로필" />;
+  return <div ref={chartRef} className="cart-elevation-chart" role="img" aria-label={ariaLabel} />;
 }

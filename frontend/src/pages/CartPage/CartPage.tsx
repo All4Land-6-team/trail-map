@@ -8,6 +8,12 @@ import "./cart.css";
 const CourseCompareScreen = lazy(() => import("./components/CourseCompareScreen").then(
   ({ CourseCompareScreen: Screen }) => ({ default: Screen }),
 ));
+const CourseDetailScreen = lazy(() => import("./components/CourseDetailScreen").then(
+  ({ CourseDetailScreen: Screen }) => ({ default: Screen }),
+));
+const ComparisonMetricsScreen = lazy(() => import("./components/ComparisonMetricsScreen").then(
+  ({ ComparisonMetricsScreen: Screen }) => ({ default: Screen }),
+));
 
 type CartPageProps = {
   route: string;
@@ -39,6 +45,7 @@ export function CartPage({ route, onNavigateOutsideCart }: CartPageProps) {
         selectedCourseIds={selectedCourseIds}
         onBack={() => navigate("cart")}
         onCompare={() => navigate("cart/compare")}
+        onCourseDetail={(courseId) => navigate(`cart/course/${courseId}`)}
         onNavigate={handleBottomNavigation}
         onToggleCourse={(courseId) => {
           setSelectedCourseIds((current) => {
@@ -58,6 +65,37 @@ export function CartPage({ route, onNavigateOutsideCart }: CartPageProps) {
         <CourseCompareScreen
           courses={selectedCourses}
           onBack={() => navigate("cart/bukhansan")}
+          onViewMetrics={() => navigate("cart/metrics")}
+          onNavigate={handleBottomNavigation}
+        />
+      </Suspense>
+    );
+  }
+
+  if (route === "#cart/metrics") {
+    return (
+      <Suspense fallback={<main className="app-route-loading" aria-busy="true">코스 비교표를 불러오는 중이에요</main>}>
+        <ComparisonMetricsScreen
+          courses={selectedCourses}
+          onBack={() => navigate("cart/compare")}
+          onCourseDetail={(courseId) => navigate(`cart/course/${courseId}?from=metrics`)}
+          onKeepCart={() => navigate("cart")}
+          onNavigate={handleBottomNavigation}
+        />
+      </Suspense>
+    );
+  }
+
+  if (route.startsWith("#cart/course/")) {
+    const [courseId, query = ""] = route.slice("#cart/course/".length).split("?");
+    const detailOrigin = new URLSearchParams(query).get("from");
+    const course = savedCourses.find((item) => item.id === courseId) ?? savedCourses[0];
+    return (
+      <Suspense fallback={<main className="app-route-loading" aria-busy="true">코스 상세를 불러오는 중이에요</main>}>
+        <CourseDetailScreen
+          course={course}
+          onBack={() => navigate(detailOrigin === "metrics" ? "cart/metrics" : "cart/bukhansan")}
+          onKeepCart={() => navigate("cart")}
           onNavigate={handleBottomNavigation}
         />
       </Suspense>
