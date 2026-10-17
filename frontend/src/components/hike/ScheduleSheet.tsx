@@ -118,7 +118,7 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
   const replacing = pendingReplace ? findSchedule(pendingReplace.date) : undefined;
 
   return <>
-    <OverlayLayer placement="bottom" onDismiss={onClose}>
+    <OverlayLayer placement="bottom" aboveNav onDismiss={onClose}>
       <BottomSheet className={["af-schedule-sheet", isEdit && "af-schedule-sheet--edit"].filter(Boolean).join(" ")}
         role="dialog" aria-modal="true" title={title} showDescription={!isEdit}
         description={`${course.mountainName} · ${course.courseName}`} onClose={onClose}
