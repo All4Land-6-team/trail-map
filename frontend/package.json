@@ -9,6 +9,8 @@
     "lint": "oxlint",
     "test:offline": "node --test tests/service-worker.test.cjs",
     "test:home": "node --test tests/home-discovery.test.mjs",
+    "test:courses": "node --test tests/course-discovery.test.mjs",
+    "test:course-detail": "node --test tests/course-detail.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
