@@ -12,13 +12,19 @@ export function PageDot({ selected = false, className, ...rest }: PageDotProps) 
 export type PageIndicatorProps = Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
   count: number;
   activeIndex: number;
+  onPageChange?: (index: number) => void;
 };
 
-export function PageIndicator({ count, activeIndex, className, ...rest }: PageIndicatorProps) {
+export function PageIndicator({ count, activeIndex, onPageChange, className, ...rest }: PageIndicatorProps) {
   const dotCount = Math.max(0, Math.floor(count));
   const visiblePage = dotCount ? Math.min(Math.max(activeIndex, 0), dotCount - 1) + 1 : 0;
-  return <div {...rest} role="img" aria-label={`페이지 ${visiblePage} / ${dotCount}`}
+  return <div {...rest} role={onPageChange ? "group" : "img"} aria-label={`페이지 ${visiblePage} / ${dotCount}`}
     className={["af-page-indicator", className].filter(Boolean).join(" ")}>
-    {Array.from({ length: dotCount }, (_, index) => <PageDot key={index} selected={index === activeIndex} />)}
+    {Array.from({ length: dotCount }, (_, index) => onPageChange
+      ? <button key={index} type="button" className="af-page-indicator__button"
+        aria-label={`${index + 1}번째 코스 선택`} aria-pressed={index === activeIndex} onClick={() => onPageChange(index)}>
+        <PageDot selected={index === activeIndex} />
+      </button>
+      : <PageDot key={index} selected={index === activeIndex} />)}
   </div>;
 }
