@@ -1,0 +1,27 @@
+.hike-complete-page { background: #fff; }
+.hike-complete-page__body { display: flex; flex-direction: column; padding: 6px 20px 24px; color: var(--af-ink); }
+.hike-complete-page__header { display: flex; align-items: center; gap: 20px; min-height: 44px; margin-left: 4px; }
+.hike-complete-page__back { display: grid; width: 22px; height: 22px; place-items: center; padding: 0; border: 0; color: var(--af-green); background: transparent; cursor: pointer; }
+.hike-complete-page__back:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.hike-complete-page__header-title { margin: 0; font: 700 16px/24px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.hike-complete-page__summary { display: flex; flex-direction: column; align-items: center; margin-top: 32px; text-align: center; }
+.hike-complete-page__check { display: grid; width: 80px; height: 80px; place-items: center; border-radius: 50%; background: #e2f0e6; }
+.hike-complete-page__title { margin: 18px 0 0; font: 700 20px/28px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-complete-page__course { margin: 3px 0 0; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.hike-complete-page__stats { display: grid; grid-template-columns: 1fr 1fr; min-height: 90px; margin: 27px 0 0; padding: 20px 0; border-radius: 14px; background: #eef5ea; }
+.hike-complete-page__stats > div { display: flex; flex-direction: column-reverse; align-items: center; justify-content: center; gap: 5px; }
+.hike-complete-page__stats > div + div { border-left: 1px solid var(--af-line); }
+.hike-complete-page__stats dt { color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-complete-page__stats dd { margin: 0; font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.hike-complete-page__sunset { display: flex; flex-direction: column; gap: 7px; min-height: 72px; margin-top: 16px; padding: 14px; border: 1px solid var(--af-line); border-radius: 14px; }
+.hike-complete-page__sunset p { margin: 0; }
+.hike-complete-page__sunset-time { font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-complete-page__sunset-note { color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.hike-complete-page__review { margin-top: 28px; }
+.hike-complete-page__question { margin: 0; font: 700 16px/24px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: center; }
+.hike-complete-page__actions { display: flex; flex-direction: column; gap: 12px; margin-top: 62px; }
+.hike-complete-page__actions .af-button { min-height: 44px; border-radius: 10px; }

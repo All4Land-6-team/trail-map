@@ -1,0 +1,9 @@
+.hike-today-page__distance { margin: 10px 0 0; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-today-page__sunset { display: flex; align-items: center; gap: 6px; min-height: 52px; margin-top: 14px; border-top: 1px solid #e3ece2; font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-today-page__detail-link { min-height: 32px; margin-left: auto; padding: 0 2px; border: 0; color: var(--af-ink); background: transparent; font: 700 10px/14px "Noto Sans KR", sans-serif; letter-spacing: -.02em; cursor: pointer; }
+.hike-today-page__detail-link:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; border-radius: 6px; }
+.hike-today-page__start { min-height: 44px; margin-top: 10px; border-radius: 10px; }
+/* 화살표를 버튼 오른쪽 끝에 둔다 (Figma) */
+.hike-today-page__start .af-button__icon { position: absolute; right: 20px; }
+.hike-today-page__start { position: relative; }
+.hike-today-page__toast { bottom: 250px; }
