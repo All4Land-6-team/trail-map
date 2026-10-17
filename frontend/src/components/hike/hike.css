@@ -54,7 +54,7 @@
 .af-schedule-sheet .af-bottom-sheet__close { color: var(--af-green); }
 .af-schedule-sheet .af-bottom-sheet__description { margin-top: 6px; color: #617b6c; }
 .af-schedule-sheet .af-bottom-sheet__content { flex: 1 1 auto; min-height: 0; margin-top: 16px; }
-.af-schedule-sheet__form { display: flex; flex-direction: column; gap: 26px; }
+.af-schedule-sheet__form { display: flex; flex-direction: column; gap: 12px; }
 .af-schedule-sheet__feedback { min-height: 18px; margin: 8px 0 0; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .af-schedule-sheet__feedback--error { color: var(--af-danger); }
 .af-schedule-sheet__feedback--success { color: var(--af-green); }
@@ -88,18 +88,3 @@
 .af-overlay-layer--center > .af-overlay-layer__panel { width: auto; max-width: 100%; }
 /* 바텀시트는 화면(.hike-page)과 같은 최대 폭 480px 안에 띄운다 */
 .af-overlay-layer--bottom > .af-overlay-layer__panel { max-width: 480px; }
-/* 날짜·시간 칸 전체를 눌러 선택 창을 연다 */
-.af-schedule-sheet__picker-field .af-field__input { cursor: pointer; }
-
-/* 등산 시작 시간 선택 (TimeSelectField): 공용 Field 모양 + 10분 단위 목록 */
-.af-time-select { position: relative; }
-.af-time-select__trigger { justify-content: space-between; text-align: left; cursor: pointer; }
-.af-time-select__trigger:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
-.af-time-select__value { display: flex; align-items: center; }
-.af-time-select__value--empty { color: var(--af-muted); }
-.af-time-select__panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 220px; padding: 8px; border: 1px solid var(--af-line); border-radius: 12px; background: #fff; box-shadow: 0 10px 15px rgb(23 71 54 / 18%); }
-.af-time-select__column { display: flex; flex-direction: column; gap: 2px; min-height: 0; max-height: 204px; overflow-y: auto; scrollbar-width: thin; }
-.af-time-select__option { flex: none; min-height: 34px; padding: 0 8px; border: 0; border-radius: 8px; color: var(--af-ink); background: transparent; font: 500 14px/20px "Noto Sans KR", sans-serif; cursor: pointer; }
-.af-time-select__option:hover { background: #eef5ea; }
-.af-time-select__option[aria-pressed="true"] { color: #fff; background: var(--af-green); }
-.af-time-select__option:focus-visible { outline: 2px solid var(--af-green); outline-offset: -2px; }

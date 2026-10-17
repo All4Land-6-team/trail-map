@@ -1,15 +1,14 @@
-import { useId, useState, type FormEvent, type MouseEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { toDateKey } from "../../api/hikeMock";
 import { useSingleFlight } from "../../hooks/useSingleFlight";
 import { deleteSchedule, findSchedule, saveSchedule } from "../../store/hikeScheduleStore";
 import type { HikeSchedule } from "../../types/hike";
 import { Button } from "../common/Button";
-import { Field } from "../common/Field";
+import { DateTimePicker, formatTimeValue, getNextAvailableTime, isTimeAtOrAfter, type DateTimeValue } from "../common/DateTimePicker";
 import { BottomSheet } from "../overlay";
 import { ConfirmOverlay } from "./ConfirmOverlay";
 import { OverlayLayer } from "./OverlayLayer";
 import { ScheduleReplaceConfirm } from "./ScheduleReplaceConfirm";
-import { TimeSelectField } from "./TimeSelectField";
 import "./hike.css";
 
 export type ScheduleCourse = Pick<HikeSchedule, "courseId" | "mountainName" | "courseName" | "distanceKm">;
@@ -39,21 +38,21 @@ export type ScheduleSheetProps = {
 /** 등산 시작 시간의 분은 10분 단위로 고른다. */
 const MINUTE_STEP = 10;
 
-/** 날짜 칸을 누르면 브라우저 날짜 선택 창을 연다. 지원하지 않는 브라우저는 기존처럼 직접 입력한다. */
-function openNativePicker(event: MouseEvent<HTMLInputElement>) {
-  try {
-    event.currentTarget.showPicker?.();
-  } catch {
-    // 이미 열려 있거나 브라우저가 막으면 그대로 둔다.
-  }
-}
-
 type Feedback = { tone: "error" | "success"; message: string; field?: "date" | "time" };
 
-function validate(date: string, time: string, today: string): Feedback | null {
+/** 오늘 날짜에서 고를 수 있는 가장 이른 시간 (지금 이후 가장 가까운 10분). 오늘이 아니면 제한 없음. */
+function earliestTimeOn(date: string, today: string) {
+  if (date !== today) return undefined;
+  const now = new Date();
+  return getNextAvailableTime(formatTimeValue(now.getHours(), now.getMinutes()), MINUTE_STEP);
+}
+
+function validate({ date, time }: DateTimeValue, today: string): Feedback | null {
   if (!date) return { tone: "error", field: "date", message: "등산할 날짜를 선택해 주세요." };
   if (date < today) return { tone: "error", field: "date", message: "오늘 이전 날짜는 선택할 수 없어요." };
   if (!time) return { tone: "error", field: "time", message: "등산 시작 시간을 선택해 주세요." };
+  const earliest = earliestTimeOn(date, today);
+  if (earliest === null || !isTimeAtOrAfter(time, earliest)) return { tone: "error", field: "time", message: "지금 이후 시간을 선택해 주세요." };
   return null;
 }
 
@@ -65,8 +64,8 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
   const [openedWithSchedule] = useState(schedule !== undefined);
   // 이 시트에서 저장한 뒤에는 저장한 일정을 기준으로 다시 수정한다.
   const [current, setCurrent] = useState(schedule);
-  const [date, setDate] = useState(schedule?.date ?? "");
-  const [time, setTime] = useState(schedule?.startTime ?? "");
+  const [value, setValue] = useState<DateTimeValue>({ date: schedule?.date ?? "", time: schedule?.startTime ?? "" });
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [pendingReplace, setPendingReplace] = useState<HikeSchedule | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -90,33 +89,32 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
 
   const { run: submit, pending } = useSingleFlight(async (event: FormEvent) => {
     event.preventDefault();
-    const error = validate(date, time, today);
+    const error = validate(value, today);
     if (error) {
       setFeedback(error);
       return;
     }
     // 방금 저장한 값 그대로 다시 확정하면 다시 저장하지 않고 안내만 유지한다.
-    if (current && current.date === date && current.startTime === time && !openedWithSchedule && !isEdit) {
+    if (current && current.date === value.date && current.startTime === value.time && !openedWithSchedule && !isEdit) {
       setFeedback({ tone: "success", message: successMessage(current) });
       return;
     }
-    const next: HikeSchedule = { ...course, date, startTime: time };
-    const existing = findSchedule(date);
+    const next: HikeSchedule = { ...course, date: value.date, startTime: value.time };
+    const existing = findSchedule(value.date);
     // 수정 중인 자기 일정이 아닌, 같은 날짜의 다른 일정이 있으면 대체할지 묻는다.
     if (existing && existing.date !== current?.date) setPendingReplace(next);
     else commit(next, false);
   });
 
-  const onDateChange = (value: string) => {
-    setDate(value);
-    if (feedback?.field === "date" || feedback?.tone === "success") setFeedback(null);
-  };
-  const onTimeChange = (value: string) => {
-    setTime(value);
-    if (feedback?.field === "time" || feedback?.tone === "success") setFeedback(null);
+  const onValueChange = (next: DateTimeValue) => {
+    // 오늘로 바꿨는데 이미 지난 시간이면 고를 수 있는 가장 이른 시간으로 맞춘다.
+    const earliest = earliestTimeOn(next.date, today);
+    const time = next.time && earliest && !isTimeAtOrAfter(next.time, earliest) ? earliest : next.time;
+    setValue({ date: next.date, time });
+    setFeedback(current => current?.tone === "success" || (current?.field === "date" && next.date)
+      || (current?.field === "time" && time) ? null : current);
   };
 
-  const describedBy = feedback ? feedbackId : undefined;
   const replacing = pendingReplace ? findSchedule(pendingReplace.date) : undefined;
 
   return <>
@@ -125,20 +123,17 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
         role="dialog" aria-modal="true" title={title} showDescription={!isEdit}
         description={`${course.mountainName} · ${course.courseName}`} onClose={onClose}
         content={<form id={`${feedbackId}-form`} className="af-schedule-sheet__form" noValidate onSubmit={event => void submit(event)}>
-          {/* 아이콘뿐 아니라 칸 어디를 눌러도 날짜 선택 창이 열린다 */}
-          <Field type="date" label="등산할 날짜" helper="" min={today} value={date}
-            containerClassName="af-schedule-sheet__picker-field" onClick={openNativePicker}
-            state={feedback?.field === "date" ? "error" : date ? "value" : "empty"}
-            aria-describedby={feedback?.field === "date" ? describedBy : undefined}
-            onChange={event => onDateChange(event.target.value)} />
-          {/* 분은 10분 단위(00·10·20·30·40·50)로만 고른다 */}
-          <TimeSelectField label="등산 시작 시간" value={time} minuteStep={MINUTE_STEP}
-            error={feedback?.field === "time"} aria-describedby={feedback?.field === "time" ? describedBy : undefined}
-            onChange={onTimeChange} />
+          {/* 등산 담기 일정 등록과 같은 공용 날짜·시간 선택기. 칸 어디를 눌러도 열리고, 분은 10분 단위 */}
+          <DateTimePicker dateLabel="등산할 날짜" timeLabel="등산 시작 시간" value={value}
+            minDate={today} minuteStep={MINUTE_STEP} today={today}
+            minTime={earliestTimeOn(value.date, today) ?? undefined}
+            dateInvalid={feedback?.field === "date"} timeInvalid={feedback?.field === "time"}
+            onPickerOpenChange={picker => setPickerOpen(picker !== null)} onChange={onValueChange} />
           <p id={feedbackId} className={`af-schedule-sheet__feedback af-schedule-sheet__feedback--${feedback?.tone ?? "none"}`}
             role={feedback?.tone === "error" ? "alert" : "status"}>{feedback?.message}</p>
         </form>}
-        showFooter
+        // 선택 창이 열려 있는 동안은 버튼을 숨겨 선택 창이 가려지지 않게 한다 (등산 담기 시트와 같음).
+        showFooter={!pickerOpen}
         footer={openedWithSchedule && !isEdit
           ? <div className="af-schedule-sheet__actions">
             <Button type="submit" form={`${feedbackId}-form`} fullWidth label="일정 수정" disabled={pending} />
