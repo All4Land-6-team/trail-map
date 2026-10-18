@@ -5,7 +5,7 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { DistanceBubble, SpotMarker } from "../map";
 import { BASE_MAP_STYLE_URL, MAP_MAX_ZOOM, MAP_MIN_ZOOM } from "../../constants/map";
-import { limitZoomOutToSouthKorea } from "../../utils/mapZoom";
+import { limitMapToSouthKorea } from "../../utils/mapZoom";
 import type { HikeSpot, LngLat } from "../../types/hike";
 import "./hike.css";
 
@@ -78,7 +78,7 @@ export function HikeRouteMap({
     });
     // 내 등산 지도에는 출처 표시를 넣지 않는다 (팀 결정 전 임시. OSM 데이터는 ODbL상 출처 표시가 필요하다).
     mapRef.current = map;
-    const removeZoomLimit = limitZoomOutToSouthKorea(map);
+    const removeMapLimit = limitMapToSouthKorea(map);
     map.on("error", () => setHasLoadError(true));
     // 배경 타일을 기다리지 않도록 스타일만 준비되면 경로를 그린다.
     const drawRoute = () => {
@@ -108,7 +108,7 @@ export function HikeRouteMap({
     markers.forEach(marker => marker.addTo(map));
 
     return () => {
-      removeZoomLimit();
+      removeMapLimit();
       markers.forEach(marker => marker.remove());
       map.remove();
       mapRef.current = null;

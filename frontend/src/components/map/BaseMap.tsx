@@ -9,7 +9,7 @@ import {
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { limitZoomOutToSouthKorea } from '../../utils/mapZoom'
+import { limitMapToSouthKorea } from '../../utils/mapZoom'
 import {
   BASE_MAP_STYLE_URL,
   MAP_MAX_ZOOM,
@@ -113,7 +113,7 @@ function BaseMap({
       return () => cancelAnimationFrame(frame)
     }
 
-    const removeZoomLimit = limitZoomOutToSouthKorea(map)
+    const removeMapLimit = limitMapToSouthKorea(map)
     if (showNavigationControl) map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
     mapRef.current = map
     map.on('load', () => {
@@ -127,7 +127,7 @@ function BaseMap({
     onMapReadyRef.current?.(map)
 
     return () => {
-      removeZoomLimit()
+      removeMapLimit()
       onMapReadyRef.current?.(null)
       mapRef.current = null
       renderedRouteIdsRef.current = []
