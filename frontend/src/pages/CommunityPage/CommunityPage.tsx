@@ -3,7 +3,7 @@ import { Button } from '../../components/common/Button'
 import { Icon } from '../../components/common/Icon'
 import { Chip } from '../../components/common/Chip'
 import { BottomNavigation, TopBar, type BottomDestination } from '../../components/layout'
-import { BottomSheet } from '../../components/overlay'
+import { BottomSheet, ModalLayer } from '../../components/overlay'
 import { EmptyState, Toast } from '../../components/feedback'
 import { communityCourse, communityMountains, communityReviewExamples, communitySegment, communitySegments, communitySpots } from '../../api/communityMock'
 import type { CommunityReview, CommunitySegment, Coordinate, ReviewDraft, ReviewKind, SpotType } from '../../types/community'
@@ -37,6 +37,8 @@ export type CommunityPageProps = {
 
 const mountainReviewCount = 128
 const mountainExampleRatings = [5, 4, 5] as const
+const spotExampleReviewIndices = [0, 2, 4, 6, 7, 9, 11, 13] as const
+const exampleReviewDate = (index: number) => `9월 ${17 - index}일`
 const reviewRuleMessage = '산행 완료 후 24시간 이내에만 후기 작성 가능'
 const MOUNTAIN_SELECT_CENTER: Coordinate = [126.99, 37.57]
 const MAIN_MAP_ZOOM = 14
@@ -62,21 +64,40 @@ function blankDraft(kind: ReviewKind, targetId: string): ReviewDraft {
   return { kind, targetId, content: '', photos: [], rating: 0, status: null }
 }
 
-function ReviewQuotes({ reviews, seedQuotes = [], scrollable = false, limit, showRating = false }: { reviews: readonly CommunityReview[]; seedQuotes?: readonly string[]; scrollable?: boolean; limit?: number; showRating?: boolean }) {
+function ReviewQuotes({ reviews, seedQuotes = [], scrollable = false, limit, showRating = false, photos, onPhotoOpen }: {
+  reviews: readonly CommunityReview[]
+  seedQuotes?: readonly string[]
+  scrollable?: boolean
+  limit?: number
+  showRating?: boolean
+  photos?: readonly CommunityGalleryPhoto[]
+  onPhotoOpen?: (id: string) => void
+}) {
   if (reviews.length === 0 && seedQuotes.length === 0) return <EmptyState showIcon={false} title="아직 등록된 후기가 없어요." description="" className="community-empty" />
   const shownReviews = reviews.slice(0, limit)
   const shownSeedQuotes = seedQuotes.slice(0, limit === undefined ? undefined : Math.max(0, limit - shownReviews.length))
+  const examplePhotos = photos?.filter(photo => photo.source === 'example') ?? []
+  const thumbnail = (photo: CommunityGalleryPhoto | undefined, label: string) => photo?.src && onPhotoOpen
+    ? <button type="button" className="community-quote__photo" aria-label={`${label} 사진 크게 보기`} onClick={() => onPhotoOpen(photo.id)}>
+      <img src={photo.src} alt="" loading="lazy" /></button> : null
   return <div className={`community-quote-list${scrollable ? ' community-quote-list--scrollable' : ''}`} role={scrollable ? 'region' : undefined}
     aria-label={scrollable ? '산 후기 목록' : undefined} tabIndex={scrollable ? 0 : undefined}>
-    {shownReviews.map(review => <div key={review.id} className="community-quote">{showRating
-      ? <span className="community-quote__meta community-quote__meta--mountain"><span>나</span>{review.rating != null && <strong>★ {review.rating.toFixed(1)}</strong>}<time dateTime={review.createdAt}>{new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' }).format(new Date(review.createdAt))}</time></span>
-      : <span>나 · 방금 전</span>}
-      {review.segmentCoordinates && <small className="community-quote__segment">선택 구간 · {review.segmentCoordinates.length}개 경로 지점{review.segmentVia ? ' · 경유지 포함' : ''}</small>}
-      <p>{review.content}</p>
-      {review.status && <span className={`community-status-pill community-status-pill--${review.status}`}>{review.status === 'good' ? '양호' : review.status === 'caution' ? '주의 필요' : '위험'}</span>}</div>)}
-    {shownSeedQuotes.map((quote, index) => <div key={`${index}-${quote}`} className="community-quote">{showRating
-      ? <span className="community-quote__meta community-quote__meta--mountain"><span>등산객</span><strong>★ {mountainExampleRatings[index % mountainExampleRatings.length].toFixed(1)}</strong><time>{['9월 17일', '9월 15일', '9월 12일'][index % 3]}</time></span>
-      : <span>등산객 · {['9월 17일', '9월 15일', '9월 12일'][index % 3]}</span>}<p>{quote}</p></div>)}
+    {shownReviews.map(review => <div key={review.id} className="community-quote"><div className="community-quote__row">
+      {thumbnail(photos?.find(photo => photo.review?.id === review.id), '내 후기')}
+      <div className="community-quote__text">{showRating
+        ? <span className="community-quote__meta community-quote__meta--mountain"><span>나</span>{review.rating != null && <strong>★ {review.rating.toFixed(1)}</strong>}<time dateTime={review.createdAt}>{new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' }).format(new Date(review.createdAt))}</time></span>
+        : <span>나 · 방금 전</span>}
+        {review.segmentCoordinates && <small className="community-quote__segment">선택 구간 · {review.segmentCoordinates.length}개 경로 지점{review.segmentVia ? ' · 경유지 포함' : ''}</small>}
+        <p>{review.content}</p>
+        {review.status && <span className={`community-status-pill community-status-pill--${review.status}`}>{review.status === 'good' ? '양호' : review.status === 'caution' ? '주의 필요' : '위험'}</span>}</div>
+    </div></div>)}
+    {shownSeedQuotes.map((quote, index) => <div key={`${index}-${quote}`} className="community-quote"><div className="community-quote__row">
+      {thumbnail(examplePhotos.find(photo => photo.exampleText === quote), '등산객 후기')}
+      <div className="community-quote__text">{showRating
+        ? <span className="community-quote__meta community-quote__meta--mountain"><span>등산객</span><strong>★ {mountainExampleRatings[index % mountainExampleRatings.length].toFixed(1)}</strong><time>{exampleReviewDate(index)}</time></span>
+        : <span>등산객 · {exampleReviewDate(index)}</span>}
+        <p>{quote}</p></div>
+    </div></div>)}
   </div>
 }
 
@@ -128,6 +149,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const [detailSegmentId, setDetailSegmentId] = useState(communitySegment.id)
   const [galleryPhotoId, setGalleryPhotoId] = useState<string | null>(null)
   const [galleryKind, setGalleryKind] = useState<ReviewKind>('spot')
+  const [lightboxPhoto, setLightboxPhoto] = useState<CommunityGalleryPhoto | null>(null)
   const [detailSpotFocus, setDetailSpotFocus] = useState<{ coordinate: Coordinate; request: number; zoom: number } | null>(null)
   const [draft, setDraft] = useState<ReviewDraft>(() => blankDraft('mountain', initialMountainId))
   const [pickerSpotId, setPickerSpotId] = useState<string | null>(null)
@@ -206,6 +228,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   }, [screen, selectedSpotHidden, rootRef])
   const draftSpot = spots.find(spot => spot.id === draft.targetId)
   const currentReviews = (kind: ReviewKind, targetId: string) => reviews.filter(review => review.kind === kind && review.targetId === targetId)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
   const mountainReviews = currentReviews('mountain', mountainId)
   const hasMountainBaseline = mountainId === 'bukhansan'
   const mountainReviewTotal = (hasMountainBaseline ? mountainReviewCount : 0) + mountainReviews.length
@@ -221,24 +244,26 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const spotGalleryPhotos: CommunityGalleryPhoto[] = selectedSpot ? [
     ...selectedSpotReviews.flatMap(review => review.photos.map((src, index) => ({ id: `${review.id}-${index}`, src, review, source: 'review' as const }))),
     ...selectedSpot.photos.map((src, index) => ({ id: `spot-${selectedSpot.id}-${index}`, src, source: 'spot' as const })),
-    ...Array.from({ length: selectedSpot.baselinePhotos }, (_, index) => ({ id: `example-${selectedSpot.id}-${index}`,
-      src: [spotExample, mountainExample, segmentExample][index % 3],
-      exampleText: communityReviewExamples[selectedSpot.id]?.[index % communityReviewExamples[selectedSpot.id].length],
-      exampleDate: ['9월 17일', '9월 15일', '9월 12일'][index % 3], source: 'example' as const })),
+    ...Array.from({ length: selectedSpot.baselinePhotos }, (_, index) => {
+      const quoteIndex = selectedSpot.id === 'baegundae-rock' ? spotExampleReviewIndices[index % spotExampleReviewIndices.length]
+        : index % (communityReviewExamples[selectedSpot.id]?.length || 1)
+      return { id: `example-${selectedSpot.id}-${index}`, src: [spotExample, mountainExample, segmentExample][index % 3],
+        exampleText: communityReviewExamples[selectedSpot.id]?.[quoteIndex], exampleDate: exampleReviewDate(quoteIndex), source: 'example' as const }
+    }),
   ] : []
   const segmentReviews = currentReviews('segment', selectedSegment.id)
   const mountainGalleryPhotos: CommunityGalleryPhoto[] = [
     ...mountainReviews.flatMap(review => review.photos.map((src, index) => ({ id: `${review.id}-${index}`, src, review, source: 'review' as const }))),
     ...(hasMountainBaseline ? [mountainExample, spotExample, segmentExample].map((src, index) => ({ id: `mountain-example-${index}`, src,
       exampleText: communityReviewExamples.bukhansan[index], exampleRating: mountainExampleRatings[index],
-      exampleDate: ['9월 17일', '9월 15일', '9월 12일'][index], source: 'example' as const })) : []),
+      exampleDate: exampleReviewDate(index), source: 'example' as const })) : []),
   ]
   const segmentGalleryPhotos: CommunityGalleryPhoto[] = [
     ...segmentReviews.flatMap(review => review.photos.map((src, index) => ({ id: `${review.id}-${index}`, src, review, source: 'review' as const }))),
     ...Array.from({ length: selectedSegment.baselinePhotos }, (_, index) => ({ id: `segment-example-${selectedSegment.id}-${index}`,
       src: segmentIllustrations[(selectedSegmentIndex + index) % segmentIllustrations.length],
       exampleText: communityReviewExamples[selectedSegment.id]?.[index % communityReviewExamples[selectedSegment.id].length],
-      exampleDate: ['9월 17일', '9월 15일', '9월 12일'][index % 3], source: 'example' as const })),
+      exampleDate: exampleReviewDate(index % 3), source: 'example' as const })),
   ]
   const galleryPhotos = galleryKind === 'mountain' ? mountainGalleryPhotos : galleryKind === 'segment' ? segmentGalleryPhotos : spotGalleryPhotos
   const galleryTitle = galleryKind === 'mountain' ? mountain.name : galleryKind === 'segment' ? selectedSegment.name : selectedSpot?.name ?? '스팟'
@@ -391,7 +416,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         onViewAll={() => openGallery('mountain')} onOpen={id => openGalleryPhoto('mountain', id)} /></div>}
       <div className="community-review-heading"><strong>방문자 후기</strong>
         {(mountainReviews.length > 0 || hasMountainBaseline) &&
-          <button type="button" onClick={() => move('mountainReviewList')}>전체보기 <Icon name="ChevronRight" size={16} /></button>}
+          <button type="button" onClick={() => move('mountainReviewList')}>후기 모두 보기 <Icon name="ChevronRight" size={16} /></button>}
       </div>
       <ReviewQuotes reviews={mountainReviews} seedQuotes={hasMountainBaseline ? communityReviewExamples.bukhansan : undefined} limit={5} showRating />
     </>
@@ -526,7 +551,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
               onViewAll={() => openGallery('spot')} onOpen={id => openGalleryPhoto('spot', id)} /></div>
             <div className="community-review-heading"><strong>방문자 후기</strong>
               {(selectedSpotReviews.length > 0 || selectedSpot.baselineReviews > 0 || selectedSpot.seedQuote) &&
-                <button type="button" onClick={() => move('spotReviewList')}>전체보기 <Icon name="ChevronRight" size={16} /></button>}
+                <button type="button" onClick={() => move('spotReviewList')}>후기 모두 보기 <Icon name="ChevronRight" size={16} /></button>}
             </div>
             <ReviewQuotes reviews={selectedSpotReviews} seedQuotes={communityReviewExamples[selectedSpot.id] ?? (selectedSpot.seedQuote ? [selectedSpot.seedQuote] : [])} limit={5} />
             <section className="community-vote"><h3>이 스팟 정보가 맞나요?</h3><p>다른 사용자가 위치와 종류를 확인하는 데 도움이 돼요.</p>
@@ -539,7 +564,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
             onViewAll={() => openGallery('segment')} onOpen={id => openGalleryPhoto('segment', id)} /></div>
           <div className="community-review-heading"><strong>방문자 후기</strong>
             {(segmentReviews.length > 0 || !!communityReviewExamples[selectedSegment.id]?.length) &&
-              <button type="button" onClick={() => move('segmentReviewList')}>전체보기 <Icon name="ChevronRight" size={16} /></button>}
+              <button type="button" onClick={() => move('segmentReviewList')}>후기 모두 보기 <Icon name="ChevronRight" size={16} /></button>}
           </div>
           <ReviewQuotes reviews={segmentReviews} seedQuotes={communityReviewExamples[selectedSegment.id]} limit={5} />
           <section className="community-vote"><h3>이 구간 정보가 맞나요?</h3><p>다른 사용자가 구간 상태를 확인하는 데 도움이 돼요.</p>
@@ -558,19 +583,30 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     {screen === 'photoAlbum' && <CommunityPhotoAlbum photos={galleryPhotos} title={galleryTitle} onOpen={id => openGalleryPhoto(galleryKind, id)} />}
     {screen === 'spotReviewList' && selectedSpot && <section className="community-gallery-page community-review-list-page" aria-label={`${selectedSpot.name} 전체 후기`}>
       <h2>{selectedSpot.name} 후기</h2>
-      <ReviewQuotes reviews={selectedSpotReviews} seedQuotes={communityReviewExamples[selectedSpot.id] ?? (selectedSpot.seedQuote ? [selectedSpot.seedQuote] : [])} />
+      <ReviewQuotes reviews={selectedSpotReviews} seedQuotes={communityReviewExamples[selectedSpot.id] ?? (selectedSpot.seedQuote ? [selectedSpot.seedQuote] : [])}
+        photos={spotGalleryPhotos} onPhotoOpen={id => setLightboxPhoto(spotGalleryPhotos.find(photo => photo.id === id) ?? null)} />
     </section>}
     {screen === 'mountainReviewList' && <section className="community-gallery-page community-review-list-page" aria-label={`${mountain.name} 전체 후기`}>
       <h2>{mountain.name} 후기</h2>
-      <ReviewQuotes reviews={mountainReviews} seedQuotes={hasMountainBaseline ? communityReviewExamples.bukhansan : undefined} showRating />
+      <ReviewQuotes reviews={mountainReviews} seedQuotes={hasMountainBaseline ? communityReviewExamples.bukhansan : undefined} showRating
+        photos={mountainGalleryPhotos} onPhotoOpen={id => setLightboxPhoto(mountainGalleryPhotos.find(photo => photo.id === id) ?? null)} />
     </section>}
     {screen === 'segmentReviewList' && <section className="community-gallery-page community-review-list-page" aria-label={`${selectedSegment.name} 전체 후기`}>
       <h2>{selectedSegment.name} 후기</h2>
-      <ReviewQuotes reviews={segmentReviews} seedQuotes={communityReviewExamples[selectedSegment.id]} />
+      <ReviewQuotes reviews={segmentReviews} seedQuotes={communityReviewExamples[selectedSegment.id]}
+        photos={segmentGalleryPhotos} onPhotoOpen={id => setLightboxPhoto(segmentGalleryPhotos.find(photo => photo.id === id) ?? null)} />
     </section>}
     {screen === 'photoReview' && selectedGalleryPhoto && <CommunityPhotoReview photo={selectedGalleryPhoto} kind={galleryKind} index={selectedGalleryIndex} total={galleryPhotos.length}
       onPrevious={() => setGalleryPhotoId(galleryPhotos[selectedGalleryIndex - 1].id)}
       onNext={() => setGalleryPhotoId(galleryPhotos[selectedGalleryIndex + 1].id)} />}
+
+    {lightboxPhoto?.src && <ModalLayer className="community-photo-lightbox" onDismiss={() => setLightboxPhoto(null)}
+      onPointerDown={event => { if (event.target === event.currentTarget) setLightboxPhoto(null) }}>
+      <div className="community-photo-lightbox__dialog" role="dialog" aria-modal="true" aria-label="후기 사진 크게 보기">
+        <button type="button" className="community-photo-lightbox__close" aria-label="사진 닫기" onClick={() => setLightboxPhoto(null)}><Icon name="Close" size={24} color="currentColor" /></button>
+        <img src={lightboxPhoto.src} alt="확대한 후기 사진" />
+      </div>
+    </ModalLayer>}
 
     {screen === 'review' && <ReviewForm draft={draft} mountainName={mountain.name} spot={draftSpot} errors={errors}
       canSubmit={reviewEligible} eligibilityMessage={reviewEligibilityMessage}

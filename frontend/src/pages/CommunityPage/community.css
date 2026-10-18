@@ -159,12 +159,22 @@
 .community-gallery-review__text p { margin:8px 0 0; white-space:pre-wrap; }
 .community-quote-list { display:flex; flex-direction:column; gap:6px; }
 .community-quote { position:relative; padding:12px 13px; border-radius:12px; background:#f3f7f1; font-size:11px; line-height:16px; }
-.community-quote>span:first-child { color:#617b6c; }
+.community-quote__row { display:flex; align-items:center; gap:10px; }
+.community-quote__text { flex:1; min-width:0; }
+.community-quote__text>span:first-child { color:#617b6c; }
 .community-quote__meta--mountain { display:flex; min-width:0; flex-wrap:wrap; align-items:baseline; gap:2px 8px; }
 .community-quote__meta--mountain strong { color:var(--af-green); font-weight:700; white-space:nowrap; }
 .community-quote__meta--mountain time { white-space:nowrap; }
 .community-quote__segment { display:block; margin-top:3px; color:#617b6c; }
-.community-quote p { margin:5px 0 0; }
+.community-quote__text p { margin:5px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.community-quote__photo { flex:none; width:48px; height:48px; overflow:hidden; padding:0; border:0; border-radius:8px; background:#e8f1e7; cursor:pointer; }
+.community-quote__photo img { display:block; width:100%; height:100%; object-fit:cover; }
+.community-quote__photo:focus-visible { outline:2px solid var(--af-green); outline-offset:2px; }
+.community-photo-lightbox.af-modal-layer { z-index:10; display:grid; place-items:center; padding:20px; background:rgb(0 0 0 / 85%); }
+.community-photo-lightbox__dialog { position:relative; display:grid; width:100%; max-height:calc(100dvh - 88px); place-items:center; }
+.community-photo-lightbox__dialog img { display:block; max-width:100%; max-height:calc(100dvh - 88px); border-radius:8px; object-fit:contain; }
+.community-photo-lightbox__close { position:absolute; top:-48px; right:0; display:grid; width:44px; height:44px; place-items:center; padding:0; border:0; border-radius:50%; color:#fff; background:transparent; }
+.community-photo-lightbox__close:focus-visible { outline-color:#fff; }
 .community-detail-metrics { color:#617b6c; font-size:10px; white-space:nowrap; }
 .community-detail-metrics strong { color:var(--af-ink); }
 .community-mountain-empty { min-height:180px; margin-top:12px; padding:24px 16px; border:1px dashed var(--af-line); background:#f8faf7; }
