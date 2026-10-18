@@ -33,6 +33,7 @@ export type CommunityPageProps = {
 
 const mountainReviewCount = 128
 const mountainExampleRatings = [5, 4, 5] as const
+const reviewRuleMessage = '산행 완료 후 24시간 이내에만 후기 작성 가능'
 const MOUNTAIN_SELECT_CENTER: Coordinate = [126.99, 37.57]
 const MAIN_MAP_ZOOM = 14
 const CATEGORY_MAP_ZOOM: Record<MapCategory, number> = { all: MAIN_MAP_ZOOM, mountain: 15, spot: 14.7, segment: 14.5 }
@@ -75,14 +76,11 @@ function ReviewQuotes({ reviews, seedQuotes = [], scrollable = false, limit, sho
   </div>
 }
 
-function EmptyReviewPreview({ mountainName, kind }: { mountainName: string; kind: 'spot' | 'segment' }) {
+function EmptyReviewPreview({ mountainName, kind, message }: { mountainName: string; kind: 'spot' | 'segment'; message?: string }) {
   return <div className="af-review-preview community-empty-preview" role="status">
     <span className="af-review-preview__icon" aria-hidden="true"><Icon name={kind === 'spot' ? 'Photo' : 'Pin'} size={24} color="currentColor" /></span>
-    <span className="af-review-preview__copy">
-      <span className="af-review-preview__mountain">{mountainName}</span>
-      <span className="af-review-preview__rating">{kind === 'spot' ? '표시할 스팟이 없어요' : '표시할 구간이 없어요'}</span>
-      <span className="af-review-preview__hint">{kind === 'spot' ? '첫 스팟을 등록해 보세요' : '이 산의 구간 정보가 아직 준비되지 않았어요'}</span>
-    </span>
+    <span className="af-review-preview__copy"><span className="af-review-preview__mountain">{mountainName}</span>
+      <span className="af-review-preview__rating">{message ?? (kind === 'spot' ? '표시할 스팟이 없어요' : '표시할 구간이 없어요')}</span></span>
   </div>
 }
 
@@ -104,7 +102,7 @@ function ReviewEligibilityInfo() {
       onKeyDown={event => { if (event.key === 'Escape') { setOpen(false); event.currentTarget.blur() } }}>
       <span aria-hidden="true">!</span>
     </button>
-    <span id="community-review-rule" role="tooltip" className="community-review-info__tooltip">산행 완료 후 24시간 이내에만 후기 작성 가능</span>
+    <span id="community-review-rule" role="tooltip" className="community-review-info__tooltip">{reviewRuleMessage}</span>
   </span>
 }
 
@@ -137,7 +135,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
   const [segmentVia, setSegmentVia] = useState<number | null>(null)
   const [segmentEnd, setSegmentEnd] = useState<number | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [toast, setToast] = useState('')
+  const [toast, setToast] = useState<{ id: number; message: string } | null>(null)
+  const toastId = useRef(0)
   const [currentTime, setCurrentTime] = useState(() => Date.now())
   const detailSpotForHeight = spots.find(spot => spot.id === detailSpotId)
   const compactEmptySpot = screen === 'spotDetail' && !!detailSpotForHeight && !isSpotHidden(votes[detailSpotId])
@@ -258,7 +257,15 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
     if (screens.length === 1) { onExit?.(); return }
     setScreens(current => current.slice(0, -1))
   }
-  const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 3400) }
+  const notify = (message: string) => {
+    const id = ++toastId.current
+    setToast({ id, message })
+    window.setTimeout(() => setToast(current => current?.id === id ? null : current), 2800)
+  }
+  const registerReview = (start: () => void) => {
+    if (!canWriteReview(completedHike, mountainId)) { notify('산행 완료 후 24시간 이내에만 후기를 작성할 수 있습니다.'); return }
+    start()
+  }
   const showDetail = (kind: ReviewKind, targetId?: string) => {
     if (screen === 'map') mapScrollTop.current = rootRef.current?.querySelector<HTMLElement>('.community-page__sheet--map .af-bottom-sheet__content')?.scrollTop ?? mapScrollTop.current
     if (kind === 'spot' && targetId) focusSpot(targetId)
@@ -398,7 +405,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
       <CommunityMap className="community-page__map community-page__map--select" showRoute={false} center={MOUNTAIN_SELECT_CENTER} focusTarget={mountainFocus ?? undefined} zoom={9.5}
         markers={communityMountains.map(item => ({ id: item.id, name: item.name, kind: 'mountain', coordinate: item.position as Coordinate, selected: mountainId === item.id }))}
         onMarkerSelect={selectMountain} />
-      <BottomSheet title="커뮤니티에서 볼 산을 선택해주세요" description="지도에서 산을 눌러 선택할 수 있어요." showClose={false}
+      <BottomSheet title="커뮤니티에서 볼 산을 선택해주세요" showClose={false}
         handleProps={handleProps} bodyHidden={sheetPeek}
         className={`community-page__sheet community-page__sheet--select${sheetPeek ? ' community-page__sheet--peek' : ''}`} content={<div className="community-mountain-chips">{communityMountains.map(item =>
           <Chip key={item.id} label={item.name} selected={mountainId === item.id} onClick={() => selectMountain(item.id)} />)}</div>}
@@ -406,7 +413,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
     </>}
 
     {(screen === 'map' || isDetail) && <CommunityMap
-      className={`community-page__map ${screen === 'map' ? 'community-page__map--main' : `community-page__map--detail community-page__map--detail-${screen === 'mountainDetail' ? 'mountain' : screen === 'spotDetail' ? 'spot' : 'segment'}`}`}
+      className={`community-page__map ${screen === 'map' ? `community-page__map--main${inlineMountainDetail ? ' community-page__map--mountain-focus' : ''}` : `community-page__map--detail community-page__map--detail-${screen === 'mountainDetail' ? 'mountain' : screen === 'spotDetail' ? 'spot' : 'segment'}`}`}
       center={mountain.position as Coordinate}
       zoom={MAIN_MAP_ZOOM}
       focusTarget={screen === 'map' ? mapFocus : screen === 'mountainDetail' ? mountainDetailFocus : screen === 'spotDetail' ? detailSpotFocus ?? undefined
@@ -436,17 +443,17 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
         headerAction={mountainHeaderScore}
         handleProps={handleProps} bodyHidden={sheetPeek}
         content={<div id="community-map-results">{mountainReviewContent}</div>}
-        showFooter={!readOnly} footer={<><Button fullWidth label="후기 등록" disabled={!reviewEligible} onClick={() => beginReview('mountain', mountainId)} />
-          {!reviewEligible && <p className="community-eligibility" role="status">{reviewEligibilityMessage}</p>}</>} />
-        : <BottomSheet title={mapCategory === 'spot' ? '스팟 사진·후기' : mapCategory === 'segment' ? '구간 후기' : '지도에서 후기 보기'} headerAction={<ReviewEligibilityInfo />} showClose={false} className={`community-page__sheet community-page__sheet--map${mapCategory === 'spot' ? ' community-page__sheet--map-spot' : ''}${sheetPeek ? ' community-page__sheet--peek' : ''}`}
+        showFooter={!readOnly} footer={<Button fullWidth label="후기 등록" onClick={() => registerReview(() => beginReview('mountain', mountainId))} />} />
+        : <BottomSheet title={mapCategory === 'spot' ? '스팟 사진·후기' : mapCategory === 'segment' ? '구간 후기' : mapCategory === 'all' ? '전체 후기' : '지도에서 후기 보기'} headerAction={<ReviewEligibilityInfo />} showClose={false} className={`community-page__sheet community-page__sheet--map${mapCategory === 'spot' ? ' community-page__sheet--map-spot' : ''}${sheetPeek ? ' community-page__sheet--peek' : ''}`}
         handleProps={handleProps} bodyHidden={sheetPeek}
         content={<div id="community-map-results" className="community-map-results" aria-live="polite">
           {(mapCategory === 'all' || mapCategory === 'mountain') && <section className="community-map-section" aria-label="산 평점과 후기">
             <h3>산 평점·후기</h3>
             <button type="button" className="community-preview-row" onClick={() => showDetail('mountain', mountain.id)}>
-              {mountainPhotoTotal > 0 && <img className="community-preview-row__photo" src={mountainPhotos[0] ?? mountainExample} alt="" loading="lazy" />}
+              {mountainPhotoTotal > 0 ? <img className="community-preview-row__photo" src={mountainPhotos[0] ?? mountainExample} alt="" loading="lazy" />
+                : <span className="community-preview-row__photo-placeholder" aria-hidden="true"><Icon name="Photo" size={24} /></span>}
               <span className="community-preview-row__text"><strong>{mountain.name}</strong>
-                <small>{mountainRating === null ? '아직 후기가 없어요' : `★ ${mountainRating.toFixed(1)} · 후기 ${mountainReviewTotal}`}</small></span>
+                <small>{mountainRating === null ? '후기 0' : `★ ${mountainRating.toFixed(1)} · 후기 ${mountainReviewTotal}`}</small></span>
               <Icon name="ChevronRight" size={18} />
             </button>
           </section>}
@@ -454,7 +461,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
             {mapCategory === 'spot' ? <div className="community-spot-filter">
               <SpotTypeDropdown value={spotTypeFilter} onChange={changeSpotTypeFilter} /></div>
               : <h3>스팟 사진·후기</h3>}
-          {filteredSpots.length === 0 && <div role="status" className="community-filter-empty">{visibleSpots.length === 0 ? '표시할 스팟이 없어요.' : '선택한 종류의 스팟이 없어요.'}</div>}
+          {filteredSpots.length === 0 && <EmptyReviewPreview mountainName={mountain.name} kind="spot"
+            message={visibleSpots.length === 0 ? undefined : '선택한 종류의 스팟이 없어요'} />}
           {filteredSpots.map(spot => <div key={spot.id} className="community-spot-preview"><button type="button" className="community-preview-row" onClick={() => showDetail('spot', spot.id)}>
             {spot.photos[0] ?? currentReviews('spot', spot.id).flatMap(review => review.photos)[0] ?? (spot.baselinePhotos ? spotExample : undefined)
               ? <img className="community-preview-row__photo" src={spot.photos[0] ?? currentReviews('spot', spot.id).flatMap(review => review.photos)[0] ?? spotExample} alt="" loading="lazy" />
@@ -478,10 +486,10 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
             : <EmptyReviewPreview mountainName={mountain.name} kind="segment" />}
           </section>}
         </div>}
-        showFooter={!readOnly} footer={<Button fullWidth label="후기 등록" disabled={!reviewEligible} onClick={() => {
+        showFooter={!readOnly} footer={<Button fullWidth label="후기 등록" onClick={() => registerReview(() => {
           if (mapCategory === 'all') setReviewKindPickerOpen(true)
           else startMapReview(mapCategory)
-        }} />} />}
+        })} />} />}
       {reviewKindPickerOpen && <div className="community-review-kind-backdrop" onPointerDown={event => { if (event.target === event.currentTarget) setReviewKindPickerOpen(false) }}>
         <section ref={reviewPickerRef} className="community-review-kind-dialog" role="dialog" aria-modal="true" aria-labelledby="community-review-kind-title"
           onKeyDown={event => {
@@ -539,11 +547,11 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
           </section>
         </>}
         showFooter={!readOnly && !(screen === 'spotDetail' && selectedSpot && isSpotHidden(votes[selectedSpot.id]))}
-        footer={<><Button fullWidth label="후기 등록" disabled={!reviewEligible} onClick={() => {
+        footer={<Button fullWidth label="후기 등록" onClick={() => registerReview(() => {
           if (screen === 'mountainDetail') beginReview('mountain', mountainId)
           else if (screen === 'spotDetail' && selectedSpot) beginReview('spot', selectedSpot.id)
           else beginReview('segment', selectedSegment.id)
-        }} />{!reviewEligible && <p className="community-eligibility" role="status">{reviewEligibilityMessage}</p>}</>} />
+        })} />} />
     </>}
 
     {screen === 'photoAlbum' && <CommunityPhotoAlbum photos={galleryPhotos} title={galleryTitle} onOpen={id => openGalleryPhoto(galleryKind, id)} />}
@@ -625,6 +633,6 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
       }} />}
 
     <BottomNavigation active="community" onNavigate={handleBottomNavigation} className="community-page__nav" />
-    {toast && <Toast key={toast} message={toast} className="community-page__toast" />}
+    {toast && <Toast key={toast.id} message={toast.message} className="community-page__toast" />}
   </main>
 }

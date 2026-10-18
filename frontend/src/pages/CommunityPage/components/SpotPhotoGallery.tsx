@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type ReactNode, type TouchEvent } from 'react'
+import { useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { Icon } from '../../../components/common/Icon'
 import type { CommunityReview, ReviewKind } from '../../../types/community'
 
@@ -53,21 +53,22 @@ export function CommunityPhotoReview({ photo, kind, index, total, onPrevious, on
   onPrevious: () => void
   onNext: () => void
 }) {
-  const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const pointerStart = useRef<{ id: number; x: number; y: number } | null>(null)
   const changePhoto = (direction: 'previous' | 'next') => {
     if (direction === 'previous' && index > 0) onPrevious()
     if (direction === 'next' && index < total - 1) onNext()
   }
-  const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
-    if (event.touches.length !== 1) { touchStart.current = null; return }
-    touchStart.current = { x: event.touches[0].clientX, y: event.touches[0].clientY }
+  const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
+    if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return
+    pointerStart.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
+    event.currentTarget.setPointerCapture(event.pointerId)
   }
-  const handleTouchEnd = (event: TouchEvent<HTMLElement>) => {
-    const start = touchStart.current
-    touchStart.current = null
-    if (!start || event.changedTouches.length !== 1) return
-    const deltaX = event.changedTouches[0].clientX - start.x
-    const deltaY = event.changedTouches[0].clientY - start.y
+  const handlePointerUp = (event: PointerEvent<HTMLElement>) => {
+    const start = pointerStart.current
+    pointerStart.current = null
+    if (!start || start.id !== event.pointerId) return
+    const deltaX = event.clientX - start.x
+    const deltaY = event.clientY - start.y
     if (Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.3) return
     changePhoto(deltaX > 0 ? 'previous' : 'next')
   }
@@ -83,7 +84,8 @@ export function CommunityPhotoReview({ photo, kind, index, total, onPrevious, on
     : photo.exampleDate ?? '작성일 미기록'
   const content = photo.review?.content ?? photo.exampleText ?? '이 사진에 연결된 후기 글은 아직 없어요.'
   return <section className="community-gallery-page community-gallery-review" role="region" aria-label="사진 후기, 좌우로 밀거나 방향키로 사진 이동"
-    tabIndex={0} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchCancel={() => { touchStart.current = null }} onKeyDown={handleKeyDown}>
+    tabIndex={0} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerCancel={() => { pointerStart.current = null }}
+    onDragStart={event => event.preventDefault()} onKeyDown={handleKeyDown}>
     <div className="community-gallery-review__top"><h2>사진 후기</h2><span aria-live="polite">{index + 1} / {total}</span></div>
     <div className="community-gallery-review__image"><PhotoContent photo={photo} /></div>
     <article className="community-gallery-review__text">

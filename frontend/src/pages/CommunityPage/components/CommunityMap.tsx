@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { MapLibreMap } from 'maplibre-gl'
 import BaseMap, { type MapRoute } from '../../../components/map/BaseMap'
-import { MountainMarker, SpotMarker } from '../../../components/map'
+import { MapAction, MountainMarker, SpotMarker } from '../../../components/map'
 import { Icon } from '../../../components/common/Icon'
 import { communityCourse } from '../../../api/communityMock'
 import type { Coordinate, SegmentStatus, SpotType } from '../../../types/community'
@@ -63,6 +63,8 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
   const [clusterChoices, setClusterChoices] = useState<CommunityMapMarker[]>([])
   const [mapUnavailable, setMapUnavailable] = useState(false)
   const [mapRetry, setMapRetry] = useState(0)
+  const [dimension, setDimension] = useState<'2D' | '3D'>('2D')
+  const isMainMap = className?.includes('community-page__map--main') ?? false
   const onReady = useCallback((instance: MapLibreMap | null) => { setMap(instance); if (instance) setMapUnavailable(false) }, [])
   const markerSignature = markers.map(marker => `${marker.id}:${marker.coordinate.join(',')}:${marker.selected}`).join('|')
   // MapLibre 객체는 화면별로 유지하고 이동/크기 변경 때만 핀 좌표를 다시 계산한다.
@@ -116,6 +118,13 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
   }, [map, className])
 
   useEffect(() => {
+    if (!map) return
+    const pitch = isMainMap && dimension === '3D' ? 50 : 0
+    if (map.getPitch() === pitch) return
+    map.easeTo({ pitch, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350 })
+  }, [map, isMainMap, dimension])
+
+  useEffect(() => {
     if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-segment'))) return
     const mapRect = map.getContainer().getBoundingClientRect()
     const page = map.getContainer().closest('.community-page')
@@ -125,7 +134,9 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
     const visibleTop = Math.max(0, Math.max(topBarBottom, filterBottom) - mapRect.top)
     const visibleBottom = Math.min(mapRect.height, sheetTop - mapRect.top)
     const visibleCenter = (visibleTop + Math.max(visibleTop, visibleBottom)) / 2
-    map.easeTo({ center: focusTarget.coordinate, offset: [0, visibleCenter - mapRect.height / 2],
+    const focusY = className.includes('community-page__map--detail-mountain') || className.includes('community-page__map--mountain-focus')
+      ? Math.max(visibleTop + 44, Math.min(visibleCenter - 28, visibleTop + 48)) : visibleCenter
+    map.easeTo({ center: focusTarget.coordinate, offset: [0, focusY - mapRect.height / 2],
       zoom: focusTarget.zoom === undefined ? map.getZoom() : focusTarget.resetZoom
         ? focusTarget.zoom : Math.max(map.getZoom(), focusTarget.zoom),
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550,
@@ -139,7 +150,6 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
     return () => { map.off('click', select) }
   }, [map, onMapSelect])
 
-  const isMainMap = className?.includes('community-page__map--main') ?? false
   const markerGroups = isMainMap ? groupNearbyMarkers(projected) : projected.map(item => [item])
   const mountainMarkers = projected.filter(({ marker }) => marker.kind === 'mountain')
   const displayedGroups = isMainMap ? [...mountainMarkers.map(item => [item]), ...markerGroups] : markerGroups
@@ -163,6 +173,9 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
       routes={routes} showNavigationControl={false} onMapReady={onReady} />
     {mapUnavailable && <div className="community-map__fallback" role="status"><span>지도 배경을 불러오지 못했어요. 목록이나 마커로 후기를 볼 수 있어요.</span>
       <button type="button" onClick={() => { setMapUnavailable(false); setMapRetry(current => current + 1) }}>다시 시도</button></div>}
+    {isMainMap && <MapAction className="community-map__dimension" dimensionMode={dimension === '2D' ? '3D' : '2D'}
+      aria-label={`${dimension === '2D' ? '3D' : '2D'} 지도 보기`} aria-pressed={dimension === '3D'} disabled={!map || mapUnavailable}
+      onDimensionModeChange={() => setDimension(current => current === '2D' ? '3D' : '2D')} />}
     <div className="community-map__markers" aria-label="지도 항목">
       {displayedGroups.map(group => group.length > 1 ? <div key={group.map(item => item.marker.id).join('|')}
         className="community-map__pin community-map__pin--cluster"

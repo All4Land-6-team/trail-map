@@ -13,7 +13,6 @@
 .community-map { position:relative; width:100%; height:100%; overflow:hidden; background:#eef5eb; }
 .community-map.community-page__map { position:absolute; height:auto; }
 .community-map__base,.community-map__base .base-map { width:100%; height:100%; }
-.community-map.community-page__map .maplibregl-ctrl-bottom-right { bottom:calc(var(--community-sheet-height,32px) + 8px); right:8px; }
 .community-map__base .base-map__notice:has(> button[aria-label="지도 오류 알림 닫기"]) { display:none; }
 .community-map__markers { position:absolute; inset:0; pointer-events:none; }
 .community-map__pin { position:absolute; z-index:2; display:grid; min-width:44px; min-height:44px; transform:translate(-50%,-50%); place-items:center; pointer-events:auto; }
@@ -42,6 +41,7 @@
 .community-map-filters button[aria-pressed="true"] { color:#fff; }
 .community-map-filters button[aria-pressed="true"]::before { border-color:var(--af-green); background:var(--af-green); }
 .community-map-filters button[aria-pressed="true"]:active::before { background:var(--af-green-dark); }
+.community-map__dimension.af-map-action { position:absolute; z-index:3; top:80px; right:18px; width:45px; height:45px; border-color:transparent; border-radius:14px; color:var(--af-green-dark); background:#fff; box-shadow:0 5px 7px rgb(23 71 54 / 6%); font-size:14px; line-height:20px; }
 .community-page__sheet { position:absolute; z-index:2; right:0; bottom:var(--community-nav-height); left:0; height:var(--community-sheet-height,auto); max-height:calc(100dvh - var(--community-nav-height) - 170px); min-height:32px; overflow:hidden; padding:8px 20px 16px; border-radius:25px 25px 0 0; box-shadow:0 -8px 12px #173d320d; transition:var(--community-sheet-transition,none); }
 .community-page__sheet--map { gap:6px; }
 @media(prefers-reduced-motion:reduce) { .community-page__sheet { transition:none; } }
@@ -63,9 +63,10 @@
 .community-review-info[data-open="true"] .community-review-info__tooltip { display:block; }
 .community-page__sheet .af-bottom-sheet__content { flex:1 1 auto; min-height:0; overflow-y:auto; }
 .community-page__sheet .af-bottom-sheet__footer { flex:none; }
+.community-page__sheet--map .af-bottom-sheet__footer { padding-top:8px; }
+.community-page__sheet--detail:not(.community-page__sheet--detail-mountain) .af-bottom-sheet__footer { padding-top:4px; }
 .community-page__sheet .af-button { min-height:42px; }
 .community-page__sheet--select .af-bottom-sheet__title { font-size:18px; }
-.community-page__sheet--select .af-bottom-sheet__description { color:#617b6c; }
 .community-mountain-chips { display:flex; flex-wrap:wrap; gap:8px; padding-top:8px; }
 .community-mountain-chips .af-chip { min-height:33px; }
 .community-map-results { padding:4px 0 12px; }
@@ -83,9 +84,8 @@
 .community-spot-dropdown__option { display:flex; width:100%; min-height:36px; align-items:center; justify-content:space-between; gap:4px; padding:0 8px; border:0; border-radius:8px; color:var(--af-green-dark); background:#fff; text-align:left; font:500 12px/18px "Noto Sans KR",sans-serif; }
 .community-spot-dropdown__option[aria-pressed="true"] { color:var(--af-green-dark); background:var(--community-soft); font-weight:700; }
 .community-spot-dropdown__option:hover,.community-spot-dropdown__option:active { background:var(--community-surface); }
-.community-filter-empty { margin-top:8px; padding:16px; border-radius:12px; color:#617b6c; background:#f2f7f1; font-size:12px; text-align:center; }
 .community-page__sheet--map .af-review-preview { width:100%; min-height:83px; margin-top:12px; }
-.community-page__sheet--map .community-empty-preview { cursor:default; }
+.community-page__sheet--map .community-empty-preview { margin-top:6px; cursor:default; }
 .community-preview-row { display:flex; align-items:center; gap:12px; width:100%; min-height:76px; margin-top:6px; padding:10px 12px; border:0; border-radius:13px; color:var(--af-green); background:#f2f7f1; text-align:left; }
 .community-preview-row:active { background:#e9f1e6; }
 .community-preview-row__text { display:flex; flex:1; flex-direction:column; gap:4px; min-width:0; color:var(--af-ink); }
@@ -275,7 +275,9 @@
 .community-duplicate-card .af-button { min-width:120px; min-height:40px; }
 .community-register__distinct { display:flex; align-items:center; gap:8px; min-height:44px; color:var(--af-ink); font-size:11px; }
 .community-register__distinct input { width:18px; height:18px; accent-color:var(--af-green); }
-.community-page__toast { position:absolute; z-index:10; bottom:calc(146px + env(safe-area-inset-bottom)); left:50%; width:max-content; max-width:calc(100% - 32px); min-height:32px; transform:translateX(-50%); padding:8px 12px; border-radius:16px; font-size:11px; line-height:16px; text-align:center; pointer-events:none; }
-@media(max-height:740px) { .community-page__sheet--detail .community-gallery-strip .community-gallery-tile { flex-basis:132px; width:132px; height:132px; } }
+@keyframes community-toast-lifecycle { 0% { opacity:0; transform:translate(-50%,8px); } 7%,93% { opacity:1; transform:translate(-50%,0); } 100% { opacity:0; transform:translate(-50%,-4px); } }
+.community-page__toast { position:absolute; z-index:10; bottom:calc(146px + env(safe-area-inset-bottom)); left:50%; width:max-content; max-width:calc(100% - 32px); min-height:32px; transform:translateX(-50%); padding:8px 12px; border-radius:16px; font-size:11px; line-height:16px; text-align:center; pointer-events:none; animation:community-toast-lifecycle 2800ms linear both; }
+@media(prefers-reduced-motion:reduce) { .community-page__toast { animation:none; } }
+@media(max-height:740px) { .community-page__sheet--detail-mountain { max-height:calc(100dvh - var(--community-nav-height) - 200px); } .community-page__sheet--detail .community-gallery-strip .community-gallery-tile { flex-basis:132px; width:132px; height:132px; } }
 @media(max-height:620px) { .community-form-layout__scroll { padding-top:10px; } }
 @media(max-width:350px) { .community-page__sheet { padding-inline:14px; } .community-map-filters button { font-size:11px; } .community-form-layout__scroll,.community-form-layout__action { padding-inline:14px; } }
