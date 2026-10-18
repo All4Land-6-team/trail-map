@@ -15,6 +15,7 @@ import { HikeDetailPage } from './pages/HikeDetailPage/HikeDetailPage'
 import { HikeTodayPage } from './pages/HikeTodayPage/HikeTodayPage'
 
 const CartPage = lazy(() => import('./pages/CartPage/CartPage').then(({ CartPage: Page }) => ({ default: Page })))
+const CommunityPage = lazy(() => import('./pages/CommunityPage/CommunityPage').then(({ CommunityPage: Page }) => ({ default: Page })))
 const HikingStatusPage = lazy(() => import('./pages/HikePage/HikePage').then(({ HikePage: Page }) => ({ default: Page })))
 
 // 개발 서버에서만 ?preview=hike-status로 FLOW-06 일정 시트와 상태 화면을 확인한다.
@@ -29,12 +30,12 @@ const hikeRoutes: Record<string, ComponentType> = {
   'hikes/today': HikeTodayPage,
   'hikes/active': HikeActivePage,
   'hikes/downhill': HikeDescentPage,
-  'hikes/complete': HikeCompletePage,
 }
 
 function App() {
   const route = useHashRoute()
   const [plannedHikes, setPlannedHikes] = useState<PlannedHike[]>([])
+  const [completedHike, setCompletedHike] = useState<{ mountainId: string; finishedAt: string } | null>(null)
 
   function navigateFromBottom(destination: BottomDestination) {
     window.location.hash = destination === 'home' ? '' : destination === 'saved' ? 'cart' : destination
@@ -49,6 +50,15 @@ function App() {
 
   if (HikeStatusPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'hike-status') {
     return <Suspense fallback={null}><HikeStatusPreviewPage /></Suspense>
+  }
+
+  if (routePath(route) === 'community') {
+    const fromHikeComplete = new URLSearchParams(route.split('?')[1] ?? '').get('from') === 'hikes/complete'
+    return <Suspense fallback={<main className="app-route-loading" aria-busy="true">커뮤니티 화면을 불러오는 중이에요</main>}>
+      <CommunityPage initialScreen={fromHikeComplete ? 'review' : 'mountainSelect'} initialMountainId={completedHike?.mountainId}
+        completedHike={completedHike ?? undefined}
+        onExit={() => { window.location.hash = fromHikeComplete ? 'hikes/complete' : '' }} onNavigateOutside={navigateFromBottom} />
+    </Suspense>
   }
 
   if (routePath(route) === 'cart' || routePath(route).startsWith('cart/')) {
@@ -74,6 +84,10 @@ function App() {
       />
     </Suspense>
   }
+  if (routePath(route) === 'hikes/complete') return <HikeCompletePage onWriteReview={(mountainId, finishedAt) => {
+    setCompletedHike({ mountainId, finishedAt })
+    window.location.hash = 'community?from=hikes/complete'
+  }} />
   const HikeRoutePage = hikeRoutes[routePath(route)]
   // 주소의 ?값이 바뀌어도 화면을 새로 그리도록 전체 주소를 key로 쓴다.
   if (HikeRoutePage) return <HikeRoutePage key={route} />

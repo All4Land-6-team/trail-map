@@ -44,6 +44,9 @@ test('한국 날짜의 자정·연도 경계를 기준으로 오늘 일정을 �
 });
 
 test('코스 선택과 일정 상태를 후속 화면의 해시 경로로 전달한다', () => {
+  assert.equal(homePaths.community, 'community');
+  assert.equal(homePaths.saved, 'cart');
+  assert.equal(homePaths.myHikes, 'myHikes');
   assert.equal(homePaths.mountainCourses('bukhansan'), 'mountains/bukhansan/courses');
   assert.equal(homePaths.mountainCourses('산/1'), 'mountains/%EC%82%B0%2F1/courses');
   assert.equal(homePaths.todayHike('planned'), 'hikes/today');
