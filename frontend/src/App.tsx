@@ -15,6 +15,7 @@ import { HikeDetailPage } from './pages/HikeDetailPage/HikeDetailPage'
 import { HikeTodayPage } from './pages/HikeTodayPage/HikeTodayPage'
 
 const CartPage = lazy(() => import('./pages/CartPage/CartPage').then(({ CartPage: Page }) => ({ default: Page })))
+const CommunityPage = lazy(() => import('./pages/CommunityPage/CommunityPage').then(({ CommunityPage: Page }) => ({ default: Page })))
 const HikingStatusPage = lazy(() => import('./pages/HikePage/HikePage').then(({ HikePage: Page }) => ({ default: Page })))
 
 // 개발 서버에서만 ?preview=hike-status로 FLOW-06 일정 시트와 상태 화면을 확인한다.
@@ -49,6 +50,12 @@ function App() {
 
   if (HikeStatusPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'hike-status') {
     return <Suspense fallback={null}><HikeStatusPreviewPage /></Suspense>
+  }
+
+  if (routePath(route) === 'community') {
+    return <Suspense fallback={<main className="app-route-loading" aria-busy="true">커뮤니티 화면을 불러오는 중이에요</main>}>
+      <CommunityPage onExit={() => { window.location.hash = '' }} onNavigateOutside={navigateFromBottom} />
+    </Suspense>
   }
 
   if (routePath(route) === 'cart' || routePath(route).startsWith('cart/')) {

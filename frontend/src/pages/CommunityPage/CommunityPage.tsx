@@ -24,7 +24,6 @@ type MapCategory = 'all' | ReviewKind
 type SegmentStage = 'start' | 'via' | 'end'
 
 export type CommunityPageProps = {
-  /** 기존 앱의 URL 연결은 별도 이슈에서 수행한다. 이 컴포넌트는 화면 내부 전환만 관리한다. */
   initialScreen?: CommunityScreen
   readOnly?: boolean
   completedHike?: { mountainId: string; finishedAt: string }
@@ -393,7 +392,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
     {hasMountainBaseline && <span className="community-detail-metrics">접근성 <strong>4.5</strong> · 경관 <strong>4.8</strong></span>}
   </span>
   return <main ref={rootRef} className="community-page" style={sheetStyle} aria-label={title}>
-    <TopBar title={title} showLeading={screen !== 'mountainSelect'} showAction={false} onBack={back} className="community-page__topbar" />
+    <TopBar title={title} showLeading={screen !== 'mountainSelect' || Boolean(onExit)} showAction={false} onBack={back} className="community-page__topbar" />
 
     {screen === 'mountainSelect' && <>
       <CommunityMap className="community-page__map community-page__map--select" showRoute={false} center={MOUNTAIN_SELECT_CENTER} focusTarget={mountainFocus ?? undefined} zoom={9.5}

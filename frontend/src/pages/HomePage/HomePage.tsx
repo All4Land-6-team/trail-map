@@ -38,6 +38,8 @@ export function HomePage({
     if (destination === "home") {
       home.resetHome();
       navigateFromHome(homePaths.home);
+    } else if (destination === "community") {
+      navigateFromHome(homePaths.community);
     } else {
       home.notify("이 기능은 다음 단계에서 연결됩니다.");
     }
