@@ -8,6 +8,7 @@ import { EmptyState, Toast } from '../../components/feedback'
 import { communityCourse, communityMountains, communityReviewExamples, communitySegment, communitySegments, communitySpots } from '../../api/communityMock'
 import type { CommunityReview, CommunitySegment, Coordinate, ReviewDraft, ReviewKind, SpotType } from '../../types/community'
 import { useCommunityData, setCommunitySpots as setSpots, setCommunityReviews as setReviews, setCommunityVotes as setVotes, setCommunitySegmentVotes as setSegmentVotes } from '../../store/communityStore'
+import { getNickname } from '../../store/profileStore'
 import { canWriteReview, castSpotVote, distanceMeters, isSpotHidden, resolveSegmentStatus } from '../../utils/community'
 import { CommunityMap, type CommunityMapMarker } from './components/CommunityMap'
 import { CommunityPhotoAlbum, CommunityPhotoReview, CommunityPhotoStrip, type CommunityGalleryPhoto } from './components/SpotPhotoGallery'
@@ -69,8 +70,8 @@ function ReviewQuotes({ reviews, seedQuotes = [], scrollable = false, limit, sho
   return <div className={`community-quote-list${scrollable ? ' community-quote-list--scrollable' : ''}`} role={scrollable ? 'region' : undefined}
     aria-label={scrollable ? '산 후기 목록' : undefined} tabIndex={scrollable ? 0 : undefined}>
     {shownReviews.map(review => <div key={review.id} className="community-quote">{showRating
-      ? <span className="community-quote__meta community-quote__meta--mountain"><span>나</span>{review.rating != null && <strong>★ {review.rating.toFixed(1)}</strong>}<time dateTime={review.createdAt}>{new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' }).format(new Date(review.createdAt))}</time></span>
-      : <span>나 · 방금 전</span>}
+      ? <span className="community-quote__meta community-quote__meta--mountain"><span>{review.author ?? '나'}</span>{review.rating != null && <strong>★ {review.rating.toFixed(1)}</strong>}<time dateTime={review.createdAt}>{new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' }).format(new Date(review.createdAt))}</time></span>
+      : <span>{review.author ?? '나'} · 방금 전</span>}
       {review.segmentCoordinates && <small className="community-quote__segment">선택 구간 · {review.segmentCoordinates.length}개 경로 지점{review.segmentVia ? ' · 경유지 포함' : ''}</small>}
       <p>{review.content}</p>
       {review.status && <span className={`community-status-pill community-status-pill--${review.status}`}>{review.status === 'good' ? '양호' : review.status === 'caution' ? '주의 필요' : '위험'}</span>}</div>)}
@@ -323,7 +324,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     setReviews(current => [{ id: crypto.randomUUID(), kind: draft.kind, targetId: draft.targetId,
       content: draft.content.trim(), photos: draft.photos, rating: draft.kind === 'mountain' ? draft.rating : undefined,
       status: draft.status ?? undefined, segmentCoordinates: draft.kind === 'segment' ? draft.segmentCoordinates : undefined,
-      segmentVia: draft.kind === 'segment' ? draft.segmentVia : undefined, createdAt: new Date().toISOString() }, ...current])
+      segmentVia: draft.kind === 'segment' ? draft.segmentVia : undefined, author: getNickname(), createdAt: new Date().toISOString() }, ...current])
     setErrors({})
     const detail: CommunityScreen = draft.kind === 'mountain' ? 'mountainDetail' : draft.kind === 'spot' ? 'spotDetail' : 'segmentDetail'
     if (draft.kind === 'spot') focusSpot(draft.targetId)

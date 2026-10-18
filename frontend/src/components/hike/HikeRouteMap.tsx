@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AttributionControl, LngLatBounds, MapLibreMap, Marker, setWorkerUrl, type PaddingOptions } from "maplibre-gl";
+import { LngLatBounds, MapLibreMap, Marker, setWorkerUrl, type PaddingOptions } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { DistanceBubble, SpotMarker } from "../map";
@@ -45,6 +45,12 @@ function routeBounds(route: LngLat[]) {
   return route.reduce((bounds, point) => bounds.extend(point), new LngLatBounds(route[0], route[0]));
 }
 
+/** 지도 위에 겹친 하단 시트(useDraggableSheet)가 가리는 높이만큼 아래 여백을 더한다 */
+function withSheetInset(padding: PaddingOptions, container: HTMLElement | null): PaddingOptions {
+  const inset = container ? parseFloat(getComputedStyle(container).getPropertyValue("--hike-sheet-height")) || 0 : 0;
+  return { ...padding, bottom: (padding.bottom ?? 0) + inset };
+}
+
 /** 등산 코스 지도: 지나온 경로(회색)·남은 경로(초록)·현재 위치·정상·스팟·이동 거리 (HIKE-02·03·05·07) */
 export function HikeRouteMap({
   route, label, peak = route[route.length - 1], currentIndex, traveledKm, spots = NO_SPOTS,
@@ -70,12 +76,11 @@ export function HikeRouteMap({
       container: containerRef.current,
       style: BASE_MAP_STYLE_URL,
       bounds: routeBounds(route),
-      fitBoundsOptions: { padding },
+      fitBoundsOptions: { padding: withSheetInset(padding, containerRef.current) },
       maxZoom: MAP_MAX_ZOOM,
       attributionControl: false,
     });
-    // 근접 알림이 오른쪽 아래에 뜨므로 출처 표시는 왼쪽 아래에 둔다.
-    map.addControl(new AttributionControl({ compact: true }), "bottom-left");
+    // 내 등산 지도에는 출처 표시를 넣지 않는다 (팀 결정 전 임시. OSM 데이터는 ODbL상 출처 표시가 필요하다).
     mapRef.current = map;
     map.on("error", () => setHasLoadError(true));
     // 배경 타일을 기다리지 않도록 스타일만 준비되면 경로를 그린다.
@@ -90,7 +95,7 @@ export function HikeRouteMap({
       map.addLayer({ id: "hike-remaining", type: "line", source: "hike-remaining", layout, paint: { "line-color": REMAINING_COLOR, "line-width": 4 } });
       // 생성 시점에는 컨테이너 크기가 확정되지 않을 수 있어 경로 전체를 다시 맞춘다.
       map.resize();
-      map.fitBounds(routeBounds(route), { padding, duration: 0 });
+      map.fitBounds(routeBounds(route), { padding: withSheetInset(padding, map.getContainer()), duration: 0 });
     };
     map.on("style.load", drawRoute);
     map.on("load", drawRoute);
@@ -119,7 +124,7 @@ export function HikeRouteMap({
   useEffect(() => {
     if (recenterKey === 0) return;
     if (current) mapRef.current?.easeTo({ center: current, zoom: 16, duration: 400 });
-    else mapRef.current?.fitBounds(routeBounds(route), { padding, duration: 400 });
+    else mapRef.current?.fitBounds(routeBounds(route), { padding: withSheetInset(padding, containerRef.current), duration: 400 });
   }, [recenterKey, current, route, padding]);
 
   const visibleSpots = spots.filter(spot => filter === "all" || spot.kind === filter);

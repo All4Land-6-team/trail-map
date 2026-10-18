@@ -3,7 +3,7 @@ import { findCourse, toDateKey } from "../../api/hikeMock";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
 import { Toast } from "../../components/feedback";
-import { HikeAlertConfirm, HikeRouteMap, LocationPermissionSheet, SpotFilterChips, type SpotFilter } from "../../components/hike";
+import { HikeAlertConfirm, HikeRouteMap, LocationPermissionSheet, SheetHandle, SpotFilterChips, useDraggableSheet, type SpotFilter } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { MapAction } from "../../components/map";
 import { navigate } from "../../hooks/useHashRoute";
@@ -25,6 +25,7 @@ export function HikeTodayPage() {
   const [dimension, setDimension] = useState<"2D" | "3D">("2D");
   const [recenterKey, setRecenterKey] = useState(0);
   const [askingAlerts, setAskingAlerts] = useState(false);
+  const { sheetRef, bodyRef, collapsed: sheetCollapsed, sheetClassName, sheetStyle, handleProps: sheetHandleProps } = useDraggableSheet();
   const location = useLocationPermission();
   const toast = useToastMessage();
   const session = useHikeSession();
@@ -63,20 +64,24 @@ export function HikeTodayPage() {
             <MapAction aria-label="코스 전체 보기" onClick={() => setRecenterKey(key => key + 1)} />
           </div>
         </div>
-        <section className="hike-map-sheet hike-today-page__sheet" aria-labelledby="hike-today-title">
+        <section ref={sheetRef} className={`hike-map-sheet hike-today-page__sheet ${sheetClassName}`}
+          style={sheetStyle} aria-labelledby="hike-today-title">
+          <SheetHandle {...sheetHandleProps} />
           <p className="hike-map-sheet__eyebrow">오늘 {schedule.startTime} 출발</p>
           <h2 id="hike-today-title" className="hike-map-sheet__title">{schedule.mountainName} · {schedule.courseName}</h2>
-          <p className="hike-today-page__distance">{schedule.distanceKm.toFixed(1)} km</p>
-          <div className="hike-today-page__sunset">
-            <Icon name="Sun" size={24} />
-            <span>일몰 {course.sunset}</span>
-            <button type="button" className="hike-today-page__detail-link" onClick={() => navigate(hikePaths.detail(schedule.date))}>
-              일정 보기 ›
-            </button>
+          <div ref={bodyRef} className="hike-map-sheet__body" inert={sheetCollapsed}>
+            <p className="hike-today-page__distance">{schedule.distanceKm.toFixed(1)} km</p>
+            <div className="hike-today-page__sunset">
+              <Icon name="Sun" size={24} />
+              <span>일몰 {course.sunset}</span>
+              <button type="button" className="hike-today-page__detail-link" onClick={() => navigate(hikePaths.detail(schedule.date))}>
+                일정 보기 ›
+              </button>
+            </div>
+            <Button fullWidth className="hike-today-page__start" label={location.checking ? "위치 확인 중" : "등산 시작하기"}
+              disabled={location.checking} trailingIcon={<Icon name="ArrowRight" size={20} color="currentColor" />}
+              onClick={() => void startHike()} />
           </div>
-          <Button fullWidth className="hike-today-page__start" label={location.checking ? "위치 확인 중" : "등산 시작하기"}
-            disabled={location.checking} trailingIcon={<Icon name="ArrowRight" size={20} color="currentColor" />}
-            onClick={() => void startHike()} />
         </section>
       </> : <div className="hike-page__empty-state">
         <TopBar title="오늘의 등산" showAction={false} onBack={() => navigate("")} />

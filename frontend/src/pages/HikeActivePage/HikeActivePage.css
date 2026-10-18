@@ -1,9 +1,8 @@
-.hike-active-page__nearby { position: absolute; z-index: 2; right: 16px; bottom: 44px; max-width: min(252px, calc(100% - 32px)); box-shadow: 0 3px 5px rgba(23, 71, 54, .1); }
+.hike-active-page__nearby { position: absolute; z-index: 2; right: 16px; bottom: calc(44px + var(--hike-sheet-inset, 0px)); max-width: min(252px, calc(100% - 32px)); box-shadow: 0 3px 5px rgba(23, 71, 54, .1); }
 .hike-active-page__toast { bottom: 270px; }
 
 /* 지도 위로 25px 겹쳐 올라오는 진행 시트 (Figma sheet 257px) */
 .hike-progress-sheet { position: relative; z-index: 3; flex: none; margin-top: -25px; padding: 28px 20px 20px; border-radius: 25px 25px 0 0; color: var(--af-ink); background: #fff; box-shadow: 0 -8px 12px rgba(23, 71, 54, .06); }
-.hike-progress-sheet__handle { position: absolute; top: 10px; left: 50%; width: 40px; height: 4px; border-radius: 10px; background: #ccd9cc; transform: translateX(-50%); }
 .hike-progress-sheet__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .hike-progress-sheet__stage { margin: 0; font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-progress-sheet__course { overflow: hidden; color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
