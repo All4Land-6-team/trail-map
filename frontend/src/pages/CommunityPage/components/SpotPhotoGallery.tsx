@@ -77,7 +77,7 @@ export function CommunityPhotoReview({ photo, kind, index, total, onPrevious, on
     event.preventDefault()
     changePhoto(event.key === 'ArrowLeft' ? 'previous' : 'next')
   }
-  const nickname = photo.review ? '나' : photo.source === 'example' ? '등산객' : '스팟 등록자'
+  const nickname = photo.review ? photo.review.author ?? '나' : photo.source === 'example' ? '등산객' : '스팟 등록자'
   const rating = photo.review?.rating ?? photo.exampleRating
   const date = photo.review
     ? new Date(photo.review.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })

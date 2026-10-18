@@ -38,6 +38,8 @@ export type CommunityReview = {
   status?: SegmentStatus
   segmentCoordinates?: Coordinate[]
   segmentVia?: Coordinate
+  /** 작성자 닉네임 (내 등산에서 설정, 기본 익명). 이 칸이 생기기 전 후기는 '나'로 보여 준다 */
+  author?: string
   createdAt: string
 }
 
