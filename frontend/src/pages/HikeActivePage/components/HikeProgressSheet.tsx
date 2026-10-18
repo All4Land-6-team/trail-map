@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Button } from "../../../components/common/Button";
 import { Icon } from "../../../components/common/Icon";
+import { SheetHandle } from "../../../components/hike";
 
 export type HikeStage = "ascent" | "descent";
 
@@ -21,37 +23,40 @@ export function HikeProgressSheet({
   stage, courseName, traveledKm, remainingKm, sunset,
   alertsOn = false, onAlertsChange, onStartDescent, onEnd,
 }: HikeProgressSheetProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const descent = stage === "descent";
   const total = traveledKm + remainingKm;
   const percent = total > 0 ? Math.round((traveledKm / total) * 100) : 0;
 
   return <section className={["hike-progress-sheet", descent && "hike-progress-sheet--descent"].filter(Boolean).join(" ")}
     aria-label="등산 진행 상황">
-    <span className="hike-progress-sheet__handle" aria-hidden="true" />
+    <SheetHandle collapsed={collapsed} onCollapsedChange={setCollapsed} />
     <div className="hike-progress-sheet__head">
       <h2 className="hike-progress-sheet__stage">{descent ? "내려가는 중" : "올라가는 중"}</h2>
       {!descent && <span className="hike-progress-sheet__course">{courseName}</span>}
     </div>
-    <div className="hike-progress-sheet__distances">
-      {!descent && <span>이동 {traveledKm.toFixed(1)} km</span>}
-      <span>남은 {remainingKm.toFixed(1)} km</span>
-    </div>
-    <div className="hike-progress-sheet__track" role="progressbar" aria-label={descent ? "하산 진행률" : "등산 진행률"}
-      aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
-      <span style={{ width: `${percent}%` }} />
-    </div>
-    <div className="hike-progress-sheet__sunset">
-      <Icon name="Sun" size={24} />
-      <span>일몰 {sunset}</span>
-      {onAlertsChange && <button type="button" className="hike-progress-sheet__bell" aria-pressed={alertsOn}
-        aria-label={alertsOn ? "근접 알림 켜짐" : "근접 알림 꺼짐"} onClick={() => onAlertsChange(!alertsOn)}>
-        <Icon name={alertsOn ? "Bell" : "BellOff"} size={24} />
-      </button>}
-    </div>
-    <div className="hike-progress-sheet__actions">
-      {onStartDescent && <Button variant="secondary" className="hike-progress-sheet__descent"
-        label="하산 시작" onClick={onStartDescent} />}
-      <Button variant="secondary" className="hike-progress-sheet__end" label="등산 종료" onClick={onEnd} />
+    <div className="hike-progress-sheet__body" hidden={collapsed}>
+      <div className="hike-progress-sheet__distances">
+        {!descent && <span>이동 {traveledKm.toFixed(1)} km</span>}
+        <span>남은 {remainingKm.toFixed(1)} km</span>
+      </div>
+      <div className="hike-progress-sheet__track" role="progressbar" aria-label={descent ? "하산 진행률" : "등산 진행률"}
+        aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+        <span style={{ width: `${percent}%` }} />
+      </div>
+      <div className="hike-progress-sheet__sunset">
+        <Icon name="Sun" size={24} />
+        <span>일몰 {sunset}</span>
+        {onAlertsChange && <button type="button" className="hike-progress-sheet__bell" aria-pressed={alertsOn}
+          aria-label={alertsOn ? "근접 알림 켜짐" : "근접 알림 꺼짐"} onClick={() => onAlertsChange(!alertsOn)}>
+          <Icon name={alertsOn ? "Bell" : "BellOff"} size={24} />
+        </button>}
+      </div>
+      <div className="hike-progress-sheet__actions">
+        {onStartDescent && <Button variant="secondary" className="hike-progress-sheet__descent"
+          label="하산 시작" onClick={onStartDescent} />}
+        <Button variant="secondary" className="hike-progress-sheet__end" label="등산 종료" onClick={onEnd} />
+      </div>
     </div>
   </section>;
 }

@@ -17,8 +17,11 @@
 .hike-map-page__map .maplibregl-ctrl-bottom-left { bottom: 25px; }
 /* 지도 위로 25px 겹쳐 올라오는 하단 시트 */
 .hike-map-sheet { position: relative; z-index: 3; flex: none; margin-top: -25px; padding: 28px 20px 20px; border-radius: 25px 25px 0 0; color: var(--af-ink); background: #fff; box-shadow: 0 -8px 12px rgba(23, 71, 54, .06); }
-.hike-map-sheet::before { position: absolute; top: 10px; left: 50%; width: 40px; height: 4px; border-radius: 10px; background: #ccd9cc; transform: translateX(-50%); content: ""; }
 .hike-map-sheet__eyebrow { margin: 0; color: var(--af-green); font: 700 10px/14px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-map-sheet__title { margin: 8px 0 0; font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+/* 시트 손잡이(SheetHandle): 누르거나 끌어서 시트를 접고 펼친다 */
+.hike-sheet-handle { position: absolute; top: 0; left: 50%; width: 88px; height: 26px; padding: 0; border: 0; border-radius: 13px; background: transparent; transform: translateX(-50%); cursor: grab; touch-action: none; }
+.hike-sheet-handle::before { position: absolute; top: 10px; left: 50%; width: 40px; height: 4px; border-radius: 10px; background: #ccd9cc; transform: translateX(-50%); content: ""; }
+.hike-sheet-handle:focus-visible { outline: 2px solid var(--af-green); outline-offset: -2px; }
 .hike-page__empty-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px 20px; color: #617b6c; font: 400 13px/20px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: center; }
 .hike-page__empty-state p { margin: 0; }

@@ -112,6 +112,15 @@ export function HikeRouteMap({
     };
   }, [route, currentIndex, current, peak, spots, nodes, padding, showBubble]);
 
+  // 하단 시트를 접고 펼치면 지도 영역 높이가 바뀌므로 지도 크기를 다시 맞춘다.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => mapRef.current?.resize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     mapRef.current?.easeTo({ pitch: dimension === "3D" ? 60 : 0, duration: 400 });
   }, [dimension]);

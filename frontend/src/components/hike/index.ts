@@ -24,3 +24,5 @@ export { ScheduleSheet } from "./ScheduleSheet";
 export type { ScheduleCourse, ScheduleSaveResult, ScheduleSheetProps } from "./ScheduleSheet";
 export { SpotFilterChips } from "./SpotFilterChips";
 export type { SpotFilterChipsProps } from "./SpotFilterChips";
+export { SheetHandle } from "./SheetHandle";
+export type { SheetHandleProps } from "./SheetHandle";
