@@ -4,8 +4,9 @@ import { Calendar } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
 import { useHikeSchedules } from "../../store/hikeScheduleStore";
-import { hikePaths, navigateTab } from "../hikeRoutes";
+import { hikePaths, leaveMyHikes, navigateTab } from "../hikeRoutes";
 import { formatDateTitle, parseDateKey } from "../../utils/hikeFormat";
+import { NicknameCard } from "./components/NicknameCard";
 import { PlanCard } from "./components/PlanCard";
 import "../hikePages.css";
 import "./HikeCalendarPage.css";
@@ -28,7 +29,8 @@ export function HikeCalendarPage() {
 
   return <div className="hike-page hike-calendar-page">
     <main className="hike-page__body hike-calendar-page__body">
-      <TopBar title="내 등산" showLeading={false} showAction={false} />
+      <TopBar title="내 등산" showAction={false} onBack={leaveMyHikes} />
+      <NicknameCard />
       <Calendar className="hike-calendar-page__calendar" month={month} selectedDate={selected}
         scheduledDates={schedules.map(item => item.date)} onMonthChange={setMonth} onDateSelect={setSelected} />
       <section className="hike-calendar-page__day" aria-live="polite">

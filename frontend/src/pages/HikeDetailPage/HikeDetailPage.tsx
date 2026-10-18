@@ -4,7 +4,7 @@ import { courseFixtures } from "../../api/courseMock";
 import { coursePaths } from "../../routes/courseRoutes";
 import { Button } from "../../components/common/Button";
 import { Toast } from "../../components/feedback";
-import { ConfirmOverlay, HikeRouteMap, ScheduleSheet } from "../../components/hike";
+import { ConfirmOverlay, HikeRouteMap, ScheduleSheet, SheetHandle, useDraggableSheet } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
 import { useToastMessage } from "../../hooks/useToastMessage";
@@ -22,6 +22,7 @@ export function HikeDetailPage() {
   const schedule = useHikeSchedules().find(item => item.date === date);
   const course = schedule ? findCourse(schedule.courseId) : undefined;
   const [overlay, setOverlay] = useState<"edit" | "cancel" | null>(null);
+  const { sheetRef, bodyRef, collapsed: sheetCollapsed, sheetClassName, sheetStyle, handleProps: sheetHandleProps } = useDraggableSheet();
   const toast = useToastMessage();
   const backToCalendar = () => navigate(hikePaths.calendar(date || undefined));
 
@@ -35,25 +36,29 @@ export function HikeDetailPage() {
             <TopBar title="일정 상세" showAction={false} onBack={backToCalendar} />
           </div>
         </div>
-        <section className="hike-map-sheet hike-detail-page__sheet" aria-labelledby="hike-detail-title">
+        <section ref={sheetRef} className={`hike-map-sheet hike-detail-page__sheet ${sheetClassName}`}
+          style={sheetStyle} aria-labelledby="hike-detail-title">
+          <SheetHandle {...sheetHandleProps} />
           <p className="hike-map-sheet__eyebrow">{formatDateTitle(parseDateKey(schedule.date))}</p>
           <h2 id="hike-detail-title" className="hike-map-sheet__title">{schedule.mountainName} · {schedule.courseName}</h2>
-          <dl className="hike-detail-page__info">
-            <div><dt>출발</dt><dd>{formatKoreanTime(schedule.startTime)}</dd></div>
-            <div><dt>거리</dt><dd>{schedule.distanceKm.toFixed(1)} km</dd></div>
-            <div><dt>예상 시간</dt><dd>{formatDuration(course.durationMinutes)}</dd></div>
-            <div><dt>최대 고도</dt><dd>{course.maxAltitudeM == null ? "—" : `${course.maxAltitudeM} m`}</dd></div>
-            <div><dt>평균 경사도</dt><dd>{course.averageSlopePercent == null ? "—" : `약 ${course.averageSlopePercent}% (시안)`}</dd></div>
-          </dl>
-          <div className="hike-detail-page__actions">
-            <Button variant="secondary" fullWidth label="코스 보기"
-              onClick={() => {
-                const selected = courseFixtures.find(item => item.id === schedule.courseId);
-                if (selected) navigate(`${coursePaths.detail({ mountainId: selected.mountainId, courseId: selected.id })}?returnTo=${encodeURIComponent(hikePaths.detail(date))}`);
-              }} />
-            <Button variant="secondary" fullWidth label="일정 수정" onClick={() => setOverlay("edit")} />
+          <div ref={bodyRef} className="hike-map-sheet__body" inert={sheetCollapsed}>
+            <dl className="hike-detail-page__info">
+              <div><dt>출발</dt><dd>{formatKoreanTime(schedule.startTime)}</dd></div>
+              <div><dt>거리</dt><dd>{schedule.distanceKm.toFixed(1)} km</dd></div>
+              <div><dt>예상 시간</dt><dd>{formatDuration(course.durationMinutes)}</dd></div>
+              <div><dt>최대 고도</dt><dd>{course.maxAltitudeM == null ? "—" : `${course.maxAltitudeM} m`}</dd></div>
+              <div><dt>평균 경사도</dt><dd>{course.averageSlopePercent == null ? "—" : `약 ${course.averageSlopePercent}% (시안)`}</dd></div>
+            </dl>
+            <div className="hike-detail-page__actions">
+              <Button variant="secondary" fullWidth label="코스 보기"
+                onClick={() => {
+                  const selected = courseFixtures.find(item => item.id === schedule.courseId);
+                  if (selected) navigate(`${coursePaths.detail({ mountainId: selected.mountainId, courseId: selected.id })}?returnTo=${encodeURIComponent(hikePaths.detail(date))}`);
+                }} />
+              <Button variant="secondary" fullWidth label="일정 수정" onClick={() => setOverlay("edit")} />
+            </div>
+            <button type="button" className="hike-detail-page__cancel" onClick={() => setOverlay("cancel")}>일정 취소</button>
           </div>
-          <button type="button" className="hike-detail-page__cancel" onClick={() => setOverlay("cancel")}>일정 취소</button>
         </section>
       </> : <div className="hike-page__empty-state">
         <TopBar title="일정 상세" showAction={false} onBack={backToCalendar} />
