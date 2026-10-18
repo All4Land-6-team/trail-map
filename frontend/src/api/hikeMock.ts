@@ -93,6 +93,7 @@ export const sampleDescentHike: ActiveHike = {
 };
 
 export const sampleHikeResult: HikeResult = {
+  mountainId: "bukhansan",
   mountainName: "북한산",
   courseName: "백운대 코스",
   distanceKm: 4.2,

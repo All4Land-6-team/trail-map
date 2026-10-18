@@ -1,19 +1,19 @@
+import { useState } from "react";
 import { sampleHikeResult } from "../../api/hikeMock";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
-import { Toast } from "../../components/feedback";
 import { BottomNavigation } from "../../components/layout";
 import { navigate } from "../../hooks/useHashRoute";
-import { useToastMessage } from "../../hooks/useToastMessage";
 import { formatDuration } from "../../utils/hikeFormat";
 import { hikePaths, navigateTab } from "../hikeRoutes";
 import "../hikePages.css";
 import "./HikeCompletePage.css";
 
 /** HIKE-08 등산 완료 (`#hikes/complete`) */
-export function HikeCompletePage() {
+export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId: string, finishedAt: string) => void }) {
   const result = sampleHikeResult;
-  const toast = useToastMessage();
+  // shortcut: 목 화면 진입 시각을 완료 시각으로 사용하며, 실제 산행 기록 연동 시 교체한다.
+  const [finishedAt] = useState(() => new Date().toISOString());
   // 나중에 → 오늘 날짜가 선택된 HIKE-01 캘린더
   const backToCalendar = () => navigate(hikePaths.calendar());
 
@@ -47,11 +47,10 @@ export function HikeCompletePage() {
       <section className="hike-complete-page__review" aria-labelledby="hike-review-question">
         <h2 id="hike-review-question" className="hike-complete-page__question">산 후기를 작성하시겠어요?</h2>
         <div className="hike-complete-page__actions">
-          <Button fullWidth label="산 후기 작성" onClick={() => toast.show("산 후기 작성(COMM-05)은 아직 준비 중이에요")} />
+          <Button fullWidth label="산 후기 작성" onClick={() => onWriteReview(result.mountainId, finishedAt)} />
           <Button fullWidth variant="secondary" label="나중에" onClick={backToCalendar} />
         </div>
       </section>
-      {toast.message && <Toast className="hike-page__toast" message={toast.message} />}
     </main>
     <BottomNavigation className="hike-page__nav" active="myHikes" onNavigate={navigateTab} />
   </div>;

@@ -25,6 +25,7 @@ type SegmentStage = 'start' | 'via' | 'end'
 
 export type CommunityPageProps = {
   initialScreen?: CommunityScreen
+  initialMountainId?: string
   readOnly?: boolean
   completedHike?: { mountainId: string; finishedAt: string }
   onExit?: () => void
@@ -106,11 +107,11 @@ function ReviewEligibilityInfo() {
   </span>
 }
 
-export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = false, completedHike, onExit, onNavigateOutside }: CommunityPageProps) {
+export function CommunityPage({ initialScreen = 'mountainSelect', initialMountainId = 'bukhansan', readOnly = false, completedHike, onExit, onNavigateOutside }: CommunityPageProps) {
   const [screens, setScreens] = useState<CommunityScreen[]>([initialScreen])
   const screen = screens.at(-1)!
   const isDetail = screen === 'mountainDetail' || screen === 'spotDetail' || screen === 'segmentDetail'
-  const [mountainId, setMountainId] = useState('bukhansan')
+  const [mountainId, setMountainId] = useState(initialMountainId)
   const [mountainFocus, setMountainFocus] = useState<{ coordinate: Coordinate; request: number } | null>(null)
   const [mapCategory, setMapCategory] = useState<MapCategory>('all')
   const [categoryFocusRequest, setCategoryFocusRequest] = useState(1)
@@ -128,7 +129,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
   const [galleryPhotoId, setGalleryPhotoId] = useState<string | null>(null)
   const [galleryKind, setGalleryKind] = useState<ReviewKind>('spot')
   const [detailSpotFocus, setDetailSpotFocus] = useState<{ coordinate: Coordinate; request: number; zoom: number } | null>(null)
-  const [draft, setDraft] = useState<ReviewDraft>(() => blankDraft('mountain', 'bukhansan'))
+  const [draft, setDraft] = useState<ReviewDraft>(() => blankDraft('mountain', initialMountainId))
   const [pickerSpotId, setPickerSpotId] = useState<string | null>(null)
   const [segmentStage, setSegmentStage] = useState<SegmentStage>('start')
   const [segmentStart, setSegmentStart] = useState<number | null>(null)

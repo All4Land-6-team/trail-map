@@ -55,6 +55,7 @@ export type ActiveHike = {
 
 /** hike_record 종료 결과 */
 export type HikeResult = {
+  mountainId: string;
   mountainName: string;
   courseName: string;
   distanceKm: number;
