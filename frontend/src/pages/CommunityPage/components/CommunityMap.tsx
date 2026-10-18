@@ -37,19 +37,14 @@ const SEGMENT_COLORS: Record<SegmentStatus, string> = { good: '#19765b', caution
 const BASE_ROUTE_LAYER = 'course-route-community-baegundae'
 const SEGMENT_ROUTE_LAYER = 'course-route-community-segment-status'
 const DEFAULT_CENTER: Coordinate = [126.977, 37.659]
-const MARKER_CLUSTER_DISTANCE = 48
-
 type ProjectedMarker = { marker: CommunityMapMarker; x: number; y: number }
 
-function groupNearbyMarkers(markers: readonly ProjectedMarker[]) {
+function groupCoincidentMarkers(markers: readonly ProjectedMarker[]) {
   const remaining = markers.filter(({ marker }) => marker.kind !== 'mountain')
   const groups: ProjectedMarker[][] = []
   for (const marker of remaining) {
-    const group = groups.find(items => {
-      const centerX = items.reduce((sum, item) => sum + item.x, 0) / items.length
-      const centerY = items.reduce((sum, item) => sum + item.y, 0) / items.length
-      return Math.hypot(centerX - marker.x, centerY - marker.y) < MARKER_CLUSTER_DISTANCE
-    })
+    const group = groups.find(items => items[0].marker.coordinate[0] === marker.marker.coordinate[0]
+      && items[0].marker.coordinate[1] === marker.marker.coordinate[1])
     if (group) group.push(marker)
     else groups.push([marker])
   }
@@ -150,22 +145,12 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
     return () => { map.off('click', select) }
   }, [map, onMapSelect])
 
-  const markerGroups = isMainMap ? groupNearbyMarkers(projected) : projected.map(item => [item])
+  const markerGroups = isMainMap ? groupCoincidentMarkers(projected) : projected.map(item => [item])
   const mountainMarkers = projected.filter(({ marker }) => marker.kind === 'mountain')
   const displayedGroups = isMainMap ? [...mountainMarkers.map(item => [item]), ...markerGroups] : markerGroups
 
   const expandCluster = (group: readonly ProjectedMarker[]) => {
-    if (!map) return
-    if (map.getZoom() >= Math.min(18, map.getMaxZoom() - 0.5)) {
-      setClusterChoices(group.map(item => item.marker))
-      return
-    }
-    const center: Coordinate = [
-      group.reduce((total, item) => total + item.marker.coordinate[0], 0) / group.length,
-      group.reduce((total, item) => total + item.marker.coordinate[1], 0) / group.length,
-    ]
-    map.easeTo({ center, zoom: Math.min(map.getZoom() + 2, map.getMaxZoom()),
-      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220 })
+    setClusterChoices(group.map(item => item.marker))
   }
 
   return <div className={['community-map', className].filter(Boolean).join(' ')}>
@@ -182,7 +167,7 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
         style={{ left: group.reduce((total, item) => total + item.x, 0) / group.length,
           top: group.reduce((total, item) => total + item.y, 0) / group.length } as CSSProperties}>
         <button type="button" className="community-map__cluster"
-          aria-label={`겹친 지도 항목 ${group.length}개 확대 또는 목록 보기`} onClick={() => expandCluster(group)}>{group.length}</button>
+          aria-label={`같은 위치의 지도 항목 ${group.length}개 선택`} onClick={() => expandCluster(group)}>{group.length}</button>
       </div> : group.map(({ marker, x, y }) => <div key={marker.id} className={`community-map__pin community-map__pin--${marker.kind}${marker.selected ? ' community-map__pin--selected' : ''}`}
         style={{ left: x, top: y } as CSSProperties}>
         {marker.kind === 'mountain'
