@@ -93,7 +93,6 @@ function BaseMap({
       const mapOptions: MapOptions = {
         container: containerRef.current,
         style: BASE_MAP_STYLE_URL,
-        attributionControl: { compact: true },
         minZoom: MAP_MIN_ZOOM,
         maxZoom: MAP_MAX_ZOOM,
         fitBoundsOptions: fitBoundsPadding ? { padding: fitBoundsPadding } : undefined,
@@ -104,16 +103,6 @@ function BaseMap({
             : { bounds: SOUTH_KOREA_BOUNDS }),
       }
       map = new MapLibreMap(mapOptions)
-      // 출처 링크는 정보 버튼에 유지하되, 지도가 열릴 때 긴 표시가 화면을 덮지 않게 한다.
-      const collapseAttribution = () => {
-        const attribution = map.getContainer().querySelector<HTMLDetailsElement>('.maplibregl-ctrl-attrib')
-        if (!attribution) return
-        attribution.classList.add('maplibregl-compact')
-        attribution.classList.remove('maplibregl-compact-show')
-        attribution.open = false
-      }
-      collapseAttribution()
-      map.once('load', collapseAttribution)
     } catch {
       const frame = requestAnimationFrame(() => setHasLoadError(true))
       return () => cancelAnimationFrame(frame)
