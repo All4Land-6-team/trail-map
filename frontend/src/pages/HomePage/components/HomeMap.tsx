@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import type { MapLibreMap } from "maplibre-gl";
 import BaseMap from "../../../components/map/BaseMap";
 import { MountainMarker } from "../../../components/map";
+import { SOUTH_KOREA_MAINLAND_CENTER } from "../../../constants/map";
 import type { HomeMountain } from "../../../types/home";
 
 type HomeMapProps = {
@@ -12,7 +13,6 @@ type HomeMapProps = {
 };
 
 type ProjectedMountain = { mountain: HomeMountain; x: number; y: number; labelOffset: number; labelLeft: boolean };
-const MAP_PADDING = { top: 170, bottom: 28, left: 18, right: 78 };
 
 /** 실제 지도 좌표를 유지하면서 가까운 산 이름이 겹치지 않도록 라벨만 펼친다. */
 function projectMountains(map: MapLibreMap, mountains: readonly HomeMountain[]): ProjectedMountain[] {
@@ -58,7 +58,7 @@ export function HomeMap({ mountains, selectedMountainId, onSelect, onMapClick }:
   }, [map, mountains, onMapClick]);
 
   return <div className="home-map">
-    <BaseMap className="home-map__base" fitBoundsPadding={MAP_PADDING}
+    <BaseMap className="home-map__base" center={SOUTH_KOREA_MAINLAND_CENTER} zoom={6.1}
       showNavigationControl={false} onMapReady={handleMapReady} />
     <div className="home-map__markers" aria-label="지도에서 산 선택">
       {positions.map(({ mountain, x, y, labelOffset, labelLeft }) => <div key={mountain.id}

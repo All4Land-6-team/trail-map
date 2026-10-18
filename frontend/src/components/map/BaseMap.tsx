@@ -9,11 +9,13 @@ import {
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { limitZoomOutToSouthKorea } from '../../utils/mapZoom'
 import {
   BASE_MAP_STYLE_URL,
   MAP_MAX_ZOOM,
   MAP_MIN_ZOOM,
   SOUTH_KOREA_BOUNDS,
+  SOUTH_KOREA_MAINLAND_CENTER,
 } from '../../constants/map'
 
 // MapLibre 6은 워커 파일이 분리되어 있어 Vite가 번들한 주소를 직접 지정한다
@@ -95,6 +97,7 @@ function BaseMap({
         style: BASE_MAP_STYLE_URL,
         minZoom: MAP_MIN_ZOOM,
         maxZoom: MAP_MAX_ZOOM,
+        attributionControl: { compact: true },
         fitBoundsOptions: fitBoundsPadding ? { padding: fitBoundsPadding } : undefined,
         ...(bounds
           ? { bounds }
@@ -103,14 +106,19 @@ function BaseMap({
             : { bounds: SOUTH_KOREA_BOUNDS }),
       }
       map = new MapLibreMap(mapOptions)
+      if (!bounds && !center) map.jumpTo({ center: SOUTH_KOREA_MAINLAND_CENTER })
+      // 출처 정보는 정보 버튼을 눌렀을 때만 펼친다.
+      map.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show')
     } catch {
       const frame = requestAnimationFrame(() => setHasLoadError(true))
       return () => cancelAnimationFrame(frame)
     }
 
+    const removeZoomLimit = limitZoomOutToSouthKorea(map)
     if (showNavigationControl) map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
     mapRef.current = map
     map.on('load', () => {
+      map.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show')
       renderedRouteIdsRef.current = replaceMapRoutes(
         map,
         renderedRouteIdsRef.current,
@@ -121,6 +129,7 @@ function BaseMap({
     onMapReadyRef.current?.(map)
 
     return () => {
+      removeZoomLimit()
       onMapReadyRef.current?.(null)
       mapRef.current = null
       renderedRouteIdsRef.current = []

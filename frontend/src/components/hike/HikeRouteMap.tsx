@@ -4,7 +4,8 @@ import { AttributionControl, LngLatBounds, MapLibreMap, Marker, setWorkerUrl, ty
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { DistanceBubble, SpotMarker } from "../map";
-import { BASE_MAP_STYLE_URL, MAP_MAX_ZOOM } from "../../constants/map";
+import { BASE_MAP_STYLE_URL, MAP_MAX_ZOOM, MAP_MIN_ZOOM } from "../../constants/map";
+import { limitZoomOutToSouthKorea } from "../../utils/mapZoom";
 import type { HikeSpot, LngLat } from "../../types/hike";
 import "./hike.css";
 
@@ -71,11 +72,15 @@ export function HikeRouteMap({
       style: BASE_MAP_STYLE_URL,
       bounds: routeBounds(route),
       fitBoundsOptions: { padding },
+      minZoom: MAP_MIN_ZOOM,
       maxZoom: MAP_MAX_ZOOM,
       attributionControl: false,
     });
     // 근접 알림이 오른쪽 아래에 뜨므로 출처 표시는 왼쪽 아래에 둔다.
     map.addControl(new AttributionControl({ compact: true }), "bottom-left");
+    // 출처 정보는 정보 버튼을 눌렀을 때만 펼친다.
+    map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
+    const removeZoomLimit = limitZoomOutToSouthKorea(map);
     mapRef.current = map;
     map.on("error", () => setHasLoadError(true));
     // 배경 타일을 기다리지 않도록 스타일만 준비되면 경로를 그린다.
@@ -94,6 +99,7 @@ export function HikeRouteMap({
     };
     map.on("style.load", drawRoute);
     map.on("load", drawRoute);
+    map.once("load", () => map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show"));
 
     const markers = [
       ...spots.map(spot => new Marker({ element: nodes.spots.get(spot.id)! }).setLngLat(spot.position)),
@@ -106,6 +112,7 @@ export function HikeRouteMap({
     markers.forEach(marker => marker.addTo(map));
 
     return () => {
+      removeZoomLimit();
       markers.forEach(marker => marker.remove());
       map.remove();
       mapRef.current = null;
