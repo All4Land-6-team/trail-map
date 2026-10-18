@@ -86,7 +86,7 @@
 .af-overlay-layer__dim { position: absolute; inset: 0; background: rgb(23 61 50 / 28%); }
 .af-overlay-layer__panel { position: relative; display: flex; justify-content: center; width: 100%; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; outline: none; }
 .af-overlay-layer--center > .af-overlay-layer__panel { width: auto; max-width: 100%; }
-/* 바텀시트는 화면(.hike-page)과 같은 최대 폭 480px 안에 띄운다 */
-.af-overlay-layer--bottom > .af-overlay-layer__panel { max-width: 480px; }
+/* 바텀시트는 화면(.hike-page)과 같은 최대 폭 390px 안에 띄운다 */
+.af-overlay-layer--bottom > .af-overlay-layer__panel { max-width: 390px; }
 /* 하단 내비게이션 위에 띄우는 바텀시트. 내비게이션은 어둡게 비쳐 보인다 (Figma FLOW-06 · HIKE-04 · HIKE-09) */
 .af-overlay-layer--above-nav { padding-bottom: var(--af-overlay-nav-offset, 0px); }

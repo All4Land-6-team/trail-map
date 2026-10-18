@@ -1,5 +1,5 @@
-/* 내 등산 화면(HIKE-01~09) 공통 골격: 모바일 폭 고정 + 하단 내비게이션 */
-.hike-page { position: relative; display: flex; flex-direction: column; width: 100%; max-width: 480px; height: 100dvh; margin: 0 auto; overflow: hidden; background: #f3f8f1; font-family: "Noto Sans KR", sans-serif; }
+/* 내 등산 화면(HIKE-01~09) 공통 골격: 다른 화면과 같은 390px 폭 + 하단 내비게이션 */
+.hike-page { position: relative; display: flex; flex-direction: column; width: min(100%, 390px); height: 100dvh; margin: 0 auto; overflow: hidden; background: #f3f8f1; font-family: "Noto Sans KR", sans-serif; }
 .hike-page__body { position: relative; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .hike-page__nav { flex: none; padding-bottom: env(safe-area-inset-bottom); }
 .hike-page__toast { position: absolute; z-index: 5; bottom: 16px; left: 50%; transform: translateX(-50%); }
