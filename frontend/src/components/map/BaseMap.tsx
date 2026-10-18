@@ -9,11 +9,13 @@ import {
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { limitMapToSouthKorea } from '../../utils/mapZoom'
 import {
   BASE_MAP_STYLE_URL,
   MAP_MAX_ZOOM,
   MAP_MIN_ZOOM,
   SOUTH_KOREA_BOUNDS,
+  SOUTH_KOREA_MAINLAND_CENTER,
 } from '../../constants/map'
 
 // MapLibre 6은 워커 파일이 분리되어 있어 Vite가 번들한 주소를 직접 지정한다
@@ -95,6 +97,8 @@ function BaseMap({
         style: BASE_MAP_STYLE_URL,
         minZoom: MAP_MIN_ZOOM,
         maxZoom: MAP_MAX_ZOOM,
+        // 지도 위에는 출처 표시를 넣지 않는다 (팀 결정 전 임시. OSM 데이터는 ODbL상 출처 표시가 필요하다).
+        attributionControl: false,
         fitBoundsOptions: fitBoundsPadding ? { padding: fitBoundsPadding } : undefined,
         ...(bounds
           ? { bounds }
@@ -103,11 +107,13 @@ function BaseMap({
             : { bounds: SOUTH_KOREA_BOUNDS }),
       }
       map = new MapLibreMap(mapOptions)
+      if (!bounds && !center) map.jumpTo({ center: SOUTH_KOREA_MAINLAND_CENTER })
     } catch {
       const frame = requestAnimationFrame(() => setHasLoadError(true))
       return () => cancelAnimationFrame(frame)
     }
 
+    const removeMapLimit = limitMapToSouthKorea(map)
     if (showNavigationControl) map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
     mapRef.current = map
     map.on('load', () => {
@@ -121,6 +127,7 @@ function BaseMap({
     onMapReadyRef.current?.(map)
 
     return () => {
+      removeMapLimit()
       onMapReadyRef.current?.(null)
       mapRef.current = null
       renderedRouteIdsRef.current = []
