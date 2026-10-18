@@ -116,7 +116,7 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
   }, [map, className])
 
   useEffect(() => {
-    if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-segment'))) return
+    if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-segment'))) return
     const mapRect = map.getContainer().getBoundingClientRect()
     const page = map.getContainer().closest('.community-page')
     const sheetTop = page?.querySelector('.community-page__sheet')?.getBoundingClientRect().top ?? mapRect.bottom

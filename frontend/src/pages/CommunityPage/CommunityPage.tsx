@@ -192,6 +192,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
   const selectedSpot = spots.find(spot => spot.id === detailSpotId)
   const selectedSegment = communitySegments.find(segment => segment.id === detailSegmentId) ?? communitySegment
   const selectedSegmentIndex = communitySegments.indexOf(selectedSegment)
+  const mountainDetailFocus = useMemo(() => ({ coordinate: mountain.position as Coordinate, request: 1, zoom: CATEGORY_MAP_ZOOM.mountain, resetZoom: true }), [mountain.position])
   const segmentDetailFocus = useMemo(() => ({ coordinate: segmentCenter(selectedSegment), request: 1, zoom: 16 }), [selectedSegment])
   const segmentVote = segmentVotes[selectedSegment.id] ?? { yes: 0, no: 0, viewer: null }
   const selectedSpotHidden = selectedSpot ? isSpotHidden(votes[selectedSpot.id]) : false
@@ -409,7 +410,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
       className={`community-page__map ${screen === 'map' ? 'community-page__map--main' : `community-page__map--detail community-page__map--detail-${screen === 'mountainDetail' ? 'mountain' : screen === 'spotDetail' ? 'spot' : 'segment'}`}`}
       center={mountain.position as Coordinate}
       zoom={MAIN_MAP_ZOOM}
-      focusTarget={screen === 'map' ? mapFocus : screen === 'spotDetail' ? detailSpotFocus ?? undefined
+      focusTarget={screen === 'map' ? mapFocus : screen === 'mountainDetail' ? mountainDetailFocus : screen === 'spotDetail' ? detailSpotFocus ?? undefined
         : screen === 'segmentDetail' ? segmentDetailFocus : undefined}
       showRoute={mountainId === 'bukhansan'}
       segmentLine={screen === 'segmentDetail' && mountainId === 'bukhansan'
