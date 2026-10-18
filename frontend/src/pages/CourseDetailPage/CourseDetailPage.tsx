@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
 import { BottomNavigation, TabBar, TopBar, type BottomDestination } from "../../components/layout";
@@ -6,6 +6,7 @@ import { BottomSheet } from "../../components/overlay";
 import { EmptyState, Toast } from "../../components/feedback";
 import { CourseRouteMap } from "../../components/map/CourseRouteMap";
 import { courseDetailPath } from "../../routes/courseDetailRoutes";
+import { readHashParams } from "../../hooks/useHashRoute";
 import { coursePaths } from "../../routes/courseRoutes";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
@@ -20,7 +21,6 @@ import "./course-detail.css";
 
 export type CourseDetailPageProps = CourseRequest & {
   view?: CourseDetailView;
-  scheduleRequested?: boolean;
   hasSchedule?: boolean;
   onBack?: () => void;
   onSpotOpen?: (request: CourseSpotRequest) => void;
@@ -29,9 +29,10 @@ export type CourseDetailPageProps = CourseRequest & {
 const DEFAULT_VIEW: CourseDetailView = { tab: "analysis", category: "all" };
 const savedBagAsset = new URL("../../assets/icons/bag-selected.svg", import.meta.url).href;
 
-export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, scheduleRequested = false, hasSchedule = false,
+export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, hasSchedule = false,
   onBack, onSpotOpen, onScheduleOpen }: CourseDetailPageProps) {
   const request = { mountainId, courseId };
+  const returnTo = readHashParams().get("returnTo");
   const { state, toast, notify, retry } = useCourseDetail(request);
   const { rootRef, sheetTop, style: sheetStyle, handleProps } = useDetailSheet();
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -48,11 +49,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, sc
   const sample = data?.samples[selectedIndex] ?? null;
   const selectedSpot = spots.find(spot => spot.id === view.spotId) ?? spots[0];
   const back = onBack ?? (() => navigateFromHome(coursePaths.list(mountainId, courseId)));
-  useEffect(() => {
-    if (scheduleRequested) notify("일정 등록 화면은 담당 작업과 통합 후 연결됩니다.");
-  }, [scheduleRequested, notify]);
 
-  function changeView(next: CourseDetailView) { navigateFromHome(courseDetailPath(request, next)); }
+  function changeView(next: CourseDetailView) { navigateFromHome(courseDetailPath(request, next, returnTo)); }
   function toggleMetric(key: keyof ProfileVisibility) {
     const next = toggleProfileMetric(visibility, key);
     if (next === visibility) notify("고도 또는 경사도 중 하나는 선택해 주세요.");
@@ -67,19 +65,16 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, sc
     else {
       const path = courseDetailPath(request, view);
       navigateFromHome(coursePaths.schedule(request) + (path.includes("?") ? path.slice(path.indexOf("?")) : ""));
-      notify("일정 등록 화면은 담당 작업과 통합 후 연결됩니다.");
     }
   }
   function openSpot(spot: CourseSpot) {
     const next = { ...view, spotId: spot.id };
-    const returnPath = courseDetailPath(request, next);
-    changeView(next);
+    const returnPath = courseDetailPath(request, next, returnTo);
     if (onSpotOpen) onSpotOpen({ ...request, spotId: spot.id, category: view.category, returnPath });
     else notify("스팟 후기 화면은 커뮤니티 작업과 통합 후 연결됩니다.");
   }
   function navigateTab(destination: BottomDestination) {
-    if (destination === "home") navigateFromHome(homePaths.home);
-    else notify("이 기능은 다음 단계에서 연결됩니다.");
+    navigateFromHome(homePaths[destination]);
   }
 
   return <main ref={rootRef} className="course-detail-page" style={sheetStyle} aria-label="코스 상세 화면"

@@ -12,6 +12,7 @@ import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionSt
 import type { Course, CourseDifficulty, CourseFilters, CourseRequest, DetailedCourseFilters } from "../../types/course";
 import { COURSE_DIFFICULTY_LABELS, DEFAULT_COURSE_FILTERS, getCourseFilterChips, hasCourseFilters, hasDetailedCourseFilters, removeCourseFilter } from "../../utils/courseDiscovery";
 import { CourseCarousel } from "./components/CourseCarousel";
+import { useHikeSchedules } from "../../store/hikeScheduleStore";
 import { CourseFilterSheet } from "./components/CourseFilterSheet";
 import { CourseMap } from "./components/CourseMap";
 import { useCourseDiscovery } from "./hooks/useCourseDiscovery";
@@ -26,6 +27,7 @@ export type CourseListPageProps = {
 };
 
 export function CourseListPage({ mountainId, initialCourseId, onBack = () => navigateFromHome(homePaths.home), onCourseOpen, onScheduleOpen }: CourseListPageProps) {
+  const schedules = useHikeSchedules();
   const discovery = useCourseDiscovery(mountainId, initialCourseId);
   const savedIds = useSavedCourseIds();
   const filterOpener = useRef<HTMLButtonElement | null>(null);
@@ -59,12 +61,11 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     if (onScheduleOpen) onScheduleOpen(request);
     else {
       navigateFromHome(coursePaths.schedule(request));
-      notify("일정 등록 화면은 담당 작업과 통합 후 연결됩니다.");
     }
   }
   function navigateTab(destination: BottomDestination) {
     if (destination === "home") onBack();
-    else notify("이 기능은 다음 단계에서 연결됩니다.");
+    else navigateFromHome(homePaths[destination]);
   }
 
   if (state.status !== "success") return <main className="course-page course-page--status" aria-label="산별 코스 목록">
@@ -109,7 +110,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
           </div>
           {selectedCourse ? <>
             <CourseCarousel key={courses.map(course => course.id).join(",")} courses={courses} selectedId={selectedCourse.id}
-              savedIds={savedIds} onSelect={discovery.setSelectedId} onSave={saveCourse} onSchedule={openSchedule} onOpen={openCourse} />
+              savedIds={savedIds} scheduledIds={schedules.map(item => item.courseId)} onSelect={discovery.setSelectedId} onSave={saveCourse} onSchedule={openSchedule} onOpen={openCourse} />
             <PageIndicator count={courses.length} activeIndex={activeIndex} className="course-list-sheet__pages"
               onPageChange={index => discovery.setSelectedId(courses[index].id)} />
           </> : <EmptyState title={allCourses.length ? "조건에 맞는 코스가 없어요." : "아직 등록된 코스가 없어요."}

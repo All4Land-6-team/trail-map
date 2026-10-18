@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { sampleActiveHike } from "../../api/hikeMock";
-import { NearbyAlert, Toast } from "../../components/feedback";
+import { useMemo, useState } from "react";
+import { findCourse } from "../../api/hikeMock";
+import { Button } from "../../components/common/Button";
+import { finishHikeSession, setHikeAlerts, startHikeDescent, useHikeSession } from "../../store/hikeSessionStore";
+import { initialHikeProgress } from "../../utils/activeHike";
 import { HikeEndConfirm, HikeRouteMap, HikeShareSheet, SpotFilterChips, type SpotFilter } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { MapAction } from "../../components/map";
-import { navigate, readHashParams } from "../../hooks/useHashRoute";
-import { useToastMessage } from "../../hooks/useToastMessage";
+import { navigate } from "../../hooks/useHashRoute";
 import { hikePaths, navigateTab } from "../hikeRoutes";
 import { HikeProgressSheet } from "./components/HikeProgressSheet";
 import "../hikePages.css";
@@ -13,14 +14,16 @@ import "./HikeActivePage.css";
 
 /** HIKE-05 등산 중 (`#hikes/active?alerts=on|off`). 알림 기본값은 HIKE-04 알림 수신 확인에서 고른 값이다. */
 export function HikeActivePage() {
-  const hike = sampleActiveHike;
+  const session = useHikeSession();
+  const course = session ? findCourse(session.schedule.courseId) : undefined;
+  const hike = useMemo(() => course ? initialHikeProgress(course, session?.phase === "downhill") : null, [course, session?.phase]);
   const [filter, setFilter] = useState<SpotFilter>("all");
   const [dimension, setDimension] = useState<"2D" | "3D">("2D");
   const [recenterKey, setRecenterKey] = useState(0);
-  const [alertsOn, setAlertsOn] = useState(() => readHashParams().get("alerts") !== "off");
-  const [nearbyClosed, setNearbyClosed] = useState(false);
+  const alertsOn = session?.alertsOn ?? false;
   const [overlay, setOverlay] = useState<"share" | "end" | null>(null);
-  const toast = useToastMessage();
+  if (!session || !hike || session.phase === "complete") return <main className="hike-page__empty-state">
+    <p>진행 중인 등산이 없어요.</p><Button label="오늘의 등산 보기" onClick={() => navigate(hikePaths.today)} /></main>;
 
   return <div className="hike-page hike-map-page hike-active-page">
     <main className="hike-page__body hike-map-page__body">
@@ -38,22 +41,25 @@ export function HikeActivePage() {
           <MapAction aria-label="현재 위치로 이동" onClick={() => setRecenterKey(key => key + 1)} />
           <MapAction variant="brand" aria-label="공유" onClick={() => setOverlay("share")} />
         </div>
-        {alertsOn && hike.nearby && !nearbyClosed && <NearbyAlert className="hike-active-page__nearby"
-          title={hike.nearby.title} detail={hike.nearby.detail} onClose={() => setNearbyClosed(true)} />}
       </div>
-      <HikeProgressSheet stage="ascent" courseName={hike.courseName}
+      <HikeProgressSheet stage={session.phase === "downhill" ? "descent" : "ascent"} courseName={hike.courseName}
         traveledKm={hike.traveledKm} remainingKm={hike.remainingKm} sunset={hike.sunset}
-        alertsOn={alertsOn} onAlertsChange={setAlertsOn}
-        onStartDescent={() => navigate(hikePaths.downhill(alertsOn))} onEnd={() => setOverlay("end")} />
-      {toast.message && <Toast className="hike-page__toast hike-active-page__toast" message={toast.message} />}
+        alertsOn={alertsOn} onAlertsChange={setHikeAlerts}
+        onStartDescent={() => { startHikeDescent(); navigate(hikePaths.downhill(alertsOn)); }}
+        onEnd={() => {
+          if (session.phase === "downhill") { finishHikeSession(); navigate(hikePaths.complete); }
+          else setOverlay("end");
+        }} />
     </main>
     <BottomNavigation className="hike-page__nav" active="home" onNavigate={navigateTab} />
 
     {overlay === "share" && <HikeShareSheet onClose={() => setOverlay(null)} onShareSpot={() => {
       setOverlay(null);
-      toast.show("새 스팟 등록(COMM-07)은 아직 준비 중이에요");
+      const query = new URLSearchParams({ screen: "newSpot", mountain: session.mountainId,
+        returnTo: session.phase === "downhill" ? hikePaths.downhill(alertsOn) : hikePaths.active(alertsOn) });
+      navigate(`community?${query}`);
     }} />}
     {overlay === "end" && <HikeEndConfirm onCancel={() => setOverlay(null)}
-      onConfirm={() => navigate(hikePaths.complete)} />}
+      onConfirm={() => { finishHikeSession(); navigate(hikePaths.complete); }} />}
   </div>;
 }

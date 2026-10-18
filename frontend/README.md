@@ -30,7 +30,7 @@ npm run dev
 | 진행 전 오늘 일정 선택 | `#hikes/today` | #15 내 등산 |
 | 진행 중 오늘 일정 선택 | `#hikes/active` | #15 내 등산 |
 
-산 마커·검색·최근 산 선택은 App의 경로 분기를 통해 산별 코스 목록으로 이동합니다. 홈 하단 탭의 커뮤니티·등산 담기·내 등산은 각각 `#community`·`#cart`·`#myHikes`로 이동합니다.
+산 마커·검색·최근 산 선택은 App의 경로 분기를 통해 산별 코스 목록으로 이동합니다. 모든 화면의 하단 탭은 `#community`·`#cart`·`#hikes/calendar`로 이동합니다. 이전 `#myHikes` 주소도 캘린더를 표시합니다.
 
 ### 확인
 
@@ -57,16 +57,16 @@ npm run dev
 
 ### 담기 상태와 후속 화면 연결
 
-`src/store/courseSelectionStore.ts`의 `useSavedCourseIds`, `getSavedCourseIds`, `setCourseSaved`, `subscribeSavedCourses`가 코스 목록·상세·등산 담기 화면의 공통 접점입니다. 담기·해제 시 Toast를 표시하며 같은 탭의 화면 이동 동안 유지하고 새로고침하면 초기화합니다. 다른 등산 담기 브랜치의 페이지는 통합 시 이 저장소를 사용하도록 연결해야 합니다.
+`src/store/courseSelectionStore.ts`의 `useSavedCourseIds`, `getSavedCourseIds`, `setCourseSaved`, `subscribeSavedCourses`가 코스 목록·상세·등산 담기 화면의 공통 접점입니다. 담기·해제 시 Toast를 표시하며 같은 탭의 화면 이동 동안 유지하고 새로고침하면 초기화합니다. 등산 담기는 이 저장소의 코스를 산별로 묶어서 표시합니다.
 
-`CourseListPage`의 `onCourseOpen`·`onScheduleOpen`은 `{ mountainId, courseId }`를 전달합니다. 콜백이 없으면 아래 경로에 ID를 전달합니다. 상세 경로는 실제 코스 상세 화면을 열며, 일정 경로는 담당 화면 통합 전까지 연결 예정 Toast를 표시합니다.
+`CourseListPage`의 `onCourseOpen`·`onScheduleOpen`은 `{ mountainId, courseId }`를 전달합니다. `CourseFlow`가 상세·일정 경로를 연결하며 기존 `ScheduleSheet`로 등록·수정합니다. 저장 후 해당 날짜가 선택된 캘린더로 이동합니다.
 
 | 선택 | 경로 | 통합 작업 |
 | --- | --- | --- |
 | 코스 상세 | `#mountains/{mountainId}/courses/{courseId}` | #19 코스 상세 |
 | 일정 등록 | `#mountains/{mountainId}/courses/{courseId}/schedule` | 공통 일정 등록 시트 |
 
-App은 상세 경로에서 `CourseDetailPage`를 렌더링합니다. 일정 경로는 현재 상세 화면과 연결 예정 안내를 표시하며, 담당 화면 통합 시 이 분기를 교체하거나 콜백으로 연결합니다. 일정 버튼은 실제 등록이 완료되기 전까지 등록 완료 상태로 바꾸지 않습니다.
+App은 `CourseFlow`를 통해 목록·상세·일정 시트를 렌더링합니다. 일정 버튼은 공통 일정 저장소에 실제 등록된 코스에만 등록 상태를 표시합니다.
 
 ### 확인
 
@@ -96,7 +96,7 @@ npm run build
 
 ### 담당 화면과의 연결
 
-`CourseDetailPage`는 아래 콜백을 통합 접점으로 제공합니다. 현재 기본 동작은 실제 등록·후기 이동을 수행하지 않고 연결 예정 안내를 표시합니다.
+`CourseDetailPage`는 아래 콜백을 통합 접점으로 제공합니다. App의 `CourseFlow`가 일정 시트와 커뮤니티 스팟 상세를 연결합니다.
 
 | 연결 | 전달 정보 | 준비 범위 |
 | --- | --- | --- |
@@ -104,7 +104,26 @@ npm run build
 | `onSpotOpen` | `{ mountainId, courseId, spotId, category, returnPath }` | COMM-03 스팟 후기 화면과 같은 카테고리 복귀 |
 | `hasSchedule` | 실제 일정 존재 여부 | 등록된 일정이 있을 때만 `일정 변경` 표시 |
 
-담기는 02와 동일한 메모리 저장소를 사용하며 새로고침하면 초기화됩니다. 장바구니 담당 화면도 통합 시 같은 저장소를 구독해야 합니다. 새 패키지나 환경 변수·DB 설정은 추가하지 않습니다.
+담기는 02와 동일한 메모리 저장소를 사용하며 새로고침하면 초기화됩니다. 장바구니도 같은 저장소를 구독합니다. 새 패키지나 환경 변수·DB 설정은 추가하지 않습니다.
+
+## 화면 흐름 연결 (#33)
+
+- 탐색에서 담은 코스 → 산별 담은 코스 → 비교 지도 → 비교표 → 코스 단독 상세를 연결합니다. 비교 선택은 `mountain`·`selected` 쿼리에 보존하며 체크 해제는 담은 코스를 삭제하지 않습니다.
+- 목록·상세 일정 버튼은 기존 `ScheduleSheet`, 담기 화면은 기존 `ScheduleRegistrationSheet`를 사용합니다. 두 진입점 모두 `hikeScheduleStore`에 저장하며 같은 날짜 대체 확인 후 캘린더에 반영합니다.
+- 일정 상세의 코스 보기 → 코스 상세 → 스팟 상세 → 원래 카테고리 → 일정 상세로 돌아올 수 있도록 `returnTo`를 전달합니다.
+- 홈 오늘 일정 → 위치 권한 안내 → 알림 선택 → 등산 중 → 종료 확인/하산 → 완료 → 산 후기 작성을 연결합니다. `hikeSessionStore`가 코스·알림·진행 단계·시작/완료 시각을 유지합니다.
+- 등산 중 공유 → 새 스팟 등록 → 원래 산행 화면으로 돌아옵니다. 등록 스팟과 후기는 `communityStore`로 화면 이동 중 유지합니다.
+- 상태는 같은 브라우저 탭의 메모리에서만 유지합니다. 새로고침 시 초기화되며 서버 저장, GPS 이동 기록, 실제 근접 알림은 이번 작업에 포함하지 않습니다. 미연결 이동 거리는 완료 화면에서 `기록 없음`으로 표시합니다. 예시 코스만 분석값이 있으며 미준비 상세 버튼은 계속 비활성화합니다.
+
+### 회귀 확인
+
+```sh
+node --test tests/*.test.mjs tests/*.test.cjs
+npm run lint
+npm run build
+```
+
+브라우저에서는 홈에서 코스를 담은 후 비교/단독 상세/일정 등록, 캘린더 수정·대체, 스팟 상세 복귀, 오늘 산행 시작·종료·후기 이동을 확인합니다. 위치 허용 검증에는 테스트 브라우저의 모의 위치를 사용하며 실제 GPS 추적 검증과는 구분합니다.
 
 ### 확인
 

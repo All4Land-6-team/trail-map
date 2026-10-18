@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadHomeDiscoveryData } from "../../../api/homeMock";
+import { useHikeSchedules } from "../../../store/hikeScheduleStore";
+import { useHikeSession } from "../../../store/hikeSessionStore";
+import type { TodayHikeSchedule } from "../../../types/home";
 import {
   HOME_TIME_ZONE, HOME_TOAST_DURATION_MS, RECENT_MOUNTAIN_LIMIT, RECENT_MOUNTAIN_STORAGE_KEY,
 } from "../../../constants/home";
@@ -7,6 +10,8 @@ import type { HomeDiscoveryState } from "../../../types/home";
 import { addRecentMountain, findMountainByQuery, findTodaySchedule, normalizeMountainQuery, readRecentMountainIds, toHomeDateKey } from "../../../utils/homeDiscovery";
 
 export function useHomeDiscovery() {
+  const schedules = useHikeSchedules();
+  const session = useHikeSession();
   const [state, setState] = useState<HomeDiscoveryState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [recentIds, setRecentIds] = useState<string[]>([]);
@@ -89,7 +94,10 @@ export function useHomeDiscovery() {
     state, mountains, selectedMountainId, isSearching, query, toast, notify,
     recentMountains: byIds(recentIds),
     recommendedMountains: byIds(data?.recommendedMountainIds ?? []),
-    todaySchedule: findTodaySchedule(data?.schedules ?? [], toHomeDateKey(new Date(), HOME_TIME_ZONE)),
+    todaySchedule: session && session.phase !== "complete"
+      ? { ...session.schedule, phase: "active" as const }
+      : findTodaySchedule(schedules.filter(item => !(session?.phase === "complete" && session.schedule.date === item.date && session.schedule.courseId === item.courseId))
+        .map((item): TodayHikeSchedule => ({ ...item, phase: "planned" })), toHomeDateKey(new Date(), HOME_TIME_ZONE)),
     setQuery, openSearch: () => setIsSearching(true), closeSearch, resetHome,
     selectMountain, searchMountain, retry: () => {
       setState({ status: "loading" });

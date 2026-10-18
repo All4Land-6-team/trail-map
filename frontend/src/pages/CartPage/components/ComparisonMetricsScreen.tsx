@@ -142,7 +142,6 @@ export function ComparisonMetricsScreen({
               mountain: course.mountain,
               courseName: course.name,
             });
-            onNavigate("myHikes");
           }}
         />
       )}

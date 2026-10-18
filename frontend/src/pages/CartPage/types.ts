@@ -5,6 +5,7 @@ export type ElevationPoint = {
 
 export type CartCourse = {
   id: string;
+  mountainId?: string;
   name: string;
   shortName: string;
   mountain: string;

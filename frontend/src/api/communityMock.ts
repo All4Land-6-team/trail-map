@@ -7,6 +7,8 @@ export const communityMountains: { id: string; name: string; position: Coordinat
   { id: 'bukhansan', name: '북한산', position: [126.977, 37.659] },
   { id: 'dobongsan', name: '도봉산', position: [127.034, 37.696] },
   { id: 'gwanaksan', name: '관악산', position: [126.964, 37.445] },
+  { id: 'seoraksan', name: '설악산', position: [128.465, 38.119] },
+  { id: 'jirisan', name: '지리산', position: [127.731, 35.337] },
 ]
 export const communityCourse = courseFixtures.find(course => course.id === 'bukhansan-baegundae')!
 
@@ -16,6 +18,7 @@ function point(ratio: number): Coordinate {
 
 export const communitySpots: CommunitySpot[] = [
   { id: 'baegundae-rock', name: '백운대 전망 바위', type: 'photo', coordinate: point(.56), mountainId: 'bukhansan', baselinePhotos: 8, baselineReviews: 14, seedQuote: '바위 앞쪽에서 전망이 잘 보여요.', photos: [] },
+  { id: `${communityCourse.id}-photo-2`, name: '사진 스팟 2', type: 'photo', coordinate: point(.85), mountainId: 'bukhansan', baselinePhotos: 0, baselineReviews: 0, photos: [] },
   { id: `${communityCourse.id}-shelter-1`, name: '쉼터 1', type: 'shelter', coordinate: point(.26), mountainId: 'bukhansan', baselinePhotos: 0, baselineReviews: 0, photos: [] },
   { id: `${communityCourse.id}-shelter-2`, name: '쉼터 2', type: 'shelter', coordinate: point(.7), mountainId: 'bukhansan', baselinePhotos: 0, baselineReviews: 0, photos: [] },
   { id: `${communityCourse.id}-water-1`, name: '음수대 1', type: 'water', coordinate: point(.4), mountainId: 'bukhansan', baselinePhotos: 0, baselineReviews: 0, photos: [] },

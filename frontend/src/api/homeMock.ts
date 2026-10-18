@@ -3,7 +3,7 @@ import type { HomeDiscoveryData } from "../types/home";
 import { toHomeDateKey } from "../utils/homeDiscovery";
 
 // 화면 확인용 대표 좌표·일정이다. 실제 시설·등산로·안전 분석값은 포함하지 않는다.
-const mountains: HomeDiscoveryData["mountains"] = [
+export const mountains: HomeDiscoveryData["mountains"] = [
   { id: "bukhansan", name: "북한산", position: [126.977, 37.659] },
   { id: "dobongsan", name: "도봉산", position: [127.034, 37.696] },
   { id: "seoraksan", name: "설악산", position: [128.465, 38.119] },

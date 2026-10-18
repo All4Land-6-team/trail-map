@@ -5,8 +5,9 @@ import { Chip } from '../../components/common/Chip'
 import { BottomNavigation, TopBar, type BottomDestination } from '../../components/layout'
 import { BottomSheet } from '../../components/overlay'
 import { EmptyState, Toast } from '../../components/feedback'
-import { communityCourse, communityMountains, communityReviewExamples, communitySegment, communitySegments, communitySpots, initialSpotVotes } from '../../api/communityMock'
-import type { CommunityReview, CommunitySegment, CommunitySpot, Coordinate, ReviewDraft, ReviewKind, SpotType, SpotVote } from '../../types/community'
+import { communityCourse, communityMountains, communityReviewExamples, communitySegment, communitySegments, communitySpots } from '../../api/communityMock'
+import type { CommunityReview, CommunitySegment, Coordinate, ReviewDraft, ReviewKind, SpotType } from '../../types/community'
+import { useCommunityData, setCommunitySpots as setSpots, setCommunityReviews as setReviews, setCommunityVotes as setVotes, setCommunitySegmentVotes as setSegmentVotes } from '../../store/communityStore'
 import { canWriteReview, castSpotVote, distanceMeters, isSpotHidden, resolveSegmentStatus } from '../../utils/community'
 import { CommunityMap, type CommunityMapMarker } from './components/CommunityMap'
 import { CommunityPhotoAlbum, CommunityPhotoReview, CommunityPhotoStrip, type CommunityGalleryPhoto } from './components/SpotPhotoGallery'
@@ -26,6 +27,8 @@ type SegmentStage = 'start' | 'via' | 'end'
 export type CommunityPageProps = {
   initialScreen?: CommunityScreen
   initialMountainId?: string
+  initialSpotId?: string
+  onSpotRegistered?: () => void
   readOnly?: boolean
   completedHike?: { mountainId: string; finishedAt: string }
   onExit?: () => void
@@ -107,7 +110,7 @@ function ReviewEligibilityInfo() {
   </span>
 }
 
-export function CommunityPage({ initialScreen = 'mountainSelect', initialMountainId = 'bukhansan', readOnly = false, completedHike, onExit, onNavigateOutside }: CommunityPageProps) {
+export function CommunityPage({ initialScreen = 'mountainSelect', initialMountainId = 'bukhansan', initialSpotId, onSpotRegistered, readOnly = false, completedHike, onExit, onNavigateOutside }: CommunityPageProps) {
   const [screens, setScreens] = useState<CommunityScreen[]>([initialScreen])
   const screen = screens.at(-1)!
   const isDetail = screen === 'mountainDetail' || screen === 'spotDetail' || screen === 'segmentDetail'
@@ -120,11 +123,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const [reviewKindPickerOpen, setReviewKindPickerOpen] = useState(false)
   const mapScrollTop = useRef(0)
   const reviewPickerRef = useRef<HTMLElement>(null)
-  const [spots, setSpots] = useState<CommunitySpot[]>(communitySpots)
-  const [reviews, setReviews] = useState<CommunityReview[]>([])
-  const [votes, setVotes] = useState<Record<string, SpotVote>>(initialSpotVotes)
-  const [segmentVotes, setSegmentVotes] = useState<Record<string, SpotVote>>({})
-  const [detailSpotId, setDetailSpotId] = useState(communitySpots[0].id)
+  const { spots, reviews, votes, segmentVotes } = useCommunityData()
+  const [detailSpotId, setDetailSpotId] = useState(initialSpotId ?? communitySpots[0].id)
   const [detailSegmentId, setDetailSegmentId] = useState(communitySegment.id)
   const [galleryPhotoId, setGalleryPhotoId] = useState<string | null>(null)
   const [galleryKind, setGalleryKind] = useState<ReviewKind>('spot')
@@ -621,6 +621,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     {screen === 'newSpot' && <SpotRegistration spots={spots} votes={votes} mountainId={mountainId} mountainCenter={mountain.position as Coordinate} onError={notify}
       onCreate={spot => {
         setSpots(current => [...current, spot]); setDetailSpotId(spot.id)
+        if (onSpotRegistered) { onSpotRegistered(); return }
         if (screens.includes('review')) { updateDraft({ kind: 'spot', targetId: spot.id }); setScreens(current => current.slice(0, -1)) }
         else { setDraft(blankDraft('spot', spot.id)); setScreens(['mountainSelect', 'map', 'review']) }
         notify('스팟을 등록했어요. 이어서 후기를 작성해 주세요.')
@@ -628,6 +629,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       onUseExisting={(spot, photos) => {
         if (photos.length) setSpots(current => current.map(item => item.id === spot.id ? { ...item, photos: [...item.photos, ...photos] } : item))
         setDetailSpotId(spot.id)
+        if (onSpotRegistered) { onSpotRegistered(); return }
         if (screens.includes('review')) { updateDraft({ kind: 'spot', targetId: spot.id }); setScreens(current => current.slice(0, -1)) }
         else { setDraft(blankDraft('spot', spot.id)); setScreens(['mountainSelect', 'map', 'review']) }
         notify('기존 스팟을 선택했습니다. 사진을 추가하고 후기를 이어서 작성할 수 있어요.')
