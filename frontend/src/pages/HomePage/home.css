@@ -64,7 +64,6 @@
 .home-page__nav { position: relative; z-index: 4; flex: none; min-height: var(--home-nav-height); padding-bottom: env(safe-area-inset-bottom); }
 .home-page__toast { position: absolute; z-index: 10; bottom: calc(var(--home-nav-height) + 10px); left: 50%; max-width: calc(100% - 32px); transform: translateX(-50%); text-align: center; }
 .home-map__base .base-map__notices { z-index: 2; top: calc(160px + env(safe-area-inset-top)); right: 12px; left: 12px; width: auto; max-height: calc(100% - 190px); overflow-y: auto; }
-.home-map__base .maplibregl-ctrl-attrib { font-size: 10px; }
 @media (max-width: 350px) {
   .home-search__bar { padding-right: 16px; padding-left: 14px; gap: 8px; }
   .home-search__bar .af-top-bar__title { font-size: 16px !important; }

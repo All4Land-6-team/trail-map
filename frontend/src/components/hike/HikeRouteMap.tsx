@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AttributionControl, LngLatBounds, MapLibreMap, Marker, setWorkerUrl, type PaddingOptions } from "maplibre-gl";
+import { LngLatBounds, MapLibreMap, Marker, setWorkerUrl, type PaddingOptions } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { DistanceBubble, SpotMarker } from "../map";
@@ -72,16 +72,13 @@ export function HikeRouteMap({
       style: BASE_MAP_STYLE_URL,
       bounds: routeBounds(route),
       fitBoundsOptions: { padding },
-      minZoom: MAP_MIN_ZOOM,
       maxZoom: MAP_MAX_ZOOM,
       attributionControl: false,
+      minZoom: MAP_MIN_ZOOM,
     });
-    // 근접 알림이 오른쪽 아래에 뜨므로 출처 표시는 왼쪽 아래에 둔다.
-    map.addControl(new AttributionControl({ compact: true }), "bottom-left");
-    // 출처 정보는 정보 버튼을 눌렀을 때만 펼친다.
-    map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
-    const removeZoomLimit = limitZoomOutToSouthKorea(map);
+    // 내 등산 지도에는 출처 표시를 넣지 않는다 (팀 결정 전 임시. OSM 데이터는 ODbL상 출처 표시가 필요하다).
     mapRef.current = map;
+    const removeZoomLimit = limitZoomOutToSouthKorea(map);
     map.on("error", () => setHasLoadError(true));
     // 배경 타일을 기다리지 않도록 스타일만 준비되면 경로를 그린다.
     const drawRoute = () => {
@@ -99,7 +96,6 @@ export function HikeRouteMap({
     };
     map.on("style.load", drawRoute);
     map.on("load", drawRoute);
-    map.once("load", () => map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show"));
 
     const markers = [
       ...spots.map(spot => new Marker({ element: nodes.spots.get(spot.id)! }).setLngLat(spot.position)),

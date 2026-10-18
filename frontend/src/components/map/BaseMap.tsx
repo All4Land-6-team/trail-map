@@ -97,7 +97,8 @@ function BaseMap({
         style: BASE_MAP_STYLE_URL,
         minZoom: MAP_MIN_ZOOM,
         maxZoom: MAP_MAX_ZOOM,
-        attributionControl: { compact: true },
+        // 지도 위에는 출처 표시를 넣지 않는다 (팀 결정 전 임시. OSM 데이터는 ODbL상 출처 표시가 필요하다).
+        attributionControl: false,
         fitBoundsOptions: fitBoundsPadding ? { padding: fitBoundsPadding } : undefined,
         ...(bounds
           ? { bounds }
@@ -107,8 +108,6 @@ function BaseMap({
       }
       map = new MapLibreMap(mapOptions)
       if (!bounds && !center) map.jumpTo({ center: SOUTH_KOREA_MAINLAND_CENTER })
-      // 출처 정보는 정보 버튼을 눌렀을 때만 펼친다.
-      map.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show')
     } catch {
       const frame = requestAnimationFrame(() => setHasLoadError(true))
       return () => cancelAnimationFrame(frame)
@@ -118,7 +117,6 @@ function BaseMap({
     if (showNavigationControl) map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
     mapRef.current = map
     map.on('load', () => {
-      map.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show')
       renderedRouteIdsRef.current = replaceMapRoutes(
         map,
         renderedRouteIdsRef.current,
