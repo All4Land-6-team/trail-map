@@ -10,6 +10,8 @@ import { navigate } from "../../hooks/useHashRoute";
 import { useLocationPermission } from "../../hooks/useLocationPermission";
 import { useToastMessage } from "../../hooks/useToastMessage";
 import { useHikeSchedules } from "../../store/hikeScheduleStore";
+import { courseFixtures } from "../../api/courseMock";
+import { startHikeSession, useHikeSession } from "../../store/hikeSessionStore";
 import { hikePaths, navigateTab } from "../hikeRoutes";
 import "../hikePages.css";
 import "./HikeTodayPage.css";
@@ -25,9 +27,21 @@ export function HikeTodayPage() {
   const [askingAlerts, setAskingAlerts] = useState(false);
   const location = useLocationPermission();
   const toast = useToastMessage();
+  const session = useHikeSession();
+  const continueHike = (alertsOn: boolean) => {
+    if (!schedule) return;
+    const mountainId = courseFixtures.find(item => item.id === schedule.courseId)?.mountainId;
+    if (!mountainId) return;
+    startHikeSession(schedule, mountainId, alertsOn);
+    navigate(hikePaths.active(alertsOn));
+  };
 
   // 위치를 받은 경우에만 알림 수신 여부(HIKE-04)를 묻고 등산 중으로 넘어간다.
   const startHike = async () => {
+    if (session && session.phase !== "complete") {
+      navigate(session.phase === "downhill" ? hikePaths.downhill(session.alertsOn) : hikePaths.active(session.alertsOn));
+      return;
+    }
     const result = await location.check();
     if (result?.status === "granted") setAskingAlerts(true);
     else if (result?.status === "unavailable") toast.show("현재 위치를 받지 못했어요. 잠시 후 다시 시도해 주세요.");
@@ -75,7 +89,7 @@ export function HikeTodayPage() {
 
     {location.notice && <LocationPermissionSheet notice={location.notice} retrying={location.checking}
       onRetry={() => void startHike()} onDismiss={location.dismiss} />}
-    {askingAlerts && <HikeAlertConfirm onAccept={() => navigate(hikePaths.active(true))}
-      onDecline={() => navigate(hikePaths.active(false))} onDismiss={() => setAskingAlerts(false)} />}
+    {askingAlerts && <HikeAlertConfirm onAccept={() => continueHike(true)}
+      onDecline={() => continueHike(false)} onDismiss={() => setAskingAlerts(false)} />}
   </div>;
 }

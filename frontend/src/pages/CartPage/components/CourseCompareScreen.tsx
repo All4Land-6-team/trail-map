@@ -40,15 +40,15 @@ export function CourseCompareScreen({
   return (
     <main className="cart-screen cart-map-screen cart-compare-screen" style={sheet.sheetStyle}>
       <BaseMap
-        ariaLabel="북한산 비교 코스 지도"
-        center={BUKHANSAN_CENTER}
+        ariaLabel={`${courses[0]?.mountain ?? "산"} 비교 코스 지도`}
+        center={courses[0]?.routeCoordinates[0] ?? BUKHANSAN_CENTER}
         zoom={12.8}
         routes={mapRoutes}
         showNavigationControl={false}
         className="cart-course-map"
       />
       <TopBar
-        title="북한산 · 코스 비교"
+        title={`${courses[0]?.mountain ?? "산"} · 코스 비교`}
         onBack={onBack}
         showAction={false}
         className="cart-map-topbar"

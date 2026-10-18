@@ -19,6 +19,7 @@ export function CourseElevationChart({
   ariaLabel = "코스별 고도 프로필",
 }: CourseElevationChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
+  const hasProfile = series.some(item => item.points.length > 0);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -71,5 +72,8 @@ export function CourseElevationChart({
     };
   }, [ariaDescription, series]);
 
-  return <div ref={chartRef} className="cart-elevation-chart" role="img" aria-label={ariaLabel} />;
+  return <div className="cart-elevation-profile">
+    {series.some(item => item.points.length === 0) && <p className="cart-elevation-note">일부 코스의 고도 분석 정보가 아직 없어요.</p>}
+    <div ref={chartRef} className="cart-elevation-chart" role="img" aria-label={hasProfile ? ariaLabel : "고도 분석 정보가 없어요"} />
+  </div>;
 }

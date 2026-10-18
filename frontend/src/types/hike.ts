@@ -16,8 +16,8 @@ export type HikeCourse = {
   courseName: string;
   distanceKm: number;
   durationMinutes: number;
-  maxAltitudeM: number;
-  averageSlopePercent: number;
+  maxAltitudeM: number | null;
+  averageSlopePercent: number | null;
   sunset: string;
   /** 출발지에서 정상까지 순서대로 찍은 좌표 */
   route: LngLat[];

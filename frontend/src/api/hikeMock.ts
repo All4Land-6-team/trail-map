@@ -1,4 +1,6 @@
 import type { ActiveHike, HikeCourse, HikeResult, HikeSchedule, LngLat } from "../types/hike";
+import { courseFixtures } from "./courseMock";
+import { mountains } from "./homeMock";
 
 // 백엔드 일정·기록 API가 준비되기 전 화면 확인용 임시 데이터.
 // API가 생기면 같은 타입을 반환하는 요청 함수로 교체한다.
@@ -50,8 +52,19 @@ export const sampleCourses: HikeCourse[] = [
   },
 ];
 
+const connectedCourses: HikeCourse[] = courseFixtures.map(course => {
+  const sample = sampleCourses.find(item => item.id === course.id);
+  if (sample) return sample;
+  return {
+    id: course.id, mountainName: mountains.find(item => item.id === course.mountainId)?.name ?? "산",
+    courseName: course.name, distanceKm: course.distanceKm, durationMinutes: course.durationMinutes,
+    maxAltitudeM: course.peakElevationMeters, averageSlopePercent: null, sunset: "정보 없음",
+    route: course.routeCoordinates, spots: [],
+  };
+});
+
 export function findCourse(courseId: string) {
-  return sampleCourses.find(course => course.id === courseId);
+  return connectedCourses.find(course => course.id === courseId);
 }
 
 export function scheduleFor(course: HikeCourse, date: string, startTime: string): HikeSchedule {

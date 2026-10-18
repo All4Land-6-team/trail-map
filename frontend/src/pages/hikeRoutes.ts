@@ -1,5 +1,6 @@
 import type { BottomDestination } from "../components/layout";
 import { navigate } from "../hooks/useHashRoute";
+import { homePaths } from "../routes/homeRoutes";
 
 /** 내 등산 화면 주소 (Figma 화면 설계의 #hikes/... 주소) */
 export const hikePaths = {
@@ -11,7 +12,7 @@ export const hikePaths = {
   complete: "hikes/complete",
 };
 
-/** 하단 탭 이동. 홈·커뮤니티·등산 담기 화면이 생기기 전까지는 기본 지도로 간다. */
+/** 모든 화면에서 같은 하단 탭 목적지를 사용한다. */
 export function navigateTab(destination: BottomDestination) {
-  navigate(destination === "myHikes" ? hikePaths.calendar() : "");
+  navigate(homePaths[destination]);
 }

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { sampleHikeResult } from "../../api/hikeMock";
+import { findCourse } from "../../api/hikeMock";
+import { useHikeSession } from "../../store/hikeSessionStore";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
 import { BottomNavigation } from "../../components/layout";
@@ -11,11 +11,15 @@ import "./HikeCompletePage.css";
 
 /** HIKE-08 등산 완료 (`#hikes/complete`) */
 export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId: string, finishedAt: string) => void }) {
-  const result = sampleHikeResult;
-  // shortcut: 목 화면 진입 시각을 완료 시각으로 사용하며, 실제 산행 기록 연동 시 교체한다.
-  const [finishedAt] = useState(() => new Date().toISOString());
+  const session = useHikeSession();
   // 나중에 → 오늘 날짜가 선택된 HIKE-01 캘린더
   const backToCalendar = () => navigate(hikePaths.calendar());
+  if (!session?.finishedAt) return <main className="hike-page__empty-state"><p>완료된 등산 기록이 없어요.</p>
+    <Button label="내 등산 캘린더로" onClick={backToCalendar} /></main>;
+  const finishedAt = session.finishedAt;
+  const result = { ...session.schedule, mountainId: session.mountainId,
+    durationMinutes: Math.max(0, Math.floor((Date.parse(finishedAt) - Date.parse(session.startedAt)) / 60_000)),
+    sunset: findCourse(session.schedule.courseId)?.sunset ?? "정보 없음" };
 
   return <div className="hike-page hike-complete-page">
     <main className="hike-page__body hike-complete-page__body">
@@ -33,14 +37,14 @@ export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId
       </section>
 
       <dl className="hike-complete-page__stats">
-        <div><dt>이동 거리</dt><dd>{result.distanceKm.toFixed(1)} km</dd></div>
+        <div><dt>이동 거리</dt><dd>기록 없음</dd></div>
         <div><dt>소요 시간</dt><dd>{formatDuration(result.durationMinutes)}</dd></div>
       </dl>
 
       <div className="hike-complete-page__sunset">
         <p className="hike-complete-page__sunset-time">일몰 {result.sunset}</p>
         <p className="hike-complete-page__sunset-note">
-          {result.finishedBeforeSunset ? "일몰 전에 등산을 마쳤어요." : "일몰 후에 등산을 마쳤어요."}
+          GPS 이동 기록은 아직 연동되지 않았어요.
         </p>
       </div>
 

@@ -1,12 +1,14 @@
-import { lazy, Suspense, useState, type ComponentType } from 'react'
-import type { BottomDestination } from './components/layout'
+import { lazy, Suspense, type ComponentType } from 'react'
 import type { PlannedHike } from './types/hiking'
 import { HomePage } from './pages/HomePage/HomePage'
-import { CourseListPage } from './pages/CourseListPage/CourseListPage'
+import { CourseFlow } from './pages/CourseDetailPage/CourseFlow'
 import { readCourseRoute } from './routes/courseRoutes'
-import { CourseDetailPage } from './pages/CourseDetailPage/CourseDetailPage'
-import { readCourseDetailView } from './routes/courseDetailRoutes'
-import { routePath, useHashRoute } from './hooks/useHashRoute'
+import { hikePaths, navigateTab as navigateFromBottom } from './pages/hikeRoutes'
+import { internalReturnPath } from './routes/communityRoutes'
+import { saveSchedule, useHikeSchedules } from './store/hikeScheduleStore'
+import { courseFixtures } from './api/courseMock'
+import { useHikeSession } from './store/hikeSessionStore'
+import { navigate, routePath, useHashRoute } from './hooks/useHashRoute'
 import { HikeActivePage } from './pages/HikeActivePage/HikeActivePage'
 import { HikeCalendarPage } from './pages/HikeCalendarPage/HikeCalendarPage'
 import { HikeCompletePage } from './pages/HikeCompletePage/HikeCompletePage'
@@ -34,18 +36,17 @@ const hikeRoutes: Record<string, ComponentType> = {
 
 function App() {
   const route = useHashRoute()
-  const [plannedHikes, setPlannedHikes] = useState<PlannedHike[]>([])
-  const [completedHike, setCompletedHike] = useState<{ mountainId: string; finishedAt: string } | null>(null)
-
-  function navigateFromBottom(destination: BottomDestination) {
-    window.location.hash = destination === 'home' ? '' : destination === 'saved' ? 'cart' : destination
-  }
+  const schedules = useHikeSchedules()
+  const plannedHikes: PlannedHike[] = schedules.map(schedule => ({ date: schedule.date, time: schedule.startTime,
+    courseId: schedule.courseId, mountain: schedule.mountainName, courseName: schedule.courseName }))
+  const session = useHikeSession()
+  const completedHike = session?.finishedAt ? { mountainId: session.mountainId, finishedAt: session.finishedAt } : null
 
   function planHike(plannedHike: PlannedHike) {
-    setPlannedHikes((current) => [
-      ...current.filter((schedule) => schedule.date !== plannedHike.date),
-      plannedHike,
-    ])
+    saveSchedule({ date: plannedHike.date, startTime: plannedHike.time, courseId: plannedHike.courseId,
+      mountainName: plannedHike.mountain, courseName: plannedHike.courseName,
+      distanceKm: courseFixtures.find(course => course.id === plannedHike.courseId)?.distanceKm ?? 0 })
+    navigate(hikePaths.calendar(plannedHike.date))
   }
 
   if (HikeStatusPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'hike-status') {
@@ -53,11 +54,17 @@ function App() {
   }
 
   if (routePath(route) === 'community') {
-    const fromHikeComplete = new URLSearchParams(route.split('?')[1] ?? '').get('from') === 'hikes/complete'
+    const query = new URLSearchParams(route.split('?')[1] ?? '')
+    const fromHikeComplete = query.get('from') === 'hikes/complete'
+    const returnTo = internalReturnPath(query.get('returnTo'), fromHikeComplete ? 'hikes/complete' : '')
+    const entry = query.get('screen')
+    const initialScreen = entry === 'spotDetail' || entry === 'map' || entry === 'newSpot' ? entry : fromHikeComplete ? 'review' : 'mountainSelect'
     return <Suspense fallback={<main className="app-route-loading" aria-busy="true">커뮤니티 화면을 불러오는 중이에요</main>}>
-      <CommunityPage initialScreen={fromHikeComplete ? 'review' : 'mountainSelect'} initialMountainId={completedHike?.mountainId}
+      <CommunityPage key={route} initialScreen={initialScreen} initialMountainId={query.get('mountain') ?? completedHike?.mountainId}
+        initialSpotId={query.get('spot') ?? undefined}
+        onSpotRegistered={entry === 'newSpot' && returnTo.startsWith('hikes/') ? () => { window.location.hash = returnTo } : undefined}
         completedHike={completedHike ?? undefined}
-        onExit={() => { window.location.hash = fromHikeComplete ? 'hikes/complete' : '' }} onNavigateOutside={navigateFromBottom} />
+        onExit={() => { window.location.hash = returnTo }} onNavigateOutside={navigateFromBottom} />
     </Suspense>
   }
 
@@ -72,30 +79,27 @@ function App() {
     </Suspense>
   }
 
-  if (routePath(route) === 'myHikes' || routePath(route).startsWith('hike/')) {
+  if (routePath(route) === 'myHikes') return <HikeCalendarPage />
+  if (routePath(route).startsWith('hike/')) {
     return <Suspense fallback={<main className="app-route-loading" aria-busy="true">등산 화면을 불러오는 중이에요</main>}>
       <HikingStatusPage
         key={route}
         route={`#${route}`}
         plannedHikes={plannedHikes}
         onNavigate={navigateFromBottom}
-        onBack={() => { window.location.hash = 'myHikes' }}
-        onFinish={() => { window.location.hash = 'myHikes?completed=1' }}
+        onBack={() => { window.location.hash = 'hikes/calendar' }}
+        onFinish={() => { window.location.hash = 'hikes/calendar' }}
       />
     </Suspense>
   }
-  if (routePath(route) === 'hikes/complete') return <HikeCompletePage onWriteReview={(mountainId, finishedAt) => {
-    setCompletedHike({ mountainId, finishedAt })
+  if (routePath(route) === 'hikes/complete') return <HikeCompletePage onWriteReview={() => {
     window.location.hash = 'community?from=hikes/complete'
   }} />
   const HikeRoutePage = hikeRoutes[routePath(route)]
   // 주소의 ?값이 바뀌어도 화면을 새로 그리도록 전체 주소를 key로 쓴다.
   if (HikeRoutePage) return <HikeRoutePage key={route} />
   const courseRoute = readCourseRoute(route)
-  if (courseRoute?.courseId) return <CourseDetailPage key={`${courseRoute.mountainId}/${courseRoute.courseId}`}
-    mountainId={courseRoute.mountainId} courseId={courseRoute.courseId} view={readCourseDetailView(route)}
-    scheduleRequested={courseRoute.destination === 'schedule'} />
-  if (courseRoute) return <CourseListPage key={courseRoute.mountainId} mountainId={courseRoute.mountainId} initialCourseId={courseRoute.selectedCourseId} />
+  if (courseRoute) return <CourseFlow route={route} />
   const preview = import.meta.env.DEV ? new URLSearchParams(window.location.search) : null
   const schedule = preview?.get('preview') === 'home' ? preview.get('schedule') : null
   return <HomePage previewSchedule={schedule === 'none' || schedule === 'active' ? schedule : undefined} />

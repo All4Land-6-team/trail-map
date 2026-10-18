@@ -7,13 +7,14 @@ type Props = {
   courses: readonly Course[];
   selectedId: string;
   savedIds: readonly string[];
+  scheduledIds: readonly string[];
   onSelect: (id: string) => void;
   onSave: (id: string, saved: boolean) => void;
   onSchedule: (course: Course) => void;
   onOpen: (course: Course) => void;
 };
 
-export function CourseCarousel({ courses, selectedId, savedIds, onSelect, onSave, onSchedule, onOpen }: Props) {
+export function CourseCarousel({ courses, selectedId, savedIds, scheduledIds, onSelect, onSave, onSchedule, onOpen }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const lastScrollSelection = useRef<string | null>(null);
   const scrollFrame = useRef<number | null>(null);
@@ -69,7 +70,7 @@ export function CourseCarousel({ courses, selectedId, savedIds, onSelect, onSave
         controlStatus="통제 확인 필요" distance={`${course.distanceKm} km`} duration={formatCourseDuration(course.durationMinutes)}
         elevationGain={course.elevationGainMeters == null ? "—" : `${course.elevationGainMeters} m`}
         peakElevation={course.peakElevationMeters == null ? "—" : `${course.peakElevationMeters} m`}
-        detailsAvailable={course.detailAvailable} saved={savedIds.includes(course.id)} scheduled={false}
+        detailsAvailable={course.detailAvailable} saved={savedIds.includes(course.id)} scheduled={scheduledIds.includes(course.id)}
         onSavedChange={saved => onSave(course.id, saved)} onScheduledChange={() => onSchedule(course)} onOpen={() => onOpen(course)} />
     </div>)}
   </div>;

@@ -115,7 +115,6 @@ export function CourseDetailScreen({
               mountain: course.mountain,
               courseName: course.name,
             });
-            onNavigate("myHikes");
           }}
         />
       )}

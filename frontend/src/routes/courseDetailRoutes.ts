@@ -9,9 +9,13 @@ export function readCourseDetailView(hash: string): CourseDetailView {
   return { tab: params.get("tab") === "spots" ? "spots" : "analysis", category,
     ...(params.get("spot") ? { spotId: params.get("spot")! } : {}) };
 }
-export function courseDetailPath(request: CourseRequest, view: CourseDetailView) {
-  if (view.tab === "analysis") return coursePaths.detail(request);
-  const params = new URLSearchParams({ tab: "spots", category: view.category });
-  if (view.spotId) params.set("spot", view.spotId);
-  return `${coursePaths.detail(request)}?${params}`;
+export function courseDetailPath(request: CourseRequest, view: CourseDetailView, returnTo?: string | null) {
+  const params = new URLSearchParams();
+  if (view.tab === "spots") {
+    params.set("tab", "spots");
+    params.set("category", view.category);
+    if (view.spotId) params.set("spot", view.spotId);
+  }
+  if (returnTo) params.set("returnTo", returnTo);
+  return `${coursePaths.detail(request)}${params.size ? `?${params}` : ""}`;
 }

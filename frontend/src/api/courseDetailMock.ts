@@ -27,7 +27,7 @@ export async function loadCourseDetailData(request: CourseRequest, signal: Abort
     coordinate: coordinateAlongRoute(course.routeCoordinates, distanceKm / course.distanceKm)!,
   })) : [];
   const spots: CourseSpot[] = ready ? spotValues.map(([id, kind, name, ratio]) => ({
-    id: `${course.id}-${id}`, courseId: course.id, kind, name,
+    id: id === "photo-1" ? "baegundae-rock" : `${course.id}-${id}`, courseId: course.id, kind, name,
     coordinate: coordinateAlongRoute(course.routeCoordinates, ratio)!,
   })) : [];
   return { course, samples, spots, reviews: ready ? [

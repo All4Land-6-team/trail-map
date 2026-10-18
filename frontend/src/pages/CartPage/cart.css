@@ -128,13 +128,16 @@
 .cart-compare-sheet .af-bottom-sheet__title-row { min-height: 42px; }
 .cart-compare-sheet .af-bottom-sheet__title { font-size: 16px; line-height: 24px; }
 .cart-compare-sheet .af-bottom-sheet__content { min-height: 0; flex: 1; }
-.cart-compare-content { position: relative; height: 100%; }
+.cart-compare-content { position: relative; display: flex; height: 100%; flex-direction: column; }
 .cart-metrics-link { position: absolute; top: -35px; right: 0; padding: 0; border: 0; color: var(--af-green-dark); background: transparent; font: 700 12px/18px "Noto Sans KR", sans-serif; cursor: pointer; }
 .cart-course-legend { display: flex; gap: 20px; min-height: 26px; align-items: center; overflow-x: auto; }
 .cart-course-legend span { display: inline-flex; align-items: center; gap: 7px; color: #617b6c; white-space: nowrap; }
 .cart-course-legend i { display: block; width: 20px; height: 3px; border-radius: 2px; }
 .cart-chart-title { display: block; margin-top: 2px; }
-.cart-elevation-chart { width: 100%; height: calc(100% - 52px); min-height: 116px; }
+.cart-elevation-profile { display: flex; min-height: 0; flex-direction: column; }
+.cart-compare-content .cart-elevation-profile { flex: 1; }
+.cart-elevation-note { flex: none; margin: 4px 0 6px; color: #617b6c; font-size: 11px; line-height: 16px; }
+.cart-elevation-chart { width: 100%; min-height: 116px; flex: 1; }
 .cart-selection-sheet .af-bottom-sheet__handle-row[role="separator"],
 .cart-compare-sheet .af-bottom-sheet__handle-row[role="separator"],
 .cart-detail-sheet .af-bottom-sheet__handle-row[role="separator"] {
@@ -235,22 +238,22 @@
 .cart-detail-sheet .af-bottom-sheet__description { order: 0; margin-top: 2px; color: #617b6c; font-size: 11px; line-height: 16px; }
 .cart-detail-sheet .af-bottom-sheet__title-row { order: 1; min-height: 28px; }
 .cart-detail-sheet .af-bottom-sheet__title { font-size: 18px; line-height: 26px; }
-.cart-detail-sheet .af-bottom-sheet__content { order: 2; min-height: 0; flex: 1; }
+.cart-detail-sheet .af-bottom-sheet__content { order: 2; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; }
 .cart-detail-content { height: 100%; }
 .cart-detail-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 5px; }
 .cart-detail-stats > div { display: flex; height: 60px; align-items: center; justify-content: center; flex-direction: column; gap: 4px; border-radius: 10px; background: #eef5ea; text-align: center; }
 .cart-detail-stats > div > :first-child { color: #617b6c; }
 .cart-detail-chart-title { display: block; margin-top: 16px; }
-.cart-detail-content .cart-elevation-chart { height: 132px; min-height: 0; }
-.cart-detail-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: -2px; }
+.cart-detail-content .cart-elevation-chart { height: 132px; min-height: 0; flex: none; }
+.cart-detail-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; padding-bottom: 8px; }
 .cart-detail-actions .af-button { min-width: 0; padding-inline: 8px; }
 
 .cart-schedule-overlay { position: absolute; z-index: 30; inset: 0; background: rgba(23, 61, 50, .28); }
 .cart-replacement-overlay { display: flex; z-index: 2; align-items: flex-start; justify-content: center; padding-top: min(35.55dvh, 300px); }
-.cart-replacement-dialog { position: relative; min-height: 170px; height: 170px; gap: 0; }
-.cart-replacement-dialog .af-confirm-dialog__title { position: absolute; top: 20px; right: 20px; left: 20px; }
-.cart-replacement-dialog .af-confirm-dialog__body { position: absolute; top: 60px; right: 20px; left: 20px; }
-.cart-replacement-dialog .af-confirm-dialog__actions { position: absolute; right: 20px; bottom: 18px; left: 20px; padding-top: 0; }
+.cart-replacement-dialog { min-height: 170px; gap: 6px; }
+.cart-replacement-dialog .af-confirm-dialog__title,
+.cart-replacement-dialog .af-confirm-dialog__body { overflow-wrap: anywhere; }
+.cart-replacement-dialog .af-confirm-dialog__actions { margin-top: auto; padding-top: 24px; }
 .cart-schedule-sheet {
   position: absolute;
   right: 0;

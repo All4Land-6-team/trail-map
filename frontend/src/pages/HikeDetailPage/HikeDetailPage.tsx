@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { findCourse } from "../../api/hikeMock";
+import { courseFixtures } from "../../api/courseMock";
+import { coursePaths } from "../../routes/courseRoutes";
 import { Button } from "../../components/common/Button";
 import { Toast } from "../../components/feedback";
 import { ConfirmOverlay, HikeRouteMap, ScheduleSheet } from "../../components/hike";
@@ -40,12 +42,15 @@ export function HikeDetailPage() {
             <div><dt>출발</dt><dd>{formatKoreanTime(schedule.startTime)}</dd></div>
             <div><dt>거리</dt><dd>{schedule.distanceKm.toFixed(1)} km</dd></div>
             <div><dt>예상 시간</dt><dd>{formatDuration(course.durationMinutes)}</dd></div>
-            <div><dt>최대 고도</dt><dd>{course.maxAltitudeM} m</dd></div>
-            <div><dt>평균 경사도</dt><dd>약 {course.averageSlopePercent}% (시안)</dd></div>
+            <div><dt>최대 고도</dt><dd>{course.maxAltitudeM == null ? "—" : `${course.maxAltitudeM} m`}</dd></div>
+            <div><dt>평균 경사도</dt><dd>{course.averageSlopePercent == null ? "—" : `약 ${course.averageSlopePercent}% (시안)`}</dd></div>
           </dl>
           <div className="hike-detail-page__actions">
             <Button variant="secondary" fullWidth label="코스 보기"
-              onClick={() => toast.show("코스 상세(FLOW-04)는 아직 준비 중이에요")} />
+              onClick={() => {
+                const selected = courseFixtures.find(item => item.id === schedule.courseId);
+                if (selected) navigate(`${coursePaths.detail({ mountainId: selected.mountainId, courseId: selected.id })}?returnTo=${encodeURIComponent(hikePaths.detail(date))}`);
+              }} />
             <Button variant="secondary" fullWidth label="일정 수정" onClick={() => setOverlay("edit")} />
           </div>
           <button type="button" className="hike-detail-page__cancel" onClick={() => setOverlay("cancel")}>일정 취소</button>
