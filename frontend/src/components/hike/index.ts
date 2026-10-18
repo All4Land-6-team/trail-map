@@ -26,3 +26,4 @@ export { SpotFilterChips } from "./SpotFilterChips";
 export type { SpotFilterChipsProps } from "./SpotFilterChips";
 export { SheetHandle } from "./SheetHandle";
 export type { SheetHandleProps } from "./SheetHandle";
+export { useDraggableSheet } from "./useDraggableSheet";

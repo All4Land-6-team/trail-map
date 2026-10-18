@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { Button } from "../../../components/common/Button";
 import { Icon } from "../../../components/common/Icon";
-import { SheetHandle } from "../../../components/hike";
+import { SheetHandle, useDraggableSheet } from "../../../components/hike";
 
 export type HikeStage = "ascent" | "descent";
 
@@ -23,19 +22,19 @@ export function HikeProgressSheet({
   stage, courseName, traveledKm, remainingKm, sunset,
   alertsOn = false, onAlertsChange, onStartDescent, onEnd,
 }: HikeProgressSheetProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const { sheetRef, bodyRef, collapsed: sheetCollapsed, sheetClassName, sheetStyle, handleProps: sheetHandleProps } = useDraggableSheet();
   const descent = stage === "descent";
   const total = traveledKm + remainingKm;
   const percent = total > 0 ? Math.round((traveledKm / total) * 100) : 0;
 
-  return <section className={["hike-progress-sheet", descent && "hike-progress-sheet--descent"].filter(Boolean).join(" ")}
-    aria-label="등산 진행 상황">
-    <SheetHandle collapsed={collapsed} onCollapsedChange={setCollapsed} />
+  return <section ref={sheetRef} style={sheetStyle} aria-label="등산 진행 상황"
+    className={["hike-progress-sheet", descent && "hike-progress-sheet--descent", sheetClassName].filter(Boolean).join(" ")}>
+    <SheetHandle {...sheetHandleProps} />
     <div className="hike-progress-sheet__head">
       <h2 className="hike-progress-sheet__stage">{descent ? "내려가는 중" : "올라가는 중"}</h2>
       {!descent && <span className="hike-progress-sheet__course">{courseName}</span>}
     </div>
-    <div className="hike-progress-sheet__body" hidden={collapsed}>
+    <div ref={bodyRef} className="hike-progress-sheet__body" inert={sheetCollapsed}>
       <div className="hike-progress-sheet__distances">
         {!descent && <span>이동 {traveledKm.toFixed(1)} km</span>}
         <span>남은 {remainingKm.toFixed(1)} km</span>

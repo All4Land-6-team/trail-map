@@ -3,7 +3,7 @@ import { findCourse, toDateKey } from "../../api/hikeMock";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
 import { Toast } from "../../components/feedback";
-import { HikeAlertConfirm, HikeRouteMap, LocationPermissionSheet, SheetHandle, SpotFilterChips, type SpotFilter } from "../../components/hike";
+import { HikeAlertConfirm, HikeRouteMap, LocationPermissionSheet, SheetHandle, SpotFilterChips, useDraggableSheet, type SpotFilter } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { MapAction } from "../../components/map";
 import { navigate } from "../../hooks/useHashRoute";
@@ -25,7 +25,7 @@ export function HikeTodayPage() {
   const [dimension, setDimension] = useState<"2D" | "3D">("2D");
   const [recenterKey, setRecenterKey] = useState(0);
   const [askingAlerts, setAskingAlerts] = useState(false);
-  const [sheetCollapsed, setSheetCollapsed] = useState(false);
+  const { sheetRef, bodyRef, collapsed: sheetCollapsed, sheetClassName, sheetStyle, handleProps: sheetHandleProps } = useDraggableSheet();
   const location = useLocationPermission();
   const toast = useToastMessage();
   const session = useHikeSession();
@@ -64,11 +64,12 @@ export function HikeTodayPage() {
             <MapAction aria-label="코스 전체 보기" onClick={() => setRecenterKey(key => key + 1)} />
           </div>
         </div>
-        <section className="hike-map-sheet hike-today-page__sheet" aria-labelledby="hike-today-title">
-          <SheetHandle collapsed={sheetCollapsed} onCollapsedChange={setSheetCollapsed} />
+        <section ref={sheetRef} className={`hike-map-sheet hike-today-page__sheet ${sheetClassName}`}
+          style={sheetStyle} aria-labelledby="hike-today-title">
+          <SheetHandle {...sheetHandleProps} />
           <p className="hike-map-sheet__eyebrow">오늘 {schedule.startTime} 출발</p>
           <h2 id="hike-today-title" className="hike-map-sheet__title">{schedule.mountainName} · {schedule.courseName}</h2>
-          <div className="hike-map-sheet__body" hidden={sheetCollapsed}>
+          <div ref={bodyRef} className="hike-map-sheet__body" inert={sheetCollapsed}>
             <p className="hike-today-page__distance">{schedule.distanceKm.toFixed(1)} km</p>
             <div className="hike-today-page__sunset">
               <Icon name="Sun" size={24} />

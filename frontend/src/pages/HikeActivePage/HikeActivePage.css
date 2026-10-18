@@ -1,4 +1,4 @@
-.hike-active-page__nearby { position: absolute; z-index: 2; right: 16px; bottom: 44px; max-width: min(252px, calc(100% - 32px)); box-shadow: 0 3px 5px rgba(23, 71, 54, .1); }
+.hike-active-page__nearby { position: absolute; z-index: 2; right: 16px; bottom: calc(44px + var(--hike-sheet-inset, 0px)); max-width: min(252px, calc(100% - 32px)); box-shadow: 0 3px 5px rgba(23, 71, 54, .1); }
 .hike-active-page__toast { bottom: 270px; }
 
 /* 지도 위로 25px 겹쳐 올라오는 진행 시트 (Figma sheet 257px) */
