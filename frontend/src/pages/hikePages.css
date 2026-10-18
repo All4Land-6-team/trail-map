@@ -13,8 +13,6 @@
 .hike-map-page__top .af-top-bar { width: auto; margin: 0 16px; }
 .hike-map-page__tools { position: absolute; z-index: 2; top: 127px; right: 17px; display: flex; flex-direction: column; gap: 6px; }
 .hike-map-page__tools .af-map-action { border-color: transparent; border-radius: 12px; box-shadow: 0 3px 5px rgba(23, 71, 54, .1); }
-/* 시트가 지도 아래쪽을 덮으므로 지도 출처 표시를 그 위로 올린다 (끄는 시트는 지금 가린 높이만큼) */
-.hike-map-page__map .maplibregl-ctrl-bottom-left { bottom: calc(25px + var(--hike-sheet-inset, 0px)); }
 /* 지도 위로 25px 겹쳐 올라오는 하단 시트 */
 .hike-map-sheet { position: relative; z-index: 3; flex: none; margin-top: -25px; padding: 28px 20px 20px; border-radius: 25px 25px 0 0; color: var(--af-ink); background: #fff; box-shadow: 0 -8px 12px rgba(23, 71, 54, .06); }
 .hike-map-sheet__eyebrow { margin: 0; color: var(--af-green); font: 700 10px/14px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
