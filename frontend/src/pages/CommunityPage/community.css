@@ -34,14 +34,10 @@
 .community-map__custom-symbol { display:grid; min-width:30px; height:30px; padding:4px; place-items:center; border:1px solid var(--af-green); border-radius:50%; color:var(--af-green); background:#fff; font-size:11px; font-weight:700; }
 .community-map__custom-marker--point .community-map__custom-symbol { color:#fff; background:var(--af-green); }
 .community-map__custom-label { max-width:100px; overflow:hidden; padding:3px 7px; border-radius:10px; color:var(--af-green-dark); background:#fff; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
-.community-map-filters { position:absolute; z-index:3; top:80px; left:18px; right:18px; display:flex; height:44px; align-items:center; gap:8px; }
-.community-map-filters button { position:relative; isolation:isolate; flex:1 1 60px; width:60px; max-width:60px; min-width:0; height:44px; padding:0 4px; border:0; color:var(--af-green-dark); background:transparent; font:600 12px/18px "Noto Sans KR",sans-serif; white-space:nowrap; touch-action:manipulation; }
-.community-map-filters button::before { position:absolute; z-index:-1; inset:8px 0; border:1px solid var(--af-line); border-radius:999px; background:#fff; content:""; }
-.community-map-filters button:active::before { background:var(--community-soft); }
-.community-map-filters button[aria-pressed="true"] { color:#fff; }
-.community-map-filters button[aria-pressed="true"]::before { border-color:var(--af-green); background:var(--af-green); }
-.community-map-filters button[aria-pressed="true"]:active::before { background:var(--af-green-dark); }
-.community-map__dimension.af-map-action { position:absolute; z-index:3; top:80px; right:18px; width:45px; height:45px; border-color:transparent; border-radius:14px; color:var(--af-green-dark); background:#fff; box-shadow:0 5px 7px rgb(23 71 54 / 6%); font-size:14px; line-height:20px; }
+.community-map-filters { position:absolute; z-index:3; top:82px; left:12px; display:flex; width:calc(100% - 12px); gap:7px; overflow-x:auto; scrollbar-width:none; }
+.community-map-filters::-webkit-scrollbar { display:none; }
+.community-map-filters .af-chip { flex:none; height:34px; padding-inline:14px; }
+.community-map__dimension.af-map-action { position:absolute; z-index:3; top:128px; right:17px; width:40px; height:40px; border:0; border-radius:12px; color:var(--af-green-dark); background:#fff; box-shadow:0 3px 5px rgb(23 71 54 / 10%); }
 .community-page__sheet { position:absolute; z-index:2; right:0; bottom:var(--community-nav-height); left:0; height:var(--community-sheet-height,auto); max-height:calc(100dvh - var(--community-nav-height) - 170px); min-height:32px; overflow:hidden; padding:8px 20px 16px; border-radius:25px 25px 0 0; box-shadow:0 -8px 12px #173d320d; transition:var(--community-sheet-transition,none); }
 .community-page__sheet--map { gap:6px; }
 @media(prefers-reduced-motion:reduce) { .community-page__sheet { transition:none; } }
@@ -280,4 +276,5 @@
 @media(prefers-reduced-motion:reduce) { .community-page__toast { animation:none; } }
 @media(max-height:740px) { .community-page__sheet--detail-mountain { max-height:calc(100dvh - var(--community-nav-height) - 200px); } .community-page__sheet--detail .community-gallery-strip .community-gallery-tile { flex-basis:132px; width:132px; height:132px; } }
 @media(max-height:620px) { .community-form-layout__scroll { padding-top:10px; } }
-@media(max-width:350px) { .community-page__sheet { padding-inline:14px; } .community-map-filters button { font-size:11px; } .community-form-layout__scroll,.community-form-layout__action { padding-inline:14px; } }
+@media(max-height:720px) { .community-map-filters { top:76px; } .community-map__dimension.af-map-action { top:122px; } }
+@media(max-width:350px) { .community-page__sheet { padding-inline:14px; } .community-form-layout__scroll,.community-form-layout__action { padding-inline:14px; } }

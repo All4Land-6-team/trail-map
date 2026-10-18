@@ -431,9 +431,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', readOnly = fal
         else showDetail('spot', id)
       } : undefined}>
       {screen === 'map' && <div className="community-map-filters" role="group" aria-label="지도와 후기 목록 유형 필터">
-        {(['all', 'mountain', 'spot', 'segment'] as const).map(category => <button type="button" key={category} aria-pressed={mapCategory === category}
-          aria-controls="community-map-results" onClick={() => changeMapCategory(category)}>
-          {category === 'all' ? '전체' : category === 'spot' ? '스팟' : category === 'segment' ? '구간' : '산'}</button>)}
+        {(['all', 'mountain', 'spot', 'segment'] as const).map(category => <Chip key={category} selected={mapCategory === category}
+          aria-controls="community-map-results" onClick={() => changeMapCategory(category)}
+          label={category === 'all' ? '전체' : category === 'spot' ? '스팟' : category === 'segment' ? '구간' : '산'} />)}
       </div>}
     </CommunityMap>}
 
