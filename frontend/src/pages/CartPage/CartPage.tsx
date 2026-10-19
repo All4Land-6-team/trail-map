@@ -1,15 +1,16 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import type { BottomDestination } from "../../components/layout";
 import { useSavedCourseIds } from "../../store/courseSelectionStore";
 import { navigate } from "../../hooks/useHashRoute";
+import { cartCourseDetailPath } from "../../routes/courseDetailRoutes";
 import { cartCatalog } from "./catalog";
 import { CartHomeScreen } from "./components/CartHomeScreen";
 import { CourseSelectionScreen } from "./components/CourseSelectionScreen";
+import { limitComparisonCourseIds, toggleComparisonCourseId } from "./data";
 import type { PlannedHike } from "../../types/hiking";
 import "./cart.css";
 
 const CourseCompareScreen = lazy(() => import("./components/CourseCompareScreen").then(({ CourseCompareScreen: Screen }) => ({ default: Screen })));
-const CourseDetailScreen = lazy(() => import("./components/CourseDetailScreen").then(({ CourseDetailScreen: Screen }) => ({ default: Screen })));
 const ComparisonMetricsScreen = lazy(() => import("./components/ComparisonMetricsScreen").then(({ ComparisonMetricsScreen: Screen }) => ({ default: Screen })));
 
 type CartPageProps = {
@@ -19,6 +20,11 @@ type CartPageProps = {
   onPlanHike: (plannedHike: PlannedHike) => void;
 };
 
+function LegacyCartCourseRedirect({ path }: { path: string }) {
+  useEffect(() => navigate(path), [path]);
+  return <main className="app-route-loading" aria-busy="true">공통 코스 상세 화면으로 이동 중이에요</main>;
+}
+
 export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHike }: CartPageProps) {
   const savedIds = useSavedCourseIds();
   const saved = cartCatalog.filter(course => savedIds.includes(course.id));
@@ -26,7 +32,8 @@ export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHik
   const query = new URLSearchParams(search);
   const mountainId = query.get("mountain") ?? (path.startsWith("cart/mountain/") ? path.slice(14) : "bukhansan");
   const courses = saved.filter(course => course.mountainId === mountainId);
-  const selectedIds = new Set(query.has("selected") ? query.get("selected")!.split(",") : courses.map(course => course.id));
+  const requestedIds = query.has("selected") ? query.get("selected")!.split(",") : courses.map(course => course.id);
+  const selectedIds = new Set(limitComparisonCourseIds(courses.map(course => course.id), requestedIds));
   const selected = courses.filter(course => selectedIds.has(course.id));
   const context = new URLSearchParams({ mountain: mountainId, selected: selected.map(course => course.id).join(",") });
   const selectionPath = `cart/mountain/${mountainId}?${context}`;
@@ -35,23 +42,25 @@ export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHik
   const nav = onNavigateOutsideCart;
   const home = <CartHomeScreen courses={path === "cart/empty" ? [] : saved} onBrowseMountains={() => nav("home")}
     onNavigate={nav} onSelectMountain={id => navigate(`cart/mountain/${id}`)} />;
-  const detail = (id: string, from = "selection") => navigate(`cart/course/${encodeURIComponent(id)}?${context}&from=${from}`);
+  const detail = (id: string, from = "selection") => navigate(cartCourseDetailPath(
+    { mountainId, courseId: id }, from === "metrics" ? metricsPath : selectionPath,
+  ));
 
   if (path.startsWith("cart/course/")) {
     const course = saved.find(item => encodeURIComponent(item.id) === path.slice(12));
     if (!course) return home;
-    return <Suspense fallback={<main aria-busy="true">상세 화면을 불러오는 중이에요</main>}>
-      <CourseDetailScreen course={course} onBack={() => navigate(query.get("from") === "metrics" ? metricsPath : selectionPath)}
-        onKeepCart={() => navigate("cart")} onNavigate={nav} plannedHikes={plannedHikes} onPlanHike={onPlanHike} />
-    </Suspense>;
+    const returnTo = query.get("from") === "metrics" ? metricsPath : selectionPath;
+    return <LegacyCartCourseRedirect path={cartCourseDetailPath(
+      { mountainId: course.mountainId ?? mountainId, courseId: course.id }, returnTo,
+    )} />;
   }
   if (!courses.length) return home;
   if (path === "cart/bukhansan" || path.startsWith("cart/mountain/") || ((path === "cart/compare" || path === "cart/metrics") && selected.length < 2)) {
     return <CourseSelectionScreen courses={courses} selectedCourseIds={selectedIds} onBack={() => navigate("cart")}
       onCompare={() => navigate(comparePath)} onCourseDetail={id => detail(id)} onNavigate={nav}
       onToggleCourse={id => {
-        const next = new Set(selectedIds);
-        if (next.has(id)) next.delete(id); else next.add(id);
+        const next = toggleComparisonCourseId(selectedIds, id);
+        if (!next) return;
         context.set("selected", [...next].join(","));
         navigate(`cart/mountain/${mountainId}?${context}`);
       }} />;

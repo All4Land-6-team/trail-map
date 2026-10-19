@@ -5,7 +5,7 @@ import { Typography } from "../../../components/common/Typography";
 import { BottomNavigation, TopBar, type BottomDestination } from "../../../components/layout";
 import { BaseMap, MapAction, type MapRoute } from "../../../components/map";
 import { BottomSheet } from "../../../components/overlay";
-import { BUKHANSAN_CENTER, formatCourseDuration } from "../data";
+import { BUKHANSAN_CENTER, formatCourseDuration, MAX_COMPARISON_COURSES } from "../data";
 import type { CartCourse } from "../types";
 import { useDraggableCartSheet } from "./useDraggableCartSheet";
 
@@ -38,6 +38,8 @@ export function CourseSelectionScreen({
     coordinates: course.routeCoordinates,
   })), [selectedCourses]);
   const canCompare = selectedCourses.length >= 2;
+  const selectionLimitReached = selectedCourses.length >= MAX_COMPARISON_COURSES;
+  const selectionLimitMessage = `코스는 최대 ${MAX_COMPARISON_COURSES}개까지 선택할 수 있어요`;
   const sheet = useDraggableCartSheet({
     ariaLabel: "코스 목록 높이 조절",
     openHeight: 360,
@@ -79,13 +81,16 @@ export function CourseSelectionScreen({
             </Typography>
             {courses.map((course) => {
               const isSelected = selectedCourseIds.has(course.id);
+              const selectionDisabled = !isSelected && selectionLimitReached;
               return (
                 <div className="cart-course-row" key={course.id}>
                   <button
                     type="button"
                     className="cart-course-toggle"
                     aria-pressed={isSelected}
-                    aria-label={`${course.name} ${isSelected ? "선택 해제" : "선택"}`}
+                    aria-label={`${course.name} ${isSelected ? "선택 해제" : selectionDisabled ? `선택 불가, 최대 ${MAX_COMPARISON_COURSES}개 선택됨` : "선택"}`}
+                    disabled={selectionDisabled}
+                    title={selectionDisabled ? selectionLimitMessage : undefined}
                     onClick={() => onToggleCourse(course.id)}
                   >
                     <span className="cart-course-check" style={{ backgroundColor: isSelected ? course.color : undefined }}>
@@ -114,7 +119,9 @@ export function CourseSelectionScreen({
         )}
         footer={(
           <div className="cart-selection-footer">
-            {!canCompare && (
+            {selectionLimitReached ? (
+              <Typography variant="descriptionSmall">{selectionLimitMessage}</Typography>
+            ) : !canCompare && (
               <Typography variant="descriptionSmall">코스 2개 이상 선택</Typography>
             )}
             <Button fullWidth disabled={!canCompare} onClick={onCompare}>

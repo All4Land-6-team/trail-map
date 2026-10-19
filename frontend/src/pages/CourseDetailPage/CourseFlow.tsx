@@ -3,7 +3,7 @@ import { mountains } from "../../api/homeMock";
 import { ScheduleSheet } from "../../components/hike";
 import { navigate } from "../../hooks/useHashRoute";
 import { readCourseRoute, coursePaths } from "../../routes/courseRoutes";
-import { readCourseDetailView } from "../../routes/courseDetailRoutes";
+import { courseDetailNavigationSource, readCourseDetailView } from "../../routes/courseDetailRoutes";
 import { internalReturnPath, spotReviewPath } from "../../routes/communityRoutes";
 import { useHikeSchedules } from "../../store/hikeScheduleStore";
 import type { CourseRequest } from "../../types/course";
@@ -27,6 +27,7 @@ export function CourseFlow({ route }: { route: string }) {
     {viewRequest.courseId ? <CourseDetailPage key={`${viewRequest.mountainId}/${viewRequest.courseId}`}
       mountainId={viewRequest.mountainId} courseId={viewRequest.courseId} view={readCourseDetailView(background)}
       hasSchedule={!!schedule} onScheduleOpen={openSchedule} onSpotOpen={spot => navigate(spotReviewPath(spot))}
+      activeDestination={courseDetailNavigationSource(returnTo)}
       onBack={query.get("returnTo") && !isSchedule ? () => navigate(returnTo) : undefined} />
       : <CourseListPage key={viewRequest.mountainId} mountainId={viewRequest.mountainId}
         initialCourseId={isSchedule ? request.courseId : viewRequest.selectedCourseId} onScheduleOpen={openSchedule} />}

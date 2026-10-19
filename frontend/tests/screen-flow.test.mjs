@@ -4,7 +4,7 @@ import { homePaths } from '../src/routes/homeRoutes.ts';
 import { internalReturnPath, spotReviewPath } from '../src/routes/communityRoutes.ts';
 import { startHikeSession, getHikeSession, setHikeAlerts, startHikeDescent, finishHikeSession } from '../src/store/hikeSessionStore.ts';
 import { initialHikeProgress } from '../src/utils/activeHike.ts';
-import { courseDetailPath } from '../src/routes/courseDetailRoutes.ts';
+import { cartCourseDetailPath, courseDetailNavigationSource, courseDetailPath } from '../src/routes/courseDetailRoutes.ts';
 
 test('하단 탭이 실제 캘린더와 커뮤니티 및 담기 화면을 가리킨다', () => {
   assert.equal(homePaths.myHikes, 'hikes/calendar');
@@ -28,6 +28,18 @@ test('일정에서 코스 상세 탭을 바꿔도 원래 일정으로 돌아간�
     const path = courseDetailPath(request, { tab, category: 'photo' }, returnTo);
     assert.equal(new URLSearchParams(path.split('?')[1]).get('returnTo'), returnTo);
   }
+});
+test('담은 코스 비교표에서 FLOW-04 상세로 이동하고 비교 상태를 복구한다', () => {
+  const request = { mountainId: 'bukhansan', courseId: 'sumunbyeok' };
+  const returnTo = 'cart/metrics?mountain=bukhansan&selected=daenammun%2Csumunbyeok%2Cbukhansan-bogukmun';
+  const path = cartCourseDetailPath(request, returnTo);
+  assert.equal(path.split('?')[0], 'mountains/bukhansan/courses/sumunbyeok');
+  assert.equal(new URLSearchParams(path.split('?')[1]).get('returnTo'), returnTo);
+  assert.equal(courseDetailNavigationSource(returnTo), 'saved');
+  const scheduleReturnTo = `mountains/bukhansan/courses/sumunbyeok?returnTo=${encodeURIComponent(returnTo)}`;
+  assert.equal(courseDetailNavigationSource(scheduleReturnTo), 'saved');
+  assert.equal(courseDetailNavigationSource('hikes/detail?date=2026-10-18'), 'home');
+  assert.equal(courseDetailNavigationSource('cartography'), 'home');
 });
 test('시작-알림 변경-하산-완료가 동일 코스와 완료 시각을 유지한다', () => {
   const schedule = { date: '2026-10-18', startTime: '09:00', courseId: 'dobongsan-sinseondae', mountainName: '도봉산', courseName: '신선대 코스', distanceKm: 5.8 };
