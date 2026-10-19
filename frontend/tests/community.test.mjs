@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SEGMENT_STATUS_CONFIRMATION_COUNT, SPOT_HIDE_NEGATIVE_VOTES, canWriteReview, castSpotVote, distanceMeters, isSpotHidden, nearbySpotCandidates, resolveSegmentStatus } from '../src/utils/community.ts';
+import { communityMarkerMode } from '../src/pages/CommunityPage/components/communityMapZoom.ts';
+
+test('커뮤니티 지도 줌 단계는 기본점, 숫자 클러스터, 개별 아이콘 순으로 전환한다', () => {
+  assert.equal(communityMarkerMode(9.5), 'overview');
+  assert.equal(communityMarkerMode(12), 'overview');
+  assert.equal(communityMarkerMode(12.99), 'overview');
+  assert.equal(communityMarkerMode(13), 'cluster');
+  assert.equal(communityMarkerMode(14), 'cluster');
+  assert.equal(communityMarkerMode(15.99), 'cluster');
+  assert.equal(communityMarkerMode(16), 'individual');
+});
 
 const base = [126.978, 37.659];
 const near = [base[0] + 0.00015, base[1]];

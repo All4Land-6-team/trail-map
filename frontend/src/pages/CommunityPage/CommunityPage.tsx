@@ -446,6 +446,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       focusTarget={screen === 'map' ? mapFocus : screen === 'mountainDetail' ? mountainDetailFocus : screen === 'spotDetail' ? detailSpotFocus ?? undefined
         : screen === 'segmentDetail' ? segmentDetailFocus : undefined}
       showRoute={mountainId === 'bukhansan'}
+      overviewMarker={{ id: mountain.id, name: mountain.name, coordinate: mountain.position as Coordinate, kind: 'mountain' }}
       segmentLine={screen === 'segmentDetail' && mountainId === 'bukhansan'
         ? { coordinates: selectedSegment.coordinates, status: segmentStatus } : undefined}
       markers={screen === 'map' ? mapMarkers : screen === 'mountainDetail'
