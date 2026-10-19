@@ -1,7 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import type { BottomDestination } from "../../components/layout";
 import { useSavedCourseIds } from "../../store/courseSelectionStore";
 import { navigate } from "../../hooks/useHashRoute";
+import { cartCourseDetailPath } from "../../routes/courseDetailRoutes";
 import { cartCatalog } from "./catalog";
 import { CartHomeScreen } from "./components/CartHomeScreen";
 import { CourseSelectionScreen } from "./components/CourseSelectionScreen";
@@ -9,7 +10,6 @@ import type { PlannedHike } from "../../types/hiking";
 import "./cart.css";
 
 const CourseCompareScreen = lazy(() => import("./components/CourseCompareScreen").then(({ CourseCompareScreen: Screen }) => ({ default: Screen })));
-const CourseDetailScreen = lazy(() => import("./components/CourseDetailScreen").then(({ CourseDetailScreen: Screen }) => ({ default: Screen })));
 const ComparisonMetricsScreen = lazy(() => import("./components/ComparisonMetricsScreen").then(({ ComparisonMetricsScreen: Screen }) => ({ default: Screen })));
 
 type CartPageProps = {
@@ -18,6 +18,11 @@ type CartPageProps = {
   plannedHikes: readonly PlannedHike[];
   onPlanHike: (plannedHike: PlannedHike) => void;
 };
+
+function LegacyCartCourseRedirect({ path }: { path: string }) {
+  useEffect(() => navigate(path), [path]);
+  return <main className="app-route-loading" aria-busy="true">공통 코스 상세 화면으로 이동 중이에요</main>;
+}
 
 export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHike }: CartPageProps) {
   const savedIds = useSavedCourseIds();
@@ -35,15 +40,17 @@ export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHik
   const nav = onNavigateOutsideCart;
   const home = <CartHomeScreen courses={path === "cart/empty" ? [] : saved} onBrowseMountains={() => nav("home")}
     onNavigate={nav} onSelectMountain={id => navigate(`cart/mountain/${id}`)} />;
-  const detail = (id: string, from = "selection") => navigate(`cart/course/${encodeURIComponent(id)}?${context}&from=${from}`);
+  const detail = (id: string, from = "selection") => navigate(cartCourseDetailPath(
+    { mountainId, courseId: id }, from === "metrics" ? metricsPath : selectionPath,
+  ));
 
   if (path.startsWith("cart/course/")) {
     const course = saved.find(item => encodeURIComponent(item.id) === path.slice(12));
     if (!course) return home;
-    return <Suspense fallback={<main aria-busy="true">상세 화면을 불러오는 중이에요</main>}>
-      <CourseDetailScreen course={course} onBack={() => navigate(query.get("from") === "metrics" ? metricsPath : selectionPath)}
-        onKeepCart={() => navigate("cart")} onNavigate={nav} plannedHikes={plannedHikes} onPlanHike={onPlanHike} />
-    </Suspense>;
+    const returnTo = query.get("from") === "metrics" ? metricsPath : selectionPath;
+    return <LegacyCartCourseRedirect path={cartCourseDetailPath(
+      { mountainId: course.mountainId ?? mountainId, courseId: course.id }, returnTo,
+    )} />;
   }
   if (!courses.length) return home;
   if (path === "cart/bukhansan" || path.startsWith("cart/mountain/") || ((path === "cart/compare" || path === "cart/metrics") && selected.length < 2)) {

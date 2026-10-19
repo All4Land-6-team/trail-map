@@ -19,3 +19,16 @@ export function courseDetailPath(request: CourseRequest, view: CourseDetailView,
   if (returnTo) params.set("returnTo", returnTo);
   return `${coursePaths.detail(request)}${params.size ? `?${params}` : ""}`;
 }
+
+export function cartCourseDetailPath(request: CourseRequest, returnTo: string) {
+  return courseDetailPath(request, { tab: "analysis", category: "all" }, returnTo);
+}
+
+export function courseDetailNavigationSource(returnTo?: string | null): "home" | "saved" {
+  let path = returnTo;
+  for (let depth = 0; path && depth < 2; depth += 1) {
+    if (/^cart(?:\/|$)/.test(path)) return "saved";
+    path = new URLSearchParams(path.split("?")[1] ?? "").get("returnTo");
+  }
+  return "home";
+}
