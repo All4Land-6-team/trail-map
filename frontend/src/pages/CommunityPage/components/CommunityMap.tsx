@@ -4,13 +4,14 @@ import BaseMap, { type MapRoute } from '../../../components/map/BaseMap'
 import { MapAction, MountainMarker, SpotMarker } from '../../../components/map'
 import { Icon } from '../../../components/common/Icon'
 import { communityCourse } from '../../../api/communityMock'
-import type { Coordinate, SegmentStatus, SpotType } from '../../../types/community'
+import type { Coordinate, SpotType } from '../../../types/community'
+import { communityMarkerMode } from './communityMapZoom'
 
 export type CommunityMapMarker = {
   id: string
   name: string
   label?: string
-  kind: 'mountain' | 'spot' | 'segment' | 'point'
+  kind: 'mountain' | 'spot' | 'course' | 'point'
   coordinate: Coordinate
   spotType?: SpotType
   selected?: boolean
@@ -19,11 +20,12 @@ export type CommunityMapMarker = {
 
 type Props = {
   markers?: readonly CommunityMapMarker[]
+  overviewMarker?: CommunityMapMarker
   center?: Coordinate
   focusTarget?: { coordinate: Coordinate; request: number; zoom?: number; resetZoom?: boolean }
   zoom?: number
   showRoute?: boolean
-  segmentLine?: { coordinates: Coordinate[]; status: SegmentStatus }
+  highlightedRoute?: Coordinate[]
   onMarkerSelect?: (id: string) => void
   onMapSelect?: (coordinate: Coordinate) => void
   children?: ReactNode
@@ -33,9 +35,6 @@ type Props = {
 
 const ROUTES: readonly MapRoute[] = [{ id: 'community-baegundae', color: '#19765b', coordinates: [...communityCourse.routeCoordinates] }]
 const EMPTY_ROUTES: readonly MapRoute[] = []
-const SEGMENT_COLORS: Record<SegmentStatus, string> = { good: '#19765b', caution: '#bf8120', danger: '#b44e62' }
-const BASE_ROUTE_LAYER = 'course-route-community-baegundae'
-const SEGMENT_ROUTE_LAYER = 'course-route-community-segment-status'
 const DEFAULT_CENTER: Coordinate = [126.977, 37.659]
 const MARKER_CLUSTER_DISTANCE = 48
 
@@ -56,52 +55,66 @@ function groupNearbyMarkers(markers: readonly ProjectedMarker[]) {
   return groups
 }
 
-export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarget, zoom = 14, showRoute = true,
-  segmentLine, onMarkerSelect, onMapSelect, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
+function visibleMapArea(map: MapLibreMap) {
+  const mapRect = map.getContainer().getBoundingClientRect()
+  const page = map.getContainer().closest('.community-page')
+  const sheetTop = page?.querySelector('.community-page__sheet')?.getBoundingClientRect().top ?? mapRect.bottom
+  const topBarBottom = page?.querySelector('.community-page__topbar')?.getBoundingClientRect().bottom ?? mapRect.top
+  const filterBottom = page?.querySelector('.community-map-filters')?.getBoundingClientRect().bottom ?? topBarBottom
+  const visibleTop = Math.max(0, Math.max(topBarBottom, filterBottom) - mapRect.top)
+  const visibleBottom = Math.min(mapRect.height, sheetTop - mapRect.top)
+  return { visibleTop, visibleCenter: (visibleTop + Math.max(visibleTop, visibleBottom)) / 2, mapHeight: mapRect.height }
+}
+
+export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CENTER, focusTarget, zoom = 14, showRoute = true,
+  highlightedRoute, onMarkerSelect, onMapSelect, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [projected, setProjected] = useState<ProjectedMarker[]>([])
+  const [markerMode, setMarkerMode] = useState(() => communityMarkerMode(zoom))
   const [clusterChoices, setClusterChoices] = useState<CommunityMapMarker[]>([])
   const [mapUnavailable, setMapUnavailable] = useState(false)
   const [mapRetry, setMapRetry] = useState(0)
   const [dimension, setDimension] = useState<'2D' | '3D'>('2D')
   const isMainMap = className?.includes('community-page__map--main') ?? false
   const onReady = useCallback((instance: MapLibreMap | null) => { setMap(instance); if (instance) setMapUnavailable(false) }, [])
-  const markerSignature = markers.map(marker => `${marker.id}:${marker.coordinate.join(',')}:${marker.selected}`).join('|')
+  const markerSignature = [...markers, ...(overviewMarker ? [overviewMarker] : [])]
+    .map(marker => `${marker.id}:${marker.coordinate.join(',')}:${marker.selected}`).join('|')
   // MapLibre 객체는 화면별로 유지하고 이동/크기 변경 때만 핀 좌표를 다시 계산한다.
   const markerSnapshot = useMemo(() => markers, [markerSignature]) // eslint-disable-line react-hooks/exhaustive-deps
-  const segmentCoordinates = segmentLine?.coordinates
-  const segmentStatus = segmentLine?.status
-  const routes = useMemo<readonly MapRoute[]>(() => !showRoute ? EMPTY_ROUTES : segmentCoordinates && segmentStatus ? [
-    { id: 'community-baegundae', color: '#8ca89c', coordinates: [...communityCourse.routeCoordinates] },
-    { id: 'community-segment-status', color: SEGMENT_COLORS[segmentStatus], coordinates: segmentCoordinates },
-  ] : ROUTES, [showRoute, segmentCoordinates, segmentStatus])
-
-  useEffect(() => {
-    if (!map || !segmentCoordinates || !segmentStatus) return
-    const styleSegmentRoute = () => {
-      if (map.getLayer(BASE_ROUTE_LAYER) && map.getPaintProperty(BASE_ROUTE_LAYER, 'line-opacity') !== 0.65)
-        map.setPaintProperty(BASE_ROUTE_LAYER, 'line-opacity', 0.65)
-      if (map.getLayer(SEGMENT_ROUTE_LAYER) && map.getPaintProperty(SEGMENT_ROUTE_LAYER, 'line-width') !== 7)
-        map.setPaintProperty(SEGMENT_ROUTE_LAYER, 'line-width', 7)
-    }
-    map.on('styledata', styleSegmentRoute)
-    styleSegmentRoute()
-    return () => { map.off('styledata', styleSegmentRoute) }
-  }, [map, segmentCoordinates, segmentStatus])
+  const overviewSnapshot = useMemo(() => overviewMarker, [markerSignature]) // eslint-disable-line react-hooks/exhaustive-deps
+  const routes = useMemo<readonly MapRoute[]>(() => !showRoute ? EMPTY_ROUTES : highlightedRoute ? [
+    { id: 'community-selected-course', color: '#19765b', coordinates: highlightedRoute },
+  ] : ROUTES, [showRoute, highlightedRoute])
 
   useEffect(() => {
     if (!map) return
-    const update = () => setProjected(markerSnapshot.map(marker => {
-      const point = map.project(marker.coordinate)
-      return { marker, x: point.x, y: point.y }
-    }))
+    const update = () => {
+      const mode = communityMarkerMode(map.getZoom())
+      if (isMainMap) setMarkerMode(mode)
+      const visibleMarkers = isMainMap && mode === 'overview'
+        ? overviewSnapshot ? [overviewSnapshot] : markerSnapshot.filter(marker => marker.kind === 'mountain')
+        : markerSnapshot
+      setProjected(visibleMarkers.map(marker => {
+        const point = map.project(marker.coordinate)
+        return { marker, x: point.x, y: point.y }
+      }))
+    }
+    const focusOverview = () => {
+      if (!isMainMap || communityMarkerMode(map.getZoom()) !== 'overview') return
+      const marker = overviewSnapshot ?? markerSnapshot.find(item => item.kind === 'mountain')
+      if (!marker) return
+      const { visibleCenter, mapHeight } = visibleMapArea(map)
+      map.easeTo({ center: marker.coordinate, offset: [0, visibleCenter - mapHeight / 2],
+        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220 })
+    }
     const observer = new ResizeObserver(() => { map.resize(); update() })
     observer.observe(map.getContainer())
     map.on('move', update)
     map.on('resize', update)
+    map.on('zoomend', focusOverview)
     update()
-    return () => { observer.disconnect(); map.off('move', update); map.off('resize', update) }
-  }, [map, markerSnapshot])
+    return () => { observer.disconnect(); map.off('move', update); map.off('resize', update); map.off('zoomend', focusOverview) }
+  }, [map, markerSnapshot, overviewSnapshot, isMainMap])
 
   useEffect(() => {
     if (!map) return
@@ -125,18 +138,11 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
   }, [map, isMainMap, dimension])
 
   useEffect(() => {
-    if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-segment'))) return
-    const mapRect = map.getContainer().getBoundingClientRect()
-    const page = map.getContainer().closest('.community-page')
-    const sheetTop = page?.querySelector('.community-page__sheet')?.getBoundingClientRect().top ?? mapRect.bottom
-    const topBarBottom = page?.querySelector('.community-page__topbar')?.getBoundingClientRect().bottom ?? mapRect.top
-    const filterBottom = page?.querySelector('.community-map-filters')?.getBoundingClientRect().bottom ?? topBarBottom
-    const visibleTop = Math.max(0, Math.max(topBarBottom, filterBottom) - mapRect.top)
-    const visibleBottom = Math.min(mapRect.height, sheetTop - mapRect.top)
-    const visibleCenter = (visibleTop + Math.max(visibleTop, visibleBottom)) / 2
+    if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return
+    const { visibleTop, visibleCenter, mapHeight } = visibleMapArea(map)
     const focusY = className.includes('community-page__map--detail-mountain') || className.includes('community-page__map--mountain-focus')
       ? Math.max(visibleTop + 44, Math.min(visibleCenter - 28, visibleTop + 48)) : visibleCenter
-    map.easeTo({ center: focusTarget.coordinate, offset: [0, focusY - mapRect.height / 2],
+    map.easeTo({ center: focusTarget.coordinate, offset: [0, focusY - mapHeight / 2],
       zoom: focusTarget.zoom === undefined ? map.getZoom() : focusTarget.resetZoom
         ? focusTarget.zoom : Math.max(map.getZoom(), focusTarget.zoom),
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550,
@@ -150,9 +156,10 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
     return () => { map.off('click', select) }
   }, [map, onMapSelect])
 
-  const markerGroups = isMainMap ? groupNearbyMarkers(projected) : projected.map(item => [item])
+  const markerGroups = isMainMap && markerMode === 'cluster' ? groupNearbyMarkers(projected)
+    : projected.filter(({ marker }) => marker.kind !== 'mountain').map(item => [item])
   const mountainMarkers = projected.filter(({ marker }) => marker.kind === 'mountain')
-  const displayedGroups = isMainMap ? [...mountainMarkers.map(item => [item]), ...markerGroups] : markerGroups
+  const displayedGroups = [...mountainMarkers.map(item => [item]), ...markerGroups]
 
   const expandCluster = (group: readonly ProjectedMarker[]) => {
     if (!map) return
@@ -164,11 +171,12 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
       group.reduce((total, item) => total + item.marker.coordinate[0], 0) / group.length,
       group.reduce((total, item) => total + item.marker.coordinate[1], 0) / group.length,
     ]
-    map.easeTo({ center, zoom: Math.min(map.getZoom() + 2, map.getMaxZoom()),
+    const { visibleCenter, mapHeight } = visibleMapArea(map)
+    map.easeTo({ center, offset: [0, visibleCenter - mapHeight / 2], zoom: Math.min(map.getZoom() + 2, map.getMaxZoom()),
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220 })
   }
 
-  return <div className={['community-map', className].filter(Boolean).join(' ')}>
+  return <div className={['community-map', className].filter(Boolean).join(' ')} data-marker-mode={isMainMap ? markerMode : undefined}>
     <BaseMap key={mapRetry} className="community-map__base" ariaLabel={ariaLabel} center={center} zoom={zoom}
       routes={routes} showNavigationControl={false} onMapReady={onReady} />
     {mapUnavailable && <div className="community-map__fallback" role="status"><span>지도 배경을 불러오지 못했어요. 목록이나 마커로 후기를 볼 수 있어요.</span>
@@ -182,18 +190,18 @@ export function CommunityMap({ markers = [], center = DEFAULT_CENTER, focusTarge
         style={{ left: group.reduce((total, item) => total + item.x, 0) / group.length,
           top: group.reduce((total, item) => total + item.y, 0) / group.length } as CSSProperties}>
         <button type="button" className="community-map__cluster"
-          aria-label={`겹친 지도 항목 ${group.length}개 확대 또는 목록 보기`} onClick={() => expandCluster(group)}>{group.length}</button>
+          aria-label={`겹친 지도 항목 ${group.length}개 확대 또는 목록 보기`} onClick={() => expandCluster(group)}><span>{group.length}</span></button>
       </div> : group.map(({ marker, x, y }) => <div key={marker.id} className={`community-map__pin community-map__pin--${marker.kind}${marker.selected ? ' community-map__pin--selected' : ''}`}
         style={{ left: x, top: y } as CSSProperties}>
         {marker.kind === 'mountain'
-          ? <MountainMarker name={marker.name} variant="point" selected={marker.selected} onClick={() => onMarkerSelect?.(marker.id)} />
+          ? <MountainMarker name={marker.name} variant="point" selected={marker.selected} aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker.id)} />
           : marker.kind === 'spot' && marker.spotType !== 'other'
             ? <SpotMarker kind={marker.spotType ?? 'photo'} label={marker.name} aria-pressed={marker.selected}
                 aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker.id)} />
             : <button type="button" className={`community-map__custom-marker community-map__custom-marker--${marker.kind}`}
                 aria-label={`${marker.name} 선택`} aria-pressed={marker.selected} onClick={() => onMarkerSelect?.(marker.id)}>
                 <span className="community-map__custom-symbol">{marker.shortLabel ?? <Icon name="Pin" size={18} />}</span>
-                {marker.kind !== 'point' && marker.kind !== 'segment' && <span className="community-map__custom-label">{marker.label ?? marker.name}</span>}
+                {marker.kind !== 'point' && marker.kind !== 'course' && <span className="community-map__custom-label">{marker.label ?? marker.name}</span>}
               </button>}
       </div>))}
     </div>

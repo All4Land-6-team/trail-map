@@ -17,13 +17,17 @@
 .community-map__markers { position:absolute; inset:0; pointer-events:none; }
 .community-map__pin { position:absolute; z-index:2; display:grid; min-width:44px; min-height:44px; transform:translate(-50%,-50%); place-items:center; pointer-events:auto; }
 .community-map__pin .af-mountain-marker,.community-map__pin .af-spot-marker { pointer-events:auto; }
-.community-map__pin--segment { z-index:3; }
+.community-map__pin--course { z-index:3; }
 .community-map__pin .af-spot-marker { position:relative; }
 .community-map__pin .af-spot-marker__label { position:absolute; top:calc(100% + 4px); left:50%; width:max-content; max-width:116px; overflow:hidden; transform:translateX(-50%); padding:3px 6px; border-radius:6px; color:var(--af-ink); background:#fff; font-size:10px; line-height:15px; text-overflow:ellipsis; white-space:nowrap; box-shadow:0 1px 5px rgb(23 71 54 / 8%); }
 .community-page__map--main .community-map__pin .af-spot-marker__label { display:none; }
+.community-page__map--main[data-marker-mode="overview"] .af-mountain-marker--point { width:44px; height:44px; justify-content:center; }
+.community-page__map--main[data-marker-mode="overview"] .af-mountain-marker__label { display:none; }
+.community-page__map--main[data-marker-mode="overview"] .af-mountain-marker--point:focus-visible { outline:2px solid var(--af-green); outline-offset:2px; border-radius:50%; }
 .community-page__map--detail-spot .community-map__pin:not(.community-map__pin--selected) .af-spot-marker__label { display:none; }
 .community-page__map--detail-spot .community-map__pin--selected { z-index:3; }
-.community-map__cluster { display:grid; width:44px; height:44px; padding:0; place-items:center; border:2px solid #fff; border-radius:50%; color:#fff; background:var(--af-green); box-shadow:0 2px 8px rgb(23 71 54 / 20%); font:700 13px/1 "Noto Sans KR",sans-serif; cursor:pointer; }
+.community-map__cluster { display:grid; width:44px; height:44px; padding:0; place-items:center; border:0; background:transparent; cursor:pointer; }
+.community-map__cluster span { display:grid; width:34px; height:34px; place-items:center; border:2px solid #fff; border-radius:50%; color:#fff; background:var(--af-green); box-shadow:0 2px 8px rgb(23 71 54 / 20%); font:700 12px/1 "Noto Sans KR",sans-serif; }
 .community-map__cluster-choices { position:absolute; z-index:5; top:145px; right:18px; left:18px; display:flex; max-height:min(40dvh,250px); flex-direction:column; gap:6px; overflow-y:auto; padding:14px; border:1px solid var(--af-line); border-radius:14px; background:#fff; box-shadow:0 5px 18px #173d3233; }
 .community-map__cluster-choices>button:not(.community-map__cluster-close) { min-height:44px; padding:8px; border:0; border-radius:8px; color:var(--af-ink); background:var(--community-surface); text-align:left; }
 .community-map__cluster-close { position:absolute; top:6px; right:6px; width:44px; height:44px; border:0; color:var(--af-ink); background:transparent; font-size:24px; }
@@ -87,7 +91,6 @@
 .community-preview-row__text { display:flex; flex:1; flex-direction:column; gap:4px; min-width:0; color:var(--af-ink); }
 .community-preview-row__heading { display:flex; align-items:center; min-width:0; gap:6px; }
 .community-preview-row__heading strong { min-width:0; }
-.community-preview-row__heading .community-status-pill { flex:none; padding:3px 6px; font-size:9px; }
 .community-preview-row>.af-icon { flex:none; }
 .community-preview-row__photo { flex:none; width:56px; height:56px; border-radius:10px; object-fit:cover; }
 .community-preview-row__photo-placeholder { display:grid; flex:none; width:56px; height:56px; place-items:center; }
@@ -119,9 +122,8 @@
 .community-page__sheet--detail-mountain .af-bottom-sheet__body { gap:0; }
 .community-page__sheet--detail-mountain .af-bottom-sheet__footer { padding-top:8px; }
 .community-page__sheet--detail-mountain .community-gallery-heading { margin-top:-4px; }
-.community-page__sheet--detail-segment .af-bottom-sheet__title-group { min-width:0; }
-.community-page__sheet--detail-segment .af-bottom-sheet__title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.community-page__sheet--detail-segment .community-status-pill { flex:none; margin-left:8px; }
+.community-page__sheet--detail-course .af-bottom-sheet__title-group { min-width:0; }
+.community-page__sheet--detail-course .af-bottom-sheet__title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .community-page__sheet--detail-spot .af-bottom-sheet__body { gap:4px; }
 .community-page__sheet--detail-spot .af-bottom-sheet__title-row { margin-top:3px; }
 .community-page__sheet--detail-spot .community-detail-meta { margin:0 0 4px; }
@@ -159,12 +161,21 @@
 .community-gallery-review__text p { margin:8px 0 0; white-space:pre-wrap; }
 .community-quote-list { display:flex; flex-direction:column; gap:6px; }
 .community-quote { position:relative; padding:12px 13px; border-radius:12px; background:#f3f7f1; font-size:11px; line-height:16px; }
-.community-quote>span:first-child { color:#617b6c; }
+.community-quote__row { display:flex; align-items:center; gap:10px; }
+.community-quote__text { flex:1; min-width:0; }
+.community-quote__text>span:first-child { color:#617b6c; }
 .community-quote__meta--mountain { display:flex; min-width:0; flex-wrap:wrap; align-items:baseline; gap:2px 8px; }
 .community-quote__meta--mountain strong { color:var(--af-green); font-weight:700; white-space:nowrap; }
 .community-quote__meta--mountain time { white-space:nowrap; }
-.community-quote__segment { display:block; margin-top:3px; color:#617b6c; }
-.community-quote p { margin:5px 0 0; }
+.community-quote__text p { margin:5px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.community-quote__photo { flex:none; width:48px; height:48px; overflow:hidden; padding:0; border:0; border-radius:8px; background:#e8f1e7; cursor:pointer; }
+.community-quote__photo img { display:block; width:100%; height:100%; object-fit:cover; }
+.community-quote__photo:focus-visible { outline:2px solid var(--af-green); outline-offset:2px; }
+.community-photo-lightbox.af-modal-layer { z-index:10; display:grid; place-items:center; padding:20px; background:rgb(0 0 0 / 85%); }
+.community-photo-lightbox__dialog { position:relative; display:grid; width:100%; max-height:calc(100dvh - 88px); place-items:center; }
+.community-photo-lightbox__dialog img { display:block; max-width:100%; max-height:calc(100dvh - 88px); border-radius:8px; object-fit:contain; }
+.community-photo-lightbox__close { position:absolute; top:-48px; right:0; display:grid; width:44px; height:44px; place-items:center; padding:0; border:0; border-radius:50%; color:#fff; background:transparent; }
+.community-photo-lightbox__close:focus-visible { outline-color:#fff; }
 .community-detail-metrics { color:#617b6c; font-size:10px; white-space:nowrap; }
 .community-detail-metrics strong { color:var(--af-ink); }
 .community-mountain-empty { min-height:180px; margin-top:12px; padding:24px 16px; border:1px dashed var(--af-line); background:#f8faf7; }
@@ -173,11 +184,6 @@
 .community-empty { min-height:60px; padding:10px!important; border:1px dashed var(--af-line); border-radius:10px; background:#f8faf7; }
 .community-empty .af-empty-state__title { color:#617b6c; font-size:11px; font-weight:400; }
 .community-empty .af-empty-state__description { display:none; }
-.community-status-pill { display:inline-block; padding:3px 10px; border-radius:12px; font-size:10px; font-weight:600; }
-.community-status-pill--good { color:#176145; background:#e2f0e6; }
-.community-status-pill--caution { color:#74520d; background:#fbeed0; }
-.community-status-pill--danger { color:#94495a; background:#f8e3e0; }
-.community-status-legend { display:flex; gap:7px; flex-wrap:wrap; }
 .community-vote { margin:18px 0 5px; padding:12px; border:1px solid var(--af-line); border-radius:12px; background:#f8faf7; }
 .community-vote h3 { margin:0 0 4px; font-size:12px; }
 .community-vote p { margin:0 0 10px; color:#617b6c; font-size:11px; }
@@ -198,7 +204,7 @@
 .community-form-layout--review-mountain .af-rating-input__star { width:42px; height:48px; color:#d98a26; font-size:34px; }
 .community-form-layout--review .community-form-section:has(.af-multiline-field) .community-field-label { margin-bottom:5px; }
 .community-form-layout--review .af-multiline-field { border-radius:10px; resize:none; }
-.community-form-layout.community-form-layout--review-segment .af-multiline-field { min-height:96px; height:96px; }
+.community-form-layout.community-form-layout--review-course .af-multiline-field { min-height:96px; height:96px; }
 .community-form-layout--review .community-photo-field { min-height:113px; margin-top:0; padding:13px; }
 .community-form-layout--review .community-photo-field .community-field-label { margin-bottom:8px; }
 .community-form-layout--review .community-photo-field .community-field-label small { display:none; }
@@ -206,11 +212,10 @@
 .community-form-layout--review-spot .community-form-section:first-of-type { margin-bottom:3px; }
 .community-form-layout--review-spot .community-inline-link { display:flex; align-items:flex-start; min-height:44px; margin-top:4px; padding:7px 0 0; }
 .community-form-layout--review-spot .community-form-section:has(.af-multiline-field) .community-field-label { margin-bottom:9px; }
-.community-form-layout--review-segment .community-form-subtitle { margin-bottom:8px; font-size:11px; line-height:16px; }
-.community-form-layout--review-segment .community-segment-preview + .community-field-label { margin-top:8px; margin-bottom:6px; }
-.community-form-layout--review-segment .community-form-section:first-of-type { margin-bottom:12px; }
-.community-form-layout--review-segment .community-photo-field { min-height:110px; }
-.community-form-layout--review-segment .af-photo-slot--add { width:56px; height:56px; }
+.community-form-layout--review-course .community-form-subtitle { margin-bottom:10px; font-size:11px; line-height:16px; }
+.community-form-layout--review-course .community-form-section:first-of-type { margin-bottom:18px; }
+.community-form-layout--review-course .community-photo-field { min-height:110px; }
+.community-form-layout--review-course .af-photo-slot--add { width:56px; height:56px; }
 .community-form-layout__action { flex:none; padding:10px 20px 14px; background:var(--community-surface); }
 .community-form-layout__action .af-button { min-height:46px; }
 .community-form-section { margin-bottom:18px; }
@@ -225,8 +230,17 @@
 .community-photo-field .af-photo-slot--add { width:60px; height:60px; background:#e0eadb; }
 .community-photo-field .af-photo-slot--photo { width:90px; height:76px; }
 .community-page .af-photo-slot__remove { top:2px; right:2px; width:36px; height:36px; background:#617b6c; font-size:20px; }
-.community-visited-course { margin:0; color:#617b6c; font-size:11px; line-height:18px; }
-.community-visited-course strong { color:var(--af-ink); font-weight:500; }
+.community-course-options { min-width:0; margin-inline:0; padding:0; border:0; }
+.community-course-options .community-field-label { padding:0; }
+.community-course-option { position:relative; display:flex; align-items:center; gap:11px; min-height:68px; margin-top:6px; padding:11px 13px; border:1px solid var(--af-line); border-radius:12px; color:var(--af-ink); background:#fff; cursor:pointer; }
+.community-course-option:has(input:checked) { border-color:var(--af-green); background:#e8f1e7; box-shadow:0 0 0 1px var(--af-green); }
+.community-course-option:focus-within { outline:2px solid var(--af-green); outline-offset:2px; }
+.community-course-option input { position:absolute; width:1px; height:1px; opacity:0; }
+.community-course-option__indicator { display:grid; flex:none; width:20px; height:20px; place-items:center; border:1.5px solid #8ca89c; border-radius:50%; background:#fff; }
+.community-course-option input:checked + .community-course-option__indicator { border:6px solid var(--af-green); }
+.community-course-option__copy { display:flex; min-width:0; flex:1; flex-direction:column; gap:4px; }
+.community-course-option__copy strong { font-size:13px; line-height:19px; }
+.community-course-option__copy small { color:#617b6c; font-size:11px; line-height:16px; }
 .community-target-card { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; min-height:74px; padding:12px 15px; border:0; border-radius:12px; color:var(--af-ink); background:#e8f0e5; text-align:left; }
 .community-target-card__copy { display:flex; min-width:0; flex-direction:column; gap:5px; }
 .community-form-layout--review-spot .community-target-card { gap:10px; }
@@ -237,20 +251,8 @@
 .community-target-card small { color:#617b6c; font-size:11px; }
 .community-target-card>span:last-child { flex:none; color:var(--af-green-dark); font-size:11px; }
 .community-inline-link { min-height:44px; margin-top:5px; padding:8px 0; border:0; color:var(--af-green-dark); background:transparent; font:700 11px/16px "Noto Sans KR",sans-serif; text-align:left; text-decoration:underline; }
-.community-segment-preview .community-map { height:104px; border:1px solid var(--af-line); border-radius:14px; }
-.community-segment-preview>div:last-child { display:flex; align-items:center; justify-content:space-between; min-height:42px; color:#617b6c; font-size:11px; }
-.community-segment-preview button { min-height:40px; padding:5px; border:0; color:var(--af-green-dark); background:transparent; font-size:11px; }
-.community-status-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
-.community-status-options button { min-height:44px; padding:4px; border:1px solid var(--af-line); border-radius:10px; color:var(--af-green-dark); background:#fff; font:500 12px/18px "Noto Sans KR",sans-serif; }
-.community-status-options button[aria-pressed="true"] { border-color:var(--af-green); color:#fff; background:var(--af-green); }
-.community-status-options button[data-status="caution"][aria-pressed="true"] { border-color:#d9a026; background:#d9a026; }
-.community-status-options button[data-status="danger"][aria-pressed="true"] { border-color:#94495a; background:#94495a; }
 .community-picker__map { height:min(37dvh,305px); min-height:180px; overflow:hidden; border:1px solid var(--af-line); border-radius:13px; }
 .community-picker__selection,.community-register__location { min-height:42px; margin:12px 0 0; padding:11px 13px; border-radius:10px; color:var(--af-ink); background:#e8f0e5; font-size:11px; }
-.community-inline-chip { min-height:40px; margin:12px 0; padding:7px 14px; border:1px solid var(--af-line); border-radius:20px; color:var(--af-green-dark); background:#fff; font-size:11px; }
-.community-segment-stages { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin:10px 0; }
-.community-segment-stages button { min-height:42px; padding:4px; border:1px solid var(--af-line); border-radius:10px; color:var(--af-green-dark); background:#fff; font:500 12px/18px "Noto Sans KR",sans-serif; }
-.community-segment-stages button[aria-pressed="true"] { border-color:var(--af-green); color:#fff; background:var(--af-green); }
 .community-register__map { height:min(29dvh,220px); min-height:170px; overflow:hidden; border:1px solid var(--af-line); border-radius:14px; }
 .community-register .community-field-label { margin:17px 0 8px; }
 .community-register .community-photo-field .community-field-label { margin-top:0; }

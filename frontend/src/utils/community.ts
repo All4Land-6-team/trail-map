@@ -1,29 +1,31 @@
-import type { CommunityReview, CommunitySpot, Coordinate, SegmentStatus, SpotType, SpotVote } from '../types/community'
+import type { CommunitySpot, Coordinate, SpotType, SpotVote } from '../types/community'
+import type { CompletedHike } from '../store/hikeSessionStore'
 
 /** 목 화면 검수용 값. 서버 정책이나 자동 병합 규칙이 아니다. */
 export const DUPLICATE_RADIUS_METERS = 30
 export const SPOT_HIDE_NEGATIVE_VOTES = 3
 export const REVIEW_WINDOW_MS = 24 * 60 * 60 * 1000
-export const SEGMENT_STATUS_CONFIRMATION_COUNT = 5
-
-/** 최신순으로 연속된 동일 상태 후기 5건이 쌓이면 상태를 확정한다. 그 전에는 직전 확정 상태를 유지한다. */
-export function resolveSegmentStatus(reviews: readonly CommunityReview[], baseline: SegmentStatus = 'caution'): SegmentStatus {
-  const ordered = reviews.filter((review): review is CommunityReview & { status: SegmentStatus } => review.kind === 'segment' && review.status !== undefined)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-  let runStatus: SegmentStatus | undefined
-  let runLength = 0
-  for (const review of ordered) {
-    if (review.status === runStatus) runLength += 1
-    else { runStatus = review.status; runLength = 1 }
-    if (runLength >= SEGMENT_STATUS_CONFIRMATION_COUNT) return review.status
-  }
-  return baseline
+function isEligibleCompletion(hike: CompletedHike, mountainId: string, now: number): boolean {
+  const finishedAt = Date.parse(hike.finishedAt)
+  return hike.mountainId === mountainId && Number.isFinite(finishedAt) && finishedAt <= now && now - finishedAt <= REVIEW_WINDOW_MS
 }
 
-export function canWriteReview(completedHike: { mountainId: string; finishedAt: string } | undefined, mountainId: string, now = Date.now()): boolean {
-  if (!completedHike || completedHike.mountainId !== mountainId) return false
-  const finishedAt = Date.parse(completedHike.finishedAt)
-  return Number.isFinite(finishedAt) && finishedAt <= now && now - finishedAt <= REVIEW_WINDOW_MS
+export function eligibleCourseCompletions(completedHikes: readonly CompletedHike[], mountainId: string, now = Date.now()): CompletedHike[] {
+  const newestByCourse = new Map<string, CompletedHike>()
+  completedHikes.filter(hike => isEligibleCompletion(hike, mountainId, now))
+    .sort((a, b) => Date.parse(b.finishedAt) - Date.parse(a.finishedAt))
+    .forEach(hike => { if (!newestByCourse.has(hike.courseId)) newestByCourse.set(hike.courseId, hike) })
+  return [...newestByCourse.values()]
+}
+
+export function canWriteReview(completedHikes: readonly CompletedHike[], mountainId: string, now = Date.now()): boolean {
+  return eligibleCourseCompletions(completedHikes, mountainId, now).length > 0
+}
+
+export function canWriteCourseReview(completedHikes: readonly CompletedHike[], mountainId: string, courseId: string,
+  completedHikeId: string | undefined, now = Date.now()): boolean {
+  return eligibleCourseCompletions(completedHikes, mountainId, now)
+    .some(hike => hike.id === completedHikeId && hike.courseId === courseId)
 }
 
 export function distanceMeters(a: Coordinate, b: Coordinate): number {
