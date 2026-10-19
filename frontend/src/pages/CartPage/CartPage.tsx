@@ -6,6 +6,7 @@ import { cartCourseDetailPath } from "../../routes/courseDetailRoutes";
 import { cartCatalog } from "./catalog";
 import { CartHomeScreen } from "./components/CartHomeScreen";
 import { CourseSelectionScreen } from "./components/CourseSelectionScreen";
+import { limitComparisonCourseIds, toggleComparisonCourseId } from "./data";
 import type { PlannedHike } from "../../types/hiking";
 import "./cart.css";
 
@@ -31,7 +32,8 @@ export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHik
   const query = new URLSearchParams(search);
   const mountainId = query.get("mountain") ?? (path.startsWith("cart/mountain/") ? path.slice(14) : "bukhansan");
   const courses = saved.filter(course => course.mountainId === mountainId);
-  const selectedIds = new Set(query.has("selected") ? query.get("selected")!.split(",") : courses.map(course => course.id));
+  const requestedIds = query.has("selected") ? query.get("selected")!.split(",") : courses.map(course => course.id);
+  const selectedIds = new Set(limitComparisonCourseIds(courses.map(course => course.id), requestedIds));
   const selected = courses.filter(course => selectedIds.has(course.id));
   const context = new URLSearchParams({ mountain: mountainId, selected: selected.map(course => course.id).join(",") });
   const selectionPath = `cart/mountain/${mountainId}?${context}`;
@@ -57,8 +59,8 @@ export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHik
     return <CourseSelectionScreen courses={courses} selectedCourseIds={selectedIds} onBack={() => navigate("cart")}
       onCompare={() => navigate(comparePath)} onCourseDetail={id => detail(id)} onNavigate={nav}
       onToggleCourse={id => {
-        const next = new Set(selectedIds);
-        if (next.has(id)) next.delete(id); else next.add(id);
+        const next = toggleComparisonCourseId(selectedIds, id);
+        if (!next) return;
         context.set("selected", [...next].join(","));
         navigate(`cart/mountain/${mountainId}?${context}`);
       }} />;

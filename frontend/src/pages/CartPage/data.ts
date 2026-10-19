@@ -1,6 +1,32 @@
 import type { CartCourse } from "./types";
 
 export const BUKHANSAN_CENTER: [longitude: number, latitude: number] = [126.977, 37.659];
+export const MAX_COMPARISON_COURSES = 3;
+
+export function limitComparisonCourseIds(
+  availableCourseIds: readonly string[],
+  requestedCourseIds: Iterable<string>,
+) {
+  const requested = new Set(requestedCourseIds);
+  const limited: string[] = [];
+  for (const id of availableCourseIds) {
+    if (!requested.has(id)) continue;
+    limited.push(id);
+    if (limited.length === MAX_COMPARISON_COURSES) break;
+  }
+  return limited;
+}
+
+export function toggleComparisonCourseId(selectedCourseIds: ReadonlySet<string>, courseId: string) {
+  if (!selectedCourseIds.has(courseId) && selectedCourseIds.size >= MAX_COMPARISON_COURSES) {
+    return null;
+  }
+
+  const next = new Set(selectedCourseIds);
+  if (next.has(courseId)) next.delete(courseId);
+  else next.add(courseId);
+  return next;
+}
 
 export const savedCourses: readonly CartCourse[] = [
   {
