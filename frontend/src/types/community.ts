@@ -1,6 +1,5 @@
-export type ReviewKind = 'mountain' | 'spot' | 'segment'
+export type ReviewKind = 'mountain' | 'spot' | 'course'
 export type SpotType = 'shelter' | 'water' | 'restroom' | 'photo' | 'other'
-export type SegmentStatus = 'good' | 'caution' | 'danger'
 export type Coordinate = [longitude: number, latitude: number]
 
 export type CommunitySpot = {
@@ -16,15 +15,14 @@ export type CommunitySpot = {
   userCreated?: boolean
 }
 
-export type CommunitySegment = {
+export type CommunityCourseReviewTarget = {
   id: string
+  mountainId: string
   name: string
-  courseId: string
   coordinates: Coordinate[]
   distanceKm: number
   baselinePhotos: number
   baselineReviews: number
-  baselineStatus?: SegmentStatus
   seedQuote: string
 }
 
@@ -35,9 +33,6 @@ export type CommunityReview = {
   content: string
   photos: string[]
   rating?: number
-  status?: SegmentStatus
-  segmentCoordinates?: Coordinate[]
-  segmentVia?: Coordinate
   /** 작성자 닉네임 (내 등산에서 설정, 기본 익명). 이 칸이 생기기 전 후기는 '나'로 보여 준다 */
   author?: string
   createdAt: string
@@ -49,9 +44,7 @@ export type ReviewDraft = {
   content: string
   photos: string[]
   rating: number
-  status: SegmentStatus | null
-  segmentCoordinates?: Coordinate[]
-  segmentVia?: Coordinate
+  completedHikeId?: string
 }
 
 export type SpotVote = {

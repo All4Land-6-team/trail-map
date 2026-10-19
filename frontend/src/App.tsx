@@ -7,7 +7,7 @@ import { hikePaths, navigateTab as navigateFromBottom } from './pages/hikeRoutes
 import { internalReturnPath } from './routes/communityRoutes'
 import { saveSchedule, useHikeSchedules } from './store/hikeScheduleStore'
 import { courseFixtures } from './api/courseMock'
-import { useHikeSession } from './store/hikeSessionStore'
+import { useCompletedHikes } from './store/hikeSessionStore'
 import { navigate, routePath, useHashRoute } from './hooks/useHashRoute'
 import { HikeActivePage } from './pages/HikeActivePage/HikeActivePage'
 import { HikeCalendarPage } from './pages/HikeCalendarPage/HikeCalendarPage'
@@ -39,8 +39,7 @@ function App() {
   const schedules = useHikeSchedules()
   const plannedHikes: PlannedHike[] = schedules.map(schedule => ({ date: schedule.date, time: schedule.startTime,
     courseId: schedule.courseId, mountain: schedule.mountainName, courseName: schedule.courseName }))
-  const session = useHikeSession()
-  const completedHike = session?.finishedAt ? { mountainId: session.mountainId, finishedAt: session.finishedAt } : null
+  const completedHikes = useCompletedHikes()
 
   function planHike(plannedHike: PlannedHike) {
     saveSchedule({ date: plannedHike.date, startTime: plannedHike.time, courseId: plannedHike.courseId,
@@ -58,12 +57,13 @@ function App() {
     const fromHikeComplete = query.get('from') === 'hikes/complete'
     const returnTo = internalReturnPath(query.get('returnTo'), fromHikeComplete ? 'hikes/complete' : '')
     const entry = query.get('screen')
-    const initialScreen = entry === 'spotDetail' || entry === 'map' || entry === 'newSpot' ? entry : fromHikeComplete ? 'review' : 'mountainSelect'
+    const initialScreen = entry === 'spotDetail' || entry === 'courseReviewList' || entry === 'map' || entry === 'newSpot' ? entry : fromHikeComplete ? 'review' : 'mountainSelect'
     return <Suspense fallback={<main className="app-route-loading" aria-busy="true">커뮤니티 화면을 불러오는 중이에요</main>}>
-      <CommunityPage key={route} initialScreen={initialScreen} initialMountainId={query.get('mountain') ?? completedHike?.mountainId}
+      <CommunityPage key={route} initialScreen={initialScreen} initialMountainId={query.get('mountain') ?? completedHikes[0]?.mountainId}
         initialSpotId={query.get('spot') ?? undefined}
+        initialCourseId={query.get('course') ?? undefined}
         onSpotRegistered={entry === 'newSpot' && returnTo.startsWith('hikes/') ? () => { window.location.hash = returnTo } : undefined}
-        completedHike={completedHike ?? undefined}
+        completedHikes={completedHikes}
         onExit={() => { window.location.hash = returnTo }} onNavigateOutside={navigateFromBottom} />
     </Suspense>
   }

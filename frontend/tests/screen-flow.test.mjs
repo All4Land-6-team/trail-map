@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { homePaths } from '../src/routes/homeRoutes.ts';
-import { internalReturnPath, spotReviewPath } from '../src/routes/communityRoutes.ts';
-import { startHikeSession, getHikeSession, setHikeAlerts, startHikeDescent, finishHikeSession } from '../src/store/hikeSessionStore.ts';
+import { courseReviewPath, internalReturnPath, spotReviewPath } from '../src/routes/communityRoutes.ts';
+import { startHikeSession, getCompletedHikes, getHikeSession, setHikeAlerts, startHikeDescent, finishHikeSession } from '../src/store/hikeSessionStore.ts';
 import { initialHikeProgress } from '../src/utils/activeHike.ts';
 import { cartCourseDetailPath, courseDetailNavigationSource, courseDetailPath } from '../src/routes/courseDetailRoutes.ts';
 
@@ -20,6 +20,15 @@ test('스팟 상세 연결은 선택한 산과 스팟 및 필터 복귀 주소�
   assert.equal(internalReturnPath(params.get('returnTo')), returnPath);
   assert.equal(internalReturnPath('https://example.com', 'cart'), 'cart');
   assert.equal(internalReturnPath('//example.com'), '');
+});
+test('코스 상세의 후기 전체보기는 같은 코스와 이전 코스 상세 주소를 보존한다', () => {
+  const returnPath = 'mountains/bukhansan/courses/bukhansan-baegundae?returnTo=hikes/detail%3Fdate%3D2026-10-18';
+  const url = courseReviewPath({ mountainId: 'bukhansan', courseId: 'bukhansan-baegundae', returnPath });
+  const params = new URLSearchParams(url.split('?')[1]);
+  assert.equal(params.get('screen'), 'courseReviewList');
+  assert.equal(params.get('mountain'), 'bukhansan');
+  assert.equal(params.get('course'), 'bukhansan-baegundae');
+  assert.equal(internalReturnPath(params.get('returnTo')), returnPath);
 });
 test('일정에서 코스 상세 탭을 바꿔도 원래 일정으로 돌아간다', () => {
   const request = { mountainId: 'bukhansan', courseId: 'bukhansan-baegundae' };
@@ -59,8 +68,10 @@ test('시작-알림 변경-하산-완료가 동일 코스와 완료 시각을 �
   const completed = getHikeSession();
   assert.equal(completed.phase, 'complete');
   assert.ok(completed.finishedAt);
+  assert.deepEqual(getCompletedHikes().map(hike => [hike.mountainId, hike.courseId]), [['dobongsan', 'dobongsan-sinseondae']]);
   finishHikeSession();
   assert.equal(getHikeSession(), completed);
+  assert.equal(getCompletedHikes().length, 1);
 });
 test('진행 지도는 선택한 코스의 경로를 쓰고 원본과 실측 거리를 조작하지 않는다', () => {
   const course = { mountainName: '도봉산', courseName: '신선대', route: [[127, 37], [127.1, 37.1]], distanceKm: 5.8, spots: [], sunset: '정보 없음' };

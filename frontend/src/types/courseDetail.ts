@@ -28,7 +28,6 @@ export type CourseDetailData = {
   course: Course;
   samples: readonly CourseProfileSample[];
   spots: readonly CourseSpot[];
-  reviews: readonly { id: string; meta: string; quote: string }[];
 };
 export type CourseDetailState =
   | { status: "loading" }

@@ -8,7 +8,9 @@ import { CourseRouteMap } from "../../components/map/CourseRouteMap";
 import { courseDetailPath } from "../../routes/courseDetailRoutes";
 import { readHashParams } from "../../hooks/useHashRoute";
 import { coursePaths } from "../../routes/courseRoutes";
+import { communityCourseTargets, communityReviewExamples } from "../../api/communityMock";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
+import { useCommunityData } from "../../store/communityStore";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
 import type { CourseRequest } from "../../types/course";
 import type { CourseDetailView, CourseSpot, CourseSpotRequest, ProfileVisibility } from "../../types/courseDetail";
@@ -25,13 +27,14 @@ export type CourseDetailPageProps = CourseRequest & {
   activeDestination?: BottomDestination;
   onBack?: () => void;
   onSpotOpen?: (request: CourseSpotRequest) => void;
+  onReviewsOpen?: (request: CourseRequest) => void;
   onScheduleOpen?: (request: CourseRequest) => void;
 };
 const DEFAULT_VIEW: CourseDetailView = { tab: "analysis", category: "all" };
 const savedBagAsset = new URL("../../assets/icons/bag-selected.svg", import.meta.url).href;
 
 export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, hasSchedule = false,
-  activeDestination = "home", onBack, onSpotOpen, onScheduleOpen }: CourseDetailPageProps) {
+  activeDestination = "home", onBack, onSpotOpen, onReviewsOpen, onScheduleOpen }: CourseDetailPageProps) {
   const request = { mountainId, courseId };
   const returnTo = readHashParams().get("returnTo");
   const { state, toast, notify, retry } = useCourseDetail(request);
@@ -40,8 +43,17 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const [visibility, setVisibility] = useState<ProfileVisibility>({ elevation: true, slope: true });
   const [chosenIndex, setChosenIndex] = useState<number | null>(null);
   const savedIds = useSavedCourseIds();
+  const { reviews: communityReviews } = useCommunityData();
   const saved = savedIds.includes(courseId);
   const data = state.status === "success" ? state.data : null;
+  const reviewTarget = communityCourseTargets.find(target => target.id === courseId && target.mountainId === mountainId);
+  const submittedReviews = communityReviews.filter(review => review.kind === "course" && review.targetId === courseId)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const reviewExcerpts = [
+    ...submittedReviews.map(review => ({ id: review.id, meta: `${review.author ?? "나"} · 방금 전`, quote: review.content })),
+    ...(communityReviewExamples[courseId] ?? []).map((quote, index) => ({ id: `example-${courseId}-${index}`, meta: `등산객 · 9월 ${17 - index}일`, quote })),
+  ].slice(0, 2);
+  const reviewTotal = (reviewTarget?.baselineReviews ?? 0) + submittedReviews.length;
   const courses = useMemo(() => data ? [data.course] : [], [data]);
   const spots = useMemo(() => selectCourseSpots(data?.spots ?? [], view.category), [data, view.category]);
   const summitCoordinate = useMemo(() => data?.samples.reduce<(typeof data.samples)[number] | null>((highest, sample) =>
@@ -100,7 +112,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
             items={[{ value: "analysis", label: "코스 상세", controls: "course-analysis-panel" }, { value: "spots", label: "스팟·통제정보", controls: "course-spots-panel" }]}
             onValueChange={tab => changeView({ ...view, tab: tab === "spots" ? "spots" : "analysis" })} />
         </div>} content={view.tab === "analysis"
-          ? <CourseAnalysis data={data} visibility={visibility} selectedIndex={selectedIndex} onSelect={setChosenIndex} onToggle={toggleMetric} />
+          ? <CourseAnalysis data={data} reviews={reviewExcerpts} reviewTotal={reviewTotal} visibility={visibility} selectedIndex={selectedIndex}
+            onSelect={setChosenIndex} onToggle={toggleMetric} onReviewsOpen={onReviewsOpen ? () => onReviewsOpen(request) : undefined} />
           : <CourseSpots spots={spots} category={view.category} selectedId={selectedSpot?.id}
             onCategory={category => changeView({ tab: "spots", category })} onOpen={openSpot} />}
         footer={<div className="course-detail-actions">

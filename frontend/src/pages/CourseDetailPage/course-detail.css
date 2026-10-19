@@ -30,6 +30,8 @@
 .course-analysis__heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .course-analysis__heading h2 { margin: 0; font-size: 13px; line-height: 20px; font-weight: 700; }
 .course-analysis__heading > span { color: #617b6c; font-size: 10px; line-height: 16px; }
+.course-analysis__review-link { display: flex; min-height: 36px; align-items: center; gap: 2px; margin: -8px 0 -8px auto; padding: 3px 0 3px 8px; border: 0; color: var(--af-green-dark); background: transparent; font: 600 12px/18px "Noto Sans KR", sans-serif; cursor: pointer; }
+.course-analysis__review-link:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; border-radius: 6px; }
 .course-profile-options { display: flex; align-items: center; gap: 23px; min-height: 24px; }
 .course-profile-options .af-checkbox__label { color: inherit; font-size: 11px; line-height: 16px; }
 .course-profile-options__elevation { color: var(--af-green-dark); }
@@ -43,7 +45,7 @@
 .course-profile-chart { position: relative; width: 100%; height: 198px; margin-top: 8px; touch-action: none; cursor: crosshair; }
 .course-profile-chart:focus-visible { outline: 2px solid var(--af-green); outline-offset: -2px; border-radius: 6px; }
 .course-profile-chart__render { width: 100%; height: 100%; pointer-events: none; }
-.course-analysis__reviews { display: flex; flex-direction: column; gap: 10px; padding: 8px 0 4px; border-top: 1px solid #e4ebe4; }
+.course-analysis__reviews { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 4px; border-top: 1px solid #e4ebe4; }
 .course-analysis__reviews .af-review-quote { width: 100%; margin: 0; padding: 12px 13px; border-radius: 12px; background: #f3f7f1; }
 .course-analysis__reviews .af-review-quote__meta { color: #617b6c; font-size: 10px; line-height: 16px; }
 .course-analysis__reviews .af-review-quote__text { margin-top: 5px; font-size: 11px; line-height: 16px; }

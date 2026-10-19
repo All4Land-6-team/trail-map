@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SEGMENT_STATUS_CONFIRMATION_COUNT, SPOT_HIDE_NEGATIVE_VOTES, canWriteReview, castSpotVote, distanceMeters, isSpotHidden, nearbySpotCandidates, resolveSegmentStatus } from '../src/utils/community.ts';
+import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SPOT_HIDE_NEGATIVE_VOTES, canWriteCourseReview, canWriteReview, castSpotVote, distanceMeters, eligibleCourseCompletions, isSpotHidden, nearbySpotCandidates } from '../src/utils/community.ts';
 import { communityMarkerMode } from '../src/pages/CommunityPage/components/communityMapZoom.ts';
 
 test('커뮤니티 지도 줌 단계는 기본점, 숫자 클러스터, 개별 아이콘 순으로 전환한다', () => {
@@ -47,24 +47,23 @@ test('한 사용자의 평가 변경과 같은 버튼 재선택에 의한 취소
 
 test('완료한 산행 후 24시간 이내에만 그 산의 후기를 작성할 수 있다', () => {
   const now = Date.parse('2026-10-18T12:00:00+09:00');
-  const hike = (ago) => ({ mountainId: 'bukhansan', finishedAt: new Date(now - ago).toISOString() });
-  assert.equal(canWriteReview(hike(REVIEW_WINDOW_MS), 'bukhansan', now), true);
-  assert.equal(canWriteReview(hike(REVIEW_WINDOW_MS + 1), 'bukhansan', now), false);
-  assert.equal(canWriteReview(hike(1000), 'dobongsan', now), false);
-  assert.equal(canWriteReview({ mountainId: 'bukhansan', finishedAt: new Date(now + 1000).toISOString() }, 'bukhansan', now), false);
-  assert.equal(canWriteReview(undefined, 'bukhansan', now), false);
+  const hike = (id, courseId, ago, mountainId = 'bukhansan') => ({ id, courseId, mountainId, courseName: courseId, distanceKm: 4.2, finishedAt: new Date(now - ago).toISOString() });
+  assert.equal(canWriteReview([hike('limit', 'course-a', REVIEW_WINDOW_MS)], 'bukhansan', now), true);
+  assert.equal(canWriteReview([hike('expired', 'course-a', REVIEW_WINDOW_MS + 1)], 'bukhansan', now), false);
+  assert.equal(canWriteReview([hike('other', 'course-a', 1000, 'dobongsan')], 'bukhansan', now), false);
+  assert.equal(canWriteReview([{ ...hike('future', 'course-a', 0), finishedAt: new Date(now + 1000).toISOString() }], 'bukhansan', now), false);
+  assert.equal(canWriteReview([], 'bukhansan', now), false);
 });
 
-test('구간 상태는 최신 연속 동일 상태 5건부터 바뀌고 그전에는 직전 확정 상태를 유지한다', () => {
-  const review = (status, index) => ({ id: String(index), kind: 'segment', targetId: 'ascent', status,
-    content: '', photos: [], createdAt: new Date(1_000_000 + index * 1000).toISOString() });
-  assert.equal(SEGMENT_STATUS_CONFIRMATION_COUNT, 5);
-  assert.equal(resolveSegmentStatus([]), 'caution');
-  const goodFive = Array.from({ length: 5 }, (_, index) => review('good', index));
-  assert.equal(resolveSegmentStatus(goodFive.slice(0, 4)), 'caution');
-  assert.equal(resolveSegmentStatus(goodFive), 'good');
-  const dangerFour = Array.from({ length: 4 }, (_, index) => review('danger', index + 5));
-  assert.equal(resolveSegmentStatus([...goodFive, ...dangerFour]), 'good');
-  assert.equal(resolveSegmentStatus([...goodFive, ...dangerFour, review('danger', 9)]), 'danger');
-  assert.equal(resolveSegmentStatus([...goodFive, ...dangerFour, review('caution', 9), review('danger', 10)]), 'good');
+test('24시간 이내 완료 코스는 최신순으로 표시하고 같은 코스는 최신 기록만 남긴다', () => {
+  const now = Date.parse('2026-10-18T12:00:00+09:00');
+  const hike = (id, courseId, hours) => ({ id, courseId, mountainId: 'bukhansan', courseName: courseId, distanceKm: 4.2,
+    finishedAt: new Date(now - hours * 60 * 60 * 1000).toISOString() });
+  const eligible = eligibleCourseCompletions([
+    hike('a-old', 'course-a', 8), hike('b', 'course-b', 2), hike('a-new', 'course-a', 1), hike('expired', 'course-c', 25),
+  ], 'bukhansan', now);
+  assert.deepEqual(eligible.map(item => item.id), ['a-new', 'b']);
+  assert.equal(canWriteCourseReview(eligible, 'bukhansan', 'course-a', 'a-new', now), true);
+  assert.equal(canWriteCourseReview(eligible, 'bukhansan', 'course-b', 'a-new', now), false);
+  assert.equal(canWriteCourseReview(eligible, 'bukhansan', 'course-a', 'a-old', now), false);
 });

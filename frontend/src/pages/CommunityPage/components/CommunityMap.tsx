@@ -4,14 +4,14 @@ import BaseMap, { type MapRoute } from '../../../components/map/BaseMap'
 import { MapAction, MountainMarker, SpotMarker } from '../../../components/map'
 import { Icon } from '../../../components/common/Icon'
 import { communityCourse } from '../../../api/communityMock'
-import type { Coordinate, SegmentStatus, SpotType } from '../../../types/community'
+import type { Coordinate, SpotType } from '../../../types/community'
 import { communityMarkerMode } from './communityMapZoom'
 
 export type CommunityMapMarker = {
   id: string
   name: string
   label?: string
-  kind: 'mountain' | 'spot' | 'segment' | 'point'
+  kind: 'mountain' | 'spot' | 'course' | 'point'
   coordinate: Coordinate
   spotType?: SpotType
   selected?: boolean
@@ -25,7 +25,7 @@ type Props = {
   focusTarget?: { coordinate: Coordinate; request: number; zoom?: number; resetZoom?: boolean }
   zoom?: number
   showRoute?: boolean
-  segmentLine?: { coordinates: Coordinate[]; status: SegmentStatus }
+  highlightedRoute?: Coordinate[]
   onMarkerSelect?: (id: string) => void
   onMapSelect?: (coordinate: Coordinate) => void
   children?: ReactNode
@@ -35,9 +35,6 @@ type Props = {
 
 const ROUTES: readonly MapRoute[] = [{ id: 'community-baegundae', color: '#19765b', coordinates: [...communityCourse.routeCoordinates] }]
 const EMPTY_ROUTES: readonly MapRoute[] = []
-const SEGMENT_COLORS: Record<SegmentStatus, string> = { good: '#19765b', caution: '#bf8120', danger: '#b44e62' }
-const BASE_ROUTE_LAYER = 'course-route-community-baegundae'
-const SEGMENT_ROUTE_LAYER = 'course-route-community-segment-status'
 const DEFAULT_CENTER: Coordinate = [126.977, 37.659]
 const MARKER_CLUSTER_DISTANCE = 48
 
@@ -70,7 +67,7 @@ function visibleMapArea(map: MapLibreMap) {
 }
 
 export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CENTER, focusTarget, zoom = 14, showRoute = true,
-  segmentLine, onMarkerSelect, onMapSelect, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
+  highlightedRoute, onMarkerSelect, onMapSelect, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [projected, setProjected] = useState<ProjectedMarker[]>([])
   const [markerMode, setMarkerMode] = useState(() => communityMarkerMode(zoom))
@@ -85,25 +82,9 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
   // MapLibre 객체는 화면별로 유지하고 이동/크기 변경 때만 핀 좌표를 다시 계산한다.
   const markerSnapshot = useMemo(() => markers, [markerSignature]) // eslint-disable-line react-hooks/exhaustive-deps
   const overviewSnapshot = useMemo(() => overviewMarker, [markerSignature]) // eslint-disable-line react-hooks/exhaustive-deps
-  const segmentCoordinates = segmentLine?.coordinates
-  const segmentStatus = segmentLine?.status
-  const routes = useMemo<readonly MapRoute[]>(() => !showRoute ? EMPTY_ROUTES : segmentCoordinates && segmentStatus ? [
-    { id: 'community-baegundae', color: '#8ca89c', coordinates: [...communityCourse.routeCoordinates] },
-    { id: 'community-segment-status', color: SEGMENT_COLORS[segmentStatus], coordinates: segmentCoordinates },
-  ] : ROUTES, [showRoute, segmentCoordinates, segmentStatus])
-
-  useEffect(() => {
-    if (!map || !segmentCoordinates || !segmentStatus) return
-    const styleSegmentRoute = () => {
-      if (map.getLayer(BASE_ROUTE_LAYER) && map.getPaintProperty(BASE_ROUTE_LAYER, 'line-opacity') !== 0.65)
-        map.setPaintProperty(BASE_ROUTE_LAYER, 'line-opacity', 0.65)
-      if (map.getLayer(SEGMENT_ROUTE_LAYER) && map.getPaintProperty(SEGMENT_ROUTE_LAYER, 'line-width') !== 7)
-        map.setPaintProperty(SEGMENT_ROUTE_LAYER, 'line-width', 7)
-    }
-    map.on('styledata', styleSegmentRoute)
-    styleSegmentRoute()
-    return () => { map.off('styledata', styleSegmentRoute) }
-  }, [map, segmentCoordinates, segmentStatus])
+  const routes = useMemo<readonly MapRoute[]>(() => !showRoute ? EMPTY_ROUTES : highlightedRoute ? [
+    { id: 'community-selected-course', color: '#19765b', coordinates: highlightedRoute },
+  ] : ROUTES, [showRoute, highlightedRoute])
 
   useEffect(() => {
     if (!map) return
@@ -157,7 +138,7 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
   }, [map, isMainMap, dimension])
 
   useEffect(() => {
-    if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-segment'))) return
+    if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return
     const { visibleTop, visibleCenter, mapHeight } = visibleMapArea(map)
     const focusY = className.includes('community-page__map--detail-mountain') || className.includes('community-page__map--mountain-focus')
       ? Math.max(visibleTop + 44, Math.min(visibleCenter - 28, visibleTop + 48)) : visibleCenter
@@ -220,7 +201,7 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
             : <button type="button" className={`community-map__custom-marker community-map__custom-marker--${marker.kind}`}
                 aria-label={`${marker.name} 선택`} aria-pressed={marker.selected} onClick={() => onMarkerSelect?.(marker.id)}>
                 <span className="community-map__custom-symbol">{marker.shortLabel ?? <Icon name="Pin" size={18} />}</span>
-                {marker.kind !== 'point' && marker.kind !== 'segment' && <span className="community-map__custom-label">{marker.label ?? marker.name}</span>}
+                {marker.kind !== 'point' && marker.kind !== 'course' && <span className="community-map__custom-label">{marker.label ?? marker.name}</span>}
               </button>}
       </div>))}
     </div>
