@@ -22,6 +22,7 @@ import "./course-detail.css";
 export type CourseDetailPageProps = CourseRequest & {
   view?: CourseDetailView;
   hasSchedule?: boolean;
+  activeDestination?: BottomDestination;
   onBack?: () => void;
   onSpotOpen?: (request: CourseSpotRequest) => void;
   onScheduleOpen?: (request: CourseRequest) => void;
@@ -30,7 +31,7 @@ const DEFAULT_VIEW: CourseDetailView = { tab: "analysis", category: "all" };
 const savedBagAsset = new URL("../../assets/icons/bag-selected.svg", import.meta.url).href;
 
 export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, hasSchedule = false,
-  onBack, onSpotOpen, onScheduleOpen }: CourseDetailPageProps) {
+  activeDestination = "home", onBack, onSpotOpen, onScheduleOpen }: CourseDetailPageProps) {
   const request = { mountainId, courseId };
   const returnTo = readHashParams().get("returnTo");
   const { state, toast, notify, retry } = useCourseDetail(request);
@@ -115,7 +116,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
         <Button onClick={state.status === "missing" ? back : retry}>{state.status === "missing" ? "코스 목록으로" : "다시 시도"}</Button>
       </>}
     </div>}
-    <BottomNavigation active="home" onNavigate={navigateTab} className="course-detail-page__nav" />
+    <BottomNavigation active={activeDestination} onNavigate={navigateTab} className="course-detail-page__nav" />
     {toast && <Toast key={toast.id} message={toast.message} className="course-detail-page__toast" />}
   </main>;
 }

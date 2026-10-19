@@ -8,7 +8,6 @@
 .course-map__summit img { display: block; flex: none; }
 .course-map__example { position: absolute; bottom: 25px; left: 12px; padding: 3px 6px; border-radius: 5px; color: #617b6c; background: rgb(255 255 255 / 92%); font-size: 10px; pointer-events: none; }
 .course-map__base .base-map__notices { z-index: 3; top: calc(78px + env(safe-area-inset-top)); right: 75px; left: 12px; width: auto; max-height: calc(100% - 105px); overflow-y: auto; }
-.course-map__base .maplibregl-ctrl-attrib { font-size: 10px; }
 .course-map--detail .course-map__actions { top: calc(88px + env(safe-area-inset-top)); right: 16px; gap: 7px; }
 .course-map--detail .af-map-action { width: 38px; height: 38px; border-radius: 13px; }
 .course-map--detail[data-map-mode="3D"] .af-map-action--dimension { color: #fff; background: var(--af-green); }
