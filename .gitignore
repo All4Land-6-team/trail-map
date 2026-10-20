@@ -1,5 +1,11 @@
 # 로컬 원본·가공 데이터
 /data/
 
+# Python 데이터 전처리 환경·캐시
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
 # 로컬 Gradle 캐시
 /.gradle-user-home/

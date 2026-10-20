@@ -4,9 +4,40 @@
 trail-map/
 ├─ frontend/                 # React + Vite + TypeScript
 ├─ backend/                  # Java 21 + Spring Boot
+├─ data-pipeline/            # Python 기반 공간데이터 전처리 코드
 ├─ docs/                     # 프로젝트 문서
 ├─ data/                     # 로컬 원본·가공 데이터, Git 제외
 └─ AGENTS.md                 # 공통 AI 작업·Git 규칙
+```
+
+## Data Pipeline
+
+```text
+data-pipeline/
+├─ README.md
+├─ pyproject.toml
+├─ src/
+│  └─ trail_map_data/
+│     ├─ __init__.py
+│     ├─ cli.py
+│     └─ dem.py
+└─ tests/
+   ├─ test_dem.py
+   └─ fixtures/
+```
+
+실제 원본·중간·가공 데이터는 프로젝트 루트의 `data/`에 저장하고 Git에 커밋하지 않습니다.
+
+```text
+data/
+├─ raw/
+│  └─ dem/bukhansan/
+├─ interim/
+│  └─ dem/bukhansan/
+└─ processed/
+   └─ dem/bukhansan/
+      ├─ analysis/
+      └─ terrain/
 ```
 
 ## Frontend
