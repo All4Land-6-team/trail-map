@@ -77,6 +77,64 @@ PYTHONPATH=src python -m trail_map_data.cli dem optimize \
 사이의 다중 프로세스 잠금은 제공하지 않습니다. 메타데이터 저장이 실패한 경우에는
 원인을 해결한 뒤 같은 명령을 `--overwrite`와 함께 다시 실행합니다.
 
+## Terrain-RGB XYZ 타일 생성
+
+분석용 GeoTIFF를 MapLibre의 `raster-dem` 소스에서 사용할 수 있는 Mapbox
+Terrain-RGB 형식으로 변환합니다. 고도는 0.1m 단위 RGB 값으로 인코딩하며,
+MapLibre가 NoData를 `-10000m`로 해석하지 않도록 부분 타일의 빈 픽셀은 가장
+가까운 유효 고도로 채운 뒤 불투명하게 저장합니다. 유효 고도가 전혀 없는 타일은
+생성하지 않습니다.
+
+```bash
+PYTHONPATH=src python -m trail_map_data.cli dem terrain-tiles \
+  ../data/processed/dem/bukhansan/analysis/bukhansan_dem.tif \
+  ../data/processed/dem/bukhansan/terrain \
+  --min-zoom 10 \
+  --max-zoom 16 \
+  --max-tiles 2000 \
+  --overwrite
+```
+
+서비스의 타일 API 주소를 TileJSON에 미리 기록하려면 URL 템플릿을 지정합니다.
+
+```bash
+PYTHONPATH=src python -m trail_map_data.cli dem terrain-tiles \
+  ../data/processed/dem/bukhansan/analysis/bukhansan_dem.tif \
+  ../data/processed/dem/bukhansan/terrain \
+  --min-zoom 10 \
+  --max-zoom 16 \
+  --max-tiles 2000 \
+  --tiles-url "/api/v1/terrain/{z}/{x}/{y}.png" \
+  --overwrite
+```
+
+`--min-zoom`, `--max-zoom`, `--max-tiles`는 필수 옵션입니다. 서비스에서 필요한
+지도 확대 범위와 저장 용량을 검토해 지정하며, 생성기는 0~22 범위만 허용합니다.
+생성 전 계산한 예상 타일 수가 `--max-tiles`를 넘으면 작업을 시작하지 않습니다.
+
+산출물은 다음 구조로 생성됩니다.
+
+```text
+../data/processed/dem/bukhansan/terrain/
+├── maplibre-source.json
+├── metadata.json
+├── tilejson.json
+└── tiles/
+    └── {z}/{x}/{y}.png
+```
+
+- `tiles`: XYZ 방식의 256×256 RGBA PNG 타일
+- `tilejson.json`: TileJSON 3.0 형식의 범위, 줌 레벨과 타일 URL
+- `maplibre-source.json`: `raster-dem`, 256px, `mapbox` 인코딩을 명시한
+  MapLibre 소스 설정
+- `metadata.json`: 입력 파일 절대 경로와 전체 생성 타일 수를 포함한 작업 결과
+
+기존 출력 디렉터리는 기본적으로 덮어쓰지 않습니다. `--overwrite`를 지정한
+경우에도 새 산출물을 임시 디렉터리에서 모두 만든 뒤 기존 디렉터리와 교체합니다.
+원본 DEM의 좌표계는 수정하지 않고, 각 XYZ 타일을 만들 때만 EPSG:3857로
+재투영합니다. 같은 출력 경로로 여러 생성 작업을 동시에 실행하거나 타일 제공
+프로세스가 해당 디렉터리를 읽는 중에 `--overwrite`를 실행하지 않습니다.
+
 ## 테스트
 
 실제 DEM 대신 테스트 중 생성되는 소형 GeoTIFF를 사용합니다.

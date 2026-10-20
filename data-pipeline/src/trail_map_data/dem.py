@@ -40,7 +40,9 @@ def paths_alias(first: str | Path, second: str | Path) -> bool:
         return False
 
 
-def _validate_dataset(dataset: rasterio.io.DatasetReader) -> None:
+def validate_dem_dataset(dataset: rasterio.io.DatasetReader) -> None:
+    """래스터가 단일 숫자 밴드 DEM인지 검증한다."""
+
     if dataset.count != 1:
         raise DemValidationError(f"단일 밴드 DEM만 지원합니다: bands={dataset.count}")
     if not np.issubdtype(np.dtype(dataset.dtypes[0]), np.number):
@@ -88,7 +90,7 @@ def inspect_dem(path: str | Path, *, expected_crs: str | None = None) -> dict[st
         raise FileNotFoundError(f"DEM 파일을 찾을 수 없습니다: {source}")
 
     with rasterio.open(source) as dataset:
-        _validate_dataset(dataset)
+        validate_dem_dataset(dataset)
 
         valid_pixel_count = 0
         minimum: float | None = None
@@ -195,7 +197,7 @@ def optimize_dem(
         temporary_output = Path(directory) / output.name
 
         with rasterio.open(source) as src:
-            _validate_dataset(src)
+            validate_dem_dataset(src)
             if require_crs_match and not _matches_expected_crs(src.crs, expected_crs):
                 raise DemValidationError(
                     f"원본 좌표계가 예상 좌표계({expected_crs})와 일치하지 않습니다"
