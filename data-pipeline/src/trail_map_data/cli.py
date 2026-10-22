@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from trail_map_data.dem import DemValidationError, inspect_dem, optimize_dem, paths_alias
+from trail_map_data.terrain import generate_terrain_tiles
 
 
 def _json_safe(value: Any) -> Any:
@@ -88,6 +89,26 @@ def _build_parser() -> argparse.ArgumentParser:
     optimize_parser.add_argument("--metadata-output", type=Path)
     optimize_parser.add_argument("--overwrite", action="store_true")
 
+    terrain_parser = dem_commands.add_parser(
+        "terrain-tiles", help="MapLibre용 Terrain-RGB XYZ 타일 생성"
+    )
+    terrain_parser.add_argument("input", type=Path, help="분석용 GeoTIFF 경로")
+    terrain_parser.add_argument("output", type=Path, help="타일 출력 디렉터리")
+    terrain_parser.add_argument("--min-zoom", type=int, required=True)
+    terrain_parser.add_argument("--max-zoom", type=int, required=True)
+    terrain_parser.add_argument(
+        "--max-tiles",
+        type=int,
+        required=True,
+        help="생성 전에 허용할 최대 XYZ 타일 수",
+    )
+    terrain_parser.add_argument(
+        "--tiles-url",
+        default="./tiles/{z}/{x}/{y}.png",
+        help="TileJSON에 기록할 XYZ URL 템플릿",
+    )
+    terrain_parser.add_argument("--overwrite", action="store_true")
+
     return parser
 
 
@@ -98,6 +119,22 @@ def main(argv: Sequence[str] | None = None) -> None:
         _reject_metadata_collision(args.output, [args.input])
         metadata = inspect_dem(args.input, expected_crs=args.expected_crs)
         _write_metadata(metadata, args.output)
+        return
+
+    if args.command == "terrain-tiles":
+        metadata = generate_terrain_tiles(
+            args.input,
+            args.output,
+            min_zoom=args.min_zoom,
+            max_zoom=args.max_zoom,
+            tiles_url=args.tiles_url,
+            max_tiles=args.max_tiles,
+            overwrite=args.overwrite,
+        )
+        print(
+            f"Terrain-RGB 타일 생성: {metadata['tile_count']}개 "
+            f"({metadata['minzoom']}~{metadata['maxzoom']} 줌)"
+        )
         return
 
     _reject_metadata_collision(args.metadata_output, [args.input, args.output])
