@@ -37,3 +37,23 @@ Java 21, Spring Boot, PostgreSQL/PostGIS 기반 백엔드입니다.
 ## DB 변경
 
 DB 스키마, PostGIS, Flyway migration 작업 시 `docs/migration.md`를 확인합니다.
+
+## Terrain-RGB 타일 API
+
+북한산 Terrain-RGB 산출물은 프로젝트 루트의
+`data/processed/dem/bukhansan/terrain`에 둡니다. 다른 경로를 사용하거나
+프론트엔드에서 접근할 공개 주소가 달라지는 경우 다음 환경 변수를 설정합니다.
+
+```text
+TERRAIN_ROOT_PATH=/absolute/path/to/terrain
+TERRAIN_TILES_URL=http://localhost:8080/api/v1/terrain/{z}/{x}/{y}.png
+TERRAIN_CACHE_MAX_AGE=PT1H
+```
+
+- `GET /api/v1/terrain/tilejson`: TileJSON 메타데이터
+- `GET /api/v1/terrain/source`: MapLibre `raster-dem` source 설정
+- `GET /api/v1/terrain/{z}/{x}/{y}.png`: Terrain-RGB PNG 타일
+
+로컬 기본값은 백엔드 `http://localhost:8080`과 프로젝트 루트의 Terrain
+산출물 경로를 사용합니다. 타일 파일을 교체한 경우 메타데이터 캐시 갱신을 위해
+백엔드를 다시 실행합니다.
