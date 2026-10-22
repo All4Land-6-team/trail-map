@@ -30,6 +30,7 @@ WEB_MERCATOR_LIMIT = 20_037_508.342789244
 MAX_WEB_MERCATOR_LATITUDE = 85.0511287798066
 MIN_TERRAIN_RGB_ELEVATION = -10_000.0
 MAX_TERRAIN_RGB_ELEVATION = 1_667_721.5
+DEFAULT_EDGE_FEATHER_METERS = 1_000.0
 
 
 @dataclass(frozen=True)
@@ -136,7 +137,12 @@ def _tile_bounds(tile: Tile) -> tuple[float, float, float, float]:
 
 
 def _render_tile(
-    vrt: WarpedVRT, tile: Tile, minimum_x: int, minimum_y: int
+    vrt: WarpedVRT,
+    tile: Tile,
+    minimum_x: int,
+    minimum_y: int,
+    dem_bounds: tuple[float, float, float, float],
+    edge_feather_meters: float,
 ) -> np.ndarray | None:
     window = Window(
         (tile.x - minimum_x) * TILE_SIZE,
@@ -148,12 +154,34 @@ def _render_tile(
     valid = np.isfinite(elevations)
     if not valid.any():
         return None
-    if not valid.all():
-        elevations = fillnodata(
-            elevations,
-            mask=valid.astype(np.uint8),
+
+    left, bottom, right, top = _tile_bounds(tile)
+    pixel_size = (right - left) / TILE_SIZE
+    x = left + (np.arange(TILE_SIZE) + 0.5) * pixel_size
+    y = top - (np.arange(TILE_SIZE) + 0.5) * pixel_size
+    dem_left, dem_bottom, dem_right, dem_top = dem_bounds
+    x_edge_distance = np.minimum(x - dem_left, dem_right - x)
+    y_edge_distance = np.minimum(y - dem_bottom, dem_top - y)
+    edge_distance = np.minimum(y_edge_distance[:, None], x_edge_distance[None, :])
+    inside_bounds = edge_distance > 0
+    missing_inside = inside_bounds & ~valid
+
+    if missing_inside.any():
+        fill_source = np.where(inside_bounds, elevations, 0.0)
+        fill_mask = (valid | ~inside_bounds).astype(np.uint8)
+        filled = fillnodata(
+            fill_source,
+            mask=fill_mask,
             max_search_distance=TILE_SIZE * 2,
         )
+        elevations = np.where(missing_inside, filled, elevations)
+
+    feather = np.clip(edge_distance / edge_feather_meters, 0.0, 1.0)
+    elevations = np.where(
+        inside_bounds & np.isfinite(elevations),
+        elevations * feather,
+        0.0,
+    )
     return encode_terrain_rgb(elevations)
 
 
@@ -218,6 +246,7 @@ def generate_terrain_tiles(
     max_zoom: int,
     tiles_url: str = "./tiles/{z}/{x}/{y}.png",
     max_tiles: int | None = None,
+    edge_feather_meters: float = DEFAULT_EDGE_FEATHER_METERS,
     overwrite: bool = False,
 ) -> dict[str, Any]:
     """분석용 DEM에서 Terrain-RGB XYZ PNG 타일과 TileJSON을 생성한다."""
@@ -240,6 +269,8 @@ def generate_terrain_tiles(
         raise DemValidationError("타일 URL에는 {z}, {x}, {y} 토큰이 모두 필요합니다")
     if max_tiles is not None and max_tiles < 1:
         raise DemValidationError("최대 타일 수는 1 이상이어야 합니다")
+    if not math.isfinite(edge_feather_meters) or edge_feather_meters <= 0:
+        raise DemValidationError("외곽 완충 거리는 0보다 큰 유한한 값이어야 합니다")
     if output_path.exists() and not overwrite:
         raise FileExistsError(f"출력 디렉터리가 이미 존재합니다: {output_path}")
     if output_path.exists() and not output_path.is_dir():
@@ -263,6 +294,12 @@ def generate_terrain_tiles(
                 source.crs, "EPSG:4326", *source.bounds, densify_pts=21
             )
             geographic_bounds = tuple(float(value) for value in bounds)
+            projected_bounds = tuple(
+                float(value)
+                for value in transform_bounds(
+                    source.crs, "EPSG:3857", *source.bounds, densify_pts=21
+                )
+            )
 
             indices_by_zoom = {
                 zoom: _tile_indices(geographic_bounds, zoom)
@@ -288,7 +325,14 @@ def generate_terrain_tiles(
                     current_x: int | None = None
                     tile_directory: Path | None = None
                     for tile in tiles_for_bounds(geographic_bounds, zoom):
-                        rgba = _render_tile(vrt, tile, minimum_x, minimum_y)
+                        rgba = _render_tile(
+                            vrt,
+                            tile,
+                            minimum_x,
+                            minimum_y,
+                            projected_bounds,
+                            edge_feather_meters,
+                        )
                         if rgba is None:
                             continue
                         if tile.x != current_x:
@@ -331,6 +375,7 @@ def generate_terrain_tiles(
             **tilejson,
             "encoding": "mapbox",
             "tileSize": TILE_SIZE,
+            "edge_feather_meters": edge_feather_meters,
             "source": str(source_path.resolve()),
             "output": str(output_path.resolve()),
             "candidate_tile_count": candidate_tile_count,

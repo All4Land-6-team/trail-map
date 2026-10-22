@@ -7,10 +7,12 @@ export type MapActionProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "neutral" | "brand";
   iconName?: IconName;
   icon?: ReactNode;
-  dimensionMode?: "2D" | "3D";
-  defaultDimensionMode?: "2D" | "3D";
-  onDimensionModeChange?: (mode: "2D" | "3D") => void;
+  dimensionMode?: MapDimension;
+  defaultDimensionMode?: MapDimension;
+  onDimensionModeChange?: (mode: MapDimension) => void;
 };
+
+export type MapDimension = "2D" | "3D";
 
 export function MapAction({
   variant = "neutral", iconName, icon, dimensionMode, defaultDimensionMode,

@@ -99,7 +99,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
     }}>
     {data ? <>
       <div className="course-detail-page__map" style={{ height: sheetTop + 4 }}>
-        <CourseRouteMap variant="detail" courses={courses} selected={data.course} center={data.course.routeCoordinates[0]}
+        <CourseRouteMap variant="detail" courses={courses} selected={data.course} mountainId={request.mountainId}
+          center={data.course.routeCoordinates[0]}
           onSelect={() => {}} onNotify={notify} summitCoordinate={summitCoordinate}
           profileSample={view.tab === "analysis" ? sample : null} spots={view.tab === "spots" ? spots : undefined}
           selectedSpotId={selectedSpot?.id} focusSpotId={view.spotId} showSpotLabels={view.category !== "all"}
