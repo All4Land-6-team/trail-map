@@ -14,6 +14,7 @@
     "test:home": "node --test tests/home-discovery.test.mjs",
     "test:courses": "node --test tests/course-discovery.test.mjs",
     "test:course-detail": "node --test tests/course-detail.test.mjs",
+    "test:terrain": "node --experimental-strip-types --test tests/map-terrain.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

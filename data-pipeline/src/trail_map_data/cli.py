@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from trail_map_data.dem import DemValidationError, inspect_dem, optimize_dem, paths_alias
-from trail_map_data.terrain import generate_terrain_tiles
+from trail_map_data.terrain import DEFAULT_EDGE_FEATHER_METERS, generate_terrain_tiles
 
 
 def _json_safe(value: Any) -> Any:
@@ -107,6 +107,15 @@ def _build_parser() -> argparse.ArgumentParser:
         default="./tiles/{z}/{x}/{y}.png",
         help="TileJSON에 기록할 XYZ URL 템플릿",
     )
+    terrain_parser.add_argument(
+        "--edge-feather-meters",
+        type=float,
+        default=DEFAULT_EDGE_FEATHER_METERS,
+        help=(
+            "DEM 외곽 고도를 0m로 완만하게 낮출 거리"
+            f"(기본 {DEFAULT_EDGE_FEATHER_METERS:g}m)"
+        ),
+    )
     terrain_parser.add_argument("--overwrite", action="store_true")
 
     return parser
@@ -129,6 +138,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             max_zoom=args.max_zoom,
             tiles_url=args.tiles_url,
             max_tiles=args.max_tiles,
+            edge_feather_meters=args.edge_feather_meters,
             overwrite=args.overwrite,
         )
         print(

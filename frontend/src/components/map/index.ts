@@ -1,5 +1,5 @@
 export { MapAction } from "./MapAction";
-export type { MapActionProps } from "./MapAction";
+export type { MapActionProps, MapDimension } from "./MapAction";
 export { SpotMarker } from "./SpotMarker";
 export type { SpotMarkerProps, SpotKind } from "./SpotMarker";
 export { MountainMarker } from "./MountainMarker";
@@ -8,3 +8,5 @@ export { DistanceBubble } from "./DistanceBubble";
 export type { DistanceBubbleProps } from "./DistanceBubble";
 export { default as BaseMap } from "./BaseMap";
 export type { BaseMapProps, MapRoute } from "./BaseMap";
+export { supportsTerrain } from "./terrain";
+export type { TerrainStatus } from "./terrain";

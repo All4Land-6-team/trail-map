@@ -81,9 +81,10 @@ PYTHONPATH=src python -m trail_map_data.cli dem optimize \
 
 분석용 GeoTIFF를 MapLibre의 `raster-dem` 소스에서 사용할 수 있는 Mapbox
 Terrain-RGB 형식으로 변환합니다. 고도는 0.1m 단위 RGB 값으로 인코딩하며,
-MapLibre가 NoData를 `-10000m`로 해석하지 않도록 부분 타일의 빈 픽셀은 가장
-가까운 유효 고도로 채운 뒤 불투명하게 저장합니다. 유효 고도가 전혀 없는 타일은
-생성하지 않습니다.
+MapLibre가 NoData를 `-10000m`로 해석하지 않도록 투명 픽셀을 남기지 않습니다.
+대신 DEM 외곽 1km 구간의 고도를 전역 좌표 기준으로 0m까지 완만하게 낮추고,
+내부의 작은 결측만 인접 고도로 보간합니다. 이로써 타일 경계에서 산이
+길게 늘어지거나 절벽처럼 세워지는 현상을 방지합니다.
 
 ```bash
 PYTHONPATH=src python -m trail_map_data.cli dem terrain-tiles \
@@ -92,6 +93,7 @@ PYTHONPATH=src python -m trail_map_data.cli dem terrain-tiles \
   --min-zoom 10 \
   --max-zoom 16 \
   --max-tiles 2000 \
+  --edge-feather-meters 1000 \
   --overwrite
 ```
 
@@ -104,6 +106,7 @@ PYTHONPATH=src python -m trail_map_data.cli dem terrain-tiles \
   --min-zoom 10 \
   --max-zoom 16 \
   --max-tiles 2000 \
+  --edge-feather-meters 1000 \
   --tiles-url "/api/v1/terrain/{z}/{x}/{y}.png" \
   --overwrite
 ```
@@ -111,6 +114,7 @@ PYTHONPATH=src python -m trail_map_data.cli dem terrain-tiles \
 `--min-zoom`, `--max-zoom`, `--max-tiles`는 필수 옵션입니다. 서비스에서 필요한
 지도 확대 범위와 저장 용량을 검토해 지정하며, 생성기는 0~22 범위만 허용합니다.
 생성 전 계산한 예상 타일 수가 `--max-tiles`를 넘으면 작업을 시작하지 않습니다.
+`--edge-feather-meters`는 DEM 외곽을 0m로 연결하는 완충 거리이며 기본값은 1000m입니다.
 
 산출물은 다음 구조로 생성됩니다.
 

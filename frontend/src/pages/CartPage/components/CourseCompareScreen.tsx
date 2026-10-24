@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { MapLibreMap } from "maplibre-gl";
 import { Typography } from "../../../components/common/Typography";
 import { BottomNavigation, TopBar, type BottomDestination } from "../../../components/layout";
-import { BaseMap, MapAction, type MapRoute } from "../../../components/map";
+import { BaseMap, MapAction, supportsTerrain, type MapDimension, type MapRoute, type TerrainStatus } from "../../../components/map";
 import { BottomSheet } from "../../../components/overlay";
 import { BUKHANSAN_CENTER } from "../data";
 import type { CartCourse, ElevationChartSeries } from "../types";
@@ -21,6 +22,9 @@ export function CourseCompareScreen({
   onViewMetrics,
   onNavigate,
 }: CourseCompareScreenProps) {
+  const [dimension, setDimension] = useState<MapDimension>("2D");
+  const [terrainStatus, setTerrainStatus] = useState<TerrainStatus>("idle");
+  const [map, setMap] = useState<MapLibreMap | null>(null);
   const mapRoutes = useMemo<MapRoute[]>(() => courses.map((course) => ({
     id: course.id,
     color: course.color,
@@ -36,6 +40,10 @@ export function CourseCompareScreen({
     ariaLabel: "고도 그래프 높이 조절",
     openHeight: 326,
   });
+  const terrainEnabled = supportsTerrain(courses[0]?.mountainId);
+  useEffect(() => {
+    if (!terrainEnabled) map?.easeTo({ pitch: dimension === "3D" ? 50 : 0, duration: 350 });
+  }, [dimension, map, terrainEnabled]);
 
   return (
     <main className="cart-screen cart-map-screen cart-compare-screen" style={sheet.sheetStyle}>
@@ -46,6 +54,9 @@ export function CourseCompareScreen({
         routes={mapRoutes}
         showNavigationControl={false}
         className="cart-course-map"
+        onMapReady={setMap}
+        terrainMode={terrainEnabled ? dimension : undefined}
+        onTerrainStatusChange={setTerrainStatus}
       />
       <TopBar
         title={`${courses[0]?.mountain ?? "산"} · 코스 비교`}
@@ -54,7 +65,11 @@ export function CourseCompareScreen({
         className="cart-map-topbar"
       />
       <div className="cart-map-actions" aria-label="지도 도구">
-        <MapAction iconName="3D" defaultDimensionMode="3D" />
+        <MapAction dimensionMode={dimension === "2D" ? "3D" : "2D"}
+          aria-label={`${dimension === "2D" ? "3D" : "2D"} 지도 보기`}
+          aria-busy={terrainEnabled && terrainStatus === "loading"}
+          disabled={terrainEnabled && terrainStatus !== "ready"}
+          onDimensionModeChange={() => setDimension(current => current === "2D" ? "3D" : "2D")} />
         <MapAction iconName="Locate" />
       </div>
 

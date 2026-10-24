@@ -60,3 +60,10 @@ body {
   font-size: 20px;
   line-height: 1;
 }
+
+.base-map__notice .base-map__notice-action {
+  padding: 4px 0;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}

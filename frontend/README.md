@@ -53,7 +53,8 @@ npm run dev
 - 급경사 비율을 확인할 수 없는 코스는 급경사 조건이 적용됐을 때 결과에서 제외합니다. 미확인 값을 0으로 취급하지 않습니다.
 - 적용 Chip의 ×는 해당 조건만 해제합니다. 결과가 0건이면 Empty State를 표시하고 카드와 Dot, 선택 경로를 해제합니다.
 - 분석 미준비 코스의 고도 값은 `—`, 상세 버튼은 `상세 준비 중`으로 표시합니다. 예시에서 백운대 코스만 상세 이동을 허용합니다.
-- 2D·3D 버튼은 지도 기울기를 전환합니다. DEM 기반 3D 지형은 포함하지 않습니다. 현재 위치 버튼은 클릭했을 때만 위치 권한을 요청하며, 거절·조회 실패를 안내합니다.
+- 북한산 코스 지도와 담은 코스·비교 지도는 백엔드 Terrain source API의 Terrain-RGB 타일로 Hillshade와 3D 지형을 표시합니다. 2D에서는 Hillshade만 유지하고 3D에서는 Terrain과 기울기를 함께 적용합니다. 지형 정보를 불러오지 못하면 기존 2D 배경지도로 복구하고 다시 시도할 수 있습니다.
+- 다른 산은 DEM이 준비될 때까지 기존 2D 배경지도와 기울기 전환 방식을 유지합니다. 현재 위치 버튼은 클릭했을 때만 위치 권한을 요청하며, 거절·조회 실패를 안내합니다.
 
 ### 담기 상태와 후속 화면 연결
 
@@ -72,13 +73,14 @@ App은 `CourseFlow`를 통해 목록·상세·일정 시트를 렌더링합니�
 
 ```powershell
 npm run test:courses
+npm run test:terrain
 npm run test:home
 npm run test:offline
 npm run lint -- src
 npm run build
 ```
 
-`test:courses`는 시간·거리·급경사 경계, 정렬, 거리 손잡이 간격, Chip 해제, 화면 이동 ID, 담기 공유 저장소를 검사합니다.
+`test:courses`는 시간·거리·급경사 경계, 정렬, 거리 손잡이 간격, Chip 해제, 화면 이동 ID, 담기 공유 저장소를 검사합니다. `test:terrain`은 Terrain source 응답 검증, Terrain·Hillshade source 분리, 2D·3D 전환을 검사합니다.
 
 ## 코스 상세·스팟·통제정보 (FLOW-04·05)
 

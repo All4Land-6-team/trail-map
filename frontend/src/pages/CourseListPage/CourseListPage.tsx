@@ -87,7 +87,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
   return <main className="course-page" aria-label={`${mountain.name} 코스 탐색`}>
     <div className="course-page__base" inert={discovery.filterOpen}>
       <div className="course-page__map-area">
-        <CourseMap courses={courses} selected={selectedCourse} center={mountain.position}
+        <CourseMap courses={courses} selected={selectedCourse} mountainId={mountainId} center={mountain.position}
           onSelect={discovery.setSelectedId} onNotify={notify} />
         <TopBar title={mountain.name} onBack={onBack} showAction={false} className="course-page__top" />
       </div>

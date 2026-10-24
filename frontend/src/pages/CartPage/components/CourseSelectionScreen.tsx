@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { MapLibreMap } from "maplibre-gl";
 import { Button } from "../../../components/common/Button";
 import { Icon } from "../../../components/common/Icon";
 import { Typography } from "../../../components/common/Typography";
 import { BottomNavigation, TopBar, type BottomDestination } from "../../../components/layout";
-import { BaseMap, MapAction, type MapRoute } from "../../../components/map";
+import { BaseMap, MapAction, supportsTerrain, type MapDimension, type MapRoute, type TerrainStatus } from "../../../components/map";
 import { BottomSheet } from "../../../components/overlay";
 import { BUKHANSAN_CENTER, formatCourseDuration, MAX_COMPARISON_COURSES } from "../data";
 import type { CartCourse } from "../types";
@@ -28,6 +29,9 @@ export function CourseSelectionScreen({
   onNavigate,
   onToggleCourse,
 }: CourseSelectionScreenProps) {
+  const [dimension, setDimension] = useState<MapDimension>("2D");
+  const [terrainStatus, setTerrainStatus] = useState<TerrainStatus>("idle");
+  const [map, setMap] = useState<MapLibreMap | null>(null);
   const selectedCourses = useMemo(
     () => courses.filter((course) => selectedCourseIds.has(course.id)),
     [courses, selectedCourseIds],
@@ -40,6 +44,10 @@ export function CourseSelectionScreen({
   const canCompare = selectedCourses.length >= 2;
   const selectionLimitReached = selectedCourses.length >= MAX_COMPARISON_COURSES;
   const selectionLimitMessage = `코스는 최대 ${MAX_COMPARISON_COURSES}개까지 선택할 수 있어요`;
+  const terrainEnabled = supportsTerrain(courses[0]?.mountainId);
+  useEffect(() => {
+    if (!terrainEnabled) map?.easeTo({ pitch: dimension === "3D" ? 50 : 0, duration: 350 });
+  }, [dimension, map, terrainEnabled]);
   const sheet = useDraggableCartSheet({
     ariaLabel: "코스 목록 높이 조절",
     openHeight: 360,
@@ -54,6 +62,9 @@ export function CourseSelectionScreen({
         routes={mapRoutes}
         showNavigationControl={false}
         className="cart-course-map"
+        onMapReady={setMap}
+        terrainMode={terrainEnabled ? dimension : undefined}
+        onTerrainStatusChange={setTerrainStatus}
       />
       <TopBar
         title={`${courses[0]?.mountain ?? "산"} · 담은 코스`}
@@ -62,7 +73,11 @@ export function CourseSelectionScreen({
         className="cart-map-topbar"
       />
       <div className="cart-map-actions" aria-label="지도 도구">
-        <MapAction iconName="3D" defaultDimensionMode="3D" />
+        <MapAction dimensionMode={dimension === "2D" ? "3D" : "2D"}
+          aria-label={`${dimension === "2D" ? "3D" : "2D"} 지도 보기`}
+          aria-busy={terrainEnabled && terrainStatus === "loading"}
+          disabled={terrainEnabled && terrainStatus !== "ready"}
+          onDimensionModeChange={() => setDimension(current => current === "2D" ? "3D" : "2D")} />
         <MapAction iconName="Locate" />
       </div>
 

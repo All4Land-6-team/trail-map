@@ -91,6 +91,7 @@ def test_generate_terrain_tiles_writes_png_tiles_and_tilejson(
     assert tile_files
     assert metadata["tile_count"] == len(tile_files)
     assert metadata["encoding"] == "mapbox"
+    assert metadata["edge_feather_meters"] == 1_000.0
     assert tilejson["tilejson"] == "3.0.0"
     assert tilejson["scheme"] == "xyz"
     assert tilejson["tiles"] == ["/api/v1/terrain/{z}/{x}/{y}.png"]
@@ -111,7 +112,8 @@ def test_generate_terrain_tiles_writes_png_tiles_and_tilejson(
         valid = pixels[..., 3] == 255
         assert valid.any()
         decoded = decode_terrain_rgb(pixels)
-        assert float(decoded[valid].min()) >= 99.9
+        assert float(decoded[valid].min()) == pytest.approx(0.0, abs=0.05)
+        assert (decoded[valid] >= 99.9).any()
         assert float(decoded[valid].max()) <= 800.1
 
 
@@ -212,6 +214,19 @@ def test_generate_terrain_tiles_enforces_configured_tile_limit(
         )
 
     assert not output.exists()
+
+
+def test_generate_terrain_tiles_rejects_invalid_edge_feather(
+    geographic_dem: Path, tmp_path: Path
+) -> None:
+    with pytest.raises(DemValidationError, match="외곽 완충 거리"):
+        generate_terrain_tiles(
+            geographic_dem,
+            tmp_path / "terrain",
+            min_zoom=14,
+            max_zoom=14,
+            edge_feather_meters=0,
+        )
 
 
 def test_generate_terrain_tiles_preserves_dataset_mask(tmp_path: Path) -> None:

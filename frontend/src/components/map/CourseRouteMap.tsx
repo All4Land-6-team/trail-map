@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LngLatBounds, type FilterSpecification, type GeoJSONSource, type GeoJSONSourceSpecification, type MapLayerMouseEvent, type MapLibreMap } from "maplibre-gl";
 import BaseMap from "./BaseMap";
-import { MapAction } from "./MapAction";
+import { MapAction, type MapDimension } from "./MapAction";
+import { supportsTerrain, type TerrainStatus } from "./terrain";
 import type { Course } from "../../types/course";
 import type { CourseProfileSample, CourseSpot } from "../../types/courseDetail";
 import { SpotMarker } from "./SpotMarker";
@@ -18,6 +19,7 @@ const ACTIVE_ROUTE = "discovery-active-route";
 export type CourseRouteMapProps = {
   courses: readonly Course[];
   selected: Course | null;
+  mountainId?: string;
   center: [number, number];
   onSelect: (id: string) => void;
   onNotify: (message: string) => void;
@@ -31,16 +33,18 @@ export type CourseRouteMapProps = {
   onSpotSelect?: (id: string) => void;
 };
 
-export function CourseRouteMap({ courses, selected, center, onSelect, onNotify, variant = "list", profileSample,
+export function CourseRouteMap({ courses, selected, mountainId, center, onSelect, onNotify, variant = "list", profileSample,
   summitCoordinate, spots, selectedSpotId, focusSpotId, showSpotLabels = false, onSpotSelect }: CourseRouteMapProps) {
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [routesReady, setRoutesReady] = useState(false);
-  const [dimension, setDimension] = useState<"2D" | "3D">("2D");
+  const [dimension, setDimension] = useState<MapDimension>("2D");
+  const [terrainStatus, setTerrainStatus] = useState<TerrainStatus>("idle");
   const [summit, setSummit] = useState<{ x: number; y: number } | null>(null);
   const [profilePoint, setProfilePoint] = useState<{ x: number; y: number } | null>(null);
   const [spotPoints, setSpotPoints] = useState<readonly { spot: CourseSpot; x: number; y: number }[]>([]);
   const [locating, setLocating] = useState(false);
   const alive = useRef(true);
+  const terrainEnabled = supportsTerrain(mountainId ?? selected?.mountainId ?? courses[0]?.mountainId);
   const onReady = useCallback((instance: MapLibreMap | null) => setMap(instance), []);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
@@ -109,8 +113,8 @@ export function CourseRouteMap({ courses, selected, center, onSelect, onNotify, 
   }, [map, selected, summitCoordinate, profileSample, spots]);
 
   useEffect(() => {
-    map?.easeTo({ pitch: dimension === "3D" ? 50 : 0, duration: 350 });
-  }, [map, dimension]);
+    if (!terrainEnabled) map?.easeTo({ pitch: dimension === "3D" ? 50 : 0, duration: 350 });
+  }, [map, dimension, terrainEnabled]);
 
   function locate() {
     if (!navigator.geolocation) { onNotify("현재 위치를 지원하지 않는 환경이에요."); return; }
@@ -128,7 +132,9 @@ export function CourseRouteMap({ courses, selected, center, onSelect, onNotify, 
 
   return <div className={`course-map course-map--${variant}`} data-selected-course={selected?.id ?? ""} data-map-mode={dimension} data-route-ready={routesReady}
     aria-label={selected ? `지도 경로: ${selected.name}` : "코스 지도"}>
-    <BaseMap className="course-map__base" showNavigationControl={false} onMapReady={onReady} />
+    <BaseMap className="course-map__base" showNavigationControl={false} onMapReady={onReady}
+      terrainBeforeLayerId={ROUTE_LAYER} terrainMode={terrainEnabled ? dimension : undefined}
+      onTerrainStatusChange={setTerrainStatus} />
     {summit && (variant === "list" || summitCoordinate) && <div className="course-map__summit" style={{ left: summit.x, top: summit.y }}>
       {variant === "detail" ? <><img className="course-map__peak" src={detailPeakAsset} alt="" />
         <img src={detailSummitAsset} alt="" /><span>정상</span></> : <><img src={summitAsset} alt="" /><span>정상</span></>}
@@ -144,7 +150,9 @@ export function CourseRouteMap({ courses, selected, center, onSelect, onNotify, 
       label={showSpotLabels ? spot.name : undefined} onClick={() => onSpotSelect?.(spot.id)} />)}
     <div className="course-map__actions">
       <MapAction dimensionMode={dimension === "2D" ? "3D" : "2D"} aria-label={`${dimension === "2D" ? "3D" : "2D"} 지도 보기`}
-        disabled={!map} onDimensionModeChange={() => setDimension(current => current === "2D" ? "3D" : "2D")} />
+        aria-busy={terrainEnabled && terrainStatus === "loading"}
+        disabled={!map || (terrainEnabled && terrainStatus !== "ready")}
+        onDimensionModeChange={() => setDimension(current => current === "2D" ? "3D" : "2D")} />
       <MapAction iconName="Locate" disabled={!map || locating} aria-busy={locating}
         aria-label={locating ? "현재 위치 확인 중" : "현재 위치"} onClick={locate} />
     </div>
