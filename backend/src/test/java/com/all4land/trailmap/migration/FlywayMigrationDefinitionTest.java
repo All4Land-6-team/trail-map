@@ -69,6 +69,22 @@ class FlywayMigrationDefinitionTest {
                 .contains("CREATE UNIQUE INDEX uq_facility_report_active");
     }
 
+    @Test
+    void 세_번째_마이그레이션은_커뮤니티_후기와_스팟_구조를_확장한다() throws IOException {
+        String migration = readMigration("db/migration/V3__support_community_reviews_and_spots.sql");
+
+        assertThat(migration)
+                .contains("ADD COLUMN hike_record_id BIGINT")
+                .contains("CHECK (rating BETWEEN 1 AND 5)")
+                .contains("CHECK (length(review_content) <= 1000)")
+                .contains("'RESTROOM'")
+                .contains("CHECK (num_nonnulls(spot_id, facility_id) = 1)")
+                .containsPattern("(?im)^CREATE TABLE\\s+spot_vote\\s*\\(")
+                .contains("CHECK (vote_type IN ('YES', 'NO'))")
+                .contains("UNIQUE (user_id, spot_id)")
+                .contains("UNIQUE (user_id, facility_id)");
+    }
+
     private String readMigration(String path) throws IOException {
         try (var inputStream = getClass().getClassLoader().getResourceAsStream(path)) {
             assertThat(inputStream).as("migration resource %s", path).isNotNull();

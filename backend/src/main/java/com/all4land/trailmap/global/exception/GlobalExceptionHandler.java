@@ -2,6 +2,7 @@ package com.all4land.trailmap.global.exception;
 
 import com.all4land.trailmap.global.response.ErrorResponse;
 import com.all4land.trailmap.global.response.code.ErrorResponseCode;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -10,6 +11,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Slf4j
@@ -20,6 +22,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse<Void>> handleValidationException(Exception exception) {
         log.warn("Validation failed", exception);
         return response(ErrorResponse.of(ErrorResponseCode.INVALID_HTTP_MESSAGE_BODY, "요청 값이 올바르지 않습니다."));
+    }
+
+    @ExceptionHandler({HandlerMethodValidationException.class, ConstraintViolationException.class})
+    public ResponseEntity<ErrorResponse<Void>> handleMethodValidationException(Exception exception) {
+        log.warn("Request parameter validation failed", exception);
+        return response(ErrorResponse.from(ErrorResponseCode.INVALID_HTTP_MESSAGE_PARAMETER));
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
