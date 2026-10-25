@@ -26,8 +26,8 @@ public class FacilityImportRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         var result = service.importFile(Path.of(file));
-        log.info("Facility import complete: sourceId={}, total={}, inserted={}, skipped={}",
-                result.sourceId(), result.total(), result.inserted(), result.skipped());
+        log.info("Facility import complete: sourceId={}, total={}, inserted={}, updated={}, skipped={}",
+                result.sourceId(), result.total(), result.inserted(), result.updated(), result.skipped());
         context.close();
     }
 }
