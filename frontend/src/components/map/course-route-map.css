@@ -6,7 +6,7 @@
 .course-map__actions [data-icon-name="Locate"] { width: 22px !important; height: 22px !important; }
 .course-map__summit { position: absolute; z-index: 1; display: flex; align-items: center; gap: 8px; transform: translate(-8px, -8px); pointer-events: none; color: #617b6c; font-size: 12px; line-height: 18px; white-space: nowrap; }
 .course-map__summit img { display: block; flex: none; }
-.course-map__example { position: absolute; bottom: 25px; left: 12px; padding: 3px 6px; border-radius: 5px; color: #617b6c; background: rgb(255 255 255 / 92%); font-size: 10px; pointer-events: none; }
+.course-map__example { position: absolute; bottom: calc(var(--map-sheet-height, 0px) + 25px); left: 12px; padding: 3px 6px; border-radius: 5px; color: #617b6c; background: rgb(255 255 255 / 92%); font-size: 10px; pointer-events: none; }
 .course-map__base .base-map__notices { z-index: 3; top: calc(78px + env(safe-area-inset-top)); right: 75px; left: 12px; width: auto; max-height: calc(100% - 105px); overflow-y: auto; }
 .course-map--detail .course-map__actions { top: calc(88px + env(safe-area-inset-top)); right: 16px; gap: 7px; }
 .course-map--detail .af-map-action { width: 38px; height: 38px; border-radius: 13px; }
