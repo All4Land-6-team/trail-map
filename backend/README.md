@@ -65,3 +65,9 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 로컬 기본값은 백엔드 `http://localhost:8080`과 프로젝트 루트의 Terrain
 산출물 경로를 사용합니다. 타일 파일을 교체한 경우 메타데이터 캐시 갱신을 위해
 백엔드를 다시 실행합니다.
+
+## 공식 시설 데이터
+
+산 소속 판정이 완료된 JSON v2를 적재한다. 기존 시설 소속 갱신과 코스 조회 조건은 [산 경계 문서](../docs/facility-mountain-boundary.md)를 참고한다.
+
+화장실 시범 전처리·JDBC 적재·조회 API·검증 방법은 [시설 데이터 문서](../docs/facilities.md)를 참고합니다.

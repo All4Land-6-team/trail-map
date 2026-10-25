@@ -11,6 +11,16 @@ npm run dev
 
 프로덕션 빌드는 `npm run build`로 확인합니다.
 
+## 개발용 화장실 전체 조회
+
+`npm run dev` 실행 후 `http://localhost:5173/?preview=facilities&sourceId=4`에서 적재된 화장실 후보 전체를 확인합니다. `sourceId`에는 백엔드 적재 로그의 출처 ID를 지정합니다. 현재 시범 적재는 4번 출처의 95건입니다. 이 화면은 `import.meta.env.DEV`에서만 연결되며 프로덕션 번들에 포함되지 않습니다.
+
+백엔드는 `--facility.review.enabled=true`로 실행해야 합니다. `src/api/facilities.ts`는 `VITE_API_BASE_URL`(기본 `http://localhost:8080`)의 `/api/v1/facilities/review?sourceId=...&type=RESTROOM`을 GET으로 조회합니다. DB 비밀번호는 프론트에 설정하지 않습니다. 백엔드 기본 CORS 허용 주소는 `http://localhost:5173`입니다.
+
+지도·목록·상세 선택, 이름·OBJECTID 검색, 전체 보기, 재조회, OBJECTID 복사를 제공합니다. 같은 좌표의 시설은 지도에서 숫자로 표시하고 마커를 반복 선택하면 해당 위치의 시설을 순서대로 선택합니다. 목록에서는 각 시설을 직접 선택할 수 있습니다. 코스 거리와 산 경계 필터를 적용하지 않은 후보 화면이며, 자료 당시의 `USE_YN`을 현재 운영 상태로 해석하지 않습니다. C·U·D 없이 조회만 수행합니다.
+
+파일 흐름은 `App.tsx` → `pages/FacilityPreviewPage/FacilityPreviewPage.tsx` → `api/facilities.ts` → 검토 API → `FacilityPreviewMap.tsx`/`BaseMap`과 목록·상세 표시입니다. 응답 타입은 `types/facility.ts`에 있습니다. `npm run test:facilities`로 GeoJSON 검증·중복 좌표 보존·검색·API 오류 처리를 확인하고 `npm run build`로 타입과 운영 번들을 확인합니다.
+
 ## 홈 산 탐색 (FLOW-01)
 
 - 첫 화면에 실제 배경지도, 대표 산 5개의 마커, 최근 본 산, 오늘 일정 배너를 표시합니다.
@@ -190,3 +200,17 @@ OpenFreeMap 배경지도는 공급원의 HTTP 응답에 따른 기본 브라우�
 프로덕션 빌드에는 서비스 워커가 앱 셸의 HTML·JavaScript·CSS와 화면에 쓰는 SVG를 사전 캐시합니다. 처음 온라인으로 접속해 서비스 워커 설치가 끝난 뒤에는 같은 범위의 앱 화면을 오프라인에서 열 수 있습니다. 개발 서버에서는 사전 캐시가 비활성화되므로 `npm run build` 후 `npm run preview`로 확인합니다.
 
 연결이 끊기면 지도 위에 오프라인 상태와 실시간 정보 제한을 알립니다. 저장되지 않은 배경지도 요청과 정적 데이터 요청은 각각 별도로 안내합니다. 배경지도는 공급원 정책에 따라 별도 저장하지 않으므로 방문 지역이라도 오프라인 표시를 보장하지 않습니다. 서비스 워커의 캐시 동작은 `npm run test:offline`로 검사합니다.
+
+## 코스 주변 화장실 조회
+
+개발 서버에서 홈 → 북한산 → 백운대 코스 상세 → 스팟·통제정보 → 화장실로 이동한다. 직접 주소는 `http://localhost:5173/#mountains/bukhansan/courses/bukhansan-baegundae?tab=spots&category=restroom`이다. 기존 코스별 API를 사용하므로 검토 API의 `facility.review.enabled` 설정은 필요하지 않다.
+
+현재 로컬 시범 데이터는 프론트의 mock 백운대 경로를 DB 코스 ID 2에 적재한 것이다. `VITE_MOCK_BAEGUNDAE_COURSE_ID`로 다른 로컬 ID를 지정할 수 있으며, 생략하면 개발 서버에서만 2를 사용한다. 운영 빌드에는 mock 코스 ID를 연결하지 않는다. 이후 실제 코스 데이터를 연결할 때는 `Course.backendCourseId`에 해당 DB ID를 제공하고 지도 경로도 같은 DB 코스의 좌표를 사용해야 한다.
+
+`CourseDetailPage` → `useCourseFacilities` → `api/courseFacilities.ts` → `GET /api/v1/courses/{courseId}/facilities?type=RESTROOM&radiusMeters=250` → `utils/courseFacilities.ts` → `CourseSpots`와 `CourseRouteMap` 순서로 읽는다. 검토 API의 GeoJSON과 달리 코스 API는 `SuccessResponse.data` 배열을 반환한다. 프론트는 R만 수행하며 시설·코스를 생성하거나 변경하지 않는다.
+
+화장실 및 전체 탭은 같은 API 결과를 사용한다. 합성 화장실은 제거하며 오류·빈 응답에 대한 대체 데이터로도 표시하지 않는다. 화장실 목록 선택은 지도 위치로 이동하고, 다른 예시 스팟의 후기 이동은 기존대로 동작한다. 미연결 코스·조회 중·실패와 재시도·결과 없음 상태를 구분한다.
+
+250m는 시설 Point에서 코스 전체 LineString까지의 최단거리이며 도보 이동거리가 아니다. 코스는 9개 점의 합성 경로(약 1.2km)로 화면 분석 예시의 4.2km와 다르다. 화장실 위치는 원본 자료의 좌표이며, 원본 기준일을 표시하고 과거 상태를 현재 운영 여부로 해석하지 않는다. 쉼터·음수대·사진 스팟은 아직 화면 예시다.
+
+`npm run test:course-facilities`, `npm run test:course-detail`, `npm run test:facilities`, `npm run lint`, `npm run build`로 API 계약·화장실 합성 데이터 제거·조회 실패 및 취소·기존 화면 로직·타입을 확인한다.

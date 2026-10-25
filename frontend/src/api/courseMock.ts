@@ -1,6 +1,11 @@
 import { loadHomeDiscoveryData } from "./homeMock";
 import type { Course, CourseDiscoveryData } from "../types/course";
 
+// 로컬 테스트 DB의 mock 백운대 경로만 연결한다. 운영 빌드에는 테스트 ID를 연결하지 않는다.
+const localBaegundaeCourseId = Number(import.meta.env?.VITE_MOCK_BAEGUNDAE_COURSE_ID ?? "2");
+const mockBaegundaeBackendId = import.meta.env?.DEV && Number.isSafeInteger(localBaegundaeCourseId) && localBaegundaeCourseId > 0
+  ? localBaegundaeCourseId : undefined;
+
 // 화면 개발용 합성 데이터이며 실제 등산로·분석값·실시간 통제 정보가 아니다.
 // 기존 등산 담기·내 등산 브랜치와 연결할 수 있도록 courseId를 유지한다.
 export const courseFixtures: readonly Course[] = [
@@ -126,6 +131,7 @@ export const courseFixtures: readonly Course[] = [
   },
   {
     "id": "bukhansan-baegundae",
+    backendCourseId: mockBaegundaeBackendId,
     "mountainId": "bukhansan",
     "name": "백운대 코스",
     "routeLabel": "백운대 탐방지원센터 → 백운대",

@@ -147,3 +147,9 @@ PYTHONPATH=src python -m trail_map_data.cli dem terrain-tiles \
 PYTHONPATH=src pytest
 ```
 
+
+## 공식 시설 데이터
+
+후보 JSON 생성 후 `trail_map_data.facilities.mountain_membership`을 실행해 DB 경계로 산 소속을 판정한다. [산 경계 문서](../docs/facility-mountain-boundary.md)에 DB 연결, 경계 NULL 기본 할당과 재판정 절차를 설명한다.
+
+시설 전처리는 별도 패키지와 가상환경으로 실행합니다. [시설 데이터 문서](../docs/facilities.md)에 공통 JSON 계약과 화장실 시범 실행 방법이 있습니다.

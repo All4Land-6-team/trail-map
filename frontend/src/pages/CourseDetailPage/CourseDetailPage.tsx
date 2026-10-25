@@ -18,6 +18,8 @@ import { nearestProfileIndex, selectCourseSpots, toggleProfileMetric } from "../
 import { CourseAnalysis } from "./components/CourseAnalysis";
 import { CourseSpots } from "./components/CourseSpots";
 import { useCourseDetail } from "./hooks/useCourseDetail";
+import { useCourseFacilities } from "./hooks/useCourseFacilities";
+import { withCourseRestrooms } from "../../utils/courseFacilities";
 import { useDetailSheet } from "./hooks/useDetailSheet";
 import "./course-detail.css";
 
@@ -31,6 +33,7 @@ export type CourseDetailPageProps = CourseRequest & {
   onScheduleOpen?: (request: CourseRequest) => void;
 };
 const DEFAULT_VIEW: CourseDetailView = { tab: "analysis", category: "all" };
+const EMPTY_SPOTS: readonly CourseSpot[] = [];
 const savedBagAsset = new URL("../../assets/icons/bag-selected.svg", import.meta.url).href;
 
 export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, hasSchedule = false,
@@ -46,6 +49,9 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const { reviews: communityReviews } = useCommunityData();
   const saved = savedIds.includes(courseId);
   const data = state.status === "success" ? state.data : null;
+  const restrooms = useCourseFacilities(courseId, data?.course.backendCourseId,
+    view.tab === "spots" && (view.category === "all" || view.category === "restroom"));
+  const restroomSpots = restrooms.state.status === "success" ? restrooms.state.spots : EMPTY_SPOTS;
   const reviewTarget = communityCourseTargets.find(target => target.id === courseId && target.mountainId === mountainId);
   const submittedReviews = communityReviews.filter(review => review.kind === "course" && review.targetId === courseId)
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
@@ -55,7 +61,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   ].slice(0, 2);
   const reviewTotal = (reviewTarget?.baselineReviews ?? 0) + submittedReviews.length;
   const courses = useMemo(() => data ? [data.course] : [], [data]);
-  const spots = useMemo(() => selectCourseSpots(data?.spots ?? [], view.category), [data, view.category]);
+  const allSpots = useMemo(() => withCourseRestrooms(data?.spots ?? EMPTY_SPOTS, restroomSpots), [data, restroomSpots]);
+  const spots = useMemo(() => selectCourseSpots(allSpots, view.category), [allSpots, view.category]);
   const summitCoordinate = useMemo(() => data?.samples.reduce<(typeof data.samples)[number] | null>((highest, sample) =>
     !highest || sample.elevationMeters > highest.elevationMeters ? sample : highest, null)?.coordinate, [data]);
   const selectedIndex = data ? Math.min(chosenIndex ?? nearestProfileIndex(data.samples, 2.4), data.samples.length - 1) : -1;
@@ -82,6 +89,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   }
   function openSpot(spot: CourseSpot) {
     const next = { ...view, spotId: spot.id };
+    if (spot.facilityId !== undefined) { changeView(next); return; }
     const returnPath = courseDetailPath(request, next, returnTo);
     if (onSpotOpen) onSpotOpen({ ...request, spotId: spot.id, category: view.category, returnPath });
     else notify("스팟 후기 화면은 커뮤니티 작업과 통합 후 연결됩니다.");
@@ -117,6 +125,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
           ? <CourseAnalysis data={data} reviews={reviewExcerpts} reviewTotal={reviewTotal} visibility={visibility} selectedIndex={selectedIndex}
             onSelect={setChosenIndex} onToggle={toggleMetric} onReviewsOpen={onReviewsOpen ? () => onReviewsOpen(request) : undefined} />
           : <CourseSpots spots={spots} category={view.category} selectedId={selectedSpot?.id}
+            restrooms={restrooms.state} onRetryRestrooms={restrooms.retry}
             onCategory={category => changeView({ tab: "spots", category })} onOpen={openSpot} />}
         footer={<div className="course-detail-actions">
           <Button variant="secondary" aria-pressed={saved} onClick={save}
