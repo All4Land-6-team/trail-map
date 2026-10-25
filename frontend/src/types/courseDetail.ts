@@ -13,7 +13,14 @@ export type CourseSpot = {
   kind: SpotKind;
   name: string;
   coordinate: [longitude: number, latitude: number];
+  facilityId?: number;
+  distanceMeters?: number;
+  sourceDate?: string | null;
 };
+export type CourseFacilitiesState =
+  | { status: "unavailable" | "loading" }
+  | { status: "success"; spots: readonly CourseSpot[] }
+  | { status: "error"; message: string };
 export type SpotCategory = SpotKind | "all" | "control";
 export type CourseDetailTab = "analysis" | "spots";
 export type CourseDetailView = { tab: CourseDetailTab; category: SpotCategory; spotId?: string };

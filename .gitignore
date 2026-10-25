@@ -12,3 +12,7 @@ __pycache__/
 
 # 로컬 Gradle 캐시
 /.gradle-user-home/
+
+# 로컬 DB 비밀번호 및 시설 전처리 가상환경
+/.env
+/data-pipeline/.venv-facility/
