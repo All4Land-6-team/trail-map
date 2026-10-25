@@ -147,3 +147,7 @@ PYTHONPATH=src python -m trail_map_data.cli dem terrain-tiles \
 PYTHONPATH=src pytest
 ```
 
+
+## 공식 시설 데이터
+
+시설 전처리는 별도 패키지와 가상환경으로 실행합니다. [시설 데이터 문서](../docs/facilities.md)에 공통 JSON 계약과 화장실 시범 실행 방법이 있습니다.
