@@ -46,10 +46,13 @@ function App() {
   const completedHikes = useCompletedHikes()
 
   function planHike(plannedHike: PlannedHike) {
+    // 등산 담기 시트에서 같은 날짜 대체 확인을 이미 거쳤으므로 대체 등록으로 보낸다.
     saveSchedule({ date: plannedHike.date, startTime: plannedHike.time, courseId: plannedHike.courseId,
       mountainName: plannedHike.mountain, courseName: plannedHike.courseName,
-      distanceKm: courseFixtures.find(course => course.id === plannedHike.courseId)?.distanceKm ?? 0 })
-    navigate(hikePaths.calendar(plannedHike.date))
+      distanceKm: courseFixtures.find(course => course.id === plannedHike.courseId)?.distanceKm ?? 0 },
+    { replaceExisting: true })
+      .then(saved => navigate(hikePaths.calendar(saved.date)))
+      .catch(() => navigate(hikePaths.calendar(plannedHike.date)))
   }
 
   if (HikeStatusPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'hike-status') {

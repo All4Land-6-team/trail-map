@@ -80,9 +80,14 @@ export function HikeDetailPage() {
     {overlay === "cancel" && schedule && <ConfirmOverlay title="일정을 취소할까요?"
       body={`${schedule.mountainName} · ${schedule.courseName} 일정이 삭제돼요.`}
       cancelLabel="닫기" confirmLabel="일정 취소" onCancel={() => setOverlay(null)}
-      onConfirm={() => {
-        deleteSchedule(schedule.date);
-        navigate(hikePaths.calendar(schedule.date));
+      onConfirm={async () => {
+        try {
+          await deleteSchedule(schedule.date);
+          navigate(hikePaths.calendar(schedule.date));
+        } catch {
+          setOverlay(null);
+          toast.show("일정을 취소하지 못했어요. 잠시 후 다시 시도해 주세요.");
+        }
       }} />}
   </div>;
 }

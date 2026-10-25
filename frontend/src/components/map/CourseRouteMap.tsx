@@ -21,6 +21,7 @@ export type CourseRouteMapProps = {
   selected: Course | null;
   mountainId?: string;
   center: [number, number];
+  mapBottomInset?: number;
   onSelect: (id: string) => void;
   onNotify: (message: string) => void;
   variant?: "list" | "detail";
@@ -33,7 +34,7 @@ export type CourseRouteMapProps = {
   onSpotSelect?: (id: string) => void;
 };
 
-export function CourseRouteMap({ courses, selected, mountainId, center, onSelect, onNotify, variant = "list", profileSample,
+export function CourseRouteMap({ courses, selected, mountainId, center, mapBottomInset = 0, onSelect, onNotify, variant = "list", profileSample,
   summitCoordinate, spots, selectedSpotId, focusSpotId, showSpotLabels = false, onSpotSelect }: CourseRouteMapProps) {
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [routesReady, setRoutesReady] = useState(false);
@@ -68,15 +69,18 @@ export function CourseRouteMap({ courses, selected, mountainId, center, onSelect
       const filter: FilterSpecification = ["==", ["get", "courseId"], selected?.id ?? ""];
       map.setFilter(ACTIVE_OUTLINE, filter);
       map.setFilter(ACTIVE_ROUTE, filter);
+      const height = map.getContainer().clientHeight;
+      const inset = Math.min(mapBottomInset, Math.max(0, height - 1));
+      const visibleHeight = Math.max(1, height - inset);
+      const padding = { top: Math.min(110, visibleHeight * 0.35), bottom: inset + Math.min(36, visibleHeight * 0.15), left: 35, right: 82 };
       const focusedSpot = spots?.find(spot => spot.id === focusSpotId);
       if (focusedSpot) {
-        map.easeTo({ center: focusedSpot.coordinate, offset: [0, 20], duration: 200 });
+        map.easeTo({ center: focusedSpot.coordinate, padding, offset: [0, 20], duration: 200 });
       } else if (selected?.routeCoordinates.length) {
         const bounds = new LngLatBounds();
         selected.routeCoordinates.forEach(point => bounds.extend(point));
         spots?.forEach(spot => bounds.extend(spot.coordinate));
-        const height = map.getContainer().clientHeight;
-        map.fitBounds(bounds, { padding: { top: Math.min(110, height * 0.35), bottom: Math.min(36, height * 0.15), left: 35, right: 82 }, maxZoom: 15, duration: 0 });
+        map.fitBounds(bounds, { padding, maxZoom: 15, duration: 0 });
       } else { map.jumpTo({ center, zoom: 12 }); }
     }
     map.on("load", updateRoutes);
@@ -85,7 +89,7 @@ export function CourseRouteMap({ courses, selected, mountainId, center, onSelect
     map.on("idle", onIdle);
     updateRoutes();
     return () => { map.off("load", updateRoutes); map.off("resize", updateRoutes); map.off("idle", onIdle); };
-  }, [map, courses, selected, center, focusSpotId, spots]);
+  }, [map, courses, selected, center, focusSpotId, spots, mapBottomInset]);
 
   useEffect(() => {
     if (!map) return;

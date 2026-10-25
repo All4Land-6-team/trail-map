@@ -1,7 +1,8 @@
 import { useId, useState, type FormEvent } from "react";
+import { HikeScheduleApiError } from "../../api/hikeScheduleApi";
 import { toDateKey } from "../../api/hikeMock";
 import { useSingleFlight } from "../../hooks/useSingleFlight";
-import { deleteSchedule, findSchedule, saveSchedule } from "../../store/hikeScheduleStore";
+import { deleteSchedule, findSchedule, refreshScheduleOn, saveSchedule } from "../../store/hikeScheduleStore";
 import type { HikeSchedule } from "../../types/hike";
 import { Button } from "../common/Button";
 import { DateTimePicker, formatTimeValue, getNextAvailableTime, isTimeAtOrAfter, type DateTimeValue } from "../common/DateTimePicker";
@@ -56,6 +57,13 @@ function validate({ date, time }: DateTimeValue, today: string): Feedback | null
   return null;
 }
 
+/** 저장·삭제 실패 안내. 서버 연결 실패와 지원하지 않는 코스를 구분한다. */
+function saveErrorMessage(error: unknown, action = "저장") {
+  if (error instanceof HikeScheduleApiError && error.kind === "unsupportedCourse") return error.message;
+  if (error instanceof HikeScheduleApiError && error.kind === "network") return `서버에 연결하지 못해 일정을 ${action}하지 못했어요.`;
+  return `일정을 ${action}하지 못했어요. 잠시 후 다시 시도해 주세요.`;
+}
+
 /** FLOW-06 등산 일정 등록/수정/삭제 시트, HIKE-09 일정 수정 오버레이. 일정은 날짜당 1개만 저장한다. */
 export function ScheduleSheet({ course, schedule, variant = "register", onClose, onSaved, onDeleted }: ScheduleSheetProps) {
   const feedbackId = useId();
@@ -79,12 +87,25 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
     ? "일정이 수정되었습니다."
     : `${saved.date} ${saved.startTime} · ${saved.courseName} 일정이 등록되었습니다.`;
 
-  const commit = (next: HikeSchedule, replaced: boolean) => {
-    saveSchedule(next, current?.date);
-    setCurrent(next);
-    setPendingReplace(null);
-    setFeedback({ tone: "success", message: successMessage(next) });
-    onSaved?.(next, { created: !hasSchedule, replaced });
+  /** 저장하고 결과를 알린다. 서버가 같은 날짜 일정이 있다고 하면(409) 대체 확인을 띄운다. */
+  const commit = async (next: HikeSchedule, replaced: boolean) => {
+    try {
+      const saved = await saveSchedule({ ...next, scheduleId: current?.scheduleId },
+        { previousDate: current?.date, replaceExisting: replaced });
+      setCurrent(saved);
+      setPendingReplace(null);
+      setFeedback({ tone: "success", message: successMessage(saved) });
+      onSaved?.(saved, { created: !hasSchedule, replaced });
+    } catch (error) {
+      setPendingReplace(null);
+      if (error instanceof HikeScheduleApiError && error.kind === "conflict" && !replaced) {
+        // 화면에 없던 일정과 겹쳤다면 그 일정을 불러와 확인 창에 코스 이름을 보여 준다.
+        await refreshScheduleOn(next.date).catch(() => undefined);
+        setPendingReplace(next);
+        return;
+      }
+      setFeedback({ tone: "error", message: saveErrorMessage(error) });
+    }
   };
 
   const { run: submit, pending } = useSingleFlight(async (event: FormEvent) => {
@@ -103,7 +124,7 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
     const existing = findSchedule(value.date);
     // 수정 중인 자기 일정이 아닌, 같은 날짜의 다른 일정이 있으면 대체할지 묻는다.
     if (existing && existing.date !== current?.date) setPendingReplace(next);
-    else commit(next, false);
+    else await commit(next, false);
   });
 
   const onValueChange = (next: DateTimeValue) => {
@@ -143,16 +164,22 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
           : <Button type="submit" form={`${feedbackId}-form`} fullWidth label={isEdit ? "일정 저장" : "일정 확정"} disabled={pending} />} />
     </OverlayLayer>
 
-    {pendingReplace && replacing && <ScheduleReplaceConfirm date={pendingReplace.date}
-      existingCourseName={`${replacing.mountainName} · ${replacing.courseName}`}
+    {/* 서버에서 다시 불러오지 못했을 때만 코스 이름 대신 "등록된 등산"으로 묻는다 */}
+    {pendingReplace && <ScheduleReplaceConfirm date={pendingReplace.date}
+      existingCourseName={replacing ? `${replacing.mountainName} · ${replacing.courseName}` : "등록된 등산"}
       onCancel={() => setPendingReplace(null)} onConfirm={() => commit(pendingReplace, true)} />}
     {confirmingDelete && current && <ConfirmOverlay title="일정을 삭제할까요?"
       body={`${current.date} ${current.startTime} · ${current.mountainName} · ${current.courseName}`}
       cancelLabel="취소" confirmLabel="삭제" onCancel={() => setConfirmingDelete(false)}
-      onConfirm={() => {
-        deleteSchedule(current.date);
-        setConfirmingDelete(false);
-        onDeleted?.(current);
+      onConfirm={async () => {
+        try {
+          await deleteSchedule(current.date);
+          setConfirmingDelete(false);
+          onDeleted?.(current);
+        } catch (error) {
+          setConfirmingDelete(false);
+          setFeedback({ tone: "error", message: saveErrorMessage(error, "삭제") });
+        }
       }} />}
   </>;
 }

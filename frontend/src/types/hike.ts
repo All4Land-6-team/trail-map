@@ -26,6 +26,8 @@ export type HikeCourse = {
 
 /** hike_schedule 한 건. 같은 날짜에는 일정 1개만 둔다. */
 export type HikeSchedule = {
+  /** 일정 API의 일정 번호. 임시 데이터 모드에서는 없다. */
+  scheduleId?: number;
   /** YYYY-MM-DD */
   date: string;
   /** HH:mm */

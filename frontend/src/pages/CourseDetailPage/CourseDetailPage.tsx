@@ -41,7 +41,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const request = { mountainId, courseId };
   const returnTo = readHashParams().get("returnTo");
   const { state, toast, notify, retry } = useCourseDetail(request);
-  const { rootRef, sheetTop, style: sheetStyle, handleProps } = useDetailSheet();
+  const { rootRef, mapBottomInset, handleProps } = useDetailSheet();
   const tabsRef = useRef<HTMLDivElement>(null);
   const [visibility, setVisibility] = useState<ProfileVisibility>({ elevation: true, slope: true });
   const [chosenIndex, setChosenIndex] = useState<number | null>(null);
@@ -98,7 +98,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
     navigateFromHome(homePaths[destination]);
   }
 
-  return <main ref={rootRef} className="course-detail-page" style={sheetStyle} aria-label="코스 상세 화면"
+  return <main ref={rootRef} className="course-detail-page" aria-label="코스 상세 화면"
     onKeyDown={event => {
       if (event.key === "Escape" && view.tab === "spots") {
         event.preventDefault(); changeView({ ...view, tab: "analysis" });
@@ -106,8 +106,9 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
       }
     }}>
     {data ? <>
-      <div className="course-detail-page__map" style={{ height: sheetTop + 4 }}>
+      <div className="course-detail-page__map">
         <CourseRouteMap variant="detail" courses={courses} selected={data.course} mountainId={request.mountainId}
+          mapBottomInset={mapBottomInset}
           center={data.course.routeCoordinates[0]}
           onSelect={() => {}} onNotify={notify} summitCoordinate={summitCoordinate}
           profileSample={view.tab === "analysis" ? sample : null} spots={view.tab === "spots" ? spots : undefined}
