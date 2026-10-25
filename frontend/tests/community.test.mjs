@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SPOT_HIDE_NEGATIVE_VOTES, canWriteCourseReview, canWriteReview, castSpotVote, distanceMeters, eligibleCourseCompletions, isSpotHidden, nearbySpotCandidates } from '../src/utils/community.ts';
 import { communityMarkerMode } from '../src/pages/CommunityPage/components/communityMapZoom.ts';
@@ -11,6 +12,14 @@ test('커뮤니티 지도 줌 단계는 기본점, 숫자 클러스터, 개별 �
   assert.equal(communityMarkerMode(14), 'cluster');
   assert.equal(communityMarkerMode(15.99), 'cluster');
   assert.equal(communityMarkerMode(16), 'individual');
+});
+
+test('북한산 커뮤니티 3D 버튼은 공용 Terrain-RGB 상태와 연결한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
+  assert.match(source, /supportsTerrain\(overviewMarker\?\.id\)/);
+  assert.match(source, /terrainMode=\{terrainEnabled \? dimension : undefined\}/);
+  assert.match(source, /onTerrainStatusChange=\{setTerrainStatus\}/);
+  assert.match(source, /terrainEnabled && terrainStatus !== 'ready'/);
 });
 
 const base = [126.978, 37.659];

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { MapLibreMap } from 'maplibre-gl'
 import BaseMap, { type MapRoute } from '../../../components/map/BaseMap'
-import { MapAction, MountainMarker, SpotMarker } from '../../../components/map'
+import { MapAction, MountainMarker, SpotMarker, supportsTerrain, type MapDimension, type TerrainStatus } from '../../../components/map'
 import { Icon } from '../../../components/common/Icon'
 import { communityCourse } from '../../../api/communityMock'
 import type { Coordinate, SpotType } from '../../../types/community'
@@ -74,8 +74,10 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
   const [clusterChoices, setClusterChoices] = useState<CommunityMapMarker[]>([])
   const [mapUnavailable, setMapUnavailable] = useState(false)
   const [mapRetry, setMapRetry] = useState(0)
-  const [dimension, setDimension] = useState<'2D' | '3D'>('2D')
+  const [dimension, setDimension] = useState<MapDimension>('2D')
+  const [terrainStatus, setTerrainStatus] = useState<TerrainStatus>('idle')
   const isMainMap = className?.includes('community-page__map--main') ?? false
+  const terrainEnabled = isMainMap && supportsTerrain(overviewMarker?.id)
   const onReady = useCallback((instance: MapLibreMap | null) => { setMap(instance); if (instance) setMapUnavailable(false) }, [])
   const markerSignature = [...markers, ...(overviewMarker ? [overviewMarker] : [])]
     .map(marker => `${marker.id}:${marker.coordinate.join(',')}:${marker.selected}`).join('|')
@@ -131,11 +133,11 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
   }, [map, className])
 
   useEffect(() => {
-    if (!map) return
+    if (!map || terrainEnabled) return
     const pitch = isMainMap && dimension === '3D' ? 50 : 0
     if (map.getPitch() === pitch) return
     map.easeTo({ pitch, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350 })
-  }, [map, isMainMap, dimension])
+  }, [map, isMainMap, dimension, terrainEnabled])
 
   useEffect(() => {
     if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return
@@ -178,11 +180,14 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
 
   return <div className={['community-map', className].filter(Boolean).join(' ')} data-marker-mode={isMainMap ? markerMode : undefined}>
     <BaseMap key={mapRetry} className="community-map__base" ariaLabel={ariaLabel} center={center} zoom={zoom}
-      routes={routes} showNavigationControl={false} onMapReady={onReady} />
+      routes={routes} showNavigationControl={false} onMapReady={onReady}
+      terrainMode={terrainEnabled ? dimension : undefined} onTerrainStatusChange={setTerrainStatus} />
     {mapUnavailable && <div className="community-map__fallback" role="status"><span>지도 배경을 불러오지 못했어요. 목록이나 마커로 후기를 볼 수 있어요.</span>
       <button type="button" onClick={() => { setMapUnavailable(false); setMapRetry(current => current + 1) }}>다시 시도</button></div>}
     {isMainMap && <MapAction className="community-map__dimension" dimensionMode={dimension === '2D' ? '3D' : '2D'}
-      aria-label={`${dimension === '2D' ? '3D' : '2D'} 지도 보기`} aria-pressed={dimension === '3D'} disabled={!map || mapUnavailable}
+      aria-label={`${dimension === '2D' ? '3D' : '2D'} 지도 보기`} aria-pressed={dimension === '3D'}
+      aria-busy={terrainEnabled && terrainStatus === 'loading'}
+      disabled={!map || mapUnavailable || (terrainEnabled && terrainStatus !== 'ready')}
       onDimensionModeChange={() => setDimension(current => current === '2D' ? '3D' : '2D')} />}
     <div className="community-map__markers" aria-label="지도 항목">
       {displayedGroups.map(group => group.length > 1 ? <div key={group.map(item => item.marker.id).join('|')}
