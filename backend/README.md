@@ -19,6 +19,14 @@ Java 21, Spring Boot, PostgreSQL/PostGIS 기반 백엔드입니다.
 .\gradlew.bat bootJar
 ```
 
+## 개발용 시드 데이터
+
+등산 일정 API를 화면과 함께 확인하려면 빈 개발 DB에 `docs/dev-seed-hike-courses.sql`을 실행합니다. 프론트 임시 코스 데이터와 같은 산 5개·코스 11개와 임시 사용자(1번)를 넣습니다. Flyway 마이그레이션이 아니므로 운영 DB에는 실행하지 않습니다.
+
+```powershell
+docker exec -i <PostGIS 컨테이너> psql -U postgres -d trail_map < docs/dev-seed-hike-courses.sql
+```
+
 ## 코드 구조
 
 - 공통 설정·응답·예외·감사 엔티티는 `global`에 둡니다.
