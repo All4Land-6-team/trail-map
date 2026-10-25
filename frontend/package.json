@@ -15,6 +15,7 @@
     "test:courses": "node --test tests/course-discovery.test.mjs",
     "test:course-detail": "node --test tests/course-detail.test.mjs",
     "test:terrain": "node --experimental-strip-types --test tests/map-terrain.test.mjs",
+    "test:sheets": "node --experimental-strip-types --test tests/map-sheet-geometry.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

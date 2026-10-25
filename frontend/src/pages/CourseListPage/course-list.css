@@ -4,10 +4,10 @@
   color: var(--af-ink); background: #edf3ea; font-family: "Noto Sans KR", sans-serif;
 }
 .course-page__base { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-.course-page__map-area { position: relative; flex: 1 1 0; min-height: 130px; }
+.course-page__map-area { position: absolute; inset: 0 0 var(--course-nav-height); min-height: 0; }
 .course-page__top { position: absolute; z-index: 3; top: calc(16px + env(safe-area-inset-top)); right: 16px; left: 16px; width: auto; }
-.course-page__nav { position: relative; z-index: 4; flex: none; min-height: var(--course-nav-height); padding-bottom: env(safe-area-inset-bottom); }
-.course-list-sheet { position: relative; z-index: 2; flex: 0 0 296px; height: 296px; gap: 0; padding: 8px 0 6px; border-radius: 25px 25px 0 0; box-shadow: 0 -8px 12px rgb(23 71 54 / 5%); }
+.course-page__nav { position: absolute; z-index: 4; right: 0; bottom: 0; left: 0; min-height: var(--course-nav-height); padding-bottom: env(safe-area-inset-bottom); }
+.course-list-sheet { position: absolute; z-index: 2; right: 0; bottom: var(--course-nav-height); left: 0; height: var(--map-sheet-height, 296px); overflow: hidden; gap: 0; padding: 8px 0 6px; border-radius: 25px 25px 0 0; box-shadow: 0 -8px 12px rgb(23 71 54 / 5%); }
 .course-list-sheet .af-bottom-sheet__handle-row { flex: none; height: 4px; }
 .course-list-sheet .af-bottom-sheet__handle { width: 42px; background: #d8e8de; }
 .course-list-sheet .af-bottom-sheet__title-row { flex: none; min-height: 31px; gap: 8px; margin: 15px 17px 0 18px; }
@@ -17,7 +17,7 @@
 .course-list-sheet__controls .af-select { width: 100%; min-width: 0; height: 31px; min-height: 31px; padding-left: 10px; padding-right: 25px; font-size: 12px; }
 .course-list-sheet__filter.af-chip { height: 31px; gap: 5px; padding: 0 11px; }
 .course-list-sheet__filter--active.af-chip { border-color: #19765b; background: #edf5ee; }
-.course-list-sheet .af-bottom-sheet__content { min-height: 0; margin-top: 7px; }
+.course-list-sheet .af-bottom-sheet__content { flex: 1 1 0; min-height: 0; margin-top: 7px; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; }
 .course-quick-filters { display: flex; gap: 6px; height: 31px; margin-left: 18px; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: none; }
 .course-quick-filters::-webkit-scrollbar, .course-carousel::-webkit-scrollbar { display: none; }
 .course-quick-filters .af-chip { flex: none; padding: 0 14px; }
@@ -76,7 +76,6 @@
   .course-filter__actions .af-button { padding: 0 10px; }
 }
 @media (max-height: 580px) {
-  .course-page__map-area { min-height: 100px; }
   .course-map__actions { top: calc(77px + env(safe-area-inset-top)); right: 10px; flex-direction: row; gap: 6px; }
   .course-map__actions .af-map-action { width: 36px; height: 36px; border-radius: 11px; }
   .course-filter-dialog { height: min(440px, calc(100% - 12px)); }

@@ -6,6 +6,7 @@ import { Button } from "../../components/common/Button";
 import { BottomNavigation, PageIndicator, TopBar, type BottomDestination } from "../../components/layout";
 import { EmptyState, Toast } from "../../components/feedback";
 import { BottomSheet } from "../../components/overlay";
+import { useResizableMapSheet } from "../../hooks/useResizableMapSheet";
 import { coursePaths } from "../../routes/courseRoutes";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
@@ -28,6 +29,7 @@ export type CourseListPageProps = {
 
 export function CourseListPage({ mountainId, initialCourseId, onBack = () => navigateFromHome(homePaths.home), onCourseOpen, onScheduleOpen }: CourseListPageProps) {
   const schedules = useHikeSchedules();
+  const { rootRef, mapBottomInset, handleProps } = useResizableMapSheet({ kind: "courses", navigationSelector: ".course-page__nav", label: "코스 목록 시트 높이 조절" });
   const discovery = useCourseDiscovery(mountainId, initialCourseId);
   const savedIds = useSavedCourseIds();
   const filterOpener = useRef<HTMLButtonElement | null>(null);
@@ -68,7 +70,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     else navigateFromHome(homePaths[destination]);
   }
 
-  if (state.status !== "success") return <main className="course-page course-page--status" aria-label="산별 코스 목록">
+  if (state.status !== "success") return <main ref={rootRef} className="course-page course-page--status" aria-label="산별 코스 목록">
     <TopBar title="코스 목록" onBack={onBack} showAction={false} />
     <div className="course-page__status" aria-live="polite">
       {state.status === "loading" ? <p role="status">코스 목록을 불러오는 중이에요.</p>
@@ -84,14 +86,16 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
   const selectedDifficulty = (difficulty: CourseDifficulty | "all") => difficulty === "all"
     ? !hasCourseFilters(filters) : filters.difficulty === difficulty;
 
-  return <main className="course-page" aria-label={`${mountain.name} 코스 탐색`}>
+  return <main ref={rootRef} className="course-page" aria-label={`${mountain.name} 코스 탐색`}>
     <div className="course-page__base" inert={discovery.filterOpen}>
       <div className="course-page__map-area">
         <CourseMap courses={courses} selected={selectedCourse} mountainId={mountainId} center={mountain.position}
+          mapBottomInset={mapBottomInset}
           onSelect={discovery.setSelectedId} onNotify={notify} />
         <TopBar title={mountain.name} onBack={onBack} showAction={false} className="course-page__top" />
       </div>
       <BottomSheet title={`${mountain.name} 코스 ${courses.length}개`} showClose={false} showDescription={false}
+        handleProps={handleProps}
         className="course-list-sheet" headerAction={<div className="course-list-sheet__controls">
           <Select aria-label="코스 정렬" value={sort} onChange={event => discovery.setSort(event.target.value === "name" ? "name" : "difficulty")}
             options={[{ value: "difficulty", label: "난이도별" }, { value: "name", label: "이름순" }]} />
