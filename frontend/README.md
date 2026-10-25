@@ -163,6 +163,13 @@ npm run build
 | `VITE_API_BASE_URL` | 백엔드 API 주소 | `http://localhost:8080` |
 | `VITE_MAP_STYLE_URL` | 배경지도 스타일 주소 (MapLibre 스타일 JSON) | OpenFreeMap Liberty |
 | `VITE_OFFLINE_STATIC_GEO_URLS` | 캐시할 공개·정적 등산로/시설물 API 주소 목록 (쉼표로 구분) | 비어 있음 |
+| `VITE_HIKE_USER_ID` | 로그인 전 임시 사용자 번호. 등산 일정 API 요청의 `X-User-Id` 헤더로 보냅니다 | `1` |
+
+## 등산 일정 API 연동
+
+내 등산 화면과 일정 등록 시트는 앱이 켜질 때 `VITE_API_BASE_URL`의 등산 일정 API(`/api/v1/hike-schedules`)에 한 번 요청합니다. 응답하면 일정을 API로 저장·조회하고, 응답하지 않으면(약 2.5초) 예시 일정으로 동작합니다. 백엔드를 켜지 않아도 화면은 지금처럼 확인할 수 있습니다.
+
+코스 데이터와 코스 API가 아직 없어 화면 코스 ID를 개발용 DB 코스 번호로 임시 매핑합니다(`src/constants/hikeCourseIds.ts`). API로 확인하려면 빈 개발 DB에 `backend/docs/dev-seed-hike-courses.sql`을 한 번 실행해 같은 번호의 산·코스와 임시 사용자(1번)를 넣습니다. 코스 데이터가 들어오면 두 파일을 함께 지웁니다.
 
 ## 오프라인 캐시 정책
 
