@@ -1,7 +1,9 @@
-package com.all4land.trailmap.domain.community.repository;
+package com.all4land.trailmap.domain.community.repository.spot;
 
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotType;
+import com.all4land.trailmap.domain.community.repository.result.CommunitySpotDuplicateQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunityVoteTargetQueryResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;

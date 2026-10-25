@@ -19,15 +19,17 @@ import com.all4land.trailmap.domain.community.entity.SpotVote;
 import com.all4land.trailmap.domain.community.entity.CommunityVoteType;
 import com.all4land.trailmap.domain.community.error.CommunityErrorCode;
 import com.all4land.trailmap.domain.community.exception.CommunityException;
-import com.all4land.trailmap.domain.community.repository.CommunityQueryRepository;
-import com.all4land.trailmap.domain.community.repository.CommunitySpotCommandRepository;
-import com.all4land.trailmap.domain.community.repository.CommunitySpotDuplicateQueryResult;
-import com.all4land.trailmap.domain.community.repository.CommunityVoteTargetQueryResult;
-import com.all4land.trailmap.domain.community.repository.CourseReviewRepository;
-import com.all4land.trailmap.domain.community.repository.EligibleHikeQueryResult;
-import com.all4land.trailmap.domain.community.repository.MountainReviewRepository;
-import com.all4land.trailmap.domain.community.repository.SpotReviewRepository;
-import com.all4land.trailmap.domain.community.repository.SpotVoteRepository;
+import com.all4land.trailmap.domain.community.repository.map.CommunityMapQueryRepository;
+import com.all4land.trailmap.domain.community.repository.result.CommunitySpotDuplicateQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunityVoteTargetQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.EligibleHikeQueryResult;
+import com.all4land.trailmap.domain.community.repository.review.CourseReviewRepository;
+import com.all4land.trailmap.domain.community.repository.review.CommunityReviewQueryRepository;
+import com.all4land.trailmap.domain.community.repository.review.MountainReviewRepository;
+import com.all4land.trailmap.domain.community.repository.review.SpotReviewRepository;
+import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotCommandRepository;
+import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotQueryRepository;
+import com.all4land.trailmap.domain.community.repository.spot.SpotVoteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,7 +49,9 @@ public class CommunityCommandService {
     private static final Duration REVIEW_WINDOW = Duration.ofHours(24);
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
-    private final CommunityQueryRepository queryRepository;
+    private final CommunityMapQueryRepository mapQueryRepository;
+    private final CommunityReviewQueryRepository reviewQueryRepository;
+    private final CommunitySpotQueryRepository spotQueryRepository;
     private final CommunitySpotCommandRepository spotCommandRepository;
     private final MountainReviewRepository mountainReviewRepository;
     private final CourseReviewRepository courseReviewRepository;
@@ -64,7 +68,7 @@ public class CommunityCommandService {
     @Transactional(readOnly = true)
     public CommunityReviewEligibilityResponse getCourseReviewEligibility(Long userId, Long courseId) {
         validateUser(userId);
-        Long mountainId = queryRepository.findCourseMountainId(courseId)
+        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
         return eligibility(userId, mountainId, courseId);
     }
@@ -113,7 +117,7 @@ public class CommunityCommandService {
     ) {
         validateRatingAbsent(request);
         validateUser(userId);
-        Long mountainId = queryRepository.findCourseMountainId(courseId)
+        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
         EligibleHikeQueryResult hike = requireEligibleHike(userId, mountainId, courseId, request.hikeRecordId());
         CourseReview review = courseReviewRepository.saveAndFlush(CourseReview.create(
@@ -235,7 +239,7 @@ public class CommunityCommandService {
 
     private CommunityReviewEligibilityResponse eligibility(Long userId, Long mountainId, Long courseId) {
         OffsetDateTime now = OffsetDateTime.now(SERVICE_ZONE);
-        List<EligibleHikeResponse> hikes = queryRepository.findEligibleHikes(
+        List<EligibleHikeResponse> hikes = reviewQueryRepository.findEligibleHikes(
                 userId, mountainId, courseId, now.minus(REVIEW_WINDOW), now
         ).stream().map(CommunityCommandService::eligibleHikeResponse).toList();
         return CommunityReviewEligibilityResponse.from(hikes);
@@ -297,7 +301,7 @@ public class CommunityCommandService {
             Long hikeRecordId
     ) {
         OffsetDateTime now = OffsetDateTime.now(SERVICE_ZONE);
-        return queryRepository.findEligibleHikes(
+        return reviewQueryRepository.findEligibleHikes(
                         userId, mountainId, courseId, now.minus(REVIEW_WINDOW), now
                 ).stream()
                 .filter(hike -> hike.hikeRecordId().equals(hikeRecordId))
@@ -316,7 +320,7 @@ public class CommunityCommandService {
             java.time.LocalDate visitedDate,
             LocalDateTime createdAt
     ) {
-        String author = queryRepository.findUserDisplayName(userId)
+        String author = reviewQueryRepository.findUserDisplayName(userId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.USER_NOT_FOUND));
         return new CommunityReviewResponse(
                 reviewId,
@@ -333,13 +337,13 @@ public class CommunityCommandService {
     }
 
     private void validateUser(Long userId) {
-        if (!queryRepository.existsUser(userId)) {
+        if (!reviewQueryRepository.existsUser(userId)) {
             throw new CommunityException(CommunityErrorCode.USER_NOT_FOUND);
         }
     }
 
     private void validateMountain(Long mountainId) {
-        if (!queryRepository.existsMountain(mountainId)) {
+        if (!mapQueryRepository.existsMountain(mountainId)) {
             throw new CommunityException(CommunityErrorCode.MOUNTAIN_NOT_FOUND);
         }
     }
@@ -351,7 +355,7 @@ public class CommunityCommandService {
             Long targetId
     ) {
         validateMountain(mountainId);
-        if (queryRepository.findSpot(userId, mountainId, targetType, targetId).isEmpty()) {
+        if (spotQueryRepository.findSpot(userId, mountainId, targetType, targetId).isEmpty()) {
             throw new CommunityException(CommunityErrorCode.SPOT_NOT_FOUND);
         }
     }

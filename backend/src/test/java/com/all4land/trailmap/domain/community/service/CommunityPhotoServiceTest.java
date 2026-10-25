@@ -6,15 +6,17 @@ import com.all4land.trailmap.domain.community.entity.CommunityPhotoTargetType;
 import com.all4land.trailmap.domain.community.entity.Photo;
 import com.all4land.trailmap.domain.community.error.CommunityErrorCode;
 import com.all4land.trailmap.domain.community.exception.CommunityException;
-import com.all4land.trailmap.domain.community.repository.CommunityPhotoQueryRepository;
-import com.all4land.trailmap.domain.community.repository.CommunityPhotoQueryResult;
-import com.all4land.trailmap.domain.community.repository.CommunityPhotoTargetQueryResult;
-import com.all4land.trailmap.domain.community.repository.CommunityPhotoTargetRepository;
-import com.all4land.trailmap.domain.community.repository.CommunityQueryRepository;
-import com.all4land.trailmap.domain.community.repository.PhotoRepository;
-import com.all4land.trailmap.domain.community.repository.R2ObjectMetadata;
-import com.all4land.trailmap.domain.community.repository.R2PhotoRepository;
-import com.all4land.trailmap.domain.community.repository.R2UploadUrl;
+import com.all4land.trailmap.domain.community.repository.map.CommunityMapQueryRepository;
+import com.all4land.trailmap.domain.community.repository.photo.CommunityPhotoQueryRepository;
+import com.all4land.trailmap.domain.community.repository.photo.CommunityPhotoTargetRepository;
+import com.all4land.trailmap.domain.community.repository.photo.PhotoRepository;
+import com.all4land.trailmap.domain.community.repository.result.CommunityPhotoQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunityPhotoTargetQueryResult;
+import com.all4land.trailmap.domain.community.repository.review.CommunityReviewQueryRepository;
+import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotQueryRepository;
+import com.all4land.trailmap.domain.community.storage.R2ObjectMetadata;
+import com.all4land.trailmap.domain.community.storage.R2PhotoStorage;
+import com.all4land.trailmap.domain.community.storage.R2UploadUrl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +40,13 @@ class CommunityPhotoServiceTest {
     private static final long MOUNTAIN_ID = 3L;
 
     @Mock
-    CommunityQueryRepository queryRepository;
+    CommunityMapQueryRepository mapQueryRepository;
+
+    @Mock
+    CommunityReviewQueryRepository reviewQueryRepository;
+
+    @Mock
+    CommunitySpotQueryRepository spotQueryRepository;
 
     @Mock
     CommunityPhotoTargetRepository targetRepository;
@@ -50,20 +58,22 @@ class CommunityPhotoServiceTest {
     PhotoRepository photoRepository;
 
     @Mock
-    R2PhotoRepository r2PhotoRepository;
+    R2PhotoStorage r2PhotoStorage;
 
     CommunityPhotoService photoService;
 
     @BeforeEach
     void setUp() {
         photoService = new CommunityPhotoService(
-                queryRepository,
+                mapQueryRepository,
+                reviewQueryRepository,
+                spotQueryRepository,
                 targetRepository,
                 photoQueryRepository,
                 photoRepository,
-                r2PhotoRepository
+                r2PhotoStorage
         );
-        given(queryRepository.existsUser(USER_ID)).willReturn(true);
+        given(reviewQueryRepository.existsUser(USER_ID)).willReturn(true);
     }
 
     @Test
@@ -71,7 +81,7 @@ class CommunityPhotoServiceTest {
         given(targetRepository.findTarget(CommunityPhotoTargetType.MOUNTAIN_REVIEW, REVIEW_ID))
                 .willReturn(Optional.of(mountainReviewTarget(USER_ID)));
         var expiresAt = OffsetDateTime.parse("2026-10-25T10:10:00+09:00");
-        given(r2PhotoRepository.createUploadUrl(any(), any()))
+        given(r2PhotoStorage.createUploadUrl(any(), any()))
                 .willReturn(new R2UploadUrl("https://upload.test", expiresAt));
 
         var response = photoService.requestUploadUrl(USER_ID, uploadRequest());
@@ -90,7 +100,7 @@ class CommunityPhotoServiceTest {
                 .willReturn(Optional.of(new CommunityPhotoTargetQueryResult(
                         CommunityPhotoTargetType.USER_SPOT, spotId, USER_ID, "user-spot", spotId
                 )));
-        given(r2PhotoRepository.createUploadUrl(any(), any()))
+        given(r2PhotoStorage.createUploadUrl(any(), any()))
                 .willReturn(new R2UploadUrl("https://upload.test", OffsetDateTime.now()));
 
         var response = photoService.requestUploadUrl(USER_ID, new CommunityPhotoUploadUrlRequest(
@@ -128,7 +138,7 @@ class CommunityPhotoServiceTest {
         String objectKey = objectKey();
         given(targetRepository.lockTarget(CommunityPhotoTargetType.MOUNTAIN_REVIEW, REVIEW_ID))
                 .willReturn(Optional.of(mountainReviewTarget(USER_ID)));
-        given(r2PhotoRepository.findMetadata(objectKey))
+        given(r2PhotoStorage.findMetadata(objectKey))
                 .willReturn(Optional.of(new R2ObjectMetadata(999L, "image/png")));
 
         assertThatThrownBy(() -> photoService.confirmPhoto(USER_ID, confirmRequest(objectKey)))
@@ -141,7 +151,7 @@ class CommunityPhotoServiceTest {
         String objectKey = objectKey();
         given(targetRepository.lockTarget(CommunityPhotoTargetType.MOUNTAIN_REVIEW, REVIEW_ID))
                 .willReturn(Optional.of(mountainReviewTarget(USER_ID)));
-        given(r2PhotoRepository.findMetadata(objectKey))
+        given(r2PhotoStorage.findMetadata(objectKey))
                 .willReturn(Optional.of(new R2ObjectMetadata(1024L, "image/jpeg")));
         given(photoRepository.saveAndFlush(any(Photo.class))).willAnswer(invocation -> {
             Photo photo = invocation.getArgument(0);
@@ -153,7 +163,7 @@ class CommunityPhotoServiceTest {
                 31L, objectKey, "북한산.jpg", "image/jpeg", 1024L, 0,
                 "산길친구", "전망이 좋아요", createdAt
         )));
-        given(r2PhotoRepository.createReadUrl(objectKey)).willReturn("https://read.test/photo");
+        given(r2PhotoStorage.createReadUrl(objectKey)).willReturn("https://read.test/photo");
 
         var response = photoService.confirmPhoto(USER_ID, confirmRequest(objectKey));
 

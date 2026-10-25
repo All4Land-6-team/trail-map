@@ -1,4 +1,4 @@
-package com.all4land.trailmap.domain.community.repository;
+package com.all4land.trailmap.domain.community.repository.spot;
 
 import com.all4land.trailmap.domain.community.entity.CommunityVoteType;
 import com.all4land.trailmap.domain.community.entity.SpotVote;

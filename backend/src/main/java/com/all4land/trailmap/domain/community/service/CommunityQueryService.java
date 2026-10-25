@@ -12,10 +12,12 @@ import com.all4land.trailmap.domain.community.entity.CommunityReviewKind;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.error.CommunityErrorCode;
 import com.all4land.trailmap.domain.community.exception.CommunityException;
-import com.all4land.trailmap.domain.community.repository.CommunityQueryRepository;
-import com.all4land.trailmap.domain.community.repository.CommunityReviewQueryResult;
-import com.all4land.trailmap.domain.community.repository.CommunitySpotQueryResult;
-import com.all4land.trailmap.domain.community.repository.R2PhotoRepository;
+import com.all4land.trailmap.domain.community.repository.map.CommunityMapQueryRepository;
+import com.all4land.trailmap.domain.community.repository.result.CommunityReviewQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunitySpotQueryResult;
+import com.all4land.trailmap.domain.community.repository.review.CommunityReviewQueryRepository;
+import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotQueryRepository;
+import com.all4land.trailmap.domain.community.storage.R2PhotoStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,12 +30,14 @@ import java.util.LinkedHashMap;
 @Transactional(readOnly = true)
 public class CommunityQueryService {
 
-    private final CommunityQueryRepository queryRepository;
-    private final R2PhotoRepository r2PhotoRepository;
+    private final CommunityMapQueryRepository mapQueryRepository;
+    private final CommunityReviewQueryRepository reviewQueryRepository;
+    private final CommunitySpotQueryRepository spotQueryRepository;
+    private final R2PhotoStorage r2PhotoStorage;
 
     public List<CommunityMountainResponse> getMountains(Long userId) {
         validateUser(userId);
-        return queryRepository.findMountains().stream()
+        return mapQueryRepository.findMountains().stream()
                 .map(mountain -> new CommunityMountainResponse(
                         mountain.mountainId(),
                         mountain.externalId(),
@@ -48,7 +52,7 @@ public class CommunityQueryService {
         validateUser(userId);
         validateMountain(mountainId);
         var courses = new LinkedHashMap<Long, CourseBuilder>();
-        queryRepository.findCoursePoints(mountainId).forEach(point -> courses
+        mapQueryRepository.findCoursePoints(mountainId).forEach(point -> courses
                 .computeIfAbsent(point.courseId(), ignored -> new CourseBuilder(
                         point.courseId(), point.mountainId(), point.externalId(), point.name(),
                         point.distanceKm(), point.reviewCount()
@@ -64,7 +68,7 @@ public class CommunityQueryService {
     ) {
         validateUser(userId);
         validateMountain(mountainId);
-        return queryRepository.findSpots(userId, mountainId, request).stream()
+        return spotQueryRepository.findSpots(userId, mountainId, request).stream()
                 .map(this::toSpotResponse)
                 .toList();
     }
@@ -77,7 +81,7 @@ public class CommunityQueryService {
     ) {
         validateUser(userId);
         validateMountain(mountainId);
-        return queryRepository.findSpot(userId, mountainId, targetType, targetId)
+        return spotQueryRepository.findSpot(userId, mountainId, targetType, targetId)
                 .map(this::toSpotDetailResponse)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.SPOT_NOT_FOUND));
     }
@@ -90,7 +94,7 @@ public class CommunityQueryService {
         validateUser(userId);
         validateMountain(mountainId);
         return toReviewResponses(
-                queryRepository.findMountainReviews(mountainId, page.resolvedLimit(), page.resolvedOffset()),
+                reviewQueryRepository.findMountainReviews(mountainId, page.resolvedLimit(), page.resolvedOffset()),
                 CommunityReviewKind.MOUNTAIN
         );
     }
@@ -101,11 +105,11 @@ public class CommunityQueryService {
             CommunityReviewPageRequest page
     ) {
         validateUser(userId);
-        if (!queryRepository.existsCourse(courseId)) {
+        if (!mapQueryRepository.existsCourse(courseId)) {
             throw new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND);
         }
         return toReviewResponses(
-                queryRepository.findCourseReviews(courseId, page.resolvedLimit(), page.resolvedOffset()),
+                reviewQueryRepository.findCourseReviews(courseId, page.resolvedLimit(), page.resolvedOffset()),
                 CommunityReviewKind.COURSE
         );
     }
@@ -119,23 +123,23 @@ public class CommunityQueryService {
     ) {
         validateUser(userId);
         validateMountain(mountainId);
-        if (queryRepository.findSpot(userId, mountainId, targetType, targetId).isEmpty()) {
+        if (spotQueryRepository.findSpot(userId, mountainId, targetType, targetId).isEmpty()) {
             throw new CommunityException(CommunityErrorCode.SPOT_NOT_FOUND);
         }
         return toReviewResponses(
-                queryRepository.findSpotReviews(targetType, targetId, page.resolvedLimit(), page.resolvedOffset()),
+                reviewQueryRepository.findSpotReviews(targetType, targetId, page.resolvedLimit(), page.resolvedOffset()),
                 CommunityReviewKind.SPOT
         );
     }
 
     private void validateUser(Long userId) {
-        if (!queryRepository.existsUser(userId)) {
+        if (!reviewQueryRepository.existsUser(userId)) {
             throw new CommunityException(CommunityErrorCode.USER_NOT_FOUND);
         }
     }
 
     private void validateMountain(Long mountainId) {
-        if (!queryRepository.existsMountain(mountainId)) {
+        if (!mapQueryRepository.existsMountain(mountainId)) {
             throw new CommunityException(CommunityErrorCode.MOUNTAIN_NOT_FOUND);
         }
     }
@@ -197,13 +201,13 @@ public class CommunityQueryService {
                         review.rating(),
                         review.visitedDate(),
                         review.createdAt(),
-                        review.photoKeys().stream().map(r2PhotoRepository::createReadUrl).toList()
+                        review.photoKeys().stream().map(r2PhotoStorage::createReadUrl).toList()
                 ))
                 .toList();
     }
 
     private String toReadUrl(String objectKey) {
-        return objectKey == null ? null : r2PhotoRepository.createReadUrl(objectKey);
+        return objectKey == null ? null : r2PhotoStorage.createReadUrl(objectKey);
     }
 
     private record CourseBuilder(

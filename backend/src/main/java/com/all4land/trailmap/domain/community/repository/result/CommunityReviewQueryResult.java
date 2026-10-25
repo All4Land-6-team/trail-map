@@ -1,4 +1,4 @@
-package com.all4land.trailmap.domain.community.repository;
+package com.all4land.trailmap.domain.community.repository.result;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;

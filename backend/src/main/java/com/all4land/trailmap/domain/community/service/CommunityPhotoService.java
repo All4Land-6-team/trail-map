@@ -9,13 +9,15 @@ import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.entity.Photo;
 import com.all4land.trailmap.domain.community.error.CommunityErrorCode;
 import com.all4land.trailmap.domain.community.exception.CommunityException;
-import com.all4land.trailmap.domain.community.repository.CommunityPhotoQueryRepository;
-import com.all4land.trailmap.domain.community.repository.CommunityPhotoQueryResult;
-import com.all4land.trailmap.domain.community.repository.CommunityPhotoTargetQueryResult;
-import com.all4land.trailmap.domain.community.repository.CommunityPhotoTargetRepository;
-import com.all4land.trailmap.domain.community.repository.CommunityQueryRepository;
-import com.all4land.trailmap.domain.community.repository.PhotoRepository;
-import com.all4land.trailmap.domain.community.repository.R2PhotoRepository;
+import com.all4land.trailmap.domain.community.repository.map.CommunityMapQueryRepository;
+import com.all4land.trailmap.domain.community.repository.photo.CommunityPhotoQueryRepository;
+import com.all4land.trailmap.domain.community.repository.photo.CommunityPhotoTargetRepository;
+import com.all4land.trailmap.domain.community.repository.photo.PhotoRepository;
+import com.all4land.trailmap.domain.community.repository.result.CommunityPhotoQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunityPhotoTargetQueryResult;
+import com.all4land.trailmap.domain.community.repository.review.CommunityReviewQueryRepository;
+import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotQueryRepository;
+import com.all4land.trailmap.domain.community.storage.R2PhotoStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,11 +33,13 @@ public class CommunityPhotoService {
 
     private static final int MAX_PHOTO_COUNT = 3;
 
-    private final CommunityQueryRepository queryRepository;
+    private final CommunityMapQueryRepository mapQueryRepository;
+    private final CommunityReviewQueryRepository reviewQueryRepository;
+    private final CommunitySpotQueryRepository spotQueryRepository;
     private final CommunityPhotoTargetRepository targetRepository;
     private final CommunityPhotoQueryRepository photoQueryRepository;
     private final PhotoRepository photoRepository;
-    private final R2PhotoRepository r2PhotoRepository;
+    private final R2PhotoStorage r2PhotoStorage;
 
     public CommunityPhotoUploadUrlResponse requestUploadUrl(
             Long userId,
@@ -47,7 +51,7 @@ public class CommunityPhotoService {
 
         String objectKey = objectKeyPrefix(target)
                 + UUID.randomUUID() + "." + extension(request.mediaType());
-        var upload = r2PhotoRepository.createUploadUrl(objectKey, request.mediaType());
+        var upload = r2PhotoStorage.createUploadUrl(objectKey, request.mediaType());
         return new CommunityPhotoUploadUrlResponse(objectKey, upload.url(), upload.expiresAt());
     }
 
@@ -61,7 +65,7 @@ public class CommunityPhotoService {
             throw new CommunityException(CommunityErrorCode.INVALID_PHOTO);
         }
 
-        var metadata = r2PhotoRepository.findMetadata(request.objectKey())
+        var metadata = r2PhotoStorage.findMetadata(request.objectKey())
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.PHOTO_OBJECT_NOT_FOUND));
         if (metadata.contentLength() != request.fileSizeBytes()
                 || !request.mediaType().equalsIgnoreCase(metadata.contentType())) {
@@ -85,7 +89,7 @@ public class CommunityPhotoService {
 
     public List<CommunityPhotoResponse> getMountainPhotos(Long userId, Long mountainId) {
         validateUser(userId);
-        if (!queryRepository.existsMountain(mountainId)) {
+        if (!mapQueryRepository.existsMountain(mountainId)) {
             throw new CommunityException(CommunityErrorCode.MOUNTAIN_NOT_FOUND);
         }
         return toResponses(photoQueryRepository.findMountainPhotos(mountainId));
@@ -93,7 +97,7 @@ public class CommunityPhotoService {
 
     public List<CommunityPhotoResponse> getCoursePhotos(Long userId, Long courseId) {
         validateUser(userId);
-        if (!queryRepository.existsCourse(courseId)) {
+        if (!mapQueryRepository.existsCourse(courseId)) {
             throw new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND);
         }
         return toResponses(photoQueryRepository.findCoursePhotos(courseId));
@@ -106,10 +110,10 @@ public class CommunityPhotoService {
             Long targetId
     ) {
         validateUser(userId);
-        if (!queryRepository.existsMountain(mountainId)) {
+        if (!mapQueryRepository.existsMountain(mountainId)) {
             throw new CommunityException(CommunityErrorCode.MOUNTAIN_NOT_FOUND);
         }
-        if (queryRepository.findSpot(userId, mountainId, targetType, targetId).isEmpty()) {
+        if (spotQueryRepository.findSpot(userId, mountainId, targetType, targetId).isEmpty()) {
             throw new CommunityException(CommunityErrorCode.SPOT_NOT_FOUND);
         }
         return toResponses(photoQueryRepository.findSpotPhotos(targetType, targetId));
@@ -195,7 +199,7 @@ public class CommunityPhotoService {
     }
 
     private void validateUser(Long userId) {
-        if (!queryRepository.existsUser(userId)) {
+        if (!reviewQueryRepository.existsUser(userId)) {
             throw new CommunityException(CommunityErrorCode.USER_NOT_FOUND);
         }
     }
@@ -207,7 +211,7 @@ public class CommunityPhotoService {
     private CommunityPhotoResponse toResponse(CommunityPhotoQueryResult photo) {
         return new CommunityPhotoResponse(
                 photo.photoId(),
-                r2PhotoRepository.createReadUrl(photo.objectKey()),
+                r2PhotoStorage.createReadUrl(photo.objectKey()),
                 photo.originalFileName(),
                 photo.mediaType(),
                 photo.fileSizeBytes(),

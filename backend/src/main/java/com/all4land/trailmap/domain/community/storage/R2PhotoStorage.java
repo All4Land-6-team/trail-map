@@ -1,8 +1,8 @@
-package com.all4land.trailmap.domain.community.repository;
+package com.all4land.trailmap.domain.community.storage;
 
 import com.all4land.trailmap.global.config.r2.R2Properties;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -16,9 +16,9 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
-@Repository
+@Component
 @RequiredArgsConstructor
-public class R2PhotoRepository {
+public class R2PhotoStorage {
 
     private final S3Client r2Client;
     private final S3Presigner r2Presigner;

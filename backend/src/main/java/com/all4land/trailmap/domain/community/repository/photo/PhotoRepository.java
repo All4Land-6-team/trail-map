@@ -1,4 +1,4 @@
-package com.all4land.trailmap.domain.community.repository;
+package com.all4land.trailmap.domain.community.repository.photo;
 
 import com.all4land.trailmap.domain.community.entity.Photo;
 import org.springframework.data.jpa.repository.JpaRepository;
