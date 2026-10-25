@@ -11,7 +11,7 @@ const profileValues = [
 ] as const;
 const spotValues = [
   ["shelter-1", "shelter", "쉼터 1", 0.26], ["shelter-2", "shelter", "쉼터 2", 0.7],
-  ["water-1", "water", "음수대 1", 0.4], ["restroom-1", "restroom", "화장실 1", 0.1],
+  ["water-1", "water", "음수대 1", 0.4],
   ["photo-1", "photo", "사진 스팟 1", 0.56], ["photo-2", "photo", "사진 스팟 2", 0.85],
 ] as const;
 

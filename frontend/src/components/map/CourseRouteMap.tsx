@@ -74,6 +74,7 @@ export function CourseRouteMap({ courses, selected, mountainId, center, onSelect
       } else if (selected?.routeCoordinates.length) {
         const bounds = new LngLatBounds();
         selected.routeCoordinates.forEach(point => bounds.extend(point));
+        spots?.forEach(spot => bounds.extend(spot.coordinate));
         const height = map.getContainer().clientHeight;
         map.fitBounds(bounds, { padding: { top: Math.min(110, height * 0.35), bottom: Math.min(36, height * 0.15), left: 35, right: 82 }, maxZoom: 15, duration: 0 });
       } else { map.jumpTo({ center, zoom: 12 }); }

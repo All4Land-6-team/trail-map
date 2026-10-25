@@ -4,6 +4,8 @@ export type CourseDifficulty = "beginner" | "intermediate" | "advanced";
 export type CourseSort = "difficulty" | "name";
 export type Course = {
   id: string;
+  /** 공간조회에 사용하는 DB 코스 ID. 화면 경로의 문자열 ID와 구분한다. */
+  backendCourseId?: number;
   mountainId: string;
   name: string;
   routeLabel: string;

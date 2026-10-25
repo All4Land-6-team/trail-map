@@ -25,6 +25,10 @@ const HikeStatusPreviewPage = import.meta.env.DEV
   ? lazy(() => import('./pages/HikeStatusPreviewPage/HikeStatusPreviewPage').then((module) => ({ default: module.HikeStatusPreviewPage })))
   : null
 
+const FacilityPreviewPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/FacilityPreviewPage/FacilityPreviewPage').then((module) => ({ default: module.FacilityPreviewPage })))
+  : null
+
 // Figma 화면 설계의 주소(#hikes/...)를 그대로 쓴다.
 const hikeRoutes: Record<string, ComponentType> = {
   'hikes/calendar': HikeCalendarPage,
@@ -50,6 +54,10 @@ function App() {
 
   if (HikeStatusPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'hike-status') {
     return <Suspense fallback={null}><HikeStatusPreviewPage /></Suspense>
+  }
+
+  if (FacilityPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'facilities') {
+    return <Suspense fallback={<main className="app-route-loading" aria-busy="true">시설 검토 화면을 불러오는 중이에요</main>}><FacilityPreviewPage /></Suspense>
   }
 
   if (routePath(route) === 'community') {
