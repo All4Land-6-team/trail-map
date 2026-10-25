@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +28,7 @@ public class FacilityImportService {
     private final ObjectMapper mapper;
     private final Validator validator;
 
-    /** 실패하면 출처와 시설 INSERT를 모두 롤백한다. 기존 행의 UPDATE/DELETE는 하지 않는다. */
+    /** 원본은 불변으로 유지하며 산 소속만 갱신한다. 실패하면 모든 INSERT/UPDATE를 롤백한다. */
     @Transactional
     public ImportResult importFile(Path path) {
         FacilityImportDocument document;
@@ -61,29 +62,42 @@ public class FacilityImportService {
         }
         repository.lockImport();
         long sourceId = repository.findOrCreateSource(document.source());
-        Map<String, String> existing = repository.findHashes(sourceId);
+        var existing = repository.findExisting(sourceId);
         var inserts = new ArrayList<FacilityInput>();
+        var updates = new ArrayList<FacilityInput>();
         for (FacilityInput record : document.facilities()) {
-            String oldHash = existing.get(record.sourceRecordId());
-            if (oldHash == null) {
+            var previous = existing.get(record.sourceRecordId());
+            if (previous == null) {
                 inserts.add(record);
-            } else if (!oldHash.equals(hashes.get(record.sourceRecordId()))) {
+            } else if (!previous.sourceHash().equals(hashes.get(record.sourceRecordId()))) {
                 throw new IllegalArgumentException("Existing record changed; update is not supported: " + record.sourceRecordId());
+            } else if (!Objects.equals(previous.mountainId(), record.mountainId())) {
+                updates.add(record);
             }
         }
         repository.insert(sourceId, inserts, hashes);
-        return new ImportResult(sourceId, document.facilities().size(), inserts.size(),
-                document.facilities().size() - inserts.size());
+        repository.updateMountains(sourceId, updates);
+        return new ImportResult(sourceId, document.facilities().size(), inserts.size(), updates.size(),
+                document.facilities().size() - inserts.size() - updates.size());
     }
 
     private String hash(FacilityInput record) {
         try {
+            // v1의 필드 순서와 직렬화를 보존한다. 파생된 mountainId는 원본 해시에 넣지 않는다.
+            Map<String, Object> original = new LinkedHashMap<>();
+            original.put("sourceRecordId", record.sourceRecordId());
+            original.put("type", record.type());
+            original.put("name", record.name());
+            original.put("longitude", record.longitude());
+            original.put("latitude", record.latitude());
+            original.put("sourceReportedStatus", record.sourceReportedStatus());
+            original.put("sourceDate", record.sourceDate());
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(mapper.writeValueAsBytes(record)));
+                    .digest(mapper.writeValueAsBytes(original)));
         } catch (IOException | NoSuchAlgorithmException error) {
             throw new IllegalStateException("Cannot hash normalized facility", error);
         }
     }
 
-    public record ImportResult(long sourceId, int total, int inserted, int skipped) {}
+    public record ImportResult(long sourceId, int total, int inserted, int updated, int skipped) {}
 }

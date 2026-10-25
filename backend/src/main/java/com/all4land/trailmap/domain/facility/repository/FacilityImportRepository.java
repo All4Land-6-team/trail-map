@@ -48,13 +48,30 @@ public class FacilityImportRepository {
                 """, params, Long.class);
     }
 
-    public Map<String, String> findHashes(long sourceId) {
-        Map<String, String> hashes = new HashMap<>();
-        jdbc.query("SELECT source_record_id, source_hash FROM facility WHERE source_id = :id",
+    public record ExistingFacility(String sourceHash, Long mountainId) {}
+
+    public Map<String, ExistingFacility> findExisting(long sourceId) {
+        Map<String, ExistingFacility> records = new HashMap<>();
+        jdbc.query("SELECT source_record_id, source_hash, mountain_id FROM facility WHERE source_id = :id FOR UPDATE",
                 new MapSqlParameterSource("id", sourceId), rs -> {
-                    hashes.put(rs.getString("source_record_id"), rs.getString("source_hash"));
+                    records.put(rs.getString("source_record_id"),
+                            new ExistingFacility(rs.getString("source_hash"), rs.getObject("mountain_id", Long.class)));
                 });
-        return hashes;
+        return records;
+    }
+
+    public void updateMountains(long sourceId, List<FacilityInput> records) {
+        if (records.isEmpty()) {
+            return;
+        }
+        var batch = records.stream().map(record -> new MapSqlParameterSource("sourceId", sourceId)
+                .addValue("recordId", record.sourceRecordId())
+                .addValue("mountainId", record.mountainId(), Types.BIGINT)).toArray(MapSqlParameterSource[]::new);
+        jdbc.batchUpdate("""
+                UPDATE facility SET mountain_id = :mountainId
+                WHERE source_id = :sourceId AND source_record_id = :recordId
+                    AND mountain_id IS DISTINCT FROM :mountainId
+                """, batch);
     }
 
     public void insert(long sourceId, List<FacilityInput> records, Map<String, String> hashes) {
@@ -67,12 +84,13 @@ public class FacilityImportRepository {
                 .addValue("longitude", record.longitude()).addValue("latitude", record.latitude())
                 .addValue("status", record.sourceReportedStatus())
                 .addValue("date", record.sourceDate(), Types.DATE)
+                .addValue("mountainId", record.mountainId(), Types.BIGINT)
                 .addValue("hash", hashes.get(record.sourceRecordId()))).toArray(MapSqlParameterSource[]::new);
         jdbc.batchUpdate("""
                 INSERT INTO facility (facility_name, facility_type, facility_location, official_status,
-                    source_id, source_record_id, source_date, source_hash, imported_at)
+                    source_id, source_record_id, source_date, source_hash, imported_at, mountain_id)
                 VALUES (:name, :type, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326), :status,
-                    :sourceId, :recordId, :date, :hash, CURRENT_TIMESTAMP)
+                    :sourceId, :recordId, :date, :hash, CURRENT_TIMESTAMP, :mountainId)
                 """, batch);
     }
 }

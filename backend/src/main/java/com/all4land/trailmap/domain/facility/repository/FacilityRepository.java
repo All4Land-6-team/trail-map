@@ -66,7 +66,8 @@ public class FacilityRepository {
                 , ST_Distance(f.facility_location::geography, c.course_geometry::geography) AS distance_meters
                 """ + FROM + """
                 JOIN course c ON c.course_id = :courseId
-                WHERE ST_DWithin(f.facility_location::geography, c.course_geometry::geography, :radius)
+                WHERE f.mountain_id = c.mountain_id
+                    AND ST_DWithin(f.facility_location::geography, c.course_geometry::geography, :radius)
                 """ + typeClause(type) + " ORDER BY distance_meters, f.facility_id";
         return jdbc.query(sql, new MapSqlParameterSource("courseId", courseId)
                 .addValue("radius", radiusMeters).addValue("type", type == null ? null : type.name()), ROW_MAPPER);
