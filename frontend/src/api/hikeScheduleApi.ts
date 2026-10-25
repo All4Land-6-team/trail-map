@@ -20,6 +20,13 @@ type ScheduleResponse = {
   durationSeconds: number | null;
 };
 
+export type HikeRecordCompletionResponse = {
+  hikeRecordId: number;
+  scheduleId: number;
+  courseId: number;
+  endedAt: string;
+};
+
 type Envelope<T> = { success: boolean; code: string; message: string; data: T };
 
 /** 실패 이유. 화면은 kind로 안내 문구와 다음 동작(대체 확인 등)을 정한다. */
@@ -109,4 +116,8 @@ export async function updateHikeSchedule(scheduleId: number, schedule: HikeSched
 
 export async function deleteHikeSchedule(scheduleId: number) {
   await request<null>(`/${scheduleId}`, { method: "DELETE" });
+}
+
+export async function completeHikeSchedule(scheduleId: number) {
+  return request<HikeRecordCompletionResponse>(`/${scheduleId}/complete`, { method: "POST" });
 }

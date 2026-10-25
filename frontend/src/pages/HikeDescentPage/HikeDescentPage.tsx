@@ -1,6 +1,8 @@
 import { findCourse } from "../../api/hikeMock";
-import { useMemo } from "react";
+import { completeHikeSchedule } from "../../api/hikeScheduleApi";
+import { useMemo, useState } from "react";
 import { Button } from "../../components/common/Button";
+import { Toast } from "../../components/feedback";
 import { finishHikeSession, useHikeSession } from "../../store/hikeSessionStore";
 import { initialHikeProgress } from "../../utils/activeHike";
 import { HikeRouteMap } from "../../components/hike";
@@ -19,6 +21,15 @@ export function HikeDescentPage() {
   const course = session ? findCourse(session.schedule.courseId) : undefined;
   const hike = useMemo(() => course ? initialHikeProgress(course, session?.phase === "downhill") : null, [course, session?.phase]);
   const alertsParam = readHashParams().get("alerts");
+  const [finishError, setFinishError] = useState("");
+  const finish = () => {
+    setFinishError("");
+    void (session?.schedule.scheduleId === undefined
+      ? Promise.resolve()
+      : completeHikeSchedule(session.schedule.scheduleId))
+      .then(() => { finishHikeSession(); navigate(hikePaths.complete); })
+      .catch(() => setFinishError("등산 완료 기록을 저장하지 못했어요. 다시 시도해 주세요."));
+  };
   if (!session || !hike || session.phase === "complete") return <main className="hike-page__empty-state">
     <p>진행 중인 등산이 없어요.</p><Button label="오늘의 등산 보기" onClick={() => navigate(hikePaths.today)} /></main>;
 
@@ -35,8 +46,9 @@ export function HikeDescentPage() {
       {/* Figma 메모: 하산 중 등산 종료는 확인 창 없이 완료로 이동한다 */}
       <HikeProgressSheet stage="descent" courseName={hike.courseName}
         traveledKm={hike.traveledKm} remainingKm={hike.remainingKm} sunset={hike.sunset}
-        onEnd={() => { finishHikeSession(); navigate(hikePaths.complete); }} />
+        onEnd={finish} />
     </main>
     <BottomNavigation className="hike-page__nav" active="myHikes" onNavigate={navigateTab} />
+    {finishError && <Toast className="hike-page__toast" message={finishError} />}
   </div>;
 }

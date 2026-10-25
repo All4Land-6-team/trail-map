@@ -74,7 +74,6 @@ function App() {
         initialSpotId={query.get('spot') ?? undefined}
         initialCourseId={query.get('course') ?? undefined}
         onSpotRegistered={entry === 'newSpot' && returnTo.startsWith('hikes/') ? () => { window.location.hash = returnTo } : undefined}
-        completedHikes={completedHikes}
         onExit={() => { window.location.hash = returnTo }} onNavigateOutside={navigateFromBottom} />
     </Suspense>
   }

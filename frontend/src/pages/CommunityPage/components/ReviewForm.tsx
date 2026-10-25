@@ -12,7 +12,6 @@ type Props = {
   spot?: CommunitySpot
   errors: Record<string, string>
   canSubmit: boolean
-  eligibilityMessage: string
   eligibleCourses: readonly CompletedHike[]
   onChange: (patch: Partial<ReviewDraft>) => void
   onError: (message: string) => void
@@ -21,7 +20,7 @@ type Props = {
   onSubmit: () => void
 }
 
-export function ReviewForm({ draft, mountainName, spot, errors, canSubmit, eligibilityMessage, onChange, onError, onChooseSpot,
+export function ReviewForm({ draft, mountainName, spot, errors, canSubmit, onChange, onError, onChooseSpot,
   eligibleCourses, onNewSpot, onSubmit }: Props) {
   const completedAt = (finishedAt: string) => new Intl.DateTimeFormat('ko-KR', {
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
@@ -66,6 +65,6 @@ export function ReviewForm({ draft, mountainName, spot, errors, canSubmit, eligi
       </div>
       <PhotoField photos={draft.photos} onChange={photos => onChange({ photos })} onError={onError} />
     </div>
-    <div className="community-form-layout__action"><Button fullWidth disabled={!canSubmit} label={draft.kind === 'course' ? '코스 후기 게시' : '후기 게시'} onClick={onSubmit} />{!canSubmit && <p className="community-eligibility" role="status">{eligibilityMessage}</p>}</div>
+    <div className="community-form-layout__action"><Button fullWidth disabled={!canSubmit} label={draft.kind === 'course' ? '코스 후기 게시' : '후기 게시'} onClick={onSubmit} /></div>
   </div>
 }
