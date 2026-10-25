@@ -15,7 +15,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CommunitySpotCommandRepository {
 
-    private static final double DUPLICATE_RADIUS_METERS = 30.0;
+    private static final double DUPLICATE_RADIUS_METERS = 50.0;
 
     private static final String DUPLICATE_SQL = """
             WITH candidate AS (

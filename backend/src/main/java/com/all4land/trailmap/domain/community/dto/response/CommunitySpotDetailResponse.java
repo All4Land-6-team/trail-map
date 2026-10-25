@@ -21,6 +21,6 @@ public record CommunitySpotDetailResponse(
         CommunityVoteType viewerVote,
         long reviewCount,
         long photoCount,
-        String representativePhotoKey
+        String representativePhotoUrl
 ) {
 }

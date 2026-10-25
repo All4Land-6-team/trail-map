@@ -19,6 +19,7 @@ import java.util.UUID;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.containsString;
 
 /** 실제 PostgreSQL + PostGIS에서 공식 시설과 사용자 스팟 통합 조회를 검증한다. */
 @SpringBootTest
@@ -62,13 +63,13 @@ class CommunityQueryApiIntegrationTest {
                 RETURNING source_id
                 """, Long.class);
         mountainId = jdbcTemplate.queryForObject("""
-                INSERT INTO mountain (mountain_name, mountain_display_location, source_id, source_hash, imported_at)
-                VALUES ('북한산', ST_SetSRID(ST_MakePoint(126.98, 37.66), 4326), ?, ?, now())
+                INSERT INTO mountain (mountain_name, mountain_display_location, source_id, source_record_id, source_hash, imported_at)
+                VALUES ('북한산', ST_SetSRID(ST_MakePoint(126.98, 37.66), 4326), ?, 'bukhansan', ?, now())
                 RETURNING mountain_id
                 """, Long.class, sourceId, hash());
         courseId = jdbcTemplate.queryForObject("""
-                INSERT INTO course (mountain_id, course_name, course_geometry, source_id, source_hash, imported_at)
-                VALUES (?, '백운대 코스', ST_GeomFromText('LINESTRING(126.97 37.65, 126.99 37.67)', 4326), ?, ?, now())
+                INSERT INTO course (mountain_id, course_name, course_geometry, source_id, source_record_id, source_hash, imported_at)
+                VALUES (?, '백운대 코스', ST_GeomFromText('LINESTRING(126.97 37.65, 126.99 37.67)', 4326), ?, 'bukhansan-baegundae', ?, now())
                 RETURNING course_id
                 """, Long.class, mountainId, sourceId, hash());
         facilityId = jdbcTemplate.queryForObject("""
@@ -113,6 +114,24 @@ class CommunityQueryApiIntegrationTest {
                 """, otherUserId, userSpotId);
         insertPhoto("facility/%d/direct.webp".formatted(facilityId), "facility_id", facilityId);
         insertPhoto("facility/%d/review.webp".formatted(facilityId), "spot_review_id", facilityReviewId);
+    }
+
+    @Test
+    void 커뮤니티_산과_코스_목록을_지도_좌표와_함께_조회한다() throws Exception {
+        mockMvc.perform(asUser(get("/v1/community/mountains")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].mountainId").value(mountainId))
+                .andExpect(jsonPath("$.data[0].externalId").value("bukhansan"))
+                .andExpect(jsonPath("$.data[0].longitude").value(126.98))
+                .andExpect(jsonPath("$.data[0].latitude").value(37.66));
+
+        mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/courses")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].courseId").value(courseId))
+                .andExpect(jsonPath("$.data[0].externalId").value("bukhansan-baegundae"))
+                .andExpect(jsonPath("$.data[0].coordinates.length()").value(2))
+                .andExpect(jsonPath("$.data[0].coordinates[0].longitude").value(126.97))
+                .andExpect(jsonPath("$.data[0].coordinates[1].latitude").value(37.67));
     }
 
     @Test
@@ -166,7 +185,9 @@ class CommunityQueryApiIntegrationTest {
                 .andExpect(jsonPath("$.data.name").value("백운탐방지원센터 화장실"))
                 .andExpect(jsonPath("$.data.sourceName").value("국립공원공단"))
                 .andExpect(jsonPath("$.data.sourceUrl").value("https://example.test/facilities"))
-                .andExpect(jsonPath("$.data.representativePhotoKey").exists());
+                .andExpect(jsonPath("$.data.representativePhotoUrl", containsString(
+                        "facility/%d/review.webp".formatted(facilityId)
+                )));
     }
 
     @Test
@@ -192,9 +213,9 @@ class CommunityQueryApiIntegrationTest {
                 .andExpect(jsonPath("$.data[0].kind").value("MOUNTAIN"))
                 .andExpect(jsonPath("$.data[0].author").value("산길친구"))
                 .andExpect(jsonPath("$.data[0].rating").value(5.0))
-                .andExpect(jsonPath("$.data[0].photoKeys[0]").value(
+                .andExpect(jsonPath("$.data[0].photoUrls[0]", containsString(
                         "mountain/%d/review.webp".formatted(mountainReviewId)
-                ));
+                )));
 
         mockMvc.perform(asUser(get("/v1/community/courses/" + courseId + "/reviews")))
                 .andExpect(status().isOk())
@@ -207,9 +228,9 @@ class CommunityQueryApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].kind").value("SPOT"))
                 .andExpect(jsonPath("$.data[0].author").value("익명" + otherUserId))
-                .andExpect(jsonPath("$.data[0].photoKeys[0]").value(
+                .andExpect(jsonPath("$.data[0].photoUrls[0]", containsString(
                         "facility/%d/review.webp".formatted(facilityId)
-                ));
+                )));
     }
 
     @Test

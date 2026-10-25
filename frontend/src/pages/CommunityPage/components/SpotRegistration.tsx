@@ -3,8 +3,8 @@ import { Button } from '../../../components/common/Button'
 import { Field } from '../../../components/common/Field'
 import { Icon } from '../../../components/common/Icon'
 import { SpotTypeSelector } from '../../../components/review/SpotTypeSelector'
-import { spotTypeOptions } from '../../../api/communityMock'
-import type { CommunitySpot, Coordinate, SpotType, SpotVote } from '../../../types/community'
+import { spotTypeOptions } from '../../../constants/community'
+import type { CommunitySpot, Coordinate, PendingPhoto, SpotType, SpotVote } from '../../../types/community'
 import { DUPLICATE_RADIUS_METERS, isSpotHidden, nearbySpotCandidates } from '../../../utils/community'
 import { CommunityMap, type CommunityMapMarker } from './CommunityMap'
 import { PhotoField } from './PhotoField'
@@ -14,25 +14,28 @@ type Props = {
   votes: Record<string, SpotVote>
   mountainId: string
   mountainCenter: Coordinate
+  terrainMountainId?: string
+  routeCoordinates?: Coordinate[]
   onError: (message: string) => void
-  onCreate: (spot: CommunitySpot) => void
-  onUseExisting: (spot: CommunitySpot, photos: string[]) => void
+  onCreate: (spot: Omit<CommunitySpot, 'id' | 'targetType' | 'baselinePhotos' | 'baselineReviews' | 'photos'>, photos: PendingPhoto[], distinct: boolean) => Promise<void>
+  onUseExisting: (spot: CommunitySpot, photos: PendingPhoto[]) => void
 }
 
-export function SpotRegistration({ spots, votes, mountainId, mountainCenter, onError, onCreate, onUseExisting }: Props) {
+export function SpotRegistration({ spots, votes, mountainId, mountainCenter, terrainMountainId, routeCoordinates, onError, onCreate, onUseExisting }: Props) {
   const [coordinate, setCoordinate] = useState<Coordinate | null>(null)
   const [type, setType] = useState<SpotType | undefined>()
   const [name, setName] = useState('')
-  const [photos, setPhotos] = useState<string[]>([])
+  const [photos, setPhotos] = useState<PendingPhoto[]>([])
   const [distinct, setDistinct] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [creating, setCreating] = useState(false)
   const mountainSpots = useMemo(() => spots.filter(spot => spot.mountainId === mountainId), [spots, mountainId])
   const candidates = useMemo(() => coordinate && type ? nearbySpotCandidates(mountainSpots, coordinate, type, votes) : [], [mountainSpots, coordinate, type, votes])
   const markers: CommunityMapMarker[] = [
     ...mountainSpots.filter(spot => !isSpotHidden(votes[spot.id])).map(spot => ({ id: spot.id, name: spot.name, kind: 'spot' as const, coordinate: spot.coordinate, spotType: spot.type })),
     ...(coordinate ? [{ id: 'new-position', name: '선택한 위치', kind: 'point' as const, coordinate, shortLabel: '✓' }] : []),
   ]
-  function createSpot() {
+  async function createSpot() {
     setSubmitted(true)
     if (!coordinate || !type || !name.trim()) {
       onError('위치, 스팟 종류, 이름을 모두 입력해 주세요.')
@@ -42,16 +45,23 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, onE
       onError('근처에 비슷한 스팟이 있어요. 기존 스팟을 선택하거나 다른 장소임을 확인해 주세요.')
       return
     }
-    onCreate({ id: `local-${crypto.randomUUID()}`, name: name.trim(), type, coordinate,
-      mountainId, baselinePhotos: 0, baselineReviews: 0, photos, userCreated: true })
+    if (creating) return
+    setCreating(true)
+    try {
+      await onCreate({ name: name.trim(), type, coordinate, mountainId, seedQuote: undefined, userCreated: true }, photos, distinct)
+    } catch (error) {
+      onError(error instanceof Error ? error.message : '스팟을 등록하지 못했습니다.')
+    } finally {
+      setCreating(false)
+    }
   }
   return <div className="community-form-layout community-register">
     <div className="community-form-layout__scroll">
       <h2>새 스팟 등록</h2><p className="community-form-subtitle">지도에서 위치 지정</p>
-      <div className="community-register__map"><CommunityMap markers={markers} center={mountainId === 'bukhansan' ? mountainSpots[0]?.coordinate ?? mountainCenter : mountainCenter} zoom={15}
-        showRoute={mountainId === 'bukhansan'}
+      <div className="community-register__map"><CommunityMap markers={markers} mountainId={terrainMountainId} center={mountainSpots[0]?.coordinate ?? mountainCenter} zoom={15}
+        showRoute={(routeCoordinates?.length ?? 0) > 1} highlightedRoute={routeCoordinates}
         ariaLabel="새 스팟 위치 지정" onMapSelect={point => { setCoordinate(point); setDistinct(false) }}
-        onMarkerSelect={id => { const found = spots.find(spot => spot.id === id); if (found) { setCoordinate(found.coordinate); setDistinct(false) } }} />
+        onMarkerSelect={marker => { const found = spots.find(spot => spot.id === marker.id); if (found) { setCoordinate(found.coordinate); setDistinct(false) } }} />
       </div>
       <p className="community-register__location">{coordinate ? `선택한 위치 · ${type ? spotTypeOptions.find(option => option.value === type)?.label : '종류를 선택해 주세요'}` : '지도를 눌러 위치를 선택해 주세요.'}</p>
       {submitted && !coordinate && <p className="community-field-error" role="alert">지도에서 위치를 선택해 주세요.</p>}
@@ -76,6 +86,6 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, onE
         </> : <p>근처에 같은 유형의 스팟이 없어요.</p>}
       </section>}
     </div>
-    <div className="community-form-layout__action"><Button fullWidth label="스팟 등록" onClick={createSpot} /></div>
+    <div className="community-form-layout__action"><Button fullWidth label={creating ? '등록 중' : '스팟 등록'} disabled={creating} onClick={createSpot} /></div>
   </div>
 }

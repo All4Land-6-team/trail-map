@@ -3,6 +3,9 @@ package com.all4land.trailmap.domain.community.service;
 import com.all4land.trailmap.domain.community.dto.request.CommunityReviewPageRequest;
 import com.all4land.trailmap.domain.community.dto.request.CommunitySpotMapRequest;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityCoordinateResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityCourseResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityMountainResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotDetailResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotResponse;
 import com.all4land.trailmap.domain.community.entity.CommunityReviewKind;
@@ -12,11 +15,13 @@ import com.all4land.trailmap.domain.community.exception.CommunityException;
 import com.all4land.trailmap.domain.community.repository.CommunityQueryRepository;
 import com.all4land.trailmap.domain.community.repository.CommunityReviewQueryResult;
 import com.all4land.trailmap.domain.community.repository.CommunitySpotQueryResult;
+import com.all4land.trailmap.domain.community.repository.R2PhotoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +29,33 @@ import java.util.List;
 public class CommunityQueryService {
 
     private final CommunityQueryRepository queryRepository;
+    private final R2PhotoRepository r2PhotoRepository;
+
+    public List<CommunityMountainResponse> getMountains(Long userId) {
+        validateUser(userId);
+        return queryRepository.findMountains().stream()
+                .map(mountain -> new CommunityMountainResponse(
+                        mountain.mountainId(),
+                        mountain.externalId(),
+                        mountain.name(),
+                        mountain.longitude(),
+                        mountain.latitude()
+                ))
+                .toList();
+    }
+
+    public List<CommunityCourseResponse> getCourses(Long userId, Long mountainId) {
+        validateUser(userId);
+        validateMountain(mountainId);
+        var courses = new LinkedHashMap<Long, CourseBuilder>();
+        queryRepository.findCoursePoints(mountainId).forEach(point -> courses
+                .computeIfAbsent(point.courseId(), ignored -> new CourseBuilder(
+                        point.courseId(), point.mountainId(), point.externalId(), point.name(),
+                        point.distanceKm(), point.reviewCount()
+                ))
+                .coordinates().add(new CommunityCoordinateResponse(point.longitude(), point.latitude())));
+        return courses.values().stream().map(CourseBuilder::toResponse).toList();
+    }
 
     public List<CommunitySpotResponse> getSpots(
             Long userId,
@@ -33,7 +65,7 @@ public class CommunityQueryService {
         validateUser(userId);
         validateMountain(mountainId);
         return queryRepository.findSpots(userId, mountainId, request).stream()
-                .map(CommunityQueryService::toSpotResponse)
+                .map(this::toSpotResponse)
                 .toList();
     }
 
@@ -46,7 +78,7 @@ public class CommunityQueryService {
         validateUser(userId);
         validateMountain(mountainId);
         return queryRepository.findSpot(userId, mountainId, targetType, targetId)
-                .map(CommunityQueryService::toSpotDetailResponse)
+                .map(this::toSpotDetailResponse)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.SPOT_NOT_FOUND));
     }
 
@@ -108,7 +140,7 @@ public class CommunityQueryService {
         }
     }
 
-    private static CommunitySpotResponse toSpotResponse(CommunitySpotQueryResult spot) {
+    private CommunitySpotResponse toSpotResponse(CommunitySpotQueryResult spot) {
         return new CommunitySpotResponse(
                 spot.targetType(),
                 spot.targetId(),
@@ -124,11 +156,11 @@ public class CommunityQueryService {
                 spot.viewerVote(),
                 spot.reviewCount(),
                 spot.photoCount(),
-                spot.representativePhotoKey()
+                toReadUrl(spot.representativePhotoKey())
         );
     }
 
-    private static CommunitySpotDetailResponse toSpotDetailResponse(CommunitySpotQueryResult spot) {
+    private CommunitySpotDetailResponse toSpotDetailResponse(CommunitySpotQueryResult spot) {
         return new CommunitySpotDetailResponse(
                 spot.targetType(),
                 spot.targetId(),
@@ -146,11 +178,11 @@ public class CommunityQueryService {
                 spot.viewerVote(),
                 spot.reviewCount(),
                 spot.photoCount(),
-                spot.representativePhotoKey()
+                toReadUrl(spot.representativePhotoKey())
         );
     }
 
-    private static List<CommunityReviewResponse> toReviewResponses(
+    private List<CommunityReviewResponse> toReviewResponses(
             List<CommunityReviewQueryResult> reviews,
             CommunityReviewKind kind
     ) {
@@ -165,8 +197,39 @@ public class CommunityQueryService {
                         review.rating(),
                         review.visitedDate(),
                         review.createdAt(),
-                        review.photoKeys()
+                        review.photoKeys().stream().map(r2PhotoRepository::createReadUrl).toList()
                 ))
                 .toList();
+    }
+
+    private String toReadUrl(String objectKey) {
+        return objectKey == null ? null : r2PhotoRepository.createReadUrl(objectKey);
+    }
+
+    private record CourseBuilder(
+            Long courseId,
+            Long mountainId,
+            String externalId,
+            String name,
+            double distanceKm,
+            long reviewCount,
+            List<CommunityCoordinateResponse> coordinates
+    ) {
+        private CourseBuilder(
+                Long courseId,
+                Long mountainId,
+                String externalId,
+                String name,
+                double distanceKm,
+                long reviewCount
+        ) {
+            this(courseId, mountainId, externalId, name, distanceKm, reviewCount, new java.util.ArrayList<>());
+        }
+
+        private CommunityCourseResponse toResponse() {
+            return new CommunityCourseResponse(
+                    courseId, mountainId, externalId, name, distanceKm, reviewCount, List.copyOf(coordinates)
+            );
+        }
     }
 }

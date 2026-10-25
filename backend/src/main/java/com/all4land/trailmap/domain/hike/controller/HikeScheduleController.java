@@ -3,6 +3,7 @@ package com.all4land.trailmap.domain.hike.controller;
 import com.all4land.trailmap.domain.hike.dto.request.HikeScheduleCreateRequest;
 import com.all4land.trailmap.domain.hike.dto.request.HikeScheduleUpdateRequest;
 import com.all4land.trailmap.domain.hike.dto.response.HikeScheduleResponse;
+import com.all4land.trailmap.domain.hike.dto.response.HikeRecordCompletionResponse;
 import com.all4land.trailmap.domain.hike.service.HikeScheduleService;
 import com.all4land.trailmap.global.response.SuccessResponse;
 import com.all4land.trailmap.global.user.CurrentUserId;
@@ -71,6 +72,14 @@ public class HikeScheduleController {
     ) {
         hikeScheduleService.delete(userId, scheduleId);
         return response(SuccessResponse.ok(null));
+    }
+
+    @PostMapping("/{scheduleId}/complete")
+    public ResponseEntity<SuccessResponse<HikeRecordCompletionResponse>> completeSchedule(
+            @CurrentUserId Long userId,
+            @PathVariable Long scheduleId
+    ) {
+        return response(SuccessResponse.created(hikeScheduleService.complete(userId, scheduleId)));
     }
 
     private static <T> ResponseEntity<SuccessResponse<T>> response(SuccessResponse<T> body) {

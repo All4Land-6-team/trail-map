@@ -158,17 +158,20 @@ class CommunityCommandApiIntegrationTest {
     }
 
     @Test
-    void 같은_유형의_30m_중복을_알리고_명시적_확인_후_스팟을_등록한다() throws Exception {
+    void 같은_유형의_50m_중복을_알리고_명시적_확인_후_스팟을_등록한다() throws Exception {
         long hikeRecordId = insertCompletedHike(courseId, 2);
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/spots/duplicates"))
                         .param("type", "RESTROOM")
-                        .param("longitude", "126.9811")
+                        .param("longitude", "126.98145")
                         .param("latitude", "37.661"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1))
                 .andExpect(jsonPath("$.data[0].targetType").value("FACILITY"))
-                .andExpect(jsonPath("$.data[0].distanceMeters").value(org.hamcrest.Matchers.lessThan(30.0)));
+                .andExpect(jsonPath("$.data[0].distanceMeters").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.greaterThan(30.0),
+                        org.hamcrest.Matchers.lessThan(50.0)
+                )));
 
         String unconfirmed = spotJson(hikeRecordId, false);
         mockMvc.perform(asUser(post("/v1/community/mountains/" + mountainId + "/spots"))

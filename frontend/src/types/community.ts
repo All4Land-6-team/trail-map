@@ -2,8 +2,14 @@ export type ReviewKind = 'mountain' | 'spot' | 'course'
 export type SpotType = 'shelter' | 'water' | 'restroom' | 'photo' | 'other'
 export type Coordinate = [longitude: number, latitude: number]
 
+export type PendingPhoto = {
+  file: File
+  previewUrl: string
+}
+
 export type CommunitySpot = {
   id: string
+  targetType: 'FACILITY' | 'USER_SPOT'
   name: string
   type: SpotType
   coordinate: Coordinate
@@ -12,11 +18,13 @@ export type CommunitySpot = {
   baselineReviews: number
   seedQuote?: string
   photos: string[]
+  status?: string
   userCreated?: boolean
 }
 
 export type CommunityCourseReviewTarget = {
   id: string
+  externalId?: string
   mountainId: string
   name: string
   coordinates: Coordinate[]
@@ -42,7 +50,7 @@ export type ReviewDraft = {
   kind: ReviewKind
   targetId: string
   content: string
-  photos: string[]
+  photos: PendingPhoto[]
   rating: number
   completedHikeId?: string
 }

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
 import { BottomNavigation, TabBar, TopBar, type BottomDestination } from "../../components/layout";
@@ -8,9 +8,8 @@ import { CourseRouteMap } from "../../components/map/CourseRouteMap";
 import { courseDetailPath } from "../../routes/courseDetailRoutes";
 import { readHashParams } from "../../hooks/useHashRoute";
 import { coursePaths } from "../../routes/courseRoutes";
-import { communityCourseTargets, communityReviewExamples } from "../../api/communityMock";
+import { communityApi, type CommunityCourseDto, type CommunityReviewDto } from "../../api/community";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
-import { useCommunityData } from "../../store/communityStore";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
 import type { CourseRequest } from "../../types/course";
 import type { CourseDetailView, CourseSpot, CourseSpotRequest, ProfileVisibility } from "../../types/courseDetail";
@@ -45,21 +44,20 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const tabsRef = useRef<HTMLDivElement>(null);
   const [visibility, setVisibility] = useState<ProfileVisibility>({ elevation: true, slope: true });
   const [chosenIndex, setChosenIndex] = useState<number | null>(null);
+  const [communityCourse, setCommunityCourse] = useState<CommunityCourseDto | null>(null);
+  const [communityReviews, setCommunityReviews] = useState<CommunityReviewDto[]>([]);
   const savedIds = useSavedCourseIds();
-  const { reviews: communityReviews } = useCommunityData();
   const saved = savedIds.includes(courseId);
   const data = state.status === "success" ? state.data : null;
   const restrooms = useCourseFacilities(courseId, data?.course.backendCourseId,
     view.tab === "spots" && (view.category === "all" || view.category === "restroom"));
   const restroomSpots = restrooms.state.status === "success" ? restrooms.state.spots : EMPTY_SPOTS;
-  const reviewTarget = communityCourseTargets.find(target => target.id === courseId && target.mountainId === mountainId);
-  const submittedReviews = communityReviews.filter(review => review.kind === "course" && review.targetId === courseId)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-  const reviewExcerpts = [
-    ...submittedReviews.map(review => ({ id: review.id, meta: `${review.author ?? "나"} · 방금 전`, quote: review.content })),
-    ...(communityReviewExamples[courseId] ?? []).map((quote, index) => ({ id: `example-${courseId}-${index}`, meta: `등산객 · 9월 ${17 - index}일`, quote })),
-  ].slice(0, 2);
-  const reviewTotal = (reviewTarget?.baselineReviews ?? 0) + submittedReviews.length;
+  const reviewExcerpts = communityReviews.map(review => ({
+    id: String(review.reviewId),
+    meta: `${review.author} · ${new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric" }).format(new Date(review.createdAt))}`,
+    quote: review.content,
+  })).slice(0, 2);
+  const reviewTotal = communityCourse?.reviewCount ?? communityReviews.length;
   const courses = useMemo(() => data ? [data.course] : [], [data]);
   const allSpots = useMemo(() => withCourseRestrooms(data?.spots ?? EMPTY_SPOTS, restroomSpots), [data, restroomSpots]);
   const spots = useMemo(() => selectCourseSpots(allSpots, view.category), [allSpots, view.category]);
@@ -69,6 +67,29 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const sample = data?.samples[selectedIndex] ?? null;
   const selectedSpot = spots.find(spot => spot.id === view.spotId) ?? spots[0];
   const back = onBack ?? (() => navigateFromHome(coursePaths.list(mountainId, courseId)));
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void communityApi.mountains(controller.signal).then(mountains => {
+      const mountain = mountains.find(item => String(item.mountainId) === mountainId || item.externalId === mountainId)
+        ?? mountains.find(item => item.name === ({ bukhansan: "북한산", dobongsan: "도봉산", gwanaksan: "관악산" } as Record<string, string>)[mountainId]);
+      if (!mountain) return null;
+      return communityApi.courses(String(mountain.mountainId), controller.signal);
+    }).then(courses => {
+      if (!courses) return null;
+      const course = courses.find(item => String(item.courseId) === courseId || item.externalId === courseId);
+      setCommunityCourse(course ?? null);
+      return course ? communityApi.courseReviews(String(course.courseId), controller.signal) : null;
+    }).then(reviews => {
+      if (reviews) setCommunityReviews(reviews);
+    }).catch(() => {
+      if (!controller.signal.aborted) {
+        setCommunityCourse(null);
+        setCommunityReviews([]);
+      }
+    });
+    return () => controller.abort();
+  }, [courseId, mountainId]);
 
   function changeView(next: CourseDetailView) { navigateFromHome(courseDetailPath(request, next, returnTo)); }
   function toggleMetric(key: keyof ProfileVisibility) {

@@ -1,8 +1,8 @@
 import type { CommunitySpot, Coordinate, SpotType, SpotVote } from '../types/community'
 import type { CompletedHike } from '../store/hikeSessionStore'
 
-/** 목 화면 검수용 값. 서버 정책이나 자동 병합 규칙이 아니다. */
-export const DUPLICATE_RADIUS_METERS = 30
+/** 화면의 중복 후보 안내용 값. 서버도 같은 반경으로 최종 검증한다. */
+export const DUPLICATE_RADIUS_METERS = 50
 export const SPOT_HIDE_NEGATIVE_VOTES = 3
 export const REVIEW_WINDOW_MS = 24 * 60 * 60 * 1000
 function isEligibleCompletion(hike: CompletedHike, mountainId: string, now: number): boolean {

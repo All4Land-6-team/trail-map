@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { spotTypeOptions } from '../../../api/communityMock'
+import { spotTypeOptions } from '../../../constants/community'
 import { Icon } from '../../../components/common/Icon'
 import type { SpotType } from '../../../types/community'
 

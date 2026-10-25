@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { findCourse } from "../../api/hikeMock";
+import { completeHikeSchedule } from "../../api/hikeScheduleApi";
 import { Button } from "../../components/common/Button";
+import { Toast } from "../../components/feedback";
 import { finishHikeSession, setHikeAlerts, startHikeDescent, useHikeSession } from "../../store/hikeSessionStore";
 import { initialHikeProgress } from "../../utils/activeHike";
 import { HikeEndConfirm, HikeRouteMap, HikeShareSheet, SpotFilterChips, type SpotFilter } from "../../components/hike";
@@ -22,6 +24,15 @@ export function HikeActivePage() {
   const [recenterKey, setRecenterKey] = useState(0);
   const alertsOn = session?.alertsOn ?? false;
   const [overlay, setOverlay] = useState<"share" | "end" | null>(null);
+  const [finishError, setFinishError] = useState("");
+  const finish = () => {
+    setFinishError("");
+    void (session?.schedule.scheduleId === undefined
+      ? Promise.resolve()
+      : completeHikeSchedule(session.schedule.scheduleId))
+      .then(() => { finishHikeSession(); navigate(hikePaths.complete); })
+      .catch(() => setFinishError("등산 완료 기록을 저장하지 못했어요. 다시 시도해 주세요."));
+  };
   if (!session || !hike || session.phase === "complete") return <main className="hike-page__empty-state">
     <p>진행 중인 등산이 없어요.</p><Button label="오늘의 등산 보기" onClick={() => navigate(hikePaths.today)} /></main>;
 
@@ -47,11 +58,12 @@ export function HikeActivePage() {
         alertsOn={alertsOn} onAlertsChange={setHikeAlerts}
         onStartDescent={() => { startHikeDescent(); navigate(hikePaths.downhill(alertsOn)); }}
         onEnd={() => {
-          if (session.phase === "downhill") { finishHikeSession(); navigate(hikePaths.complete); }
+          if (session.phase === "downhill") finish();
           else setOverlay("end");
         }} />
     </main>
     <BottomNavigation className="hike-page__nav" active="home" onNavigate={navigateTab} />
+    {finishError && <Toast className="hike-page__toast" message={finishError} />}
 
     {overlay === "share" && <HikeShareSheet onClose={() => setOverlay(null)} onShareSpot={() => {
       setOverlay(null);
@@ -60,6 +72,6 @@ export function HikeActivePage() {
       navigate(`community?${query}`);
     }} />}
     {overlay === "end" && <HikeEndConfirm onCancel={() => setOverlay(null)}
-      onConfirm={() => { finishHikeSession(); navigate(hikePaths.complete); }} />}
+      onConfirm={finish} />}
   </div>;
 }

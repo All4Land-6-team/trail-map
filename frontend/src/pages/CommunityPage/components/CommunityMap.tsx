@@ -3,7 +3,6 @@ import type { MapLibreMap } from 'maplibre-gl'
 import BaseMap, { type MapRoute } from '../../../components/map/BaseMap'
 import { MapAction, MountainMarker, SpotMarker, supportsTerrain, type MapDimension, type TerrainStatus } from '../../../components/map'
 import { Icon } from '../../../components/common/Icon'
-import { communityCourse } from '../../../api/communityMock'
 import type { Coordinate, SpotType } from '../../../types/community'
 import { communityMarkerMode } from './communityMapZoom'
 
@@ -16,24 +15,33 @@ export type CommunityMapMarker = {
   spotType?: SpotType
   selected?: boolean
   shortLabel?: string
+  color?: string
+}
+
+export type CommunityMapRoute = {
+  id: string
+  color: string
+  coordinates: Coordinate[]
 }
 
 type Props = {
   markers?: readonly CommunityMapMarker[]
   overviewMarker?: CommunityMapMarker
+  mountainId?: string
   center?: Coordinate
   focusTarget?: { coordinate: Coordinate; request: number; zoom?: number; resetZoom?: boolean }
   zoom?: number
   showRoute?: boolean
   highlightedRoute?: Coordinate[]
-  onMarkerSelect?: (id: string) => void
+  highlightedRouteColor?: string
+  highlightedRoutes?: readonly CommunityMapRoute[]
+  onMarkerSelect?: (marker: CommunityMapMarker) => void
   onMapSelect?: (coordinate: Coordinate) => void
   children?: ReactNode
   className?: string
   ariaLabel?: string
 }
 
-const ROUTES: readonly MapRoute[] = [{ id: 'community-baegundae', color: '#19765b', coordinates: [...communityCourse.routeCoordinates] }]
 const EMPTY_ROUTES: readonly MapRoute[] = []
 const DEFAULT_CENTER: Coordinate = [126.977, 37.659]
 const MARKER_CLUSTER_DISTANCE = 48
@@ -63,11 +71,11 @@ function visibleMapArea(map: MapLibreMap) {
   const filterBottom = page?.querySelector('.community-map-filters')?.getBoundingClientRect().bottom ?? topBarBottom
   const visibleTop = Math.max(0, Math.max(topBarBottom, filterBottom) - mapRect.top)
   const visibleBottom = Math.min(mapRect.height, sheetTop - mapRect.top)
-  return { visibleTop, visibleCenter: (visibleTop + Math.max(visibleTop, visibleBottom)) / 2, mapHeight: mapRect.height }
+  return { visibleTop, visibleBottom, visibleCenter: (visibleTop + Math.max(visibleTop, visibleBottom)) / 2, mapHeight: mapRect.height }
 }
 
-export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CENTER, focusTarget, zoom = 14, showRoute = true,
-  highlightedRoute, onMarkerSelect, onMapSelect, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
+export function CommunityMap({ markers = [], overviewMarker, mountainId, center = DEFAULT_CENTER, focusTarget, zoom = 14, showRoute = true,
+  highlightedRoute, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [projected, setProjected] = useState<ProjectedMarker[]>([])
   const [markerMode, setMarkerMode] = useState(() => communityMarkerMode(zoom))
@@ -77,16 +85,23 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
   const [dimension, setDimension] = useState<MapDimension>('2D')
   const [terrainStatus, setTerrainStatus] = useState<TerrainStatus>('idle')
   const isMainMap = className?.includes('community-page__map--main') ?? false
-  const terrainEnabled = isMainMap && supportsTerrain(overviewMarker?.id)
+  const terrainEnabled = supportsTerrain(mountainId ?? overviewMarker?.id)
   const onReady = useCallback((instance: MapLibreMap | null) => { setMap(instance); if (instance) setMapUnavailable(false) }, [])
   const markerSignature = [...markers, ...(overviewMarker ? [overviewMarker] : [])]
     .map(marker => `${marker.id}:${marker.coordinate.join(',')}:${marker.selected}`).join('|')
   // MapLibre 객체는 화면별로 유지하고 이동/크기 변경 때만 핀 좌표를 다시 계산한다.
   const markerSnapshot = useMemo(() => markers, [markerSignature]) // eslint-disable-line react-hooks/exhaustive-deps
   const overviewSnapshot = useMemo(() => overviewMarker, [markerSignature]) // eslint-disable-line react-hooks/exhaustive-deps
-  const routes = useMemo<readonly MapRoute[]>(() => !showRoute ? EMPTY_ROUTES : highlightedRoute ? [
-    { id: 'community-selected-course', color: '#19765b', coordinates: highlightedRoute },
-  ] : ROUTES, [showRoute, highlightedRoute])
+  const routes = useMemo<readonly MapRoute[]>(() => {
+    if (!showRoute) return EMPTY_ROUTES
+    const targets = highlightedRoutes ?? (highlightedRoute ? [{ id: 'selected', color: highlightedRouteColor ?? '#19765b', coordinates: highlightedRoute }] : [])
+    const selectedRouteOnly = highlightedRoutes === undefined
+    return targets
+      .filter(route => route.coordinates.length > 1)
+      .map(route => ({ id: `community-course-${route.id}`, color: route.color, coordinates: route.coordinates,
+        opacity: selectedRouteOnly ? 1 : 0.82, outlineColor: '#ffffff',
+        outlineWidth: selectedRouteOnly ? 8 : 6, width: selectedRouteOnly ? 5 : 3.5 }))
+  }, [showRoute, highlightedRoute, highlightedRouteColor, highlightedRoutes])
 
   useEffect(() => {
     if (!map) return
@@ -141,7 +156,17 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
 
   useEffect(() => {
     if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return
-    const { visibleTop, visibleCenter, mapHeight } = visibleMapArea(map)
+    const { visibleTop, visibleBottom, visibleCenter, mapHeight } = visibleMapArea(map)
+    if (className.includes('community-page__map--detail-course') && highlightedRoute && highlightedRoute.length > 1) {
+      const longitudes = highlightedRoute.map(([longitude]) => longitude)
+      const latitudes = highlightedRoute.map(([, latitude]) => latitude)
+      map.fitBounds([[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]], {
+        padding: { top: visibleTop + 24, right: 24, bottom: Math.max(24, mapHeight - visibleBottom + 24), left: 24 },
+        maxZoom: 16,
+        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550,
+      })
+      return
+    }
     const focusY = className.includes('community-page__map--detail-mountain') || className.includes('community-page__map--mountain-focus')
       ? Math.max(visibleTop + 44, Math.min(visibleCenter - 28, visibleTop + 48)) : visibleCenter
     map.easeTo({ center: focusTarget.coordinate, offset: [0, focusY - mapHeight / 2],
@@ -149,7 +174,7 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
         ? focusTarget.zoom : Math.max(map.getZoom(), focusTarget.zoom),
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550,
       easing: progress => 1 - (1 - progress) ** 3 })
-  }, [map, focusTarget, className])
+  }, [map, focusTarget, className, highlightedRoute])
 
   useEffect(() => {
     if (!map || !onMapSelect) return
@@ -199,12 +224,13 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
       </div> : group.map(({ marker, x, y }) => <div key={marker.id} className={`community-map__pin community-map__pin--${marker.kind}${marker.selected ? ' community-map__pin--selected' : ''}`}
         style={{ left: x, top: y } as CSSProperties}>
         {marker.kind === 'mountain'
-          ? <MountainMarker name={marker.name} variant="point" selected={marker.selected} aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker.id)} />
+          ? <MountainMarker name={marker.name} variant="point" selected={marker.selected} aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker)} />
           : marker.kind === 'spot' && marker.spotType !== 'other'
             ? <SpotMarker kind={marker.spotType ?? 'photo'} label={marker.name} aria-pressed={marker.selected}
-                aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker.id)} />
+                aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker)} />
             : <button type="button" className={`community-map__custom-marker community-map__custom-marker--${marker.kind}`}
-                aria-label={`${marker.name} 선택`} aria-pressed={marker.selected} onClick={() => onMarkerSelect?.(marker.id)}>
+                style={marker.color ? { '--community-course-color': marker.color } as CSSProperties : undefined}
+                aria-label={`${marker.name} 선택`} aria-pressed={marker.selected} onClick={() => onMarkerSelect?.(marker)}>
                 <span className="community-map__custom-symbol">{marker.shortLabel ?? <Icon name="Pin" size={18} />}</span>
                 {marker.kind !== 'point' && marker.kind !== 'course' && <span className="community-map__custom-label">{marker.label ?? marker.name}</span>}
               </button>}
@@ -212,7 +238,7 @@ export function CommunityMap({ markers = [], overviewMarker, center = DEFAULT_CE
     </div>
     {clusterChoices.length > 0 && <div className="community-map__cluster-choices" role="dialog" aria-label="겹친 지도 항목 선택">
       <button type="button" className="community-map__cluster-close" onClick={() => setClusterChoices([])} aria-label="목록 닫기">×</button>
-      <strong>이 위치의 항목</strong>{clusterChoices.map(marker => <button type="button" key={marker.id} onClick={() => { onMarkerSelect?.(marker.id); setClusterChoices([]) }}>{marker.name}</button>)}
+      <strong>이 위치의 항목</strong>{clusterChoices.map(marker => <button type="button" key={`${marker.kind}-${marker.id}`} onClick={() => { onMarkerSelect?.(marker); setClusterChoices([]) }}>{marker.name}</button>)}
     </div>}
     {children}
   </div>

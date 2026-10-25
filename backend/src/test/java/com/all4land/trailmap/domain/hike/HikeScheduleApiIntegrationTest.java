@@ -187,6 +187,24 @@ class HikeScheduleApiIntegrationTest {
                 .andExpect(jsonPath("$.code").value("HIKE_404_2"));
     }
 
+    @Test
+    void 일정_종료는_완료_산행을_한_번만_생성한다() throws Exception {
+        long scheduleId = createSchedule(userId, courseId, "2026-11-10", "07:00", false)
+                .andReturn().getResponse().getContentAsString().transform(this::scheduleId);
+
+        mockMvc.perform(asUser(userId, post("/v1/hike-schedules/" + scheduleId + "/complete")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.scheduleId").value(scheduleId))
+                .andExpect(jsonPath("$.data.courseId").value(courseId));
+        mockMvc.perform(asUser(userId, post("/v1/hike-schedules/" + scheduleId + "/complete")))
+                .andExpect(status().isCreated());
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM hike_record WHERE schedule_id = ? AND hike_status = 'COMPLETED'",
+                Integer.class, scheduleId
+        )).isEqualTo(1);
+    }
+
     private ResultActions createSchedule(long requestUserId, long requestCourseId, String date, String startTime,
                                          boolean replaceExisting) throws Exception {
         return mockMvc.perform(asUser(requestUserId, post("/v1/hike-schedules"))

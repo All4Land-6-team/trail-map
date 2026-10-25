@@ -3,6 +3,7 @@ import {
   MapLibreMap,
   NavigationControl,
   setWorkerUrl,
+  type FilterSpecification,
   type LngLatBoundsLike,
   type MapOptions,
   type PaddingOptions,
@@ -44,7 +45,11 @@ export type MapRoute = {
   id: string
   color: string
   coordinates: [longitude: number, latitude: number][]
+  opacity?: number
+  outlineColor?: string
+  outlineWidth?: number
   showEndpoint?: boolean
+  width?: number
 }
 
 const EMPTY_ROUTES: readonly MapRoute[] = []
@@ -128,6 +133,7 @@ function BaseMap({
             : { bounds: SOUTH_KOREA_BOUNDS }),
       }
       map = new MapLibreMap(mapOptions)
+      map.on('style.load', () => guardNullableRoadShieldFilter(map))
       if (!bounds && !center) map.jumpTo({ center: SOUTH_KOREA_MAINLAND_CENTER })
     } catch {
       const frame = requestAnimationFrame(() => setHasLoadError(true))
@@ -260,8 +266,10 @@ function replaceMapRoutes(
 ) {
   renderedRouteIds.forEach((sourceId) => {
     const endpointLayerId = `${sourceId}-endpoint`
+    const outlineLayerId = `${sourceId}-outline`
     if (map.getLayer(endpointLayerId)) map.removeLayer(endpointLayerId)
     if (map.getLayer(sourceId)) map.removeLayer(sourceId)
+    if (map.getLayer(outlineLayerId)) map.removeLayer(outlineLayerId)
     if (map.getSource(sourceId)) map.removeSource(sourceId)
   })
 
@@ -288,6 +296,17 @@ function replaceMapRoutes(
         ],
       },
     })
+    if (route.outlineColor) map.addLayer({
+      id: `${sourceId}-outline`,
+      type: 'line',
+      source: sourceId,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': route.outlineColor,
+        'line-opacity': route.opacity ?? 0.95,
+        'line-width': route.outlineWidth ?? (route.width ?? 4) + 3,
+      },
+    })
     map.addLayer({
       id: sourceId,
       type: 'line',
@@ -295,8 +314,8 @@ function replaceMapRoutes(
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': route.color,
-        'line-opacity': 0.95,
-        'line-width': 4,
+        'line-opacity': route.opacity ?? 0.95,
+        'line-width': route.width ?? 4,
       },
     })
     if (route.showEndpoint) {
@@ -315,6 +334,13 @@ function replaceMapRoutes(
     }
     return sourceId
   })
+}
+
+function guardNullableRoadShieldFilter(map: MapLibreMap) {
+  const layerId = 'road_shield_us'
+  const filter = map.getFilter(layerId)
+  if (!filter) return
+  map.setFilter(layerId, ['all', ['has', 'ref_length'], filter] as FilterSpecification)
 }
 
 export default BaseMap

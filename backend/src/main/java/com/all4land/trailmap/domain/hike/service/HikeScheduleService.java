@@ -3,12 +3,14 @@ package com.all4land.trailmap.domain.hike.service;
 import com.all4land.trailmap.domain.hike.dto.request.HikeScheduleCreateRequest;
 import com.all4land.trailmap.domain.hike.dto.request.HikeScheduleUpdateRequest;
 import com.all4land.trailmap.domain.hike.dto.response.HikeScheduleResponse;
+import com.all4land.trailmap.domain.hike.dto.response.HikeRecordCompletionResponse;
 import com.all4land.trailmap.domain.hike.entity.HikeSchedule;
 import com.all4land.trailmap.domain.hike.error.HikeErrorCode;
 import com.all4land.trailmap.domain.hike.exception.HikeException;
 import com.all4land.trailmap.domain.hike.repository.HikeCourseRepository;
 import com.all4land.trailmap.domain.hike.repository.HikeCourseSummary;
 import com.all4land.trailmap.domain.hike.repository.HikeScheduleRepository;
+import com.all4land.trailmap.domain.hike.repository.HikeRecordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,7 @@ public class HikeScheduleService {
 
     private final HikeScheduleRepository scheduleRepository;
     private final HikeCourseRepository courseRepository;
+    private final HikeRecordRepository recordRepository;
 
     @Transactional
     public HikeScheduleResponse create(Long userId, HikeScheduleCreateRequest request) {
@@ -102,6 +105,15 @@ public class HikeScheduleService {
     public void delete(Long userId, Long scheduleId) {
         validateUser(userId);
         getOwnedSchedule(userId, scheduleId).delete(OffsetDateTime.now(SCHEDULE_ZONE));
+    }
+
+    @Transactional
+    public HikeRecordCompletionResponse complete(Long userId, Long scheduleId) {
+        validateUser(userId);
+        getOwnedSchedule(userId, scheduleId);
+        return HikeRecordCompletionResponse.from(
+                recordRepository.complete(userId, scheduleId, OffsetDateTime.now(SCHEDULE_ZONE))
+        );
     }
 
     /**
