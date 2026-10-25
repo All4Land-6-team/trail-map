@@ -3,11 +3,11 @@
   position: relative; width: min(100%, 390px); height: 100dvh; margin: 0 auto; overflow: hidden;
   color: var(--af-ink); background: #edf3ea; font-family: "Noto Sans KR", sans-serif; letter-spacing: -.02em;
 }
-.course-detail-page__map { position: absolute; inset: 0 0 auto; overflow: hidden; }
+.course-detail-page__map { position: absolute; inset: 0 0 var(--detail-nav-height); overflow: hidden; }
 .course-detail-page__top { position: absolute; z-index: 6; top: calc(16px + env(safe-area-inset-top)); right: 12px; left: 12px; width: auto; height: 50px; border: 0; border-radius: 14px; }
 .course-detail-page__top .af-top-bar__title { font-size: 16px; line-height: 24px; }
 .course-detail-page__nav { position: absolute; z-index: 8; right: 0; bottom: 0; left: 0; min-height: var(--detail-nav-height); padding-bottom: env(safe-area-inset-bottom); }
-.course-detail-sheet { position: absolute; z-index: 5; top: var(--detail-sheet-top); right: 0; bottom: var(--detail-nav-height); left: 0; min-height: 0; gap: 0; padding: 0; border-radius: 25px 25px 0 0; box-shadow: 0 -8px 12px rgb(23 71 54 / 5%); }
+.course-detail-sheet { position: absolute; z-index: 5; right: 0; bottom: var(--detail-nav-height); left: 0; height: var(--map-sheet-height, calc(100% - var(--detail-nav-height) - min(272px, 35dvh))); min-height: 0; overflow: hidden; gap: 0; padding: 0; border-radius: 25px 25px 0 0; box-shadow: 0 -8px 12px rgb(23 71 54 / 5%); }
 .course-detail-sheet .af-bottom-sheet__handle-row { flex: none; height: 22px; cursor: ns-resize; touch-action: none; }
 .course-detail-sheet .af-bottom-sheet__handle-row:focus-visible { outline: 2px solid var(--af-green); outline-offset: -3px; border-radius: 25px 25px 0 0; }
 .course-detail-sheet .af-bottom-sheet__handle { width: 40px; background: #ccd9cc; }
@@ -15,7 +15,7 @@
 .course-detail-sheet .af-bottom-sheet__title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .course-detail-sheet__tabs { width: 100%; }
 .course-detail-sheet__tabs .af-tab-bar { height: 42px; }
-.course-detail-sheet .af-bottom-sheet__content { flex: 1 1 0; min-height: 0; padding: 10px 20px 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: thin; }
+.course-detail-sheet .af-bottom-sheet__content { flex: 1 1 0; min-height: 0; padding: 10px 20px 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: thin; scrollbar-gutter: stable; }
 .course-detail-sheet:has(.course-spots) .af-bottom-sheet__content { display: flex; overflow: hidden; }
 .course-detail-sheet .af-bottom-sheet__footer { flex: none; min-height: 0; padding: 10px 20px 14px; background: #fff; }
 .course-detail-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
