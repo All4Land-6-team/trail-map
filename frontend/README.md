@@ -180,10 +180,9 @@ npm run build
 | 이름 | 설명 | 기본값 |
 | --- | --- | --- |
 | `VITE_API_BASE_URL` | 백엔드 API 주소 | `http://localhost:8080` |
-| `VITE_COMMUNITY_USER_ID` | 커뮤니티 API 요청의 사용자 번호로 `X-User-Id` 헤더에 보냅니다 | `1` |
 | `VITE_MAP_STYLE_URL` | 배경지도 스타일 주소 (MapLibre 스타일 JSON) | OpenFreeMap Liberty |
 | `VITE_OFFLINE_STATIC_GEO_URLS` | 캐시할 공개·정적 등산로/시설물 API 주소 목록 (쉼표로 구분) | 비어 있음 |
-| `VITE_HIKE_USER_ID` | 등산 일정·닉네임 API 요청의 사용자 번호로 `X-User-Id` 헤더에 보냅니다 | `1` |
+| `VITE_HIKE_USER_ID` | 커뮤니티·등산 일정·닉네임 API 요청에 사용할 사용자 ID (`X-User-Id` 헤더) | `1` |
 
 ## 사용자 닉네임
 
