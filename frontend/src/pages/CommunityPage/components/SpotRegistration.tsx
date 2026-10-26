@@ -102,7 +102,7 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, ter
   }
   return <div className="community-form-layout community-register">
     <div className="community-form-layout__scroll">
-      <h2>새 스팟 등록</h2><p className="community-form-subtitle">지도에서 위치 지정</p>
+      <h2>새 스팟 등록</h2>
       {mode === 'postHike' && recentCourses.length > 0 && <fieldset className="community-course-options community-register__courses">
         <legend className="community-field-label">최근에 다녀온 코스</legend>
         {recentCourses.map(course => <label key={course.hikeRecordId} className="community-course-option">
