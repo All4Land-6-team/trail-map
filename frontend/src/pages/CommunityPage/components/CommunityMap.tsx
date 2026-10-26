@@ -33,6 +33,7 @@ type Props = {
   zoom?: number
   showRoute?: boolean
   highlightedRoute?: Coordinate[]
+  fitHighlightedRoute?: boolean
   highlightedRouteColor?: string
   highlightedRoutes?: readonly CommunityMapRoute[]
   onMarkerSelect?: (marker: CommunityMapMarker) => void
@@ -75,7 +76,7 @@ function visibleMapArea(map: MapLibreMap) {
 }
 
 export function CommunityMap({ markers = [], overviewMarker, mountainId, center = DEFAULT_CENTER, focusTarget, zoom = 14, showRoute = true,
-  highlightedRoute, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
+  highlightedRoute, fitHighlightedRoute = false, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [projected, setProjected] = useState<ProjectedMarker[]>([])
   const [markerMode, setMarkerMode] = useState(() => communityMarkerMode(zoom))
@@ -153,6 +154,17 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     if (map.getPitch() === pitch) return
     map.easeTo({ pitch, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350 })
   }, [map, isMainMap, dimension, terrainEnabled])
+
+  useEffect(() => {
+    if (!map || !fitHighlightedRoute || !highlightedRoute || highlightedRoute.length < 2) return
+    const longitudes = highlightedRoute.map(([longitude]) => longitude)
+    const latitudes = highlightedRoute.map(([, latitude]) => latitude)
+    map.fitBounds([[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]], {
+      padding: 24,
+      maxZoom: 16,
+      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350,
+    })
+  }, [map, fitHighlightedRoute, highlightedRoute])
 
   useEffect(() => {
     if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return

@@ -73,6 +73,7 @@ function App() {
       <CommunityPage key={route} initialScreen={initialScreen} initialMountainId={query.get('mountain') ?? completedHikes[0]?.mountainId}
         initialSpotId={query.get('spot') ?? undefined}
         initialCourseId={query.get('course') ?? undefined}
+        spotRegistrationMode={query.get('mode') === 'active' ? 'active' : 'postHike'}
         onSpotRegistered={entry === 'newSpot' && returnTo.startsWith('hikes/') ? () => { window.location.hash = returnTo } : undefined}
         onExit={() => { window.location.hash = returnTo }} onNavigateOutside={navigateFromBottom} />
     </Suspense>
