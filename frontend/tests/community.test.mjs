@@ -65,6 +65,15 @@ test('산행 후 스팟 등록은 가장 최근에 완료한 코스를 기본 �
   assert.match(source, /completedCourse = initialScreen === 'newSpot'[\s\S]*eligibleHikes\[0\]\?\.courseId/);
 });
 
+test('커뮤니티의 스팟 등록 지도는 선택한 산의 최근 완료 코스들을 표시하고 현재 위치를 요청하지 않는다', () => {
+  const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const registration = readFileSync(new URL('../src/pages/CommunityPage/components/SpotRegistration.tsx', import.meta.url), 'utf8');
+  assert.match(page, /spotRegistrationCourses = useMemo[\s\S]*eligibleCourses\.flatMap/);
+  assert.match(registration, /mode === 'postHike'[\s\S]*최근에 다녀온 코스/);
+  assert.match(registration, /highlightedRoutes=\{mode === 'postHike' \? recentRoutes : undefined\}/);
+  assert.match(registration, /if \(mode !== 'active'\) return[\s\S]*requestAnimationFrame\(locate\)/);
+});
+
 test('스팟 등록 지도는 등산 중 현재 위치를 우선하고 실패하면 전달받은 코스 전체를 표시한다', () => {
   const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   const activePage = readFileSync(new URL('../src/pages/HikeActivePage/HikeActivePage.tsx', import.meta.url), 'utf8');

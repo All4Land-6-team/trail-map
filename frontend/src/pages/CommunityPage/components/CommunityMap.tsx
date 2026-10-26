@@ -22,6 +22,7 @@ export type CommunityMapRoute = {
   id: string
   color: string
   coordinates: Coordinate[]
+  selected?: boolean
 }
 
 type Props = {
@@ -97,11 +98,12 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     if (!showRoute) return EMPTY_ROUTES
     const targets = highlightedRoutes ?? (highlightedRoute ? [{ id: 'selected', color: highlightedRouteColor ?? '#19765b', coordinates: highlightedRoute }] : [])
     const selectedRouteOnly = highlightedRoutes === undefined
+    const hasSelectedRoute = highlightedRoutes?.some(route => route.selected) ?? false
     return targets
       .filter(route => route.coordinates.length > 1)
       .map(route => ({ id: `community-course-${route.id}`, color: route.color, coordinates: route.coordinates,
-        opacity: selectedRouteOnly ? 1 : 0.82, outlineColor: '#ffffff',
-        outlineWidth: selectedRouteOnly ? 8 : 6, width: selectedRouteOnly ? 5 : 3.5 }))
+        opacity: selectedRouteOnly || !hasSelectedRoute || route.selected ? 1 : 0.3, outlineColor: '#ffffff',
+        outlineWidth: selectedRouteOnly || route.selected ? 8 : 5, width: selectedRouteOnly || route.selected ? 5 : 3 }))
   }, [showRoute, highlightedRoute, highlightedRouteColor, highlightedRoutes])
 
   useEffect(() => {
@@ -156,15 +158,17 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   }, [map, isMainMap, dimension, terrainEnabled])
 
   useEffect(() => {
-    if (!map || !fitHighlightedRoute || !highlightedRoute || highlightedRoute.length < 2) return
-    const longitudes = highlightedRoute.map(([longitude]) => longitude)
-    const latitudes = highlightedRoute.map(([, latitude]) => latitude)
+    if (!map || !fitHighlightedRoute) return
+    const coordinates = highlightedRoutes?.flatMap(route => route.coordinates) ?? highlightedRoute ?? []
+    if (coordinates.length < 2) return
+    const longitudes = coordinates.map(([longitude]) => longitude)
+    const latitudes = coordinates.map(([, latitude]) => latitude)
     map.fitBounds([[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]], {
       padding: 24,
       maxZoom: 16,
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350,
     })
-  }, [map, fitHighlightedRoute, highlightedRoute])
+  }, [map, fitHighlightedRoute, highlightedRoute, highlightedRoutes])
 
   useEffect(() => {
     if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return
