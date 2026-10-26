@@ -57,7 +57,7 @@ class UserProfileApiIntegrationTest {
     void 닉네임을_조회하고_변경하며_빈_값은_익명으로_되돌린다() throws Exception {
         mockMvc.perform(asUser(userId, get("/v1/users/me")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.nickname").value("익명"));
+                .andExpect(jsonPath("$.data.nickname").value("익명" + userId));
 
         mockMvc.perform(asUser(userId, patch("/v1/users/me"))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -78,7 +78,7 @@ class UserProfileApiIntegrationTest {
                                 {"nickname":"   "}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.nickname").value("익명"));
+                .andExpect(jsonPath("$.data.nickname").value("익명" + userId));
 
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT nickname IS NULL FROM app_user WHERE user_id = ?", Boolean.class, userId

@@ -7,12 +7,12 @@ public record UserProfileResponse(
         String nickname
 ) {
 
-    private static final String DEFAULT_NICKNAME = "익명";
+    private static final String DEFAULT_NICKNAME_PREFIX = "익명";
 
     public static UserProfileResponse from(AppUser user) {
         return new UserProfileResponse(
                 user.getUserId(),
-                user.getNickname() == null ? DEFAULT_NICKNAME : user.getNickname()
+                user.getNickname() == null ? DEFAULT_NICKNAME_PREFIX + user.getUserId() : user.getNickname()
         );
     }
 }

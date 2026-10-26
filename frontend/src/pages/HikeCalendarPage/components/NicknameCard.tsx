@@ -1,12 +1,16 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { fetchUserProfile, updateUserNickname } from "../../../api/profile";
+import {
+  DEFAULT_NICKNAME,
+  NICKNAME_MAX_LENGTH,
+  fetchUserProfile,
+  updateUserNickname,
+} from "../../../api/profile";
 import { Button } from "../../../components/common/Button";
 import { Field } from "../../../components/common/Field";
-import { DEFAULT_NICKNAME, NICKNAME_MAX_LENGTH, setNickname, useNickname } from "../../../store/profileStore";
 
-/** HIKE-01 닉네임: 산 · 코스 · 스팟 후기 작성자 이름. 기본값은 익명이고 중복은 검사하지 않는다. */
+/** HIKE-01 닉네임: 산 · 코스 · 스팟 후기 작성자 이름. 기본값은 익명{userId}이고 중복은 검사하지 않는다. */
 export function NicknameCard() {
-  const nickname = useNickname();
+  const [nickname, setNickname] = useState(DEFAULT_NICKNAME);
   const [draft, setDraft] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -51,8 +55,7 @@ export function NicknameCard() {
   return <form className="hike-nickname-card hike-nickname-card--editing" aria-label="닉네임 수정" onSubmit={submit}
     onKeyDown={(event) => { if (event.key === "Escape") setDraft(null); }}>
     <Field label="닉네임" showIcon={false} placeholder={DEFAULT_NICKNAME} autoFocus
-      maxLength={NICKNAME_MAX_LENGTH} value={draft} onChange={(event) => setDraft(event.target.value)}
-      containerClassName="hike-nickname-card__field" />
+      maxLength={NICKNAME_MAX_LENGTH} value={draft} onChange={(event) => setDraft(event.target.value)} />
     <div className="hike-nickname-card__actions">
       <Button variant="secondary" size="compact" label="취소" disabled={saving} onClick={() => setDraft(null)} />
       <Button type="submit" size="compact" label={saving ? "저장 중" : "저장"} disabled={saving} />
