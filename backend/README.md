@@ -104,7 +104,7 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 ## 사용자 프로필 API
 
-현재 로그인 연동 전이므로 `X-User-Id` 헤더로 사용자를 식별합니다.
+요청 헤더 `X-User-Id`에 지정한 사용자 ID를 기준으로 닉네임을 조회하고 변경합니다.
 
 - `GET /api/v1/users/me`: 현재 사용자의 닉네임을 조회합니다.
 - `PATCH /api/v1/users/me`: `nickname`을 변경합니다. 최대 12자이며 빈 문자열은 DB에 `NULL`로 저장하고 `익명{userId}`로 응답합니다.
