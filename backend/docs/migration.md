@@ -17,6 +17,7 @@ DB 스키마 변경은 Flyway migration SQL 파일로만 수행합니다.
 - `V1__enable_postgis.sql`: PostGIS 확장을 활성화합니다.
 - `V2__create_core_schema.sql`: DB 명세의 핵심 테이블 15개와 FK, CHECK, UNIQUE, 조회용 B-tree 및 공간용 GiST 인덱스를 생성합니다.
 - `V3__support_community_reviews_and_spots.sql`: 후기를 완료 산행과 연결하고, 공식 시설·사용자 스팟 후기와 사진, 화장실 스팟 타입, 스팟 예/아니오 투표 구조를 추가합니다.
+- `V4__add_hike_record_traveled_path.sql`: 등산 기록에 GPS로 실제 이동한 경로 `traveled_path geometry(LineString, 4326)`를 추가합니다. 시작 시 코스 경로 스냅샷인 `recorded_course_geometry`와 구분합니다.
 
 `app_user`는 로그인·회원가입 없이 사용하는 익명 사용자를 나타냅니다. 닉네임은 NULL과 중복을 허용하며, NULL이면 애플리케이션에서 `익명{user_id}` 형식으로 표시합니다.
 
