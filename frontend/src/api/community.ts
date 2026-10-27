@@ -1,7 +1,7 @@
 import type { Coordinate, PendingPhoto, ReviewKind, SpotType } from '../types/community'
 
 const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
-const COMMUNITY_USER_ID = import.meta.env?.VITE_COMMUNITY_USER_ID || '1'
+const USER_ID = import.meta.env?.VITE_HIKE_USER_ID || '1'
 
 type SuccessResponse<T> = { data: T }
 type ApiErrorResponse = { message?: string }
@@ -109,7 +109,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}/api/v1/community${path}`, {
     ...init,
     headers: {
-      'X-User-Id': COMMUNITY_USER_ID,
+      'X-User-Id': USER_ID,
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },

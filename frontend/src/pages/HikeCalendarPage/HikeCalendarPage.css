@@ -7,10 +7,9 @@
 .hike-nickname-card__copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .hike-nickname-card__label { color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-nickname-card__name { overflow: hidden; color: var(--af-ink); font: 700 15px/22px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.hike-nickname-card__error { margin: 0; color: #b42318; font: 400 11px/16px "Noto Sans KR", sans-serif; }
 .hike-nickname-card > .af-button { flex: none; }
 .hike-nickname-card__actions { display: flex; justify-content: flex-end; gap: 8px; }
-/* 공용 Field 안내 문구는 오류 색이라, 닉네임 안내는 일반 설명 색으로 바꾼다 */
-.hike-nickname-card__field .af-field__helper { color: #617b6c; }
 .hike-calendar-page__day { display: flex; flex-direction: column; gap: 14px; margin-top: 23px; }
 .hike-calendar-page__date { margin: 0; color: var(--af-ink); font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-calendar-page__empty { margin: 0; padding: 24px 16px; border: 1px solid var(--af-line); border-radius: 16px; color: #617b6c; background: #fff; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: center; }

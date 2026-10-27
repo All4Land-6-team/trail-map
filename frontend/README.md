@@ -180,10 +180,13 @@ npm run build
 | 이름 | 설명 | 기본값 |
 | --- | --- | --- |
 | `VITE_API_BASE_URL` | 백엔드 API 주소 | `http://localhost:8080` |
-| `VITE_COMMUNITY_USER_ID` | 인증 연동 전 커뮤니티 API에 전달할 임시 사용자 ID | `1` |
 | `VITE_MAP_STYLE_URL` | 배경지도 스타일 주소 (MapLibre 스타일 JSON) | OpenFreeMap Liberty |
 | `VITE_OFFLINE_STATIC_GEO_URLS` | 캐시할 공개·정적 등산로/시설물 API 주소 목록 (쉼표로 구분) | 비어 있음 |
-| `VITE_HIKE_USER_ID` | 로그인 전 임시 사용자 번호. 등산 일정 API 요청의 `X-User-Id` 헤더로 보냅니다 | `1` |
+| `VITE_HIKE_USER_ID` | 커뮤니티·등산 일정·닉네임 API 요청에 사용할 사용자 ID (`X-User-Id` 헤더) | `1` |
+
+## 사용자 닉네임
+
+내 등산 화면은 `GET /api/v1/users/me`로 현재 닉네임을 조회하고 `PATCH /api/v1/users/me`로 변경합니다. `VITE_HIKE_USER_ID` 값은 `X-User-Id` 헤더에 담아 요청합니다. 닉네임은 최대 12자이고 중복을 허용하며, 비워 저장하면 `익명{userId}`로 표시됩니다. 브라우저 로컬 저장소에는 닉네임을 저장하지 않습니다.
 
 ## 등산 일정 API 연동
 

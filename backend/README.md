@@ -115,6 +115,15 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 스팟 평가는 사용자와 대상별로 한 건만 유지됩니다. 사용자 스팟은 `NO` 평가가 3건 이상이면 `HIDDEN`으로 변경되어 지도와 중복 후보에서 제외되고, 평가 변경·취소로 3건 미만이 되면 `RECONFIRMATION_REQUIRED`로 다시 노출됩니다. 공식 시설은 평가 수만 집계하며 자동으로 숨기지 않습니다.
 
+## 사용자 프로필 API
+
+요청 헤더 `X-User-Id`에 지정한 사용자 ID를 기준으로 닉네임을 조회하고 변경합니다.
+
+- `GET /api/v1/users/me`: 현재 사용자의 닉네임을 조회합니다.
+- `PATCH /api/v1/users/me`: `nickname`을 변경합니다. 최대 12자이며 빈 문자열은 DB에 `NULL`로 저장하고 `익명{userId}`로 응답합니다.
+
+닉네임은 중복을 허용하며, 산·코스·스팟 후기와 사진 작성자 조회에 현재 `app_user.nickname`이 반영됩니다.
+
 ## 공식 시설 데이터
 
 산 소속 판정이 완료된 JSON v2를 적재한다. 기존 시설 소속 갱신과 코스 조회 조건은 [산 경계 문서](../docs/facility-mountain-boundary.md)를 참고한다.
