@@ -85,6 +85,16 @@ class FlywayMigrationDefinitionTest {
                 .contains("UNIQUE (user_id, facility_id)");
     }
 
+    @Test
+    void 네_번째_마이그레이션은_등산_기록에_GPS_이동_경로를_추가한다() throws IOException {
+        String migration = readMigration("db/migration/V4__add_hike_record_traveled_path.sql");
+
+        assertThat(migration)
+                .contains("ALTER TABLE hike_record")
+                .contains("ADD COLUMN traveled_path geometry(LineString, 4326)")
+                .contains("ST_NPoints(traveled_path) >= 2");
+    }
+
     private String readMigration(String path) throws IOException {
         try (var inputStream = getClass().getClassLoader().getResourceAsStream(path)) {
             assertThat(inputStream).as("migration resource %s", path).isNotNull();
