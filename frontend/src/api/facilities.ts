@@ -1,4 +1,4 @@
-import type { Facility, FacilityFeatureCollection } from '../types/facility';
+import type { CourseFacilityType, Facility, FacilityFeatureCollection } from '../types/facility';
 
 const FORMAT_ERROR = '시설 응답 형식이 올바르지 않습니다.';
 
@@ -18,7 +18,7 @@ function coordinate(value: unknown, limit: number): value is number {
   return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit;
 }
 
-export function parseFacilityReview(value: unknown, sourceId: number): FacilityFeatureCollection {
+export function parseFacilityReview(value: unknown, sourceId: number, type: CourseFacilityType = 'RESTROOM'): FacilityFeatureCollection {
   if (!isRecord(value) || value.type !== 'FeatureCollection' || !Array.isArray(value.features)) {
     throw new Error(FORMAT_ERROR);
   }
@@ -32,7 +32,7 @@ export function parseFacilityReview(value: unknown, sourceId: number): FacilityF
     const [longitude, latitude] = feature.geometry.coordinates;
     if (!coordinate(longitude, 180) || !coordinate(latitude, 90)
       || p.longitude !== longitude || p.latitude !== latitude || p.facilityId !== feature.id
-      || p.type !== 'RESTROOM' || !(p.mountainId === null || isId(p.mountainId))
+      || p.type !== type || !(p.mountainId === null || isId(p.mountainId))
       || !nullableString(p.name) || !nullableString(p.sourceRecordId)
       || !nullableString(p.sourceReportedStatus) || !nullableString(p.sourceDate)
       || typeof p.importedAt !== 'string'
@@ -47,21 +47,22 @@ export function parseFacilityReview(value: unknown, sourceId: number): FacilityF
 }
 
 export function facilityReviewUrl(sourceId: number,
-  apiBaseUrl = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080') {
+  apiBaseUrl = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080', type: CourseFacilityType = 'RESTROOM') {
   if (!isId(sourceId)) throw new Error('출처 ID는 양의 정수여야 합니다.');
-  return `${apiBaseUrl.replace(/\/+$/, '')}/api/v1/facilities/review?sourceId=${sourceId}&type=RESTROOM`;
+  if (type !== 'RESTROOM' && type !== 'DRINKING_WATER' && type !== 'SHELTER') throw new Error(FORMAT_ERROR);
+  return `${apiBaseUrl.replace(/\/+$/, '')}/api/v1/facilities/review?sourceId=${sourceId}&type=${type}`;
 }
 
 export async function loadFacilityReview(sourceId: number, {
-  signal, timeoutMs = 10_000,
-}: { signal?: AbortSignal; timeoutMs?: number } = {}): Promise<FacilityFeatureCollection> {
+  signal, timeoutMs = 10_000, type = 'RESTROOM',
+}: { signal?: AbortSignal; timeoutMs?: number; type?: CourseFacilityType } = {}): Promise<FacilityFeatureCollection> {
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener('abort', abort, { once: true });
   if (signal?.aborted) abort();
   const timeout = setTimeout(abort, timeoutMs);
   try {
-    const response = await fetch(facilityReviewUrl(sourceId), {
+    const response = await fetch(facilityReviewUrl(sourceId, undefined, type), {
       headers: { Accept: 'application/geo+json' }, signal: controller.signal, cache: 'no-store',
     });
     if (!response.ok) {
@@ -69,7 +70,7 @@ export async function loadFacilityReview(sourceId: number, {
         ? '검토 API 또는 출처를 찾지 못했습니다. sourceId와 백엔드 facility.review.enabled=true 설정을 확인해 주세요.'
         : `시설을 불러오지 못했습니다. (HTTP ${response.status})`);
     }
-    return parseFacilityReview(await response.json(), sourceId);
+    return parseFacilityReview(await response.json(), sourceId, type);
   } catch (error) {
     if (signal?.aborted) throw error;
     if (controller.signal.aborted) throw new Error('조회 시간이 초과됐습니다. 백엔드 연결을 확인하고 다시 시도해 주세요.');

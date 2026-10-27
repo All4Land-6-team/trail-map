@@ -16,6 +16,22 @@ function feature(id = 7, name = '도봉산입구화장실', recordId = '323') {
 }
 function collection(features = [feature()]) { return { type: 'FeatureCollection', features }; }
 
+test('음수대 출처 검토는 해당 유형으로 요청하고 다른 유형 응답을 거부한다', async (t) => {
+  const water = feature(8, '시험 샘터', 'csv-synthetic-id');
+  water.properties.type = 'DRINKING_WATER';
+  assert.equal(facilityReviewUrl(4, 'http://localhost:8080', 'DRINKING_WATER'),
+    'http://localhost:8080/api/v1/facilities/review?sourceId=4&type=DRINKING_WATER');
+  assert.equal(parseFacilityReview(collection([water]), 4, 'DRINKING_WATER').features.length, 1);
+  assert.throws(() => parseFacilityReview(collection(), 4, 'DRINKING_WATER'));
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  globalThis.fetch = async (url) => {
+    assert.match(url, /type=DRINKING_WATER$/);
+    return new Response(JSON.stringify(collection([water])));
+  };
+  assert.equal((await loadFacilityReview(4, { type: 'DRINKING_WATER' })).features[0].properties.type, 'DRINKING_WATER');
+});
+
 test('실제 GeoJSON 계약과 빈 목록을 허용하고 다른 출처·잘못된 좌표는 거부한다', () => {
   assert.equal(parseFacilityReview(collection(), 4).features.length, 1);
   assert.equal(parseFacilityReview(collection([]), 4).features.length, 0);
@@ -28,6 +44,17 @@ test('실제 GeoJSON 계약과 빈 목록을 허용하고 다른 출처·잘못�
   const wrongProperty = feature();
   wrongProperty.properties.latitude = 38;
   assert.throws(() => parseFacilityReview(collection([wrongProperty]), 4));
+});
+
+test('같은 출처의 쉼터와 음수대를 유형별로 구분하고 원본 ID와 좌표를 유지한다', () => {
+  const shelter = feature(101, '시험 파고라', 'csv-shelter');
+  shelter.properties.type = 'SHELTER';
+  assert.match(facilityReviewUrl(4, 'http://localhost:8080', 'SHELTER'), /type=SHELTER$/);
+  const parsed = parseFacilityReview(collection([shelter]), 4, 'SHELTER');
+  assert.equal(parsed.features[0].properties.sourceRecordId, 'csv-shelter');
+  assert.deepEqual(parsed.features[0].geometry.coordinates, [127.04, 37.68]);
+  assert.throws(() => parseFacilityReview(collection([shelter]), 4, 'DRINKING_WATER'));
+  assert.deepEqual(parseFacilityReview(collection([]), 4, 'SHELTER').features, []);
 });
 
 test('같은 시설 ID는 거부하지만 같은 좌표의 서로 다른 시설은 보존한다', () => {

@@ -23,16 +23,21 @@
 .facility-preview__map { position: relative; min-width: 0; min-height: 0; }
 .facility-preview__base, .facility-preview__base .base-map { width: 100%; height: 100%; }
 .facility-preview__map-key { position: absolute; bottom: 12px; left: 12px; display: flex; align-items: center; gap: 7px; max-width: calc(100% - 60px); border-radius: 8px; padding: 8px 10px; background: #fffffff2; border: 1px solid var(--fp-line); font-size: 11px; pointer-events: none; }
-.facility-preview__map-key > span { color: var(--fp-green); font-weight: 800; }
 .facility-preview__map-key small { color: #65766b; }
-.facility-preview button.facility-preview__marker { width: 31px; height: 31px; padding: 0; border-radius: 50%; color: #fff; background: var(--fp-green); border: 2px solid #fff; box-shadow: 0 2px 7px #17291c42; font-size: 10px; font-weight: 800; z-index: 1; }
-.facility-preview button.facility-preview__marker[aria-pressed="true"] { background: #b45328; outline: 3px solid #f4ae6e; z-index: 2; }
+/* 페이지 공통 button 스타일이 SpotMarker의 원형 모양을 덮지 않게 되돌린다. */
+.facility-preview .af-spot-marker { padding: 0; border: 1px solid currentColor; border-radius: 50%; box-shadow: 0 2px 7px #17291c42; }
+.facility-preview .af-spot-marker[aria-pressed="true"] { box-shadow: 0 0 0 3px #f4ae6e; }
+.facility-preview .maplibregl-marker:has(.af-spot-marker[aria-pressed="true"]) { z-index: 2; }
+.facility-preview__marker-count { position: absolute; top: -6px; right: -8px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--fp-green); color: #fff; font-size: 10px; font-weight: 800; line-height: 18px; text-align: center; pointer-events: none; }
 .facility-preview__sidebar { min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--fp-line); }
 .facility-preview__detail { flex: 0 1 auto; max-height: 49%; overflow: auto; padding: 18px; border-bottom: 1px solid var(--fp-line); background: #fcfdfb; }
 .facility-preview__detail h2 { font-size: 18px; margin: 6px 0 12px; letter-spacing: -.03em; }
 .facility-preview__detail > p { color: #617066; font-size: 12px; line-height: 1.7; margin-bottom: 0; }
 .facility-preview__identity { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
 .facility-preview__identity button { padding: 6px 9px; font-size: 11px; }
+.facility-preview__identity strong { min-width: 0; overflow-wrap: anywhere; }
+.facility-preview__identity button { flex: none; }
+.facility-preview__list button > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 .facility-preview__copy:empty { display: none; }
 .facility-preview dl { margin: 14px 0 0; display: grid; grid-template-columns: 82px minmax(0,1fr); gap: 9px 10px; font-size: 12px; line-height: 1.5; }
 .facility-preview dt { color: #6b7c72; }
@@ -48,7 +53,10 @@
 .facility-preview__list button:hover:not(:disabled) { background: #f0f5ee; }
 .facility-preview__list strong { display: block; font-size: 13px; font-weight: 600; }
 .facility-preview__list small { display: block; color: #6b7c72; font-size: 10px; margin-top: 4px; }
-.facility-preview__list-icon { display: grid; place-items: center; background: #e9f0e9; color: var(--fp-green); border-radius: 8px; width: 32px; height: 32px; flex: none; font-size: 10px; font-weight: 800; }
+.facility-preview__list-icon { display: grid; place-items: center; background: #e9f0e9; border-radius: 8px; width: 32px; height: 32px; flex: none; }
+.facility-preview__list-icon[data-kind="water"] { background: #e8f5fc; }
+.facility-preview__list-icon[data-kind="shelter"] { background: #edf5e7; }
+.facility-preview__list-icon[data-kind="restroom"] { background: #f2ebfa; }
 .facility-preview__state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; border: 1px dashed #bccdc1; border-radius: 12px; background: #fff; font-size: 14px; }
 .facility-preview__state h2 { font-size: 19px; }
 .facility-preview__state p { line-height: 1.8; }

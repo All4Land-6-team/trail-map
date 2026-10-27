@@ -143,3 +143,7 @@ community/spot/facility/{facilityId}/{reviewId}/{uuid}.{ext}
 ```
 
 로컬 비밀 설정에는 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`를 두고 필요하면 `R2_BUCKET_NAME`을 설정합니다. 기본 버킷명은 `trail-map`입니다.
+
+## 공식 시설 공통 파이프라인 (#75)
+
+화장실·쉼터·음수대의 한 번의 전처리, 출처별 JSON v2 적재, 산 소속 판정 및 실행·검증 방법은 [공통 시설 파이프라인](../docs/facility-pipeline.md)을 따른다. 개별 어댑터의 v1은 후보 검토용이며 직접 DB에 적재하지 않는다.
