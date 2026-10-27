@@ -66,6 +66,19 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 산출물 경로를 사용합니다. 타일 파일을 교체한 경우 메타데이터 캐시 갱신을 위해
 백엔드를 다시 실행합니다.
 
+## 등산 기록 API
+
+임시 사용자 식별 헤더 `X-User-Id`가 필요합니다. 상태는 `IN_PROGRESS`(등산 중) → `DESCENDING`(하산 중) → `COMPLETED`(완료) 순서로만 바뀝니다.
+
+- `POST /api/v1/hike-records`: `{"scheduleId"}`로 오늘 일정의 등산을 시작합니다. 시작 시각과 그 시점의 코스 번호·버전·경로를 저장합니다. 오늘이 아닌 일정(`HIKE_409_2`), 이미 기록이 있는 일정(`HIKE_409_3`), 진행 중인 등산이 있을 때(`HIKE_409_4`)는 시작할 수 없습니다.
+- `GET /api/v1/hike-records/active`: 진행 중인 기록을 조회합니다. 없으면 `data`가 `null`입니다.
+- `GET /api/v1/hike-records/{hikeRecordId}`: 상태, 시작·종료 시각, 이동 거리, 소요 시간, 이동 경로 좌표(`[경도, 위도]` 목록)를 조회합니다.
+- `POST /api/v1/hike-records/{hikeRecordId}/positions`: 기기가 모은 GPS 위치 묶음(`longitude`, `latitude`, `recordedAt`, `accuracyMeters`, 최대 500개)을 이동 경로(`traveled_path`, LineString)에 이어 붙이고 이동 거리를 갱신합니다. 측정 시각 순으로 정렬하고, 정확도가 50m보다 나쁜 위치와 직전 위치에서 5m 미만 움직인 위치는 뺍니다.
+- `POST /api/v1/hike-records/{hikeRecordId}/descend`: 하산을 시작합니다.
+- `POST /api/v1/hike-records/{hikeRecordId}/finish`: 등산을 종료하고 종료 시각, 소요 시간(종료-시작 경과 초), 최종 이동 거리를 저장합니다. 이미 종료된 기록이면 그 기록을 그대로 반환합니다. 종료 후 위치 전송·하산 요청은 `HIKE_409_5`입니다.
+
+이동 거리는 경로 길이를 구면 거리(`geography`)로 계산하며, 위치를 한 번도 받지 않았으면 `null`입니다. 아래 커뮤니티의 `POST /api/v1/hike-schedules/{scheduleId}/complete`는 그 일정으로 시작한 진행 중 기록이 있으면 그 기록을 종료합니다.
+
 ## 커뮤니티 API
 
 모든 커뮤니티 조회 요청은 임시 사용자 식별 헤더 `X-User-Id`가 필요합니다.

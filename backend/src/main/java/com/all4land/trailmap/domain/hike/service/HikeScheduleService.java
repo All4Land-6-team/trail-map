@@ -107,13 +107,16 @@ public class HikeScheduleService {
         getOwnedSchedule(userId, scheduleId).delete(OffsetDateTime.now(SCHEDULE_ZONE));
     }
 
+    /** 이 일정으로 시작한 진행 중 기록이 있으면 그 기록을 종료하고, 없으면 완료 기록을 바로 만든다. */
     @Transactional
     public HikeRecordCompletionResponse complete(Long userId, Long scheduleId) {
         validateUser(userId);
         getOwnedSchedule(userId, scheduleId);
-        return HikeRecordCompletionResponse.from(
-                recordRepository.complete(userId, scheduleId, OffsetDateTime.now(SCHEDULE_ZONE))
-        );
+        OffsetDateTime endedAt = OffsetDateTime.now(SCHEDULE_ZONE);
+        recordRepository.findActive(userId)
+                .filter(record -> record.scheduleId().equals(scheduleId))
+                .ifPresent(record -> recordRepository.finish(record.hikeRecordId(), endedAt));
+        return HikeRecordCompletionResponse.from(recordRepository.complete(userId, scheduleId, endedAt));
     }
 
     /**
