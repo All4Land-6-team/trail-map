@@ -49,7 +49,7 @@ $env:PYTHONPATH = 'data-pipeline/src'
 
 ## JDBC 적재
 
-후보 JSON v1은 바로 적재하지 않는다. 먼저 [산 소속 판정 명령](facility-mountain-boundary.md)을 실행해야 한다. `mountainId`는 필수 필드이며 양의 정수 또는 명시적 `null`이다. 필드가 없거나 schemaVersion이 1이면 적재를 거부한다.
+후보 JSON v1은 바로 적재하지 않는다. 먼저 [산 소속 판정 명령](facility-mountain-boundary.md)을 실행해야 한다. 공통 전처리는 새 후보 중 정확히 한 산 경계에 포함된 행만 선택하고 해당 산의 양의 정수 `mountainId`를 기록한다. 결과가 없으면 시설 배열은 비어 있다. 필드가 없거나 schemaVersion이 1이면 적재를 거부한다.
 
 PostgreSQL/PostGIS와 `trail_map` DB가 준비되어 있어야 한다. DB 비밀번호는 환경 변수 `DB_PASSWORD` 또는 Git에서 제외된 `backend/src/main/resources/application-secret.properties`에 설정한다. 프로젝트 루트 `.env`는 Spring Boot가 자동으로 읽지 않는다.
 
@@ -60,11 +60,11 @@ $env:TERRAIN_ROOT_PATH = 'D:/Project/trail-map/data/processed/dem/bukhansan/terr
 .\gradlew.bat bootRun --args='--spring.main.web-application-type=none --facility.import.enabled=true --facility.import.file=D:/Project/trail-map/data/processed/knps/mountain-membership/restrooms.json'
 ```
 
-적재 실행은 완료 후 종료하며 `sourceId`, `total`, `inserted`, `updated`, `skipped`를 로그에 출력한다. 일반 서버 실행에서는 적재기가 동작하지 않는다. 출처·신규 시설 저장과 기존 시설 소속 갱신은 한 트랜잭션이며 실패 시 전부 롤백한다.
+적재 실행은 완료 후 종료하며 `sourceId`, `total`, `inserted`, `updated`, `skipped`를 로그에 출력한다. `updated`는 기존 로그 형식과의 호환을 위해 남아 있으며 항상 0이다. 일반 서버 실행에서는 적재기가 동작하지 않는다. 출처·신규 시설 저장은 한 트랜잭션이며 실패 시 전부 롤백한다.
 
 출처 이름·제공 기관·형식·버전으로 같은 출처를 찾는다. 동시에 실행한 적재기가 출처를 중복 생성하지 않도록 PostgreSQL 트랜잭션 advisory lock을 사용한다. `(source_id, source_record_id)`로 시설을 식별하고 공통 필드의 SHA-256을 비교한다. 같은 데이터의 재적재는 건너뛰며, 같은 원본 ID의 내용이 달라졌으면 기존 행을 수정하지 않고 적재를 실패시킨다.
 
-원본 7개 필드의 직렬화 순서와 SHA-256은 기존 v1과 같다. 파생값 `mountainId`는 해시에서 제외한다. 원본이 같고 산 소속만 다르면 기존 행의 `mountain_id`만 갱신한다. ID·원본 내용·해시·적재 시각·제보 참조를 유지한다. JSON에 없는 기존 행은 변경하지 않는다. 외부 후보도 JSON에 남겨 소속을 `null`로 갱신하며 삭제하지 않는다. 범용 수정·삭제 HTTP API는 제공하지 않는다.
+원본 7개 필드의 직렬화 순서와 SHA-256은 기존 v1과 같다. 파생값 `mountainId`는 해시에서 제외한다. 원본이 같은 기존 시설은 건너뛰며 산 소속이 달라도 갱신하지 않는다. ID·산 ID·원본 내용·해시·적재 시각·제보 참조를 유지한다. 경계 밖 또는 두 산 이상에 걸친 후보는 전처리 결과에 포함되지 않는다. 범용 수정·삭제 HTTP API는 제공하지 않는다.
 
 ## 조회 API
 
