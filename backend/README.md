@@ -250,4 +250,80 @@ Remove-Item Env:ANALYSIS_TEST_JDBC_URL
 실제 Python 산출물의 입력 검증만 추가로 실행하려면 `ANALYSIS_SAMPLE_JSON`을
 해당 JSON의 절대 경로로 설정하고 `*CourseAnalysisDocumentReaderTest`를 실행합니다.
 프론트 연결 시 현재 임시 타입의 고도·경사가 항상 숫자라는 가정을 제거하고
-API의 null·품질 상태를 처리해야 합니다. 최대 3개 코스 비교와 화면 연동은 후속 작업입니다.
+API의 null·품질 상태를 처리해야 합니다. 코스 비교 API는 아래 #86을 참고하며,
+화면 연동은 후속 작업입니다.
+
+## 동일 산 코스 비교 API (#86)
+
+`GET /api/v1/course-comparisons?courseIds=2,1,3`으로 같은 산의 서로 다른 코스
+2~3개를 비교합니다. 임시 사용자 헤더는 필요하지 않습니다. 쉼표로 구분한 ID와
+반복 파라미터(`courseIds=2&courseIds=1`)를 모두 지원합니다. 요청한 순서가
+응답의 `courses` 순서이며, 중복 ID를 제거하거나 초과한 코스를 잘라서 비교하지 않습니다.
+
+### 응답
+
+기존 공통 성공 응답의 `data`에 다음 값을 반환합니다.
+
+| 필드 | 의미 |
+| --- | --- |
+| `mountainId`, `mountainName` | 비교하는 현재 소속 산 |
+| `courses[].courseId`, `courseName` | 현재 코스 ID와 이름 |
+| `courses[].currentCourseVersion` | 현재 DB 코스 버전 |
+| `courses[].analysis` | #84와 동일한 분석 요약 전체 |
+| `courses[].analysis.analyzedCourseVersion` | 분석이 수행된 코스 버전 |
+| `courses[].analysis.metrics` | 거리·최저/최고 고도·누적 상승/하강량 등의 분석값 |
+| `courses[].analysis.coverage`, `courses[].analysis.settings` | 분석 범위·설정·단위 확인 상태 |
+| `courses[].analysis.qualityStatus`, `courses[].analysis.qualityReasons` | 유효 품질 상태와 사유 |
+| `courses[].analysis.profileUrl` | 해당 분석 ID의 고도·경사 프로필 조회 주소 |
+
+분석 ID·DEM 출처 ID·알고리즘 버전·계산 시각·개발용 데이터 구분도 분석 요약에
+그대로 포함합니다. 상세 샘플은 `profileUrl`로 #84의 API를 호출합니다.
+비교 응답과 프로필 사이에 새 분석이 적재되어도 주소는 원래 분석 ID를 유지합니다.
+
+각 코스의 현재 버전·경로와 맞는 분석을 우선하고, 같은 조건에서는 계산 시각과
+분석 ID 순으로 최신 결과를 고릅니다. 분석이 없는 코스도 목록에 남기고
+`NO_DATA`, `ANALYSIS_NOT_FOUND`와 null 측정값·프로필 주소를 반환합니다.
+`PARTIAL`과 품질 사유를 유지하며, 코스 변경 시 `OUTDATED`와 분석 당시 버전을
+반환합니다. 오래된 분석의 수치를 현재 코스의 확정 수치로 표시하지 않습니다.
+
+거리는 m, 고도는 m, 시간은 초, 구간 경사는 %입니다. 미계산 소요 시간·급경사
+비율과 결측값을 유지하고 평균 경사 공식은 추가하지 않습니다. 공식 코스 수치가
+있어도 서비스 분석의 결측값을 임의로 대체하지 않습니다. `OUTDATED`·`PARTIAL`과
+개발용·단위 가정·수직 기준 미확인 상태는 화면에서도 함께 처리해야 합니다.
+
+Service의 읽기 전용 `REPEATABLE_READ` 트랜잭션에서 기본 정보와 최신 분석을
+배치 조회하므로 요청 도중 코스가 갱신되어도 DB 버전이 섞이지 않습니다.
+각 분석 파일에는 기존의 DB·프로필 일치 검증을 동일하게 적용합니다.
+
+### 오류
+
+| HTTP | 코드 | 조건 |
+| --- | --- | --- |
+| 400 | `COMPARISON_400_1` | ID 누락, 2개 미만/3개 초과, 중복, null, 0 또는 음수 |
+| 400 | `COMPARISON_400_2` | 코스들이 서로 다른 산에 소속됨 |
+| 400 | `GLOBAL_400_3` | 숫자가 아니거나 Long 정수 범위를 넘는 ID |
+| 404 | `COMPARISON_404_1` | 선택한 코스 중 존재하지 않는 코스가 있음 |
+| 503 | `ANALYSIS_503_1` | 저장된 분석 파일의 부재·손상 또는 DB 요약과 불일치 |
+
+### 로컬 검증
+
+#84의 분석 결과 적재 후 서버를 실행하고 새 PowerShell에서 조회합니다.
+
+```powershell
+$comparison = (Invoke-RestMethod "http://localhost:8080/api/v1/course-comparisons?courseIds=1,2,3").data
+$comparison.courses | Select-Object courseId, courseName, currentCourseVersion,
+    @{Name="qualityStatus"; Expression={$_.analysis.qualityStatus}},
+    @{Name="distanceMeters"; Expression={$_.analysis.metrics.distanceMeters}},
+    @{Name="profileUrl"; Expression={$_.analysis.profileUrl}}
+```
+
+기본 `test`에서 비교 Service·Controller와 분석 배치 조회 테스트를 실행합니다.
+명시적으로 개발용 PostGIS를 지정하면 실제 JDBC 배치 조회·최신 버전 선택·품질
+상태·경로 변경·파일 오류를 검증하는 통합 테스트도 실행합니다. 합성 테스트용
+행과 파일은 모두 롤백하며 기존 개발 코스와 분석 결과는 수정하지 않습니다.
+
+```powershell
+$env:ANALYSIS_TEST_JDBC_URL = "jdbc:postgresql://127.0.0.1:5433/trail_map"
+.\gradlew.bat test --tests "*CourseComparisonPostgisIntegrationTest" --rerun-tasks
+Remove-Item Env:ANALYSIS_TEST_JDBC_URL
+```

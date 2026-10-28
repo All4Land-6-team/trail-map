@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 import static com.all4land.trailmap.domain.courseanalysis.AnalysisTestDocuments.*;
@@ -116,6 +117,73 @@ class CourseAnalysisServiceTest {
     void invalidIdsDoNotQueryStorage(long id) {
         assertThatThrownBy(() -> service.getSummary(id)).isInstanceOf(CourseAnalysisException.class);
         assertThatThrownBy(() -> service.getProfile(id)).isInstanceOf(CourseAnalysisException.class);
+        verifyNoInteractions(repository, store);
+    }
+
+    @Test
+    void batchKeepsRequestedOrderAndMissingAnalysisWithoutRepeatingDbQueries() {
+        var ids = List.of(2L, 1L);
+        when(repository.findCourses(ids)).thenReturn(List.of(
+                new CourseRow(1, 2, 1, 3, true), new CourseRow(2, 2, 1, 3, true)));
+        when(repository.findLatestForCourses(ids)).thenReturn(List.of(row(true, true, false)));
+        when(store.load(7)).thenReturn(stored);
+
+        var responses = service.getSummaries(ids);
+
+        assertThat(responses).extracting(response -> response.courseId()).containsExactly(2L, 1L);
+        assertThat(responses.getFirst().qualityStatus()).isEqualTo(AnalysisQualityStatus.NO_DATA);
+        assertThat(responses.getFirst().metrics().distanceMeters()).isNull();
+        assertThat(responses.getFirst().profileUrl()).isNull();
+        assertThat(responses.getLast().qualityStatus()).isEqualTo(AnalysisQualityStatus.PARTIAL);
+        assertThat(responses.getLast().sourceKind()).isEqualTo("development");
+        assertThat(responses.getLast().settings().verticalReference()).isNull();
+        verify(repository, never()).findCourse(anyLong());
+        verify(repository, never()).findLatest(anyLong());
+        verify(store).load(7);
+    }
+
+    @Test
+    void batchPreservesOutdatedVersionAndItsOriginalProfileReference() {
+        var ids = List.of(1L, 2L);
+        when(repository.findCourses(ids)).thenReturn(List.of(
+                new CourseRow(1, 2, 2, 3, true), new CourseRow(2, 2, 1, 3, true)));
+        when(repository.findLatestForCourses(ids)).thenReturn(List.of(row(false, true, false)));
+        when(store.load(7)).thenReturn(stored);
+        var response = service.getSummaries(ids).getFirst();
+        assertThat(response.qualityStatus()).isEqualTo(AnalysisQualityStatus.OUTDATED);
+        assertThat(response.recordedQualityStatus()).isEqualTo(AnalysisQualityStatus.PARTIAL);
+        assertThat(response.currentCourseVersion()).isEqualTo(2);
+        assertThat(response.analyzedCourseVersion()).isEqualTo(1);
+        assertThat(response.profileUrl()).isEqualTo("/api/v1/course-analyses/7/profile");
+    }
+
+    @Test
+    void batchRejectsMissingCoursesBeforeOpeningAnalysisFiles() {
+        var ids = List.of(1L, 2L);
+        when(repository.findCourses(ids)).thenReturn(List.of(new CourseRow(1, 2, 1, 3, true)));
+        assertThatThrownBy(() -> service.getSummaries(ids)).isInstanceOfSatisfying(CourseAnalysisException.class,
+                error -> assertThat(error.getResponseCode()).isEqualTo(CourseAnalysisErrorCode.COURSE_NOT_FOUND));
+        verify(repository, never()).findLatestForCourses(anyList());
+        verifyNoInteractions(store);
+    }
+
+    @Test
+    void batchPropagatesUnavailableArtifactsInsteadOfFabricatingMissingAnalysis() {
+        var ids = List.of(1L, 2L);
+        when(repository.findCourses(ids)).thenReturn(List.of(
+                new CourseRow(1, 2, 1, 3, true), new CourseRow(2, 2, 1, 3, true)));
+        when(repository.findLatestForCourses(ids)).thenReturn(List.of(row(true, true, false)));
+        when(store.load(7)).thenThrow(new CourseAnalysisException(CourseAnalysisErrorCode.DATA_UNAVAILABLE));
+        assertThatThrownBy(() -> service.getSummaries(ids)).isInstanceOfSatisfying(CourseAnalysisException.class,
+                error -> assertThat(error.getResponseCode()).isEqualTo(CourseAnalysisErrorCode.DATA_UNAVAILABLE));
+    }
+
+    @Test
+    void invalidBatchIdsDoNotQueryStorage() {
+        for (var ids : List.of(List.<Long>of(), List.of(1L, 1L), List.of(0L, 1L))) {
+            assertThatThrownBy(() -> service.getSummaries(ids)).isInstanceOf(CourseAnalysisException.class);
+        }
+        assertThatThrownBy(() -> service.getSummaries(null)).isInstanceOf(CourseAnalysisException.class);
         verifyNoInteractions(repository, store);
     }
 
