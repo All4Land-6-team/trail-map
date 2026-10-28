@@ -253,7 +253,13 @@
 .community-inline-link { min-height:44px; margin-top:5px; padding:8px 0; border:0; color:var(--af-green-dark); background:transparent; font:700 11px/16px "Noto Sans KR",sans-serif; text-align:left; text-decoration:underline; }
 .community-picker__map { height:min(37dvh,305px); min-height:180px; overflow:hidden; border:1px solid var(--af-line); border-radius:13px; }
 .community-picker__selection,.community-register__location { min-height:42px; margin:12px 0 0; padding:11px 13px; border-radius:10px; color:var(--af-ink); background:#e8f0e5; font-size:11px; }
+.community-register__location { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.community-register__location span { min-width:0; line-height:16px; }
+.community-register__location button { flex:none; min-height:32px; padding:5px 8px; border:1px solid var(--af-green); border-radius:8px; color:var(--af-green-dark); background:#fff; font:700 10px/14px "Noto Sans KR",sans-serif; }
+.community-register__location button:disabled { opacity:.55; }
 .community-register__map { height:min(29dvh,220px); min-height:170px; overflow:hidden; border:1px solid var(--af-line); border-radius:14px; }
+.community-register__courses { margin-bottom:12px; }
+.community-register__courses .community-course-option { min-height:58px; }
 .community-register .community-field-label { margin:17px 0 8px; }
 .community-register .community-photo-field .community-field-label { margin-top:0; }
 .community-register .af-spot-type-selector { flex-wrap:nowrap; gap:6px; }
