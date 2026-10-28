@@ -63,7 +63,7 @@ Java 적재기에는 이 명령이 만든 **JSON v2**를 전달한다. 이전 �
 
 ## 로컬 DB 추정 경계 적용: 2026-10-28
 
-북한산 `NPK_CD=L999M001S009` 원본 버퍼를 EPSG:5179에서 PostGIS `ST_Buffer(geom, -3000)`으로 축소하고 EPSG:4326으로 변환했다. 화면용 `frontend/src/assets/data/bukhansan-park-buffer-inset-3km.geojson`과 같은 도형을 산 ID 2의 `mountain_boundary`에 유효한 MultiPolygon으로 저장했다. 면적은 약 88.87㎢이며 출처 행은 `data_source.source_id=41`이다. 이 값은 **공식 원본 경계가 아니라 추정 경계**다. 다른 DB에는 적용되지 않는다.
+북한산 `NPK_CD=L999M001S009` 원본 버퍼를 EPSG:5179에서 PostGIS `ST_Buffer(geom, -3000)`으로 축소하고 EPSG:4326으로 변환했다. 축소 도형을 산 ID 2의 `mountain_boundary`에 유효한 MultiPolygon으로 저장했다. 면적은 약 88.87㎢이며 출처 행은 `data_source.source_id=41`이다. 이 값은 **공식 원본 경계가 아니라 추정 경계**다. 다른 DB에는 적용되지 않는다.
 
 당시 기존 시설 104건(화장실 95, 음수대 4, 쉼터 5)의 산 소속을 한 차례 다시 판정했다. `ST_Covers` 기준 안쪽 101건은 `mountain_id=2`, 바깥쪽 화장실 3건은 `mountain_id=NULL`로 저장했다. 바깥쪽 시설 ID는 34·43·46이고, 출처 ID는 모두 4다. 기존 시설의 식별자와 원본 해시는 유지했다. 화장실 출처 적재 결과는 `inserted=0, updated=3, skipped=92`; 샘터는 `0/0/1`; 기타구축물은 `0/0/8`이었다. 이 작업은 현재 신규 시설 전용 적재 정책 이전에 수행했다.
 

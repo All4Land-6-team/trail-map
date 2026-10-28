@@ -53,8 +53,6 @@ npm run dev
 
 ## 산별 코스 목록·필터 (FLOW-02·03)
 
-홈에서 북한산을 선택해 코스 목록에 들어오면 지도에 추정 경계를 주황색으로 임시 표시합니다. `src/assets/data/bukhansan-park-buffer.geojson`은 로컬 `data/raw/knps/boundaries/portal-15017313/park-boundary.zip`에서 `NPK_CD=L999M001S009`인 북한산 도형만 추출하고, 원본 좌표계 EPSG:5179에서 EPSG:4326으로 변환한 자산입니다. 화면에 쓰는 `src/assets/data/bukhansan-park-buffer-inset-3km.geojson`은 원본 버퍼 도형을 EPSG:5179에서 3,000m 안쪽으로 축소한 뒤 EPSG:4326으로 변환했습니다. 처음에는 축소 도형 전체를 보여주며 코스 선택 시 해당 경로로 이동합니다. 원본 복원 결과가 아니므로 실제 공원 경계나 시설 소속 판정에는 사용하지 않습니다.
-
 - `#mountains/{mountainId}/courses`에서 선택한 산의 코스 목록을 엽니다. 홈의 뒤로 가기와 브라우저의 앞·뒤 이동을 지원합니다.
 - `src/api/courseMock.ts`의 교체 가능한 데이터 접근 함수를 사용합니다. 북한산 7개, 나머지 산 각 1개의 합성 코스이며 실제 등산로·분석값·실시간 통제정보가 아닙니다. 지도에도 예시 경로임을 표시합니다.
 - 카드 Swipe·마우스 드래그·Dot 선택·지도 경로 선택은 같은 코스를 선택하고 지도 경로를 강조합니다.

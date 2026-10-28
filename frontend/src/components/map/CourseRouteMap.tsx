@@ -6,7 +6,6 @@ import { supportsTerrain, type TerrainStatus } from "./terrain";
 import type { Course } from "../../types/course";
 import type { CourseProfileSample, CourseSpot } from "../../types/courseDetail";
 import { SpotMarker } from "./SpotMarker";
-import boundaryPreviewRaw from "../../assets/data/bukhansan-park-buffer-inset-3km.geojson?raw";
 import "./course-route-map.css";
 
 const summitAsset = new URL("../../assets/icons/course-summit.svg", import.meta.url).href;
@@ -17,11 +16,6 @@ const SOURCE = "discovery-course-routes";
 const ROUTE_LAYER = "discovery-course-lines";
 const ACTIVE_OUTLINE = "discovery-active-outline";
 const ACTIVE_ROUTE = "discovery-active-route";
-const BOUNDARY_SOURCE = "bukhansan-buffer-preview";
-const BOUNDARY_FILL = "bukhansan-buffer-preview-fill";
-const BOUNDARY_LINE = "bukhansan-buffer-preview-line";
-const BOUNDARY_BOUNDS: [[number, number], [number, number]] = [[126.933407, 37.596556], [127.043358, 37.738683]];
-const boundaryPreview = JSON.parse(boundaryPreviewRaw) as GeoJSONSourceSpecification["data"];
 export type CourseRouteMapProps = {
   courses: readonly Course[];
   selected: Course | null;
@@ -38,11 +32,10 @@ export type CourseRouteMapProps = {
   focusSpotId?: string;
   showSpotLabels?: boolean;
   onSpotSelect?: (id: string) => void;
-  showBoundaryPreview?: boolean;
 };
 
 export function CourseRouteMap({ courses, selected, mountainId, center, mapBottomInset = 0, onSelect, onNotify, variant = "list", profileSample,
-  summitCoordinate, spots, selectedSpotId, focusSpotId, showSpotLabels = false, onSpotSelect, showBoundaryPreview = false }: CourseRouteMapProps) {
+  summitCoordinate, spots, selectedSpotId, focusSpotId, showSpotLabels = false, onSpotSelect }: CourseRouteMapProps) {
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [routesReady, setRoutesReady] = useState(false);
   const [dimension, setDimension] = useState<MapDimension>("2D");
@@ -52,9 +45,6 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
   const [spotPoints, setSpotPoints] = useState<readonly { spot: CourseSpot; x: number; y: number }[]>([]);
   const [locating, setLocating] = useState(false);
   const alive = useRef(true);
-  const previewFocusRef = useRef<{ map: MapLibreMap | null; initialCourseId: string | null; showWholeBoundary: boolean }>({
-    map: null, initialCourseId: null, showWholeBoundary: true,
-  });
   const terrainEnabled = supportsTerrain(mountainId ?? selected?.mountainId ?? courses[0]?.mountainId);
   const onReady = useCallback((instance: MapLibreMap | null) => setMap(instance), []);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -63,13 +53,6 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
     if (!map) return;
     function updateRoutes() {
       if (!map || !map.isStyleLoaded()) return;
-      if (showBoundaryPreview && !map.getSource(BOUNDARY_SOURCE)) {
-        map.addSource(BOUNDARY_SOURCE, { type: "geojson", data: boundaryPreview });
-        map.addLayer({ id: BOUNDARY_FILL, type: "fill", source: BOUNDARY_SOURCE,
-          paint: { "fill-color": "#f59e0b", "fill-opacity": 0.22 } });
-        map.addLayer({ id: BOUNDARY_LINE, type: "line", source: BOUNDARY_SOURCE,
-          paint: { "line-color": "#d97706", "line-width": 3, "line-opacity": 1, "line-dasharray": [3, 2] } });
-      }
       const data: GeoJSONSourceSpecification["data"] = { type: "FeatureCollection", features: courses.map(course => ({
         type: "Feature", properties: { courseId: course.id }, geometry: { type: "LineString", coordinates: course.routeCoordinates },
       })) };
@@ -90,21 +73,9 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
       const inset = Math.min(mapBottomInset, Math.max(0, height - 1));
       const visibleHeight = Math.max(1, height - inset);
       const padding = { top: Math.min(110, visibleHeight * 0.35), bottom: inset + Math.min(36, visibleHeight * 0.15), left: 35, right: 82 };
-      const previewFocus = previewFocusRef.current;
-      if (previewFocus.map !== map) {
-        previewFocus.map = map;
-        previewFocus.initialCourseId = selected?.id ?? null;
-        previewFocus.showWholeBoundary = true;
-      } else if (previewFocus.initialCourseId === null) {
-        previewFocus.initialCourseId = selected?.id ?? null;
-      } else if (selected?.id !== previewFocus.initialCourseId) {
-        previewFocus.showWholeBoundary = false;
-      }
       const focusedSpot = spots?.find(spot => spot.id === focusSpotId);
       if (focusedSpot) {
         map.easeTo({ center: focusedSpot.coordinate, padding, offset: [0, 20], duration: 200 });
-      } else if (showBoundaryPreview && previewFocus.showWholeBoundary) {
-        map.fitBounds(BOUNDARY_BOUNDS, { padding: { ...padding, right: 35 }, maxZoom: 12, duration: 0 });
       } else if (selected?.routeCoordinates.length) {
         const bounds = new LngLatBounds();
         selected.routeCoordinates.forEach(point => bounds.extend(point));
@@ -118,7 +89,7 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
     map.on("idle", onIdle);
     updateRoutes();
     return () => { map.off("load", updateRoutes); map.off("resize", updateRoutes); map.off("idle", onIdle); };
-  }, [map, courses, selected, center, focusSpotId, spots, mapBottomInset, showBoundaryPreview]);
+  }, [map, courses, selected, center, focusSpotId, spots, mapBottomInset]);
 
   useEffect(() => {
     if (!map) return;
@@ -190,6 +161,6 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
       <MapAction iconName="Locate" disabled={!map || locating} aria-busy={locating}
         aria-label={locating ? "현재 위치 확인 중" : "현재 위치"} onClick={locate} />
     </div>
-    <span className="course-map__example">{showBoundaryPreview ? "주황색: 3km 안쪽으로 축소한 추정 경계 · 실제 공원 경계 아님 / 예시 경로" : variant === "detail" ? "경로·분석 예시" : "예시 경로"}</span>
+    <span className="course-map__example">{variant === "detail" ? "경로·분석 예시" : "예시 경로"}</span>
   </div>;
 }
