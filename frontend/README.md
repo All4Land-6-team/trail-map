@@ -11,7 +11,7 @@ npm run dev
 
 프로덕션 빌드는 `npm run build`로 확인합니다.
 
-## 개발용 화장실 전체 조회
+## 개발용 공식 시설 전체 조회
 
 `npm run dev` 실행 후 `http://localhost:5173/?preview=facilities&sourceId=4`에서 적재된 화장실 후보 전체를 확인합니다. `sourceId`에는 백엔드 적재 로그의 출처 ID를 지정합니다. 현재 시범 적재는 4번 출처의 95건입니다. 이 화면은 `import.meta.env.DEV`에서만 연결되며 프로덕션 번들에 포함되지 않습니다.
 
@@ -214,8 +214,16 @@ OpenFreeMap 배경지도는 공급원의 HTTP 응답에 따른 기본 브라우�
 
 `CourseDetailPage` → `useCourseFacilities` → `api/courseFacilities.ts` → `GET /api/v1/courses/{courseId}/facilities?type=RESTROOM&radiusMeters=250` → `utils/courseFacilities.ts` → `CourseSpots`와 `CourseRouteMap` 순서로 읽는다. 검토 API의 GeoJSON과 달리 코스 API는 `SuccessResponse.data` 배열을 반환한다. 프론트는 R만 수행하며 시설·코스를 생성하거나 변경하지 않는다.
 
-화장실 및 전체 탭은 같은 API 결과를 사용한다. 합성 화장실은 제거하며 오류·빈 응답에 대한 대체 데이터로도 표시하지 않는다. 화장실 목록 선택은 지도 위치로 이동하고, 다른 예시 스팟의 후기 이동은 기존대로 동작한다. 미연결 코스·조회 중·실패와 재시도·결과 없음 상태를 구분한다.
+화장실·쉼터·음수대 및 전체 탭은 같은 API 결과를 사용한다. 합성 시설은 제거하며 오류·빈 응답에 대한 대체 데이터로도 표시하지 않는다. 시설 목록 선택은 지도 위치로 이동하고, 사진 예시 스팟의 이동은 기존대로 동작한다. 미연결 코스·조회 중·실패와 재시도·결과 없음 상태를 구분한다.
 
-250m는 시설 Point에서 코스 전체 LineString까지의 최단거리이며 도보 이동거리가 아니다. 코스는 9개 점의 합성 경로(약 1.2km)로 화면 분석 예시의 4.2km와 다르다. 화장실 위치는 원본 자료의 좌표이며, 원본 기준일을 표시하고 과거 상태를 현재 운영 여부로 해석하지 않는다. 쉼터·음수대·사진 스팟은 아직 화면 예시다.
+250m는 시설 Point에서 코스 전체 LineString까지의 최단거리이며 도보 이동거리가 아니다. 코스는 9개 점의 합성 경로(약 1.2km)로 화면 분석 예시의 4.2km와 다르다. 시설 위치는 원본 자료의 좌표이며, 원본 기준일을 표시하고 과거 상태를 현재 운영 여부로 해석하지 않는다. 쉼터·음수대도 실제 API 결과이며 사진 스팟만 화면 예시다.
 
 `npm run test:course-facilities`, `npm run test:course-detail`, `npm run test:facilities`, `npm run lint`, `npm run build`로 API 계약·화장실 합성 데이터 제거·조회 실패 및 취소·기존 화면 로직·타입을 확인한다.
+
+## 쉼터·음수대 통합 (#75)
+
+코스 상세에서 `category=shelter`·`water`·`restroom`·`all`을 지원한다. 각 유형의 로딩·실패·재시도·빈 상태를 구분하고 이전 코스 요청은 취소한다. 전체 탭은 성공한 유형을 먼저 표시하며 일부 실패 상태에서 전체 개수를 확정하지 않는다.
+
+개발 검토 URL에 `type=SHELTER` 또는 `type=DRINKING_WATER`를 지정한다. 예: `http://localhost:5173/?preview=facilities&sourceId=7&type=SHELTER`. 출처 ID는 적재 로그에서 확인한다. 지도 마커·목록 선택·이름 및 원본 식별자 검색을 같은 방식으로 사용한다.
+
+프론트는 Node 24에서 `npm run dev -- --port 5173 --strictPort`, 백엔드는 별도 터미널에서 실행한다. 자세한 데이터·동시 실행·검증 방법은 [공통 시설 파이프라인](../docs/facility-pipeline.md)을 참고한다.

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import tempfile
 from collections import Counter
 from pathlib import Path
 
 import shapefile
 from pyproj import CRS, Transformer
 
-from .contract import identifier, normalize_facility
+from .contract import add_facility, identifier, normalize_facility
+from .document import write_document
 
 
 def preprocess(input_path: Path, *, park_code: str, source_date: str = "2014-12-19",
@@ -57,14 +56,11 @@ def preprocess(input_path: Path, *, park_code: str, source_date: str = "2014-12-
                 excluded[reason] += 1
                 rejected.append({"sourceRecordId": str(attributes.get("OBJECTID")), "reason": reason})
                 continue
-            if record_id in records:
-                if records[record_id] != record:
-                    raise ValueError(f"conflicting_duplicate_source_record_id: {record_id}")
+            if not add_facility(records, record):
                 excluded["duplicate_source_record_id"] += 1
                 rejected.append({"sourceRecordId": record_id, "reason": "duplicate_source_record_id"})
                 continue
             # 서로 다른 OBJECTID의 좌표 중복은 실제 시설일 수 있으므로 보존한다.
-            records[record_id] = record
     if not records:
         raise ValueError(f"no_valid_selected_records: {dict(excluded)}")
     return {
@@ -87,23 +83,6 @@ def preprocess(input_path: Path, *, park_code: str, source_date: str = "2014-12-
             "notice": "공원코드 후보이며 북한산·도봉산 구분 전입니다. USE_YN은 원본 기준일의 값입니다.",
         },
     }
-
-
-def write_document(document: dict, output: Path, *, overwrite: bool = False) -> None:
-    output = Path(output)
-    if output.suffix.lower() != ".json":
-        raise ValueError("output_must_be_json")
-    if output.exists() and not overwrite:
-        raise FileExistsError(output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary = tempfile.mkstemp(dir=output.parent, suffix=".tmp")
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-            json.dump(document, stream, ensure_ascii=False, indent=2, allow_nan=False)
-            stream.write("\n")
-        os.replace(temporary, output)
-    finally:
-        Path(temporary).unlink(missing_ok=True)
 
 
 def main() -> None:

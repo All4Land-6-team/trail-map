@@ -1,27 +1,31 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AttributionControl, LngLatBounds, Marker, type MapLibreMap } from 'maplibre-gl';
 import BaseMap from '../../components/map/BaseMap';
+import { SpotMarker } from '../../components/map';
+import { Icon } from '../../components/common/Icon';
 import { groupFacilityLocations } from '../../api/facilities';
-import type { Facility } from '../../types/facility';
+import type { CourseFacilityType, Facility } from '../../types/facility';
+import { facilitySpotKind } from '../../utils/courseFacilities';
 
 const CENTER: [number, number] = [126.99, 37.69];
 
 type Props = {
+  type: CourseFacilityType;
+  label: string;
   facilities: readonly Facility[];
   selected: Facility | null;
   fitRequest: number;
   onSelect: (id: number) => void;
 };
 
-export function FacilityPreviewMap({ facilities, selected, fitRequest, onSelect }: Props) {
+export function FacilityPreviewMap({ type, label, facilities, selected, fitRequest, onSelect }: Props) {
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const ready = useCallback((instance: MapLibreMap | null) => setMap(instance), []);
-  const groups = useMemo(() => groupFacilityLocations(facilities), [facilities]);
-  const selectRef = useRef(onSelect);
-  const selectedRef = useRef(selected);
-  const markersRef = useRef<{ button: HTMLButtonElement; group: Facility[] }[]>([]);
-  useEffect(() => { selectRef.current = onSelect; }, [onSelect]);
-  useEffect(() => { selectedRef.current = selected; }, [selected]);
+  const kind = facilitySpotKind(type);
+  // MapLibre Marker에 넘길 DOM 노드. SpotMarker는 포털로 이 안에 그린다.
+  const markers = useMemo(() => groupFacilityLocations(facilities)
+    .map(group => ({ group, node: document.createElement('div') })), [facilities]);
 
   useEffect(() => {
     if (!map) return;
@@ -34,27 +38,10 @@ export function FacilityPreviewMap({ facilities, selected, fitRequest, onSelect 
 
   useEffect(() => {
     if (!map) return;
-    const created = groups.map(group => {
-      const first = group[0];
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'facility-preview__marker';
-      button.textContent = group.length > 1 ? String(group.length) : 'WC';
-      button.title = group.map(facility => `${facility.name ?? '이름 없음'} · OBJECTID ${facility.sourceRecordId ?? '없음'}`).join('\n');
-      button.setAttribute('aria-label', group.length > 1
-        ? `같은 위치의 화장실 ${group.length}건, 클릭할 때마다 다음 시설 선택`
-        : `${first.name ?? '화장실'} · OBJECTID ${first.sourceRecordId ?? '없음'}`);
-      button.addEventListener('click', () => {
-        const index = group.findIndex(facility => facility.facilityId === selectedRef.current?.facilityId);
-        selectRef.current(group[(index + 1) % group.length].facilityId);
-      });
-      const marker = new Marker({ element: button, anchor: 'center' })
-        .setLngLat([first.longitude, first.latitude]).addTo(map);
-      return { button, group, marker };
-    });
-    markersRef.current = created;
-    return () => { created.forEach(({ marker }) => marker.remove()); markersRef.current = []; };
-  }, [map, groups]);
+    const created = markers.map(({ group, node }) => new Marker({ element: node, anchor: 'center' })
+      .setLngLat([group[0].longitude, group[0].latitude]).addTo(map));
+    return () => created.forEach(marker => marker.remove());
+  }, [map, markers]);
 
   useEffect(() => {
     if (!map || facilities.length === 0) return;
@@ -64,16 +51,29 @@ export function FacilityPreviewMap({ facilities, selected, fitRequest, onSelect 
   }, [map, facilities, fitRequest]);
 
   useEffect(() => {
-    for (const { button, group } of markersRef.current) {
-      const active = group.some(facility => facility.facilityId === selected?.facilityId);
-      button.setAttribute('aria-pressed', String(active));
-    }
     if (map && selected) map.easeTo({ center: [selected.longitude, selected.latitude], zoom: Math.max(map.getZoom(), 14), duration: 350 });
-  }, [map, groups, selected]);
+  }, [map, selected]);
 
-  return <section className="facility-preview__map" aria-label="화장실 위치 지도">
+  return <section className="facility-preview__map" aria-label="시설 위치 지도">
     <BaseMap className="facility-preview__base" center={CENTER} zoom={11} onMapReady={ready} />
-    <div className="facility-preview__map-key"><span aria-hidden="true">WC</span> 화장실
+    {markers.map(({ group, node }) => {
+      const first = group[0];
+      const active = group.some(facility => facility.facilityId === selected?.facilityId);
+      // 같은 좌표의 시설은 마커를 누를 때마다 다음 시설을 선택한다.
+      const selectNext = () => {
+        const index = group.findIndex(facility => facility.facilityId === selected?.facilityId);
+        onSelect(group[(index + 1) % group.length].facilityId);
+      };
+      return createPortal(<>
+        <SpotMarker kind={kind} aria-pressed={active} onClick={selectNext}
+          title={group.map(facility => `${facility.name ?? '이름 없음'} · 원본 식별자 ${facility.sourceRecordId ?? '없음'}`).join('\n')}
+          aria-label={group.length > 1
+            ? `같은 위치의 ${label} ${group.length}건, 클릭할 때마다 다음 시설 선택`
+            : `${first.name ?? label} · 원본 식별자 ${first.sourceRecordId ?? '없음'}`} />
+        {group.length > 1 && <span className="facility-preview__marker-count" aria-hidden="true">{group.length}</span>}
+      </>, node, first.facilityId);
+    })}
+    <div className="facility-preview__map-key"><Icon name={kind === 'water' ? 'Water' : kind === 'shelter' ? 'Shelter' : 'Restroom'} size={16} /> {label}
       <small>숫자는 같은 좌표의 시설 수입니다.</small>
     </div>
   </section>;

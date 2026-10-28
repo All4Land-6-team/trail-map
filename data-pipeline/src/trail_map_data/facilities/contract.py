@@ -1,4 +1,4 @@
-"""원본 형식에 독립적인 facility import v1 계약."""
+"""원본 형식에 독립적인 시설 원본 필드 검증. 산 소속은 별도 판정한다."""
 
 from __future__ import annotations
 
@@ -7,6 +7,17 @@ from datetime import date
 from typing import Any
 
 FACILITY_TYPES = {"RESTROOM", "SHELTER", "DRINKING_WATER"}
+
+
+def add_facility(records: dict[str, dict], record: dict) -> bool:
+    """같은 원본 ID의 동일 행은 건너뛰고 내용 충돌은 거부한다."""
+    key = record["sourceRecordId"]
+    if key in records:
+        if records[key] != record:
+            raise ValueError(f"conflicting_duplicate_source_record_id: {key}")
+        return False
+    records[key] = record
+    return True
 
 
 def identifier(value: Any) -> str:

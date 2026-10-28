@@ -16,7 +16,7 @@
     "test:course-detail": "node --test tests/course-detail.test.mjs",
     "test:terrain": "node --experimental-strip-types --test tests/map-terrain.test.mjs",
     "test:facilities": "node --experimental-strip-types --test tests/facilities.test.mjs",
-    "test:course-facilities": "node --experimental-strip-types --test tests/course-facilities.test.mjs",
+    "test:course-facilities": "node --experimental-strip-types --test tests/course-facilities.test.mjs tests/course-facilities-view.test.mjs",
     "test:sheets": "node --experimental-strip-types --test tests/map-sheet-geometry.test.mjs",
     "preview": "vite preview"
   },
