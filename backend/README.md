@@ -147,3 +147,107 @@ community/spot/facility/{facilityId}/{reviewId}/{uuid}.{ext}
 ## 공식 시설 공통 파이프라인 (#75)
 
 화장실·쉼터·음수대의 한 번의 전처리, 출처별 JSON v2 적재, 산 소속 판정 및 실행·검증 방법은 [공통 시설 파이프라인](../docs/facility-pipeline.md)을 따른다. 개별 어댑터의 v1은 후보 검토용이며 직접 DB에 적재하지 않는다.
+
+## 코스 분석 결과 적재·조회 (#84)
+
+#80 Python 파이프라인이 만든 `schema_version=1` JSON을 검증하고, 기존
+`course_analysis` 테이블에 요약을 저장합니다. 차트용 샘플 테이블은 추가하지
+않습니다. 원본 분석 JSON은 그대로 두고, 상세 프로필·입력 지문·분석 설정은
+별도 파일 저장소에 보관합니다. Python 실행 코드나 프론트 화면은 변경하지 않습니다.
+
+### 로컬 적재
+
+먼저 PostGIS와 코스 데이터를 준비하고 분석 JSON을 생성합니다. 예시 경로는
+`../data/processed/course-analysis/course-1-dev-assumed-m.json`입니다.
+고도 단위를 m로 **가정한 개발용** 결과와 수직 기준 미확인 사유를 그대로
+보존하며 `AVAILABLE`로 승격하지 않습니다. 제공기관·URL을 모를 때도 DEM 파일과
+보조 파일의 SHA-256 및 메타데이터로 출처 버전을 기록할 수 있습니다.
+
+다음 명령은 백엔드 디렉터리에서 실행합니다. DB 비밀 설정은 기존
+`application-secret.properties`를 사용합니다.
+
+```powershell
+.\gradlew.bat test bootJar
+java -jar ".\build\libs\trail-map-backend-0.0.1-SNAPSHOT.jar" `
+  "--spring.main.web-application-type=none" `
+  "--course-analysis.import.enabled=true" `
+  "--course-analysis.import.file=C:\trail-map\data\processed\course-analysis\course-1-dev-assumed-m.json" `
+  "--course-analysis.import.dem-source-name=북한산 DEM" `
+  "--course-analysis.import.dem-provider=회사 제공(팀원 전달)"
+```
+
+적재 성공 시 `analysisId`, `demSourceId`, `inserted`를 기록하고 프로세스를
+종료합니다. 공개 쓰기 API는 제공하지 않습니다. `dem-provider`는 선택 항목이며
+확인되지 않은 기관명을 추측해서 기록하지 않습니다.
+
+- 코스·산·버전·경로와 선택적 코스 출처 ID가 현재 DB와 일치해야 합니다.
+- 경로 비교는 PostGIS GeoJSON 기본 소수 9자리 정밀도에서 방향·꼭짓점 순서를
+  포함합니다. 동일 버전에서 경로가 바뀐 경우도 감지합니다.
+- DEM 출처는 코스 출처와 별도로 `data_source`에 등록합니다. `source_format`은
+  `GEOTIFF`, `source_version`은 DEM 내용·보조 파일 지문·메타데이터와 고도 단위·수직
+  기준 해석의 해시입니다. 나중에 단위나 수직 기준이 확인되면 새 출처 버전으로
+  보존하므로 미확인 결과를 덮어쓸 필요가 없습니다.
+- `(course_id, course_version, dem_source_id, algorithm_version)`이 같은 결과는
+  반복 적재해도 중복되지 않습니다. 실행 시각과 로컬 입력 경로만 달라진 경우도
+  기존 결과를 재사용합니다. 설정·입력 지문·프로필·품질 등이 다르면 덮어쓰지
+  않고 `ANALYSIS_409_2`로 거절합니다. 알고리즘/정책 변경에는 명시적인 버전 관리가 필요합니다.
+- 입력은 최대 64 MiB, 샘플 설정과 실제 샘플 수는 최대 100,000개입니다.
+  지원하지 않는 필드·스키마, 문자열/소수 ID, 비정상 수치, 요약과 프로필이
+  불일치하는 결과는 거절합니다. 경사·상승량은 결측 구간을 연결하지 않습니다.
+
+파일 저장소 기본 경로는 `../data/processed/course-analysis-store`입니다.
+필요하면 `COURSE_ANALYSIS_ROOT_PATH` 또는 `course-analysis.root-path`를
+지정합니다. 일반 경로와 `file:///C:/...` URI를 모두 지원합니다.
+내부 파일명은 `{analysisId}.json`이며 원본 입력 경로는 API에 노출하지 않습니다.
+NTFS/Linux의 하드 링크로 완성 파일을 게시하므로 저장소는 하드 링크를 지원하는
+로컬 파일 시스템에 둡니다. 파일 게시에 실패하면 DB 적재도 롤백하며 기존 파일은
+덮어쓰지 않습니다. DB 롤백 시 새 파일을 제거합니다. 강제 종료 등으로 남은
+고아 파일은 자동으로 덮어쓰지 않으며 DB와 파일 저장소를 함께 백업·복구합니다.
+
+### 조회 API
+
+적재 후 일반 서버를 `.\gradlew.bat bootRun`으로 실행합니다.
+
+| 요청 | 응답의 `data` |
+| --- | --- |
+| `GET /api/v1/courses/{courseId}/analysis` | 분석 ID, 현재/분석 코스 버전, DEM 출처 ID, 요약 `metrics`, `coverage`, `settings`, 품질 사유, `profileUrl` |
+| `GET /api/v1/course-analyses/{analysisId}/profile` | 동일 분석의 메타데이터 `analysis`와 `samples` |
+
+임시 사용자 헤더는 필요하지 않습니다. 프로필은 분석 ID로 조회하므로 요약을
+가져온 뒤 최신 결과가 바뀌어도 다른 분석의 샘플과 섞이지 않습니다. API는
+camelCase이며 각 샘플은 `sampleIndex`, `distanceMeters`,
+`coordinate: [경도, 위도]`, `elevationMeters`, `slopePercent`, `sampleStatus`입니다.
+경사 단위는 %이고 첫 샘플·결측 구간은 `null`입니다. 거리는 m, 시간은 초이며
+아직 계산하지 않은 소요 시간·급경사 비율은 `null`입니다. 평균 경사 공식은 도입하지 않습니다.
+
+코스는 있지만 분석이 없으면 `200`, `qualityStatus=NO_DATA`,
+`qualityReasons=["ANALYSIS_NOT_FOUND"]`와 null 측정값을 반환합니다. 코스 또는
+분석 ID가 없으면 `404`, 잘못된 ID는 `400`입니다. 버전·경로·소속 산·기록된
+코스 출처가 달라지면 `OUTDATED`와 변경 사유를 반환하고 `recordedQualityStatus`에
+원래 품질을 유지합니다. 현재 버전·경로와 맞는 결과를 우선하며 그 안에서는
+계산 시각, 분석 ID 순으로 최신 결과를 선택합니다. 저장 파일이 없거나 손상됐거나
+DB와 일치하지 않으면 다른 값으로 대체하지 않고 `503 ANALYSIS_503_1`입니다.
+
+```powershell
+$analysis = (Invoke-RestMethod "http://localhost:8080/api/v1/courses/1/analysis").data
+$analysis
+Invoke-RestMethod ("http://localhost:8080" + $analysis.profileUrl)
+```
+
+### 테스트
+
+기본 `test`는 문서 검증·파일 저장·서비스·Controller 테스트를 실행합니다.
+실제 PostGIS 통합 테스트는 명시적으로 개발 DB를 지정한 경우에만 실행하며
+테스트 행과 파일은 롤백합니다. 기본 비밀번호는 로컬 `DB_PASSWORD` 설정을 쓰고,
+별도 테스트 DB를 쓰면 `ANALYSIS_TEST_DB_USERNAME`, `ANALYSIS_TEST_DB_PASSWORD`를 지정합니다.
+
+```powershell
+$env:ANALYSIS_TEST_JDBC_URL = "jdbc:postgresql://127.0.0.1:5433/trail_map"
+.\gradlew.bat test --tests "*CourseAnalysisPostgisIntegrationTest" --rerun-tasks
+Remove-Item Env:ANALYSIS_TEST_JDBC_URL
+```
+
+실제 Python 산출물의 입력 검증만 추가로 실행하려면 `ANALYSIS_SAMPLE_JSON`을
+해당 JSON의 절대 경로로 설정하고 `*CourseAnalysisDocumentReaderTest`를 실행합니다.
+프론트 연결 시 현재 임시 타입의 고도·경사가 항상 숫자라는 가정을 제거하고
+API의 null·품질 상태를 처리해야 합니다. 최대 3개 코스 비교와 화면 연동은 후속 작업입니다.
