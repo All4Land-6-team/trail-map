@@ -1,4 +1,4 @@
-import { apiBaseUrl, userId } from "./hikeScheduleApi";
+import { apiBaseUrl, userId } from "./hikeScheduleApi.ts";
 import type { LngLat } from "../types/hike";
 
 // 등산 기록 API (/api/v1/hike-records, 이슈 #76·#78). 시작 → 위치 기록 → 하산 → 종료.

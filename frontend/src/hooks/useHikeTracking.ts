@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { HIKE_RECORD_ERROR, HikeRecordApiError, MAX_POSITIONS_PER_REQUEST, sendHikePositions, type HikePosition } from "../api/hikeRecordApi";
-import { getHikeSession, recordHikePosition, setHikeTraveledMeters } from "../store/hikeSessionStore";
+import { HIKE_RECORD_ERROR, HikeRecordApiError, MAX_POSITIONS_PER_REQUEST, sendHikePositions, type HikePosition } from "../api/hikeRecordApi.ts";
+import { getHikeSession, recordHikePosition, setHikeTraveledMeters } from "../store/hikeSessionStore.ts";
 import type { LngLat } from "../types/hike";
-import { isPathPosition } from "../utils/hikeTracking";
+import { isPathPosition } from "../utils/hikeTracking.ts";
 
 /** 모은 위치를 이 간격마다 보낸다. */
 const FLUSH_INTERVAL_MS = 15_000;

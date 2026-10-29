@@ -1,4 +1,4 @@
-import { DEV_COURSE_IDS } from "../constants/hikeCourseIds";
+import { DEV_COURSE_IDS } from "../constants/hikeCourseIds.ts";
 import type { HikeSchedule } from "../types/hike";
 
 // 등산 일정 API (/api/v1/hike-schedules, 이슈 #56·#61).
