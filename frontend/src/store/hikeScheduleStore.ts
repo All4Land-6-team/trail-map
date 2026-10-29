@@ -58,6 +58,23 @@ export function useHikeScheduleMode() {
   return useSyncExternalStore(subscribe, () => state.mode);
 }
 
+/** 백엔드 연결 확인이 끝나면 api 또는 mock을 돌려준다. */
+export function whenScheduleModeReady() {
+  start();
+  if (state.mode !== "checking") return Promise.resolve(state.mode);
+  return new Promise<HikeScheduleMode>(resolve => {
+    const unsubscribe = subscribe(() => {
+      if (state.mode === "checking") return;
+      unsubscribe();
+      resolve(state.mode);
+    });
+  });
+}
+
+export function findScheduleById(scheduleId: number) {
+  return state.schedules.find(schedule => schedule.scheduleId === scheduleId);
+}
+
 export function findSchedule(date: string) {
   return state.schedules.find(schedule => schedule.date === date);
 }
