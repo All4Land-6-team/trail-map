@@ -1,4 +1,5 @@
 import type { HomeMountain } from "./home";
+import type { AnalysisCourseReference } from "./courseAnalysis";
 
 export type CourseDifficulty = "beginner" | "intermediate" | "advanced";
 export type CourseSort = "difficulty" | "name";
@@ -6,6 +7,8 @@ export type Course = {
   id: string;
   /** 공간조회에 사용하는 DB 코스 ID. 화면 경로의 문자열 ID와 구분한다. */
   backendCourseId?: number;
+  /** 분석 조회용 ID. 시설 시범 DB의 backendCourseId와 별도로 관리한다. */
+  analysisReference?: AnalysisCourseReference;
   mountainId: string;
   name: string;
   routeLabel: string;

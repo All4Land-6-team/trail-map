@@ -13,7 +13,7 @@
     "test:offline": "node --test tests/service-worker.test.cjs",
     "test:home": "node --test tests/home-discovery.test.mjs",
     "test:courses": "node --test tests/course-discovery.test.mjs",
-    "test:course-detail": "node --test tests/course-detail.test.mjs",
+    "test:course-detail": "node --experimental-strip-types --test tests/course-detail.test.mjs tests/course-detail-analysis.test.mjs tests/course-detail-analysis-view.test.mjs",
     "test:comparison": "node --experimental-strip-types --test tests/course-comparison.test.mjs",
     "test:terrain": "node --experimental-strip-types --test tests/map-terrain.test.mjs",
     "test:facilities": "node --experimental-strip-types --test tests/facilities.test.mjs",

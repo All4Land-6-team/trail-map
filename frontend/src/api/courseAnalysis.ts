@@ -1,6 +1,6 @@
 import type {
   AnalysisCoverage, AnalysisMetrics, AnalysisQualityStatus, AnalysisSettings, CourseAnalysis,
-  CourseAnalysisProfile, CourseComparison, LoadedCourseComparison,
+  CourseAnalysisProfile, CourseComparison, LoadedCourseComparison, AnalysisCourseReference, LoadedCourseAnalysis,
 } from '../types/courseAnalysis.ts';
 
 const FORMAT_ERROR = '분석 응답이 올바르지 않아요. 다시 불러와 주세요.';
@@ -141,7 +141,8 @@ export function parseCourseAnalysisProfile(value: unknown, expected: CourseAnaly
   return { analysis, samples };
 }
 
-async function requestJson(url: string, { signal, timeoutMs = 10_000 }: RequestOptions): Promise<unknown> {
+async function requestJson(url: string, { signal, timeoutMs = 10_000 }: RequestOptions,
+  invalidRequestMessage = '비교할 코스의 개수와 같은 산 소속인지 확인해 주세요.'): Promise<unknown> {
   signal?.throwIfAborted();
   const controller = new AbortController();
   const abort = () => controller.abort();
@@ -150,7 +151,7 @@ async function requestJson(url: string, { signal, timeoutMs = 10_000 }: RequestO
   try {
     const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal, cache: 'no-store' });
     if (!response.ok) {
-      if (response.status === 400) throw new Error('비교할 코스의 개수와 같은 산 소속인지 확인해 주세요.');
+      if (response.status === 400) throw new Error(invalidRequestMessage);
       if (response.status === 404) throw new Error('연결된 코스나 분석을 찾을 수 없어요. 목록에서 다시 선택해 주세요.');
       throw new Error('분석을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
     }
@@ -166,6 +167,29 @@ async function requestJson(url: string, { signal, timeoutMs = 10_000 }: RequestO
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener('abort', abort);
+  }
+}
+
+export function courseAnalysisUrl(courseId: number, apiBaseUrl = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080') {
+  if (!id(courseId)) throw new Error('분석용 코스 연결을 확인해 주세요.');
+  return apiBaseUrl.replace(/\/+$/, '') + '/api/v1/courses/' + courseId + '/analysis';
+}
+
+/** 기본 정보·시설용 ID로 추측하지 않고 명시적으로 연결된 코스·산을 검증한다. */
+export async function loadCourseAnalysis(reference: AnalysisCourseReference, options: RequestOptions = {}): Promise<LoadedCourseAnalysis> {
+  if (!id(reference.mountainId)) throw new Error('분석용 산 연결을 확인해 주세요.');
+  const response = await requestJson(courseAnalysisUrl(reference.courseId, options.apiBaseUrl), options, '분석용 코스와 산 연결을 확인해 주세요.');
+  const analysis = parseCourseAnalysis(data(response));
+  if (analysis.courseId !== reference.courseId || analysis.mountainId !== reference.mountainId) {
+    throw new Error('연결된 산·코스와 분석 결과가 달라요. 코스 데이터를 확인해 주세요.');
+  }
+  if (analysis.analysisId === null) return { analysis, profile: null, profileError: null };
+  try {
+    const profile = await loadCourseAnalysisProfile(analysis, options);
+    return { analysis, profile, profileError: null };
+  } catch (error) {
+    options.signal?.throwIfAborted();
+    return { analysis, profile: null, profileError: error instanceof Error ? error.message : FORMAT_ERROR };
   }
 }
 
@@ -190,6 +214,6 @@ export async function loadCourseAnalysisProfile(analysis: CourseAnalysis, option
   if (!id(analysis.analysisId)) throw new Error('아직 분석 프로필이 없어요.');
   const base = (options.apiBaseUrl || import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
   // 응답의 URL을 직접 열지 않고, 신뢰한 API 주소와 검증한 ID로 구성한다.
-  const value = await requestJson(`${base}/api/v1/course-analyses/${analysis.analysisId}/profile`, options);
+  const value = await requestJson(`${base}/api/v1/course-analyses/${analysis.analysisId}/profile`, options, '분석 프로필 요청 정보를 확인해 주세요.');
   return parseCourseAnalysisProfile(value, analysis);
 }

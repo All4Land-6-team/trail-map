@@ -13,7 +13,9 @@ import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
 import type { CourseRequest } from "../../types/course";
 import type { CourseDetailView, CourseSpot, CourseSpotRequest, ProfileVisibility } from "../../types/courseDetail";
-import { nearestProfileIndex, selectCourseSpots, toggleProfileMetric } from "../../utils/courseProfile";
+import { selectCourseSpots, toggleProfileMetric } from "../../utils/courseProfile";
+import { detailAnalysisView } from "../../utils/courseDetailAnalysis";
+import { useCourseAnalysis } from "./hooks/useCourseAnalysis";
 import { CourseAnalysis } from "./components/CourseAnalysis";
 import { CourseSpots } from "./components/CourseSpots";
 import { useCourseDetail } from "./hooks/useCourseDetail";
@@ -43,12 +45,16 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const { rootRef, mapBottomInset, handleProps } = useDetailSheet();
   const tabsRef = useRef<HTMLDivElement>(null);
   const [visibility, setVisibility] = useState<ProfileVisibility>({ elevation: true, slope: true });
-  const [chosenIndex, setChosenIndex] = useState<number | null>(null);
+  const [selection, setSelection] = useState<{ key: string; index: number } | null>(null);
   const [communityCourse, setCommunityCourse] = useState<CommunityCourseDto | null>(null);
   const [communityReviews, setCommunityReviews] = useState<CommunityReviewDto[]>([]);
   const savedIds = useSavedCourseIds();
   const saved = savedIds.includes(courseId);
   const data = state.status === "success" ? state.data : null;
+  const { state: analysisState, retry: retryAnalysis } = useCourseAnalysis(data?.course ?? null);
+  const analysisView = useMemo(() => detailAnalysisView(data?.course ?? null, analysisState), [data, analysisState]);
+  const { samples } = analysisView;
+  const selectionKey = JSON.stringify([mountainId, courseId, analysisView.analysis?.analysisId]);
   const restrooms = useCourseFacilities(courseId, data?.course.backendCourseId,
     view.tab === "spots" && (view.category === "all" || view.category === "restroom"));
   const restroomSpots = restrooms.state.status === "success" ? restrooms.state.spots : EMPTY_SPOTS;
@@ -64,14 +70,15 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
     quote: review.content,
   })).slice(0, 2);
   const reviewTotal = communityCourse?.reviewCount ?? communityReviews.length;
-  const courses = useMemo(() => data ? [data.course] : [], [data]);
+  const mapCourse = useMemo(() => data ? { ...data.course, routeCoordinates: analysisView.routeCoordinates } : null, [data, analysisView]);
+  const courses = useMemo(() => mapCourse && mapCourse.routeCoordinates.length > 1 ? [mapCourse] : [], [mapCourse]);
   const allSpots = useMemo(() => withCourseFacilities(data?.spots ?? EMPTY_SPOTS, [...restroomSpots, ...waterSpots, ...shelterSpots]),
     [data, restroomSpots, waterSpots, shelterSpots]);
   const spots = useMemo(() => selectCourseSpots(allSpots, view.category), [allSpots, view.category]);
-  const summitCoordinate = useMemo(() => data?.samples.reduce<(typeof data.samples)[number] | null>((highest, sample) =>
-    !highest || sample.elevationMeters > highest.elevationMeters ? sample : highest, null)?.coordinate, [data]);
-  const selectedIndex = data ? Math.min(chosenIndex ?? nearestProfileIndex(data.samples, 2.4), data.samples.length - 1) : -1;
-  const sample = data?.samples[selectedIndex] ?? null;
+  const summitCoordinate = useMemo(() => samples.reduce<(typeof samples)[number] | null>((highest, point) =>
+    point.elevationMeters !== null && (!highest || point.elevationMeters > highest.elevationMeters!) ? point : highest, null)?.coordinate, [samples]);
+  const selectedIndex = samples.length ? Math.max(0, Math.min(selection?.key === selectionKey ? selection.index : 0, samples.length - 1)) : -1;
+  const sample = samples[selectedIndex] ?? null;
   const selectedSpot = spots.find(spot => spot.id === view.spotId) ?? spots[0];
   const back = onBack ?? (() => navigateFromHome(coursePaths.list(mountainId, courseId)));
 
@@ -135,10 +142,12 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
     }}>
     {data ? <>
       <div className="course-detail-page__map">
-        <CourseRouteMap variant="detail" courses={courses} selected={data.course} mountainId={request.mountainId}
+        <CourseRouteMap variant="detail" courses={courses} selected={mapCourse} mountainId={request.mountainId}
           mapBottomInset={mapBottomInset}
           center={data.course.routeCoordinates[0]}
-          onSelect={() => {}} onNotify={notify} summitCoordinate={summitCoordinate}
+          onSelect={() => {}} onNotify={notify} summitCoordinate={summitCoordinate} summitLabel="최고 고도"
+          dataLabel={analysisState.status === "loading" ? "분석 경로 조회 중" : !samples.length
+            ? "분석 경로 없음" : analysisView.development ? "개발용 예시 경로" : null}
           profileSample={view.tab === "analysis" ? sample : null} spots={view.tab === "spots" ? spots : undefined}
           selectedSpotId={selectedSpot?.id} focusSpotId={view.spotId} showSpotLabels={view.category !== "all"}
           onSpotSelect={spotId => changeView({ ...view, spotId })} />
@@ -150,8 +159,9 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
             items={[{ value: "analysis", label: "코스 상세", controls: "course-analysis-panel" }, { value: "spots", label: "스팟·통제정보", controls: "course-spots-panel" }]}
             onValueChange={tab => changeView({ ...view, tab: tab === "spots" ? "spots" : "analysis" })} />
         </div>} content={view.tab === "analysis"
-          ? <CourseAnalysis data={data} reviews={reviewExcerpts} reviewTotal={reviewTotal} visibility={visibility} selectedIndex={selectedIndex}
-            onSelect={setChosenIndex} onToggle={toggleMetric} onReviewsOpen={onReviewsOpen ? () => onReviewsOpen(request) : undefined} />
+          ? <CourseAnalysis data={data} analysisState={analysisState} analysisView={analysisView} onRetryAnalysis={retryAnalysis}
+            reviews={reviewExcerpts} reviewTotal={reviewTotal} visibility={visibility} selectedIndex={selectedIndex}
+            onSelect={index => setSelection({ key: selectionKey, index })} onToggle={toggleMetric} onReviewsOpen={onReviewsOpen ? () => onReviewsOpen(request) : undefined} />
           : <CourseSpots spots={spots} category={view.category} selectedId={selectedSpot?.id}
             restrooms={restrooms.state} onRetryRestrooms={restrooms.retry}
             water={water.state} onRetryWater={water.retry}

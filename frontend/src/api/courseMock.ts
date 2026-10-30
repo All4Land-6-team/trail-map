@@ -1,5 +1,6 @@
 import { loadHomeDiscoveryData } from "./homeMock";
 import type { Course, CourseDiscoveryData } from "../types/course";
+import { developmentAnalysisReference } from "../utils/courseComparison";
 
 // 로컬 테스트 DB의 mock 백운대 경로만 연결한다. 운영 빌드에는 테스트 ID를 연결하지 않는다.
 const localBaegundaeCourseId = Number(import.meta.env?.VITE_MOCK_BAEGUNDAE_COURSE_ID ?? "2");
@@ -8,7 +9,7 @@ const mockBaegundaeBackendId = import.meta.env?.DEV && Number.isSafeInteger(loca
 
 // 화면 개발용 합성 데이터이며 실제 등산로·분석값·실시간 통제 정보가 아니다.
 // 기존 등산 담기·내 등산 브랜치와 연결할 수 있도록 courseId를 유지한다.
-export const courseFixtures: readonly Course[] = [
+const courseExamples: readonly Course[] = [
   {
     "id": "daenammun",
     "mountainId": "bukhansan",
@@ -423,6 +424,12 @@ export const courseFixtures: readonly Course[] = [
     ]
   }
 ];
+
+// 개발용 분석과 연결된 코스는 분석 존재 여부와 관계없이 상세에서 조회 상태를 확인할 수 있다.
+export const courseFixtures: readonly Course[] = courseExamples.map(course => {
+  const analysisReference = developmentAnalysisReference(course.id, course.mountainId, import.meta.env?.DEV === true);
+  return { ...course, analysisReference, detailAvailable: course.detailAvailable || !!analysisReference };
+});
 
 /** 실제 API 연결 시 교체할 화면용 데이터 접근 함수. */
 export async function loadCourseDiscoveryData(mountainId: string, signal: AbortSignal): Promise<CourseDiscoveryData | undefined> {
