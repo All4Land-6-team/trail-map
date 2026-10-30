@@ -10,6 +10,9 @@ import tempfile
 from pathlib import Path
 from typing import Any, Sequence
 
+from rasterio.errors import RasterioError
+
+from trail_map_data.course_analysis import AnalysisConfig, analyze_course_to_file
 from trail_map_data.dem import DemValidationError, inspect_dem, optimize_dem, paths_alias
 from trail_map_data.terrain import DEFAULT_EDGE_FEATHER_METERS, generate_terrain_tiles
 
@@ -118,11 +121,45 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     terrain_parser.add_argument("--overwrite", action="store_true")
 
+    course_parser = commands.add_parser("course", help="코스 고도·경사 분석")
+    course_commands = course_parser.add_subparsers(dest="command", required=True)
+    analyze_parser = course_commands.add_parser("analyze", help="코스 GeoJSON Feature 하나 분석")
+    analyze_parser.add_argument("dem", type=Path, help="분석용 GeoTIFF")
+    analyze_parser.add_argument("course", type=Path, help="코스 식별 정보가 있는 GeoJSON Feature")
+    analyze_parser.add_argument("--output", type=Path, required=True, help="분석 결과 JSON")
+    analyze_parser.add_argument("--sample-interval-meters", type=float, required=True,
+                                help="최대 샘플 간격(m), 원본 굴곡점도 보존")
+    analyze_parser.add_argument("--sampling-method", choices=("nearest", "bilinear"), default="bilinear")
+    analyze_parser.add_argument("--elevation-unit", choices=("auto", "m", "ft", "unknown"), default="auto",
+                                help="auto는 밴드 단위를 사용하며, 없으면 m 단위 지표를 비워 둡니다")
+    analyze_parser.add_argument("--vertical-reference", help="출처에서 확인한 고도의 수직 기준")
+    analyze_parser.add_argument("--max-samples", type=int, default=100_000)
+    analyze_parser.add_argument("--overwrite", action="store_true")
+
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    args = _build_parser().parse_args(argv)
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
+    if args.command == "analyze":
+        try:
+            result = analyze_course_to_file(
+                args.dem, args.course, args.output,
+                config=AnalysisConfig(
+                    sample_interval_meters=args.sample_interval_meters,
+                    sampling_method=args.sampling_method,
+                    elevation_unit=args.elevation_unit,
+                    vertical_reference=args.vertical_reference,
+                    max_samples=args.max_samples,
+                ),
+                overwrite=args.overwrite,
+            )
+        except (ValueError, OSError, RasterioError) as error:
+            parser.exit(2, f"코스 분석 실패: {error}\n")
+        print(f"코스 분석 저장: {args.output} (quality_status={result['quality_status']})")
+        return
 
     if args.command == "inspect":
         _reject_metadata_collision(args.output, [args.input])
