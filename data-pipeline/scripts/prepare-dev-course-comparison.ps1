@@ -46,7 +46,8 @@ try {
         git cat-file -e "${ProducerRef}:data-pipeline/src/trail_map_data/course_analysis.py"
         if ($LASTEXITCODE -ne 0) { throw 'Run git fetch origin, then check the analysis producer ref.' }
         $analysisWorktree = Join-Path ([System.IO.Path]::GetTempPath()) ('trail-map-analysis-' + [guid]::NewGuid().ToString('N'))
-        git worktree add --detach $analysisWorktree $ProducerRef
+        # Avoid Git's commit-subject output, which can fail in Windows consoles after checkout.
+        git worktree add --quiet --detach $analysisWorktree $ProducerRef
         if ($LASTEXITCODE -ne 0) { throw 'Could not prepare the analysis producer worktree.' }
         $producerPath = $analysisWorktree
     }
