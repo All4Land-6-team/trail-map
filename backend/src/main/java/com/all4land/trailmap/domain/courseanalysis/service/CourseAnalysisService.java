@@ -8,6 +8,7 @@ import com.all4land.trailmap.domain.courseanalysis.error.CourseAnalysisErrorCode
 import com.all4land.trailmap.domain.courseanalysis.exception.CourseAnalysisException;
 import com.all4land.trailmap.domain.courseanalysis.repository.CourseAnalysisRepository;
 import com.all4land.trailmap.domain.courseanalysis.repository.CourseAnalysisRepository.AnalysisRow;
+import com.all4land.trailmap.domain.courseanalysis.repository.CourseAnalysisRepository.CourseRow;
 import com.all4land.trailmap.domain.courseanalysis.service.CourseAnalysisDocumentReader.Stored;
 import com.all4land.trailmap.domain.courseanalysis.storage.CourseAnalysisFileStore;
 import lombok.RequiredArgsConstructor;
@@ -16,10 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 import static com.all4land.trailmap.domain.courseanalysis.service.CourseAnalysisDocumentReader.close;
+import static java.util.stream.Collectors.toMap;
 
 @Service
 @RequiredArgsConstructor
@@ -34,10 +38,33 @@ public class CourseAnalysisService {
         var course = repository.findCourse(courseId)
                 .orElseThrow(() -> new CourseAnalysisException(CourseAnalysisErrorCode.COURSE_NOT_FOUND));
         return repository.findLatest(courseId).map(row -> response(row, loadVerified(row)))
-                .orElseGet(() -> new CourseAnalysisResponse(course.courseId(), course.mountainId(), course.courseVersion(),
-                        null, null, null, null, null, null, AnalysisQualityStatus.NO_DATA, null,
-                        List.of("ANALYSIS_NOT_FOUND"), null, new Metrics(null, null, null, null, null, null, null),
-                        null, null, null));
+                .orElseGet(() -> noData(course));
+    }
+
+    /** 코스마다 DB를 다시 조회하지 않고 요청 순서대로 분석 요약을 반환한다. */
+    public List<CourseAnalysisResponse> getSummaries(List<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty() || courseIds.stream().anyMatch(id -> id == null || id <= 0)
+                || new HashSet<>(courseIds).size() != courseIds.size()) {
+            throw new CourseAnalysisException(CourseAnalysisErrorCode.INVALID_IDENTIFIER);
+        }
+        var ids = List.copyOf(courseIds);
+        var courses = repository.findCourses(ids).stream().collect(toMap(CourseRow::courseId, Function.identity()));
+        if (courses.size() != ids.size()) {
+            throw new CourseAnalysisException(CourseAnalysisErrorCode.COURSE_NOT_FOUND);
+        }
+        var latest = repository.findLatestForCourses(ids).stream()
+                .collect(toMap(AnalysisRow::courseId, Function.identity()));
+        return ids.stream().map(id -> {
+            var row = latest.get(id);
+            return row == null ? noData(courses.get(id)) : response(row, loadVerified(row));
+        }).toList();
+    }
+
+    private CourseAnalysisResponse noData(CourseRow course) {
+        return new CourseAnalysisResponse(course.courseId(), course.mountainId(), course.courseVersion(),
+                null, null, null, null, null, null, AnalysisQualityStatus.NO_DATA, null,
+                List.of("ANALYSIS_NOT_FOUND"), null, new Metrics(null, null, null, null, null, null, null),
+                null, null, null);
     }
 
     public CourseAnalysisProfileResponse getProfile(long analysisId) {

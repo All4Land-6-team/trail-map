@@ -29,14 +29,22 @@ public class CourseAnalysisRepository {
                               String sourceType, AnalysisQualityStatus qualityStatus, OffsetDateTime calculatedAt,
                               Metrics metrics, boolean versionCurrent, boolean geometryCurrent, String snapshotGeometry) {}
 
-    private static final String SELECT_ANALYSIS = """
-            SELECT a.*, c.mountain_id, c.course_version AS current_course_version,
+    private static final String ANALYSIS_COLUMNS_AND_JOIN = """
+            a.*, c.mountain_id, c.course_version AS current_course_version,
                    c.source_id AS current_source_id,
                    a.course_version = c.course_version AS version_current,
                    ST_AsGeoJSON(a.analyzed_course_geometry, 9)::jsonb =
                        ST_AsGeoJSON(c.course_geometry, 9)::jsonb AS geometry_current,
                    ST_AsGeoJSON(a.analyzed_course_geometry, 15) AS snapshot_geometry
             FROM course_analysis a JOIN course c ON c.course_id = a.course_id
+            """;
+
+    private static final String SELECT_ANALYSIS = "SELECT " + ANALYSIS_COLUMNS_AND_JOIN;
+
+    private static final String LATEST_ORDER = """
+            (a.course_version=c.course_version AND
+                ST_AsGeoJSON(a.analyzed_course_geometry,9)::jsonb=ST_AsGeoJSON(c.course_geometry,9)::jsonb) DESC,
+                a.calculated_at DESC NULLS LAST, a.analysis_id DESC
             """;
 
     private static final RowMapper<AnalysisRow> ANALYSIS_MAPPER = (rs, number) -> new AnalysisRow(
@@ -57,6 +65,12 @@ public class CourseAnalysisRepository {
                 new MapSqlParameterSource("id", courseId), (rs, row) -> new CourseRow(rs.getLong("course_id"),
                         rs.getLong("mountain_id"), rs.getInt("course_version"), rs.getLong("source_id"), true))
                 .stream().findFirst();
+    }
+
+    public List<CourseRow> findCourses(List<Long> courseIds) {
+        return jdbc.query("SELECT course_id, mountain_id, course_version, source_id FROM course WHERE course_id IN (:ids)",
+                new MapSqlParameterSource("ids", courseIds), (rs, row) -> new CourseRow(rs.getLong("course_id"),
+                        rs.getLong("mountain_id"), rs.getInt("course_version"), rs.getLong("source_id"), true));
     }
 
     public Optional<CourseRow> lockCourse(long courseId, String geometry) {
@@ -101,12 +115,14 @@ public class CourseAnalysisRepository {
     }
 
     public Optional<AnalysisRow> findLatest(long courseId) {
-        return jdbc.query(SELECT_ANALYSIS + """
-                 WHERE a.course_id=:id
-                 ORDER BY (a.course_version=c.course_version AND
-                     ST_AsGeoJSON(a.analyzed_course_geometry,9)::jsonb=ST_AsGeoJSON(c.course_geometry,9)::jsonb) DESC,
-                     a.calculated_at DESC NULLS LAST, a.analysis_id DESC LIMIT 1
-                """, new MapSqlParameterSource("id", courseId), ANALYSIS_MAPPER).stream().findFirst();
+        return jdbc.query(SELECT_ANALYSIS + " WHERE a.course_id=:id ORDER BY " + LATEST_ORDER + " LIMIT 1",
+                new MapSqlParameterSource("id", courseId), ANALYSIS_MAPPER).stream().findFirst();
+    }
+
+    public List<AnalysisRow> findLatestForCourses(List<Long> courseIds) {
+        return jdbc.query("SELECT DISTINCT ON (a.course_id) " + ANALYSIS_COLUMNS_AND_JOIN
+                        + " WHERE a.course_id IN (:ids) ORDER BY a.course_id, " + LATEST_ORDER,
+                new MapSqlParameterSource("ids", courseIds), ANALYSIS_MAPPER);
     }
 
     public Optional<AnalysisRow> findById(long analysisId) {
