@@ -3,6 +3,14 @@ import type { AnalysisCourseReference, CourseAnalysis, CourseAnalysisProfile, Co
 
 const DEV_MOUNTAIN_IDS: Readonly<Record<string, number>> = { bukhansan: 1, dobongsan: 2, seoraksan: 3, gwanaksan: 4, jirisan: 5 };
 const isId = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+const COMPARISON_COLORS = ['#1b6a53', '#5b8bd6', '#d9964a'] as const;
+
+/** 선택한 최대 3개 코스의 색을 선택 화면·지도·차트·비교표에서 일치시킨다. */
+export function withComparisonColors<T extends { id: string; color: string }>(courses: readonly T[], selectedIds: ReadonlySet<string>): T[] {
+  let index = 0;
+  return courses.map(course => selectedIds.has(course.id)
+    ? { ...course, color: COMPARISON_COLORS[index++ % COMPARISON_COLORS.length] } : course);
+}
 
 /** 개발용 시드와만 연결한다. 운영 빌드와 시설 시범 DB의 별도 ID는 사용하지 않는다. */
 export function developmentAnalysisReference(courseId: string, mountainId: string, enabled: boolean): AnalysisCourseReference | undefined {

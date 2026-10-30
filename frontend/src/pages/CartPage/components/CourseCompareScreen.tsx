@@ -111,7 +111,10 @@ export function CourseCompareScreen({
               {analysisCourses.map((course) => (
                 <span key={course.id}>
                   <i style={{ backgroundColor: course.color }} />
-                  <Typography variant="dataAuxiliary">{course.shortName} · {analysisQualityLabel(course.analysis)}</Typography>
+                  <span className="cart-course-legend__copy">
+                    <Typography variant="dataAuxiliary">{course.shortName}</Typography>
+                    <Typography variant="dataAuxiliary">{analysisQualityLabel(course.analysis)}</Typography>
+                  </span>
                 </span>
               ))}
             </div>

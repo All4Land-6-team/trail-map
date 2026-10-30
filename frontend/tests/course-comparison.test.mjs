@@ -2,8 +2,63 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { courseComparisonUrl, loadCourseComparison, parseCourseAnalysis, parseCourseAnalysisProfile, parseCourseComparison } from '../src/api/courseAnalysis.ts';
 import { analysisQualityReasons, comparisonCourseViews, comparisonRequest, developmentAnalysisReference,
-  elevationAxisBounds, formatAnalysisDistance, formatAnalysisDuration } from '../src/utils/courseComparison.ts';
+  elevationAxisBounds, formatAnalysisDistance, formatAnalysisDuration, withComparisonColors } from '../src/utils/courseComparison.ts';
+import { formatElevationTooltip, positionElevationTooltip } from '../src/utils/elevationTooltip.ts';
 import { analysis, noAnalysis, comparison, profile, fullCoverageAnalysis, fullCoverageProfile } from './fixtures/course-analysis.mjs';
+
+test('툴팁은 거리 km 2자리·고도 m 1자리로 표시하고 결측과 0을 구분한다', () => {
+  const distance = 1.23456789012345, elevation = 812.2509972910377;
+  const points = Object.freeze([
+    Object.freeze({ seriesName: '백운대 코스', color: '#1b6a53', value: Object.freeze([distance, elevation]) }),
+    Object.freeze({ seriesName: '비봉 코스', color: '#5b8bd6', value: Object.freeze([distance, null]) }),
+    Object.freeze({ seriesName: '대남문 코스', color: '#d9964a', value: Object.freeze([distance, 0]) }),
+  ]);
+  const html = formatElevationTooltip(points);
+  assert.match(html, /거리 1\.23 km/);
+  assert.match(html, /812\.3 m/);
+  assert.match(html, /0\.0 m/);
+  assert.match(html, /—/);
+  assert.doesNotMatch(html, /23456789|250997/);
+  assert.equal(points[0].value[0], distance);
+  assert.equal(points[0].value[1], elevation);
+  assert.equal(formatElevationTooltip([]), '');
+  assert.equal(formatElevationTooltip(null), '');
+});
+
+test('툴팁의 코스명은 HTML로 해석하지 않고 색상 삽입도 제한한다', () => {
+  const html = formatElevationTooltip({ seriesName: '<img src=x onerror="alert(1)"> & 코스',
+    color: '#fff;position:fixed', data: [0, 1] });
+  assert.ok(html.includes('&lt;img'));
+  assert.ok(html.includes('&quot;'));
+  assert.ok(html.includes('&amp;'));
+  assert.doesNotMatch(html, /<img|position:fixed/);
+  assert.match(html, /background:#617b6c/);
+});
+
+test('툴팁은 좌우 끝과 작은 화면에서도 앱 경계·내비게이션 위에 배치한다', () => {
+  const bounds = { left: 8, right: 280, top: -200, bottom: 130 };
+  const size = [210, 100];
+  for (const point of [[0, 20], [279, 20], [140, 130]]) {
+    const [x, y] = positionElevationTooltip(point, size, bounds);
+    assert.ok(x >= bounds.left && x + size[0] <= bounds.right);
+    assert.ok(y >= bounds.top && y + size[1] <= bounds.bottom);
+  }
+  const [x, y] = positionElevationTooltip([0, 20], size, { ...bounds, bottom: 40 });
+  assert.ok(x >= bounds.left && y < 0 && y + size[1] <= 40);
+});
+
+test('같은 기존 색의 코스도 비교 선택 후 서로 구분되며 원본·ID는 보존한다', () => {
+  const courses = Array.from({ length: 7 }, (_, index) => ({ id: String(index), color: '#1b6a53', analysisReference: { courseId: index + 1 } }));
+  const ids = new Set(['0', '3', '6']);
+  const colored = withComparisonColors(courses, ids);
+  const selected = colored.filter(course => ids.has(course.id));
+  assert.equal(new Set(selected.map(course => course.color)).size, 3);
+  assert.deepEqual(colored.map(course => course.id), courses.map(course => course.id));
+  assert.equal(colored[3].analysisReference, courses[3].analysisReference);
+  assert.equal(colored[1], courses[1]);
+  assert.ok(courses.every(course => course.color === '#1b6a53'));
+  assert.deepEqual(withComparisonColors(courses, ids), colored);
+});
 
 test('개발용 코스 연결은 시드 번호를 사용하고 운영 환경에는 연결하지 않는다', () => {
   assert.deepEqual(developmentAnalysisReference('bukhansan-baegundae', 'bukhansan', true), { courseId: 1, mountainId: 1, development: true });

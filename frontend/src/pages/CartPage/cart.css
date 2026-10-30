@@ -128,16 +128,25 @@
 .cart-compare-sheet .af-bottom-sheet__title-row { min-height: 42px; }
 .cart-compare-sheet .af-bottom-sheet__title { font-size: 16px; line-height: 24px; }
 .cart-compare-sheet .af-bottom-sheet__content { min-height: 0; flex: 1; }
-.cart-compare-content { position: relative; display: flex; height: 100%; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+.cart-compare-content { position: relative; display: flex; height: 100%; flex-direction: column; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
 .cart-metrics-link { flex: none; margin-left: auto; padding: 4px 0 4px 8px; border: 0; color: var(--af-green-dark); background: transparent; font: 700 12px/18px "Noto Sans KR", sans-serif; cursor: pointer; }
-.cart-course-legend { display: flex; gap: 20px; min-height: 26px; align-items: center; overflow-x: auto; }
-.cart-course-legend span { display: inline-flex; align-items: center; gap: 7px; color: #617b6c; white-space: nowrap; }
-.cart-course-legend i { display: block; width: 20px; height: 3px; border-radius: 2px; }
+.cart-course-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; min-height: 36px; flex: none; align-items: start; }
+.cart-course-legend > span { display: flex; min-width: 0; align-items: flex-start; gap: 6px; color: #617b6c; }
+.cart-course-legend i { display: block; width: 16px; height: 3px; flex: none; margin-top: 7px; border-radius: 2px; }
+.cart-course-legend__copy { display: flex; min-width: 0; flex-direction: column; overflow-wrap: anywhere; }
+.cart-course-legend__copy > :first-child { font-size: 11px; font-weight: 600; }
+.cart-course-legend__copy > :last-child { font-size: 10px; }
 .cart-chart-title { display: block; margin-top: 2px; }
 .cart-elevation-profile { display: flex; min-height: 0; flex-direction: column; }
 .cart-compare-content .cart-elevation-profile { flex: 0 0 155px; }
 .cart-elevation-note { flex: none; margin: 4px 0 6px; color: #617b6c; font-size: 11px; line-height: 16px; }
 .cart-elevation-chart { width: 100%; min-height: 116px; flex: 1; }
+.cart-elevation-tooltip { border-radius: 8px; box-sizing: border-box; }
+.cart-elevation-tooltip__header { margin-bottom: 4px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cart-elevation-tooltip__row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 6px; min-height: 21px; }
+.cart-elevation-tooltip__marker { width: 8px; height: 8px; border-radius: 50%; }
+.cart-elevation-tooltip__name { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cart-elevation-tooltip__row strong { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cart-selection-sheet .af-bottom-sheet__handle-row[role="separator"],
 .cart-compare-sheet .af-bottom-sheet__handle-row[role="separator"] {
   width: 68px;

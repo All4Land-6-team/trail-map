@@ -9,7 +9,7 @@ import { CourseSelectionScreen } from "./components/CourseSelectionScreen";
 import { limitComparisonCourseIds, toggleComparisonCourseId } from "./data";
 import type { PlannedHike } from "../../types/hiking";
 import { useCourseComparison } from "./hooks/useCourseComparison";
-import { comparisonCourseViews } from "../../utils/courseComparison";
+import { comparisonCourseViews, withComparisonColors } from "../../utils/courseComparison";
 import type { CartCourse } from "./types";
 import "./cart.css";
 
@@ -51,9 +51,10 @@ export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHik
   const [path, search] = route.replace(/^#/, "").split("?");
   const query = new URLSearchParams(search);
   const mountainId = query.get("mountain") ?? (path.startsWith("cart/mountain/") ? path.slice(14) : "bukhansan");
-  const courses = saved.filter(course => course.mountainId === mountainId);
-  const requestedIds = query.has("selected") ? query.get("selected")!.split(",") : courses.map(course => course.id);
-  const selectedIds = new Set(limitComparisonCourseIds(courses.map(course => course.id), requestedIds));
+  const mountainCourses = saved.filter(course => course.mountainId === mountainId);
+  const requestedIds = query.has("selected") ? query.get("selected")!.split(",") : mountainCourses.map(course => course.id);
+  const selectedIds = new Set(limitComparisonCourseIds(mountainCourses.map(course => course.id), requestedIds));
+  const courses = withComparisonColors(mountainCourses, selectedIds);
   const selected = courses.filter(course => selectedIds.has(course.id));
   const context = new URLSearchParams({ mountain: mountainId, selected: selected.map(course => course.id).join(",") });
   const selectionPath = `cart/mountain/${mountainId}?${context}`;
