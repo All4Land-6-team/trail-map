@@ -39,3 +39,29 @@ export function profile(summary = analysis(1)) {
     slopePercent: index === 1 ? 142.45 : null, sampleStatus: height === null ? 'NODATA' : 'VALID',
   })) });
 }
+
+export function fullCoverageAnalysis(courseId = 2) {
+  const distance = 6119.385314842455;
+  const min = 100, max = min + distance * 0.02;
+  const value = analysis(courseId, { qualityReasons: ['UNVERIFIED_VERTICAL_REFERENCE'] });
+  value.metrics = { ...value.metrics, distanceMeters: distance, minElevationMeters: min,
+    maxElevationMeters: max, elevationGainMeters: max - min, elevationLossMeters: 0 };
+  value.settings.sampleIntervalMeters = 10;
+  value.coverage = { sampleCount: 617, validDemSampleCount: 617, validElevationMetersSampleCount: 617,
+    sampleCoveragePercent: 100, coveredDistanceMeters: distance,
+    distanceCoveragePercent: 100 * distance / distance, analyzedSegmentCount: 616 };
+  return value;
+}
+
+export function fullCoverageProfile(value = fullCoverageAnalysis()) {
+  const samples = Array.from({ length: value.coverage.sampleCount }, (_, index) => {
+    const ratio = index / (value.coverage.sampleCount - 1);
+    return { sampleIndex: index, distanceMeters: ratio * value.metrics.distanceMeters,
+      coordinate: [126.955 + ratio * 0.038, 37.636 + ratio * 0.045],
+      elevationMeters: value.metrics.minElevationMeters + ratio * (value.metrics.maxElevationMeters - value.metrics.minElevationMeters),
+      slopePercent: null, sampleStatus: 'VALID' };
+  });
+  for (let i = 1; i < samples.length; i++) samples[i].slopePercent = 100 * (samples[i].elevationMeters - samples[i - 1].elevationMeters)
+    / (samples[i].distanceMeters - samples[i - 1].distanceMeters);
+  return envelope({ analysis: value, samples });
+}

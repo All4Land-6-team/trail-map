@@ -17,6 +17,13 @@ const quality = (v: unknown): v is AnalysisQualityStatus => typeof v === 'string
 const nullableNumber = (v: unknown): v is number | null => v === null || number(v);
 const percentage = (v: unknown) => number(v) && v >= 0 && v <= 100;
 
+function coveragePercent(value: unknown): number {
+  // Python의 100 * covered / total은 전체 관측에서도 100.00000000000001이 될 수 있다.
+  // 이 경계의 반올림 오차만 보정하며, 음수와 실질적인 범위 초과는 거절한다.
+  if (!number(value) || value < 0 || value > 100 + 1e-9) return fail();
+  return Math.min(100, value);
+}
+
 function data(value: unknown): unknown {
   if (!record(value) || value.success !== true || !('data' in value)) return fail();
   return value.data;
@@ -38,11 +45,11 @@ function parseCoverage(value: unknown): AnalysisCoverage | null {
   if (!record(value)) return fail();
   const counts = ['sampleCount', 'validDemSampleCount', 'validElevationMetersSampleCount', 'analyzedSegmentCount'];
   if (!counts.every(key => number(value[key]) && Number.isSafeInteger(value[key]) && (value[key] as number) >= 0)
-    || !percentage(value.sampleCoveragePercent) || !percentage(value.distanceCoveragePercent)
     || !number(value.coveredDistanceMeters) || value.coveredDistanceMeters < 0
     || (value.validDemSampleCount as number) > (value.sampleCount as number)
     || (value.validElevationMetersSampleCount as number) > (value.sampleCount as number)) return fail();
-  return { ...value } as AnalysisCoverage;
+  return { ...value, sampleCoveragePercent: coveragePercent(value.sampleCoveragePercent),
+    distanceCoveragePercent: coveragePercent(value.distanceCoveragePercent) } as AnalysisCoverage;
 }
 
 function parseSettings(value: unknown): AnalysisSettings | null {

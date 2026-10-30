@@ -3,7 +3,7 @@ import test from 'node:test';
 import { courseComparisonUrl, loadCourseComparison, parseCourseAnalysis, parseCourseAnalysisProfile, parseCourseComparison } from '../src/api/courseAnalysis.ts';
 import { analysisQualityReasons, comparisonCourseViews, comparisonRequest, developmentAnalysisReference,
   elevationAxisBounds, formatAnalysisDistance, formatAnalysisDuration } from '../src/utils/courseComparison.ts';
-import { analysis, noAnalysis, comparison, profile } from './fixtures/course-analysis.mjs';
+import { analysis, noAnalysis, comparison, profile, fullCoverageAnalysis, fullCoverageProfile } from './fixtures/course-analysis.mjs';
 
 test('개발용 코스 연결은 시드 번호를 사용하고 운영 환경에는 연결하지 않는다', () => {
   assert.deepEqual(developmentAnalysisReference('bukhansan-baegundae', 'bukhansan', true), { courseId: 1, mountainId: 1, development: true });
@@ -74,6 +74,41 @@ test('프로필은 동일 분석 ID·버전·설정·수치이며, 좌표와 결
     p => { p.data.samples.pop(); }]) {
     const invalid = profile(expected); mutate(invalid); assert.throws(() => parseCourseAnalysisProfile(invalid, expected));
   }
+});
+
+test('전체 관측 커버리지의 부동소수점 경계 오차만 보정하고 실제 범위 오류는 거절한다', () => {
+  // 개발용 대남문 경로의 수평 거리와 생산 코드의 계산 순서로 회귀를 재현한다.
+  const distance = 6119.385314842455;
+  const percent = 100 * distance / distance;
+  assert.ok(percent > 100 && percent < 100 + 1e-9);
+  const value = analysis(2);
+  value.metrics.distanceMeters = distance;
+  Object.assign(value.coverage, { sampleCount: 617, validDemSampleCount: 617, validElevationMetersSampleCount: 617,
+    sampleCoveragePercent: 100, coveredDistanceMeters: distance, distanceCoveragePercent: percent, analyzedSegmentCount: 616 });
+  const payload = comparison([value, analysis(1)]);
+  const parsed = parseCourseComparison(payload, [2, 1]);
+  assert.equal(parsed.courses[0].analysis.coverage.distanceCoveragePercent, 100);
+  assert.equal(value.coverage.distanceCoveragePercent, percent); // 원본 응답은 수정하지 않는다.
+  value.coverage.distanceCoveragePercent = 99.999999999;
+  assert.equal(parseCourseAnalysis(value).coverage.distanceCoveragePercent, 99.999999999);
+  for (const key of ['sampleCoveragePercent', 'distanceCoveragePercent']) {
+    for (const invalidPercent of [-Number.EPSILON, -1, 100.00001, 101, NaN, Infinity, null, undefined]) {
+      const invalid = structuredClone(value); invalid.coverage[key] = invalidPercent;
+      assert.throws(() => parseCourseAnalysis(invalid));
+    }
+  }
+});
+
+test('100% 경계 오차가 있는 비교 요약과 617개 프로필을 API에서 함께 읽는다', async t => {
+  const original = globalThis.fetch; t.after(() => { globalThis.fetch = original; });
+  const completed = fullCoverageAnalysis();
+  globalThis.fetch = async url => new Response(JSON.stringify(url.includes('course-comparisons?')
+    ? comparison([completed, analysis(1)]) : url.includes('/102/profile') ? fullCoverageProfile(completed) : profile()));
+  const result = await loadCourseComparison([2, 1]);
+  assert.equal(result.courses[0].analysis.coverage.distanceCoveragePercent, 100);
+  assert.equal(result.courses[0].profile.samples.length, 617);
+  assert.equal(result.courses[0].profileError, null);
+  assert.equal(result.courses[1].profile.samples.length, 4);
 });
 
 test('NO_DATA에도 저장된 분석이 있으면 경로와 빈 고도 프로필을 읽을 수 있다', () => {
