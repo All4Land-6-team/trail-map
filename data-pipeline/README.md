@@ -139,12 +139,103 @@ PYTHONPATH=src python -m trail_map_data.cli dem terrain-tiles \
 재투영합니다. 같은 출력 경로로 여러 생성 작업을 동시에 실행하거나 타일 제공
 프로세스가 해당 디렉터리를 읽는 중에 `--overwrite`를 실행하지 않습니다.
 
+## 코스 고도·경사 분석
+
+`course analyze`는 분석용 GeoTIFF와 EPSG:4326 코스 GeoJSON Feature 하나를
+받아 프로필과 요약 지표를 JSON으로 저장합니다. 좌표는 `[경도, 위도]` 순서이며
+`FeatureCollection`, `MultiLineString`, 기존 `crs` 확장은 지원하지 않습니다.
+선택적 세 번째 좌표(Z)는 사용하지 않고 고도는 DEM에서 추출합니다.
+
+입력 Feature의 `properties`에는 양의 정수 `course_id`, `mountain_id`,
+`course_version`이 필요합니다. `course_name`, `source_id`는 선택 항목입니다.
+`source_kind`는 `development`, `official`, `user`, `unknown` 중 하나이며 기본값은
+`unknown`입니다. 개발용 시드에서 내보낸 경로는 `development`로 표시합니다.
+실제 DEM 위에 예시 경로를 놓은 결과는 실제 등산로의 분석 결과와 구분합니다.
+
+다음은 입력 형식의 예시이며 좌표는 공식 등산로 데이터가 아닙니다.
+
+```json
+{
+  "type": "Feature",
+  "properties": {
+    "course_id": 1,
+    "mountain_id": 1,
+    "course_version": 1,
+    "course_name": "개발용 예시 경로",
+    "source_kind": "development"
+  },
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [[126.9905, 37.662], [126.9885, 37.6618]]
+  }
+}
+```
+
+```bash
+PYTHONPATH=src python -m trail_map_data.cli course analyze \
+  ../data/processed/dem/bukhansan/analysis/bukhansan_dem.tif \
+  ../data/interim/courses/course-1.geojson \
+  --sample-interval-meters 10 \
+  --output ../data/processed/course-analysis/course-1.json
+```
+
+위의 10m는 실행 예시이며 운영 정책으로 확정된 간격이 아닙니다. 간격은 필수
+설정이고, 시작·끝과 원본 굴곡점을 보존하므로 실제 샘플 간격은 설정값 이하입니다.
+거리는 원본 DEM의 투영 좌표계에서 잰 2D 수평 거리이며 좌표계의 길이 단위를
+m로 환산합니다. 경도·위도 단위의 DEM이나 좌표계가 없는 DEM은 거리를 잘못
+계산하지 않도록 거절합니다. 원본 DEM의 좌표계 WKT를 변경하지 않습니다.
+
+기본 `--sampling-method bilinear`는 픽셀 중심 기준 보간이며, 양의 가중치가
+있는 이웃 픽셀이 모두 유효해야 합니다. DEM 가장자리에서 이웃이 부족해도
+임의로 채우지 않습니다. 셀 값을 직접 읽으려면 `--sampling-method nearest`를
+명시합니다. NoData·NaN·무한값·범위 밖 샘플은 `null`과 사유를 남기고, 해당
+샘플을 건너뛰어 경사나 상승·하강량을 계산하지 않습니다. 밴드 scale·offset도
+적용합니다. 최대 샘플 수는 기본 100,000개이며 `--max-samples`로 조정합니다.
+
+`--elevation-unit auto`가 기본이며 DEM 밴드에 m 또는 국제 피트(ft)가 명시된
+경우만 m 단위로 환산합니다. 단위가 없거나 인식할 수 없으면
+`elevation_source_value`에 원본 단위의 값만 남기고 `elevation_meters`,
+`slope_percent` 및 m 단위 고도 요약은 `null`입니다. 출처에서 확인한 단위만
+`--elevation-unit m` 또는 `ft`로 지정합니다. `--vertical-reference`에도 출처에서
+확인한 수직 기준을 기록합니다. 미지정·`unknown`·`unverified`는 미확정으로
+처리하며, 테스트용 임의 기준을 실제 DEM에 적용하지 않습니다.
+
+결과의 주요 항목은 다음과 같습니다.
+
+- `schema_version`, `algorithm_version`, `source_type`, `calculated_at`
+- `course`: 코스·산 ID, 코스 버전, 원본 경로, 출처 종류
+- `inputs`: 입력 파일 경로·SHA-256, DEM 보조 파일 지문, 원본 좌표계·밴드 정보
+- `settings`: 샘플 간격·보간 방식·고도 단위와 선언 출처·수직 기준·거리 계산 방식
+- `profile`: 샘플 순번·누적 거리·경도/위도·원본 고도값·m 단위 고도·샘플 상태
+- `summary`: 거리·최저/최고 고도·누적 상승/하강량·샘플 및 거리 커버리지
+- `quality_status`, `quality_reasons`, `diagnostics`
+
+`slope_percent`는 이전 샘플로부터의 `고도 변화 / 수평 거리 × 100`입니다.
+상승은 양수, 하강은 음수이며 첫 샘플과 결측 구간에는 값이 없습니다.
+노이즈 필터·평활화는 적용하지 않고 `elevation_processing=unsmoothed`로 기록합니다.
+분석 간격·평활화 정책이 달라지면 상승량과 경사가 달라질 수 있습니다.
+
+- `AVAILABLE`: 모든 샘플과 m 단위·수직 기준이 제공된 경우
+- `PARTIAL`: 일부 샘플이 없거나 고도 단위·수직 기준이 미확정인 경우
+- `NO_DATA`: 유효 DEM 샘플이 하나도 없는 경우
+
+커버리지는 선택한 샘플 기준이며 샘플 사이의 모든 픽셀을 검사했다는 뜻은
+아닙니다. 결측이 있으면 상승·하강량은 연속해서 관측된 구간의 합계입니다.
+계산 가능한 연속 구간이 없으면 0 대신 `null`입니다. 고도 단위가 확인돼도 수직
+기준이 미확정이면 계산값은 제공하되 `PARTIAL`과 사유를 표시합니다. 품질 상태는
+분석 입력의 가용성을 나타내며 실제 측량 정확도를 보증하지 않습니다.
+
+기존 출력은 기본적으로 보호하며 교체할 때만 `--overwrite`를 사용합니다.
+입력·DEM 보조 파일과 출력 경로가 같으면 거절하고, 완료된 JSON만 원자적으로
+저장합니다. 원본·가공 파일은 루트 `data/`에 두고 Git에 포함하지 않습니다.
+이 단계는 DB를 변경하지 않으며 Spring 조회 API와 코스 비교는 후속 작업입니다.
+
 ## 테스트
 
 실제 DEM 대신 테스트 중 생성되는 소형 GeoTIFF를 사용합니다.
 
 ```bash
-PYTHONPATH=src pytest
+PYTHONPATH=src pytest tests/test_dem.py tests/test_terrain.py tests/test_course_analysis.py
 ```
 
 
