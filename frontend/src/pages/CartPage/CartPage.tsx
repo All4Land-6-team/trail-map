@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import type { BottomDestination } from "../../components/layout";
 import { useSavedCourseIds } from "../../store/courseSelectionStore";
 import { navigate } from "../../hooks/useHashRoute";
@@ -8,10 +8,30 @@ import { CartHomeScreen } from "./components/CartHomeScreen";
 import { CourseSelectionScreen } from "./components/CourseSelectionScreen";
 import { limitComparisonCourseIds, toggleComparisonCourseId } from "./data";
 import type { PlannedHike } from "../../types/hiking";
+import { useCourseComparison } from "./hooks/useCourseComparison";
+import { comparisonCourseViews } from "../../utils/courseComparison";
+import type { CartCourse } from "./types";
 import "./cart.css";
 
 const CourseCompareScreen = lazy(() => import("./components/CourseCompareScreen").then(({ CourseCompareScreen: Screen }) => ({ default: Screen })));
 const ComparisonMetricsScreen = lazy(() => import("./components/ComparisonMetricsScreen").then(({ ComparisonMetricsScreen: Screen }) => ({ default: Screen })));
+
+// 지도↔비교표 이동 동안 같은 요청·분석 ID를 유지한다. 코스 선택을 바꾸면 hook이 이전 요청을 취소한다.
+function ConnectedComparison({ courses, metrics, onBack, onViewMetrics, onCourseDetail, onKeepCart,
+  onNavigate, plannedHikes, onPlanHike }: {
+  courses: readonly CartCourse[]; metrics: boolean; onBack: () => void; onViewMetrics: () => void;
+  onCourseDetail: (id: string) => void; onKeepCart: () => void; onNavigate: (destination: BottomDestination) => void;
+  plannedHikes: readonly PlannedHike[]; onPlanHike: (hike: PlannedHike) => void;
+}) {
+  const { state, retry } = useCourseComparison(courses);
+  const analysisCourses = useMemo(() => comparisonCourseViews(courses, state), [courses, state]);
+  const common = { courses, analysisCourses, analysisState: state, onRetry: retry, onNavigate, onBack };
+  return <Suspense fallback={<main aria-busy="true">비교 화면을 불러오는 중이에요</main>}>
+    {metrics ? <ComparisonMetricsScreen {...common} onCourseDetail={onCourseDetail} onKeepCart={onKeepCart}
+      plannedHikes={plannedHikes} onPlanHike={onPlanHike} />
+      : <CourseCompareScreen {...common} onViewMetrics={onViewMetrics} />}
+  </Suspense>;
+}
 
 type CartPageProps = {
   route: string;
@@ -65,12 +85,10 @@ export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHik
         navigate(`cart/mountain/${mountainId}?${context}`);
       }} />;
   }
-  if (path === "cart/compare" || path === "cart/metrics") return <Suspense fallback={<main aria-busy="true">비교 화면을 불러오는 중이에요</main>}>
-    {path === "cart/compare" ? <CourseCompareScreen courses={selected} onBack={() => navigate(selectionPath)}
-      onViewMetrics={() => navigate(metricsPath)} onNavigate={nav} />
-      : <ComparisonMetricsScreen courses={selected} onBack={() => navigate(comparePath)}
-        onCourseDetail={id => detail(id, "metrics")} onKeepCart={() => navigate("cart")}
-        onNavigate={nav} plannedHikes={plannedHikes} onPlanHike={onPlanHike} />}
-  </Suspense>;
+  if (path === "cart/compare" || path === "cart/metrics") return <ConnectedComparison
+    courses={selected} metrics={path === "cart/metrics"}
+    onBack={() => navigate(path === "cart/metrics" ? comparePath : selectionPath)}
+    onViewMetrics={() => navigate(metricsPath)} onCourseDetail={id => detail(id, "metrics")}
+    onKeepCart={() => navigate("cart")} onNavigate={nav} plannedHikes={plannedHikes} onPlanHike={onPlanHike} />;
   return home;
 }

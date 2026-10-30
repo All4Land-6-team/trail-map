@@ -15,6 +15,7 @@ import type { CartCourse } from "../types";
 
 type ScheduleRegistrationSheetProps = {
   courses: readonly CartCourse[];
+  courseSummaries?: Readonly<Record<string, string>>;
   initialCourseId?: string;
   selectCourseFirst?: boolean;
   onClose: () => void;
@@ -52,6 +53,7 @@ function getScheduleValidity(date: string, time: string, now: Date) {
 
 export function ScheduleRegistrationSheet({
   courses,
+  courseSummaries,
   initialCourseId,
   selectCourseFirst = false,
   initialDate = getDefaultHikeDate(),
@@ -130,7 +132,7 @@ export function ScheduleRegistrationSheet({
                   <span className="cart-course-copy">
                     <Typography variant="controlLabel">{course.name}</Typography>
                     <Typography variant="descriptionSmall">
-                      {course.distanceKm} km · {formatCourseDuration(course.durationMinutes)}
+                      {courseSummaries?.[course.id] ?? `${course.distanceKm} km · ${formatCourseDuration(course.durationMinutes)}`}
                     </Typography>
                   </span>
                 </button>

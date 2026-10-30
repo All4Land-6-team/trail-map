@@ -1,11 +1,14 @@
+import type { AnalysisCourseReference } from '../../types/courseAnalysis';
+
 export type ElevationPoint = {
   distanceKm: number;
-  elevationMeters: number;
+  elevationMeters: number | null;
 };
 
 export type CartCourse = {
   id: string;
   mountainId?: string;
+  analysisReference?: AnalysisCourseReference;
   name: string;
   shortName: string;
   mountain: string;

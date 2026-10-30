@@ -128,14 +128,14 @@
 .cart-compare-sheet .af-bottom-sheet__title-row { min-height: 42px; }
 .cart-compare-sheet .af-bottom-sheet__title { font-size: 16px; line-height: 24px; }
 .cart-compare-sheet .af-bottom-sheet__content { min-height: 0; flex: 1; }
-.cart-compare-content { position: relative; display: flex; height: 100%; flex-direction: column; }
-.cart-metrics-link { position: absolute; top: -35px; right: 0; padding: 0; border: 0; color: var(--af-green-dark); background: transparent; font: 700 12px/18px "Noto Sans KR", sans-serif; cursor: pointer; }
+.cart-compare-content { position: relative; display: flex; height: 100%; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+.cart-metrics-link { flex: none; margin-left: auto; padding: 4px 0 4px 8px; border: 0; color: var(--af-green-dark); background: transparent; font: 700 12px/18px "Noto Sans KR", sans-serif; cursor: pointer; }
 .cart-course-legend { display: flex; gap: 20px; min-height: 26px; align-items: center; overflow-x: auto; }
 .cart-course-legend span { display: inline-flex; align-items: center; gap: 7px; color: #617b6c; white-space: nowrap; }
 .cart-course-legend i { display: block; width: 20px; height: 3px; border-radius: 2px; }
 .cart-chart-title { display: block; margin-top: 2px; }
 .cart-elevation-profile { display: flex; min-height: 0; flex-direction: column; }
-.cart-compare-content .cart-elevation-profile { flex: 1; }
+.cart-compare-content .cart-elevation-profile { flex: 0 0 155px; }
 .cart-elevation-note { flex: none; margin: 4px 0 6px; color: #617b6c; font-size: 11px; line-height: 16px; }
 .cart-elevation-chart { width: 100%; min-height: 116px; flex: 1; }
 .cart-selection-sheet .af-bottom-sheet__handle-row[role="separator"],
@@ -171,7 +171,7 @@
 }
 .cart-metrics-scroll::-webkit-scrollbar { display: none; }
 .cart-metrics-eyebrow { display: block; margin: 0 0 2px; color: #617b6c; }
-.cart-metric-course-chips { display: grid; grid-template-columns: repeat(3, 113px); gap: 7px; }
+.cart-metric-course-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 .cart-metric-course-chip {
   display: flex;
   min-width: 0;
@@ -204,6 +204,14 @@
 .cart-metric-track > span { display: block; height: 100%; border-radius: inherit; }
 .cart-metric-value { overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .cart-metrics-note { display: block; margin-top: 4px; color: #617b6c; }
+.cart-compare-screen, .cart-metrics-screen { min-height: 0; }
+.cart-analysis-status { flex: none; padding-block: 4px; }
+.cart-analysis-origin, .cart-analysis-message, .cart-analysis-details { margin: 4px 0; color: #526d60; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.cart-analysis-message p, .cart-analysis-details p { margin: 3px 0; }
+.cart-analysis-message button, .cart-analysis-details button { padding: 3px 7px; border: 1px solid #b8c9bb; border-radius: 6px; color: var(--af-green-dark); background: #fff; font: inherit; cursor: pointer; }
+.cart-analysis-details summary { cursor: pointer; }
+.cart-analysis-details section { margin-top: 6px; padding: 6px; border-left: 2px solid #cfdccd; }
+.cart-analysis-details strong { font-size: 11px; }
 .cart-course-detail-links { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 1px; }
 .cart-course-detail-links button {
   height: 28px;

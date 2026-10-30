@@ -8,9 +8,15 @@ import { BUKHANSAN_CENTER } from "../data";
 import type { CartCourse, ElevationChartSeries } from "../types";
 import { CourseElevationChart } from "./CourseElevationChart";
 import { useDraggableCartSheet } from "./useDraggableCartSheet";
+import type { CourseComparisonState } from "../../../types/courseAnalysis";
+import { analysisQualityLabel, type ComparisonCourseView } from "../../../utils/courseComparison";
+import { ComparisonAnalysisStatus } from "./ComparisonAnalysisStatus";
 
 type CourseCompareScreenProps = {
   courses: readonly CartCourse[];
+  analysisCourses: readonly ComparisonCourseView[];
+  analysisState: CourseComparisonState;
+  onRetry: () => void;
   onBack: () => void;
   onViewMetrics: () => void;
   onNavigate: (destination: BottomDestination) => void;
@@ -18,6 +24,9 @@ type CourseCompareScreenProps = {
 
 export function CourseCompareScreen({
   courses,
+  analysisCourses,
+  analysisState,
+  onRetry,
   onBack,
   onViewMetrics,
   onNavigate,
@@ -25,30 +34,45 @@ export function CourseCompareScreen({
   const [dimension, setDimension] = useState<MapDimension>("2D");
   const [terrainStatus, setTerrainStatus] = useState<TerrainStatus>("idle");
   const [map, setMap] = useState<MapLibreMap | null>(null);
-  const mapRoutes = useMemo<MapRoute[]>(() => courses.map((course) => ({
+  const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
+  useEffect(() => {
+    const resize = () => setViewportHeight(window.innerHeight);
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
+  const mapRoutes = useMemo<MapRoute[]>(() => analysisCourses.filter(course => course.profile).map((course) => ({
     id: course.id,
     color: course.color,
-    coordinates: course.routeCoordinates,
-  })), [courses]);
-  const chartSeries = useMemo<ElevationChartSeries[]>(() => courses.map((course) => ({
+    coordinates: course.profile!.samples.map(sample => sample.coordinate),
+  })), [analysisCourses]);
+  const chartSeries = useMemo<ElevationChartSeries[]>(() => analysisCourses.map((course) => ({
     id: course.id,
     name: course.name,
     color: course.color,
-    points: course.elevationProfile,
-  })), [courses]);
+    points: course.profile?.samples.map(sample => ({ distanceKm: sample.distanceMeters / 1000, elevationMeters: sample.elevationMeters })) ?? [],
+  })), [analysisCourses]);
   const sheet = useDraggableCartSheet({
     ariaLabel: "고도 그래프 높이 조절",
-    openHeight: 326,
+    openHeight: Math.min(326, Math.max(180, viewportHeight / 2)),
   });
   const terrainEnabled = supportsTerrain(courses[0]?.mountainId);
   useEffect(() => {
     if (!terrainEnabled) map?.easeTo({ pitch: dimension === "3D" ? 50 : 0, duration: 350 });
   }, [dimension, map, terrainEnabled]);
+  useEffect(() => {
+    if (!map || !mapRoutes.length) return;
+    let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
+    for (const route of mapRoutes) for (const [lng, lat] of route.coordinates) {
+      west = Math.min(west, lng); east = Math.max(east, lng); south = Math.min(south, lat); north = Math.max(north, lat);
+    }
+    map.fitBounds([[west, south], [east, north]], { padding: { top: 110, right: 45, bottom: Math.min(360, window.innerHeight * 0.45), left: 30 }, maxZoom: 14.5, duration: 0 });
+  }, [map, mapRoutes]);
+  const mountainName = analysisState.status === 'success' ? analysisState.data.mountainName : courses[0]?.mountain ?? '산';
 
   return (
     <main className="cart-screen cart-map-screen cart-compare-screen" style={sheet.sheetStyle}>
       <BaseMap
-        ariaLabel={`${courses[0]?.mountain ?? "산"} 비교 코스 지도`}
+        ariaLabel={`${mountainName} 비교 코스 지도`}
         center={courses[0]?.routeCoordinates[0] ?? BUKHANSAN_CENTER}
         zoom={12.8}
         routes={mapRoutes}
@@ -59,7 +83,7 @@ export function CourseCompareScreen({
         onTerrainStatusChange={setTerrainStatus}
       />
       <TopBar
-        title={`${courses[0]?.mountain ?? "산"} · 코스 비교`}
+        title={`${mountainName} · 코스 비교`}
         onBack={onBack}
         showAction={false}
         className="cart-map-topbar"
@@ -80,21 +104,21 @@ export function CourseCompareScreen({
         className="cart-compare-sheet"
         bodyHidden={sheet.bodyHidden}
         handleProps={sheet.handleProps}
+        headerAction={<button type="button" className="cart-metrics-link" onClick={onViewMetrics}>비교표 ›</button>}
         content={(
           <div className="cart-compare-content">
-            <button type="button" className="cart-metrics-link" onClick={onViewMetrics}>
-              비교표 ›
-            </button>
             <div className="cart-course-legend" aria-label="코스 범례">
-              {courses.map((course) => (
+              {analysisCourses.map((course) => (
                 <span key={course.id}>
                   <i style={{ backgroundColor: course.color }} />
-                  <Typography variant="dataAuxiliary">{course.shortName}</Typography>
+                  <Typography variant="dataAuxiliary">{course.shortName} · {analysisQualityLabel(course.analysis)}</Typography>
                 </span>
               ))}
             </div>
+            {analysisState.status !== 'success' && <ComparisonAnalysisStatus state={analysisState} courses={analysisCourses} onRetry={onRetry} />}
             <Typography as="h3" variant="controlLabel" className="cart-chart-title">고도 프로필</Typography>
             <CourseElevationChart series={chartSeries} />
+            {analysisState.status === 'success' && <ComparisonAnalysisStatus state={analysisState} courses={analysisCourses} onRetry={onRetry} />}
           </div>
         )}
       />
