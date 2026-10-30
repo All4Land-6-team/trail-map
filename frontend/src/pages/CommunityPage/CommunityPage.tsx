@@ -14,7 +14,7 @@ import { communityCourseColor } from '../../constants/community'
 import { CommunityMap, type CommunityMapMarker } from './components/CommunityMap'
 import { CommunityPhotoAlbum, CommunityPhotoReview, CommunityPhotoStrip, type CommunityGalleryPhoto } from './components/SpotPhotoGallery'
 import { ReviewForm } from './components/ReviewForm'
-import { SpotRegistration } from './components/SpotRegistration'
+import { SpotRegistration, type SpotRegistrationCourse } from './components/SpotRegistration'
 import { SpotTypeDropdown } from './components/SpotTypeDropdown'
 import { useCommunitySheet } from './hooks/useCommunitySheet'
 import './community.css'
@@ -27,6 +27,7 @@ export type CommunityPageProps = {
   initialMountainId?: string
   initialSpotId?: string
   initialCourseId?: string
+  spotRegistrationMode?: 'active' | 'postHike'
   onSpotRegistered?: () => void
   readOnly?: boolean
   onExit?: () => void
@@ -145,7 +146,8 @@ function ReviewEligibilityInfo() {
   </span>
 }
 
-export function CommunityPage({ initialScreen = 'mountainSelect', initialMountainId = 'bukhansan', initialSpotId, initialCourseId, onSpotRegistered, readOnly = false, onExit, onNavigateOutside }: CommunityPageProps) {
+export function CommunityPage({ initialScreen = 'mountainSelect', initialMountainId = 'bukhansan', initialSpotId, initialCourseId,
+  spotRegistrationMode = 'postHike', onSpotRegistered, readOnly = false, onExit, onNavigateOutside }: CommunityPageProps) {
   const [screens, setScreens] = useState<CommunityScreen[]>([initialScreen])
   const screen = screens.at(-1)!
   const isDetail = screen === 'mountainDetail' || screen === 'spotDetail' || screen === 'courseDetail'
@@ -155,6 +157,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const [reviews, setReviews] = useState<CommunityReview[]>([])
   const [votes, setVotes] = useState<Record<string, SpotVote>>({})
   const [eligibleCourses, setEligibleCourses] = useState<CompletedHike[]>([])
+  const [spotHikeId, setSpotHikeId] = useState('')
   const [mountainId, setMountainId] = useState('')
   const [mountainFocus, setMountainFocus] = useState<{ coordinate: Coordinate; request: number } | null>(null)
   const [mapCategory, setMapCategory] = useState<MapCategory>('all')
@@ -219,23 +222,30 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       setSpots(loadedSpots)
       setVotes(Object.fromEntries(spotResult.map(spot => [String(spot.targetId), toVote(spot)])))
       setReviews([...mountainReviewResult, ...courseReviews.flat()].map(toReview))
-      const eligibleHikes = eligibility.hikes.map(hike => ({
+      const eligibleHikes = [...eligibility.hikes]
+        .sort((a, b) => Date.parse(b.endedAt) - Date.parse(a.endedAt))
+        .map(hike => ({
         id: String(hike.hikeRecordId), courseId: String(hike.courseId), mountainId,
         courseName: hike.courseName, distanceKm: loadedCourses.find(course => course.id === String(hike.courseId))?.distanceKm ?? 0,
         finishedAt: hike.endedAt,
-      }))
+        }))
       setEligibleCourses(eligibleHikes)
+      setSpotHikeId(current => eligibleHikes.some(hike => hike.id === current) ? current : eligibleHikes[0]?.id ?? '')
       setDraft(current => current.kind === 'mountain' && !current.completedHikeId && eligibleHikes[0]
         ? { ...current, targetId: mountainId, completedHikeId: eligibleHikes[0].id }
         : current)
       const requestedCourse = loadedCourses.find(course => course.id === initialCourseId || course.externalId === initialCourseId)
-      setDetailCourseId(current => requestedCourse?.id ?? (loadedCourses.some(course => course.id === current) ? current : loadedCourses[0]?.id ?? ''))
+      const completedCourse = initialScreen === 'newSpot'
+        ? loadedCourses.find(course => course.id === eligibleHikes[0]?.courseId)
+        : undefined
+      setDetailCourseId(current => requestedCourse?.id ?? completedCourse?.id
+        ?? (loadedCourses.some(course => course.id === current) ? current : loadedCourses[0]?.id ?? ''))
       setDetailSpotId(current => loadedSpots.some(spot => spot.id === current) ? current : loadedSpots[0]?.id ?? '')
     }).catch(error => {
       if (!controller.signal.aborted) notify(error instanceof Error ? error.message : '커뮤니티 정보를 불러오지 못했습니다.')
     })
     return () => controller.abort()
-  }, [initialCourseId, mountainId, notify])
+  }, [initialCourseId, initialScreen, mountainId, notify])
 
   useEffect(() => {
     const spot = spots.find(item => item.id === detailSpotId)
@@ -306,6 +316,11 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       distanceKm: 0, baselinePhotos: 0, baselineReviews: 0, seedQuote: '' },
   [courses, detailCourseId, mountainId, mountain.position, visibleCourseTargets])
   const selectedCourseColor = communityCourseColor(selectedCourse.name)
+  const spotRegistrationCourses = useMemo<SpotRegistrationCourse[]>(() => eligibleCourses.flatMap(hike => {
+    const course = visibleCourseTargets.find(item => item.id === hike.courseId)
+    return course ? [{ hikeRecordId: hike.id, courseId: course.id, name: course.name, finishedAt: hike.finishedAt,
+      color: communityCourseColor(course.name), coordinates: course.coordinates }] : []
+  }), [eligibleCourses, visibleCourseTargets])
   const mountainDetailFocus = useMemo(() => ({ coordinate: mountain.position as Coordinate, request: 1, zoom: CATEGORY_MAP_ZOOM.mountain, resetZoom: true }), [mountain.position])
   const courseDetailFocus = useMemo(() => ({ coordinate: courseCenter(selectedCourse), request: 1 }), [selectedCourse])
   const selectedSpotHidden = selectedSpot ? isSpotHidden(votes[selectedSpot.id]) : false
@@ -697,9 +712,10 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     </div>}
 
     {screen === 'newSpot' && <SpotRegistration spots={spots} votes={votes} mountainId={mountainId} mountainCenter={mountain.position as Coordinate}
-      terrainMountainId={terrainMountainId} routeCoordinates={selectedCourse.coordinates} onError={notify}
+      terrainMountainId={terrainMountainId} routeCoordinates={selectedCourse.coordinates} mode={spotRegistrationMode}
+      recentCourses={spotRegistrationCourses} selectedHikeId={spotHikeId} onCourseSelect={setSpotHikeId} onError={notify}
       onCreate={async (spot, photos, distinct) => {
-        const hike = eligibleCourses[0]
+        const hike = eligibleCourses.find(item => item.id === spotHikeId) ?? eligibleCourses[0]
         if (!hike) { notify(reviewEligibilityMessage); return }
         const created = await communityApi.createSpot(mountainId, {
           hikeRecordId: Number(hike.id), type: spot.type, name: spot.name, coordinate: spot.coordinate, confirmDistinct: distinct,
@@ -718,7 +734,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         notify('스팟을 등록했어요. 이어서 후기를 작성해 주세요.')
       }}
       onUseExisting={(spot, photos) => {
-        const hike = eligibleCourses[0]
+        const hike = eligibleCourses.find(item => item.id === spotHikeId) ?? eligibleCourses[0]
         setDetailSpotId(spot.id)
         if (onSpotRegistered) { onSpotRegistered(); return }
         if (screens.includes('review')) { updateDraft({ kind: 'spot', targetId: spot.id, completedHikeId: hike?.id, photos }); setScreens(current => current.slice(0, -1)) }

@@ -28,7 +28,7 @@
 }
 ```
 
-시설 좌표는 항상 WGS84(EPSG:4326)의 경도·위도 순서다. `source.crs`는 변환 전 원본 CRS다. `RESTROOM`, `SHELTER`, `DRINKING_WATER` 유형을 지원하지만 실제 데이터 적재는 화장실로 검증한다. 출처 URL을 확인하지 못했으면 `null`로 둔다.
+시설 좌표는 항상 WGS84(EPSG:4326)의 경도·위도 순서다. `source.crs`는 변환 전 원본 CRS다. `RESTROOM`, `SHELTER`, `DRINKING_WATER` 유형을 지원한다. 세 유형의 공통 전처리·적재·화면 실행은 [공통 시설 파이프라인](facility-pipeline.md)을 참고한다. 출처 URL을 확인하지 못했으면 `null`로 둔다.
 
 `sourceRecordId`에는 SHP의 `OBJECTID`를 문자열로 보존한다. `ID_CD`나 좌표를 식별자로 쓰지 않는다. 서로 다른 OBJECTID가 같은 좌표에 있어도 보존한다. `USE_YN`은 자료 당시 값이며 현재 개방·운영 여부를 뜻하지 않는다. 응답에서도 `sourceReportedStatus`와 `sourceDate`를 함께 제공한다.
 
@@ -49,7 +49,7 @@ $env:PYTHONPATH = 'data-pipeline/src'
 
 ## JDBC 적재
 
-후보 JSON v1은 바로 적재하지 않는다. 먼저 [산 소속 판정 명령](facility-mountain-boundary.md)을 실행해야 한다. 공통 전처리는 새 후보 중 정확히 한 산 경계에 포함된 행만 선택하고 해당 산의 양의 정수 `mountainId`를 기록한다. 결과가 없으면 시설 배열은 비어 있다. 필드가 없거나 schemaVersion이 1이면 적재를 거부한다.
+후보 JSON v1은 바로 적재하지 않는다. [공통 전처리 명령](facility-pipeline.md)으로 JSON v2를 한 번에 생성하거나, 개별 후보에 [산 소속 판정 명령](facility-mountain-boundary.md)을 적용해야 한다. 전처리는 신규 후보 중 정확히 한 산 경계에 포함된 행만 선택하고 해당 산의 양의 정수 `mountainId`를 기록한다. 결과가 없으면 시설 배열은 비어 있다. `mountainId`가 없거나 schemaVersion이 1이면 적재를 거부한다.
 
 PostgreSQL/PostGIS와 `trail_map` DB가 준비되어 있어야 한다. DB 비밀번호는 환경 변수 `DB_PASSWORD` 또는 Git에서 제외된 `backend/src/main/resources/application-secret.properties`에 설정한다. 프로젝트 루트 `.env`는 Spring Boot가 자동으로 읽지 않는다.
 

@@ -60,6 +60,34 @@ test('등산 완료 화면에서 바로 연 산 후기 폼에 서버의 완료 �
   assert.match(source, /setDraft\(current => current\.kind === 'mountain'[\s\S]*completedHikeId: eligibleHikes\[0\]\.id/);
 });
 
+test('산행 후 스팟 등록은 가장 최근에 완료한 코스를 기본 경로로 사용한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /\[\.\.\.eligibility\.hikes\][\s\S]*Date\.parse\(b\.endedAt\) - Date\.parse\(a\.endedAt\)/);
+  assert.match(source, /completedCourse = initialScreen === 'newSpot'[\s\S]*eligibleHikes\[0\]\?\.courseId/);
+});
+
+test('커뮤니티의 스팟 등록 지도는 선택한 산의 최근 완료 코스들을 표시하고 현재 위치를 요청하지 않는다', () => {
+  const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const registration = readFileSync(new URL('../src/pages/CommunityPage/components/SpotRegistration.tsx', import.meta.url), 'utf8');
+  assert.match(page, /spotRegistrationCourses = useMemo[\s\S]*eligibleCourses\.flatMap/);
+  assert.match(registration, /mode === 'postHike'[\s\S]*최근에 다녀온 코스/);
+  assert.match(registration, /highlightedRoutes=\{mode === 'postHike' \? recentRoutes : undefined\}/);
+  assert.match(registration, /if \(mode !== 'active'\) return[\s\S]*requestAnimationFrame\(locate\)/);
+});
+
+test('스팟 등록 지도는 등산 중 현재 위치를 우선하고 실패하면 전달받은 코스 전체를 표시한다', () => {
+  const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+  const activePage = readFileSync(new URL('../src/pages/HikeActivePage/HikeActivePage.tsx', import.meta.url), 'utf8');
+  const registration = readFileSync(new URL('../src/pages/CommunityPage/components/SpotRegistration.tsx', import.meta.url), 'utf8');
+  const map = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
+  assert.match(activePage, /mode: "active"[\s\S]*course: session\.schedule\.courseId/);
+  assert.match(app, /spotRegistrationMode=\{query\.get\('mode'\) === 'active' \? 'active' : 'postHike'\}/);
+  assert.match(registration, /mode !== 'active'\) return[\s\S]*requestAnimationFrame\(locate\)/);
+  assert.match(registration, /center=\{mountainCenter\}[\s\S]*fitHighlightedRoute=\{!locationFocus\}/);
+  assert.doesNotMatch(registration, /mountainSpots\[0\]\?\.coordinate \?\? mountainCenter/);
+  assert.match(map, /fitHighlightedRoute[\s\S]*map\.fitBounds/);
+});
+
 test('지도 마커 ID가 겹쳐도 종류에 맞는 상세 화면을 연다', () => {
   const mapSource = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');

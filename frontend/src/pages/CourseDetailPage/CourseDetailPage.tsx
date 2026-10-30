@@ -18,7 +18,7 @@ import { CourseAnalysis } from "./components/CourseAnalysis";
 import { CourseSpots } from "./components/CourseSpots";
 import { useCourseDetail } from "./hooks/useCourseDetail";
 import { useCourseFacilities } from "./hooks/useCourseFacilities";
-import { withCourseRestrooms } from "../../utils/courseFacilities";
+import { withCourseFacilities } from "../../utils/courseFacilities";
 import { useDetailSheet } from "./hooks/useDetailSheet";
 import "./course-detail.css";
 
@@ -52,6 +52,12 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const restrooms = useCourseFacilities(courseId, data?.course.backendCourseId,
     view.tab === "spots" && (view.category === "all" || view.category === "restroom"));
   const restroomSpots = restrooms.state.status === "success" ? restrooms.state.spots : EMPTY_SPOTS;
+  const water = useCourseFacilities(courseId, data?.course.backendCourseId,
+    view.tab === "spots" && (view.category === "all" || view.category === "water"), "DRINKING_WATER");
+  const waterSpots = water.state.status === "success" ? water.state.spots : EMPTY_SPOTS;
+  const shelters = useCourseFacilities(courseId, data?.course.backendCourseId,
+    view.tab === "spots" && (view.category === "all" || view.category === "shelter"), "SHELTER");
+  const shelterSpots = shelters.state.status === "success" ? shelters.state.spots : EMPTY_SPOTS;
   const reviewExcerpts = communityReviews.map(review => ({
     id: String(review.reviewId),
     meta: `${review.author} · ${new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric" }).format(new Date(review.createdAt))}`,
@@ -59,7 +65,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   })).slice(0, 2);
   const reviewTotal = communityCourse?.reviewCount ?? communityReviews.length;
   const courses = useMemo(() => data ? [data.course] : [], [data]);
-  const allSpots = useMemo(() => withCourseRestrooms(data?.spots ?? EMPTY_SPOTS, restroomSpots), [data, restroomSpots]);
+  const allSpots = useMemo(() => withCourseFacilities(data?.spots ?? EMPTY_SPOTS, [...restroomSpots, ...waterSpots, ...shelterSpots]),
+    [data, restroomSpots, waterSpots, shelterSpots]);
   const spots = useMemo(() => selectCourseSpots(allSpots, view.category), [allSpots, view.category]);
   const summitCoordinate = useMemo(() => data?.samples.reduce<(typeof data.samples)[number] | null>((highest, sample) =>
     !highest || sample.elevationMeters > highest.elevationMeters ? sample : highest, null)?.coordinate, [data]);
@@ -147,6 +154,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
             onSelect={setChosenIndex} onToggle={toggleMetric} onReviewsOpen={onReviewsOpen ? () => onReviewsOpen(request) : undefined} />
           : <CourseSpots spots={spots} category={view.category} selectedId={selectedSpot?.id}
             restrooms={restrooms.state} onRetryRestrooms={restrooms.retry}
+            water={water.state} onRetryWater={water.retry}
+            shelters={shelters.state} onRetryShelters={shelters.retry}
             onCategory={category => changeView({ tab: "spots", category })} onOpen={openSpot} />}
         footer={<div className="course-detail-actions">
           <Button variant="secondary" aria-pressed={saved} onClick={save}

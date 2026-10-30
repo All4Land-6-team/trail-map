@@ -11,10 +11,10 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from .contract import normalize_facility
-from .knps_restrooms import write_document
+from .document import write_document
 
 
-def classify(document: dict, connection) -> dict:
+def _validate(document: dict) -> tuple[dict, list[dict], set[str]]:
     if document.get("schemaVersion") not in (1, 2) or not isinstance(document.get("facilities"), list):
         raise ValueError("invalid_candidate_document")
     source = document.get("source")
@@ -27,56 +27,47 @@ def classify(document: dict, connection) -> dict:
         if key in seen:
             raise ValueError("duplicate_source_record_id")
         seen.add(key)
+    return source, records, seen
 
-    with connection.transaction():
-        # 기존 시설 조회와 경계 판정은 동일한 읽기 전용 DB 스냅샷을 사용한다.
-        connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
-        sources = connection.execute("""
-            SELECT source_id, source_url, source_crs FROM data_source
-            WHERE source_name = %s AND provider_name IS NOT DISTINCT FROM %s
-                AND source_format = %s AND source_version = %s
-            """, (source["name"], source.get("provider"), source["format"], source["version"])).fetchall()
-        if len(sources) > 1:
-            raise ValueError("ambiguous_data_source")
-        existing_ids = set()
-        if sources:
-            source_id, source_url, source_crs = sources[0]
-            if source_url != source.get("url") or source_crs != source.get("crs"):
-                raise ValueError("source_metadata_changed")
-            if records:
-                existing_ids = {row[0] for row in connection.execute("""
-                    SELECT source_record_id FROM facility
-                    WHERE source_id = %s AND source_record_id = ANY(%s)
-                    """, (source_id, list(seen))).fetchall()}
 
-        boundaries = connection.execute("""
-            SELECT mountain_id, ST_SRID(mountain_boundary), ST_IsValid(mountain_boundary),
-                ST_IsEmpty(mountain_boundary), GeometryType(mountain_boundary),
-                md5(ST_AsEWKB(mountain_boundary))
-            FROM mountain WHERE mountain_boundary IS NOT NULL ORDER BY mountain_id
-            """).fetchall()
-        if any(srid != 4326 or not valid or empty or kind not in ("POLYGON", "MULTIPOLYGON")
-               for _, srid, valid, empty, kind, _ in boundaries):
-            raise ValueError("invalid_mountain_boundary")
+def _classify(document: dict, source: dict, records: list[dict], seen: set[str],
+              connection, boundaries: list[tuple]) -> dict:
+    sources = connection.execute("""
+        SELECT source_id, source_url, source_crs FROM data_source
+        WHERE source_name = %s AND provider_name IS NOT DISTINCT FROM %s
+            AND source_format = %s AND source_version = %s
+        """, (source["name"], source.get("provider"), source["format"], source["version"])).fetchall()
+    if len(sources) > 1:
+        raise ValueError("ambiguous_data_source")
+    existing_ids = set()
+    if sources:
+        source_id, source_url, source_crs = sources[0]
+        if source_url != source.get("url") or source_crs != source.get("crs"):
+            raise ValueError("source_metadata_changed")
+        if records:
+            existing_ids = {row[0] for row in connection.execute("""
+                SELECT source_record_id FROM facility
+                WHERE source_id = %s AND source_record_id = ANY(%s)
+                """, (source_id, list(seen))).fetchall()}
 
-        new_records = [record for record in records if record["sourceRecordId"] not in existing_ids]
-        rows = connection.execute("""
-            WITH points AS (
-                SELECT p.ordinality,
-                    ST_SetSRID(ST_MakePoint((p.value->>'longitude')::double precision,
-                        (p.value->>'latitude')::double precision), 4326) AS geom
-                FROM jsonb_array_elements(%s::jsonb) WITH ORDINALITY AS p(value, ordinality)
-            )
+    new_records = [record for record in records if record["sourceRecordId"] not in existing_ids]
+    rows = connection.execute("""
+        WITH points AS (
             SELECT p.ordinality,
-                COALESCE(array_agg(m.mountain_id ORDER BY m.mountain_id)
-                    FILTER (WHERE m.mountain_id IS NOT NULL), '{}'::bigint[]) AS mountain_ids,
-                COALESCE(bool_or(ST_Touches(m.mountain_boundary, p.geom)), false) AS on_boundary
-            FROM points p LEFT JOIN mountain m
-                ON m.mountain_boundary IS NOT NULL AND ST_Covers(m.mountain_boundary, p.geom)
-            GROUP BY p.ordinality ORDER BY p.ordinality
-            """, (Jsonb(new_records),)).fetchall() if new_records else []
-        if len(rows) != len(new_records):
-            raise ValueError("incomplete_boundary_classification")
+                ST_SetSRID(ST_MakePoint((p.value->>'longitude')::double precision,
+                    (p.value->>'latitude')::double precision), 4326) AS geom
+            FROM jsonb_array_elements(%s::jsonb) WITH ORDINALITY AS p(value, ordinality)
+        )
+        SELECT p.ordinality,
+            COALESCE(array_agg(m.mountain_id ORDER BY m.mountain_id)
+                FILTER (WHERE m.mountain_id IS NOT NULL), '{}'::bigint[]) AS mountain_ids,
+            COALESCE(bool_or(ST_Touches(m.mountain_boundary, p.geom)), false) AS on_boundary
+        FROM points p LEFT JOIN mountain m
+            ON m.mountain_boundary IS NOT NULL AND ST_Covers(m.mountain_boundary, p.geom)
+        GROUP BY p.ordinality ORDER BY p.ordinality
+        """, (Jsonb(new_records),)).fetchall() if new_records else []
+    if len(rows) != len(new_records):
+        raise ValueError("incomplete_boundary_classification")
 
     result = copy.deepcopy(document)
     result["schemaVersion"] = 2
@@ -107,14 +98,42 @@ def classify(document: dict, connection) -> dict:
     return result
 
 
-def preprocess(document: dict) -> dict:
+def classify_documents(documents: list[dict], connection) -> list[dict]:
+    if not documents:
+        raise ValueError("invalid_candidate_document")
+    validated = [_validate(document) for document in documents]
+    with connection.transaction():
+        # 모든 출처의 기존 시설 조회와 경계 판정에 같은 읽기 전용 DB 스냅샷을 사용한다.
+        connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        boundaries = connection.execute("""
+            SELECT mountain_id, ST_SRID(mountain_boundary), ST_IsValid(mountain_boundary),
+                ST_IsEmpty(mountain_boundary), GeometryType(mountain_boundary),
+                md5(ST_AsEWKB(mountain_boundary))
+            FROM mountain WHERE mountain_boundary IS NOT NULL ORDER BY mountain_id
+            """).fetchall()
+        if any(srid != 4326 or not valid or empty or kind not in ("POLYGON", "MULTIPOLYGON")
+               for _, srid, valid, empty, kind, _ in boundaries):
+            raise ValueError("invalid_mountain_boundary")
+        return [_classify(document, *parts, connection, boundaries)
+                for document, parts in zip(documents, validated)]
+
+
+def classify(document: dict, connection) -> dict:
+    return classify_documents([document], connection)[0]
+
+
+def preprocess_many(documents: list[dict]) -> list[dict]:
     try:
         # libpq PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD 또는 pgpass를 사용한다.
         with psycopg.connect(connect_timeout=5) as connection:
-            return classify(document, connection)
+            return classify_documents(documents, connection)
     except psycopg.Error as error:
         # DSN/비밀값이 오류 로그에 노출되지 않도록 DB 오류 상세는 출력하지 않는다.
         raise ValueError("mountain_database_error: DB 연결 및 PostGIS 구성을 확인하세요") from error
+
+
+def preprocess(document: dict) -> dict:
+    return preprocess_many([document])[0]
 
 
 def main() -> None:

@@ -32,7 +32,8 @@ export type FacilityFeatureCollection = {
 };
 
 /** 코스 주변 조회 화면에서 사용하는 시설 응답 필드. 거리값은 반드시 존재한다. */
-export type CourseRestroom = Pick<Facility, 'facilityId' | 'name' | 'longitude' | 'latitude' | 'sourceDate'> & {
-  type: 'RESTROOM';
+export type CourseFacilityType = Facility['type'];
+export type CourseFacility = Pick<Facility, 'facilityId' | 'name' | 'longitude' | 'latitude' | 'sourceDate'> & {
+  type: CourseFacilityType;
   distanceMeters: number;
 };

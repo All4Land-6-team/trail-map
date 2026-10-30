@@ -11,7 +11,7 @@ npm run dev
 
 프로덕션 빌드는 `npm run build`로 확인합니다.
 
-## 개발용 화장실 전체 조회
+## 개발용 공식 시설 전체 조회
 
 `npm run dev` 실행 후 `http://localhost:5173/?preview=facilities&sourceId=4`에서 적재된 화장실 후보 전체를 확인합니다. `sourceId`에는 백엔드 적재 로그의 출처 ID를 지정합니다. 현재 시범 적재는 4번 출처의 95건입니다. 이 화면은 `import.meta.env.DEV`에서만 연결되며 프로덕션 번들에 포함되지 않습니다.
 
@@ -160,6 +160,48 @@ npm run build
 
 `npm run test:sheets`는 화면 크기·내비게이션 안전 영역·기본 높이·조절 범위를 검사합니다. 브라우저에서는 연속 드래그, 포인터 취소, 키보드 조절, 내부 스크롤, 지도·차트 유지 및 작은 화면 배치를 함께 확인합니다.
 
+## 코스 비교 분석 API 연동 (#89)
+
+등산 담기에서 같은 산의 코스 2~3개를 선택한 뒤 비교 지도·비교표를 엽니다. `GET /api/v1/course-comparisons?courseIds=...`로 요약을 읽고, 분석이 있는 코스만 `GET /api/v1/course-analyses/{analysisId}/profile`로 조회합니다. `VITE_API_BASE_URL` 기본값은 `http://localhost:8080`이며 사용자 헤더는 보내지 않습니다. 백엔드의 #85·#87 코드가 필요합니다. #87 미병합 시 이 브랜치는 해당 선행 구현을 포함하며, #87 병합 후 최신 develop을 동기화하고 PR base는 develop으로 지정합니다.
+
+`api/courseAnalysis.ts`가 요청 순서·코스/산 ID·버전·분석 ID·설정·수치·좌표를 검증합니다. 지도 경로와 고도 차트는 같은 불변 분석 ID의 샘플을 사용합니다. 분석이 없거나 프로필 조회에 실패한 코스는 예시 경로·고도값으로 대체하지 않습니다. 비교표도 API 수치만 사용하며 일정 등록의 코스 선택 요약에 동일한 거리·시간을 표시합니다. 단일 상세 탭의 mock 분석 교체는 별도 후속 작업입니다.
+
+거리 m는 km, 시간 초는 표시용 분·시간으로 변환합니다. 예상시간·평균 경사는 임의 계산하지 않으며 미계산 값은 `—`입니다. `NO_DATA`·`PARTIAL`·`OUTDATED` 등을 코스별로 표시하고, 분석 상태를 펼치면 현재/분석 버전, 품질 사유, 샘플 간격·평활화 여부·분석 시각을 확인합니다. 고도 축은 음수·800m 초과를 포함한 실제 범위, 거리 축은 실제 경로 길이를 사용하며 결측 구간은 연결하지 않습니다.
+
+관측 커버리지는 `100 * 관측 거리 / 전체 거리`의 부동소수점 계산으로 `100.00000000000001%`가 될 수 있습니다. 프론트는 100% 상한의 1e-9 퍼센트포인트 이내 오차만 100%로 보정하고 음수·실질적인 범위 초과·비수치는 계속 거절합니다. DB와 분석 산출물은 변경하지 않습니다. 코스 목록의 `상세 준비 중`은 별도 mock 상세 준비 상태이며 비교 조회를 차단하는 조건이 아닙니다.
+
+고도 그래프 툴팁은 거리를 km 소수점 2자리, 고도를 m 소수점 1자리로 표시하며 원본 샘플은 반올림하지 않습니다. 툴팁은 스크롤 본문 바깥에 표시하고 앱의 좌우 경계와 하단 내비게이션 위로 위치를 제한합니다. 본문 스크롤·화면 크기 변경 시 닫습니다. 범례는 코스명·품질 상태를 두 줄로 배치해 가로 스크롤을 없애고, 선택한 최대 3개 코스에 초록·파랑·주황을 부여하여 선택 화면·지도·그래프·툴팁·비교표의 색을 일치시킵니다.
+
+`CartCourse.analysisReference`에 DB 코스·산 ID를 명시합니다. 현재 합성 코스의 시드 연결은 개발 서버에서만 켜집니다(`developmentAnalysisReference`, `DEV_COURSE_IDS`). 백운대=1, 대남문=2, 비봉=3이며 시설 시범용 `VITE_MOCK_BAEGUNDAE_COURSE_ID`를 재사용하지 않습니다. 개발용 경로임을 화면에 표시합니다. 운영 빌드는 시드 ID를 연결하지 않아 미연결 상태가 되며, 실제 코스 API를 도입할 때 응답의 ID·산 ID를 `analysisReference`로 제공해야 합니다.
+
+### 개발용 2·3번 분석 준비 (Windows)
+
+Docker Desktop 실행, 기존 `trail-map-postgis` 컨테이너와 개발용 시드, Python `.venv`, 분석용 DEM `data/processed/dem/bukhansan/analysis/bukhansan_dem.tif`, 백엔드 비밀 설정이 필요합니다. 빈 DB에 시드를 자동 추가하거나 기존 코스를 수정하지 않습니다.
+
+저장소 루트에서 다음을 실행합니다.
+
+```powershell
+git fetch origin
+powershell -NoProfile -ExecutionPolicy Bypass -File .\data-pipeline\scripts\prepare-dev-course-comparison.ps1
+```
+
+스크립트는 2·3번의 개발용 시드 표식을 확인하고 GeoJSON을 `data/interim/courses`로 추출합니다. 10m 간격·고도 m 가정으로 분석하여 `data/processed/course-analysis/course-{id}-dev-assumed-m.json`을 생성하고 로컬 JAR로 적재합니다. m는 개발용 가정이며 수직 기준 미확인을 유지하므로 PARTIAL일 수 있습니다. 기존 결과 파일은 재사용하며 덮어쓰지 않습니다. 실제 DEM 분석에는 시간이 걸릴 수 있습니다.
+
+#83이 미병합이면 `origin/feature/80-course-analysis` 코드를 임시 detached worktree에서 읽고 종료 시 정리합니다. 현재 브랜치와 기존 `.venv`·`PYTHONPATH`를 유지하며 #83을 병합하지 않습니다. #83 병합 전 원격 브랜치를 삭제하지 않습니다. 이미 분석 코드가 현재 브랜치에 있으면 해당 코드를 사용합니다. 새 코스 버전·분석 조건은 `-OutputDirectory`로 별도 경로를 지정하며, 백엔드가 동일 식별 키의 다른 결과를 차단하면 원인을 확인합니다.
+
+다른 터미널에서 백엔드를 `backend/gradlew.bat bootRun`으로 실행하고, 프론트에서 `npm run dev`를 실행합니다. 먼저 기존 1번 PARTIAL·2/3번 NO_DATA 상태를 확인하고, 스크립트 적재 후 세 코스의 실제 생성 프로필을 비교합니다. 실제 등산로 검증은 ① 담당자로부터 경로·ID·버전을 받아 재분석한 후 별도로 수행합니다.
+
+### 검증
+
+```powershell
+npm run test:comparison
+node --test tests/*.test.mjs tests/*.test.cjs
+npm run lint
+npm run build
+```
+
+브라우저에서는 2개/3개 비교, 분석 없음·프로필 일부 실패·서버 중단·재시도·선택 변경, 상세 화면 왕복·일정 등록, 320×480·390×844·1280×900 배치, 시트 드래그 시 지도/차트 유지를 확인합니다. API 응답을 모의한 브라우저 검사와 실제 DEM·PostGIS 연동 결과는 구분하여 기록합니다.
+
 ## 폴더 규칙
 
 - `pages/<PageName>/components`: 해당 페이지에서만 사용하는 컴포넌트
@@ -214,8 +256,16 @@ OpenFreeMap 배경지도는 공급원의 HTTP 응답에 따른 기본 브라우�
 
 `CourseDetailPage` → `useCourseFacilities` → `api/courseFacilities.ts` → `GET /api/v1/courses/{courseId}/facilities?type=RESTROOM&radiusMeters=250` → `utils/courseFacilities.ts` → `CourseSpots`와 `CourseRouteMap` 순서로 읽는다. 검토 API의 GeoJSON과 달리 코스 API는 `SuccessResponse.data` 배열을 반환한다. 프론트는 R만 수행하며 시설·코스를 생성하거나 변경하지 않는다.
 
-화장실 및 전체 탭은 같은 API 결과를 사용한다. 합성 화장실은 제거하며 오류·빈 응답에 대한 대체 데이터로도 표시하지 않는다. 화장실 목록 선택은 지도 위치로 이동하고, 다른 예시 스팟의 후기 이동은 기존대로 동작한다. 미연결 코스·조회 중·실패와 재시도·결과 없음 상태를 구분한다.
+화장실·쉼터·음수대 및 전체 탭은 같은 API 결과를 사용한다. 합성 시설은 제거하며 오류·빈 응답에 대한 대체 데이터로도 표시하지 않는다. 시설 목록 선택은 지도 위치로 이동하고, 사진 예시 스팟의 이동은 기존대로 동작한다. 미연결 코스·조회 중·실패와 재시도·결과 없음 상태를 구분한다.
 
-250m는 시설 Point에서 코스 전체 LineString까지의 최단거리이며 도보 이동거리가 아니다. 코스는 9개 점의 합성 경로(약 1.2km)로 화면 분석 예시의 4.2km와 다르다. 화장실 위치는 원본 자료의 좌표이며, 원본 기준일을 표시하고 과거 상태를 현재 운영 여부로 해석하지 않는다. 쉼터·음수대·사진 스팟은 아직 화면 예시다.
+250m는 시설 Point에서 코스 전체 LineString까지의 최단거리이며 도보 이동거리가 아니다. 코스는 9개 점의 합성 경로(약 1.2km)로 화면 분석 예시의 4.2km와 다르다. 시설 위치는 원본 자료의 좌표이며, 원본 기준일을 표시하고 과거 상태를 현재 운영 여부로 해석하지 않는다. 쉼터·음수대도 실제 API 결과이며 사진 스팟만 화면 예시다.
 
 `npm run test:course-facilities`, `npm run test:course-detail`, `npm run test:facilities`, `npm run lint`, `npm run build`로 API 계약·화장실 합성 데이터 제거·조회 실패 및 취소·기존 화면 로직·타입을 확인한다.
+
+## 쉼터·음수대 통합 (#75)
+
+코스 상세에서 `category=shelter`·`water`·`restroom`·`all`을 지원한다. 각 유형의 로딩·실패·재시도·빈 상태를 구분하고 이전 코스 요청은 취소한다. 전체 탭은 성공한 유형을 먼저 표시하며 일부 실패 상태에서 전체 개수를 확정하지 않는다.
+
+개발 검토 URL에 `type=SHELTER` 또는 `type=DRINKING_WATER`를 지정한다. 예: `http://localhost:5173/?preview=facilities&sourceId=7&type=SHELTER`. 출처 ID는 적재 로그에서 확인한다. 지도 마커·목록 선택·이름 및 원본 식별자 검색을 같은 방식으로 사용한다.
+
+프론트는 Node 24에서 `npm run dev -- --port 5173 --strictPort`, 백엔드는 별도 터미널에서 실행한다. 자세한 데이터·동시 실행·검증 방법은 [공통 시설 파이프라인](../docs/facility-pipeline.md)을 참고한다.

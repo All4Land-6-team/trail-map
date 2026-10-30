@@ -31,7 +31,8 @@ export function useDraggableCartSheet({
   peekHeight = DEFAULT_PEEK_HEIGHT,
 }: DraggableCartSheetOptions) {
   const maxOffset = openHeight - peekHeight;
-  const [offset, setOffset] = useState(0);
+  const [storedOffset, setOffset] = useState(0);
+  const offset = clamp(storedOffset, 0, maxOffset);
   const dragStart = useRef<{ pointerId: number; pointerY: number; offset: number } | null>(null);
   const pendingOffset = useRef<number | null>(null);
   const animationFrame = useRef<number | null>(null);

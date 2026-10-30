@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '../../../components/common/Button'
 import { Field } from '../../../components/common/Field'
 import { Icon } from '../../../components/common/Icon'
@@ -6,7 +6,7 @@ import { SpotTypeSelector } from '../../../components/review/SpotTypeSelector'
 import { spotTypeOptions } from '../../../constants/community'
 import type { CommunitySpot, Coordinate, PendingPhoto, SpotType, SpotVote } from '../../../types/community'
 import { DUPLICATE_RADIUS_METERS, isSpotHidden, nearbySpotCandidates } from '../../../utils/community'
-import { CommunityMap, type CommunityMapMarker } from './CommunityMap'
+import { CommunityMap, type CommunityMapMarker, type CommunityMapRoute } from './CommunityMap'
 import { PhotoField } from './PhotoField'
 
 type Props = {
@@ -16,13 +16,31 @@ type Props = {
   mountainCenter: Coordinate
   terrainMountainId?: string
   routeCoordinates?: Coordinate[]
+  mode: 'active' | 'postHike'
+  recentCourses: readonly SpotRegistrationCourse[]
+  selectedHikeId?: string
+  onCourseSelect: (hikeRecordId: string) => void
   onError: (message: string) => void
   onCreate: (spot: Omit<CommunitySpot, 'id' | 'targetType' | 'baselinePhotos' | 'baselineReviews' | 'photos'>, photos: PendingPhoto[], distinct: boolean) => Promise<void>
   onUseExisting: (spot: CommunitySpot, photos: PendingPhoto[]) => void
 }
 
-export function SpotRegistration({ spots, votes, mountainId, mountainCenter, terrainMountainId, routeCoordinates, onError, onCreate, onUseExisting }: Props) {
+export type SpotRegistrationCourse = {
+  hikeRecordId: string
+  courseId: string
+  name: string
+  finishedAt: string
+  color: string
+  coordinates: Coordinate[]
+}
+
+type LocationState = 'idle' | 'loading' | 'ready' | 'unavailable'
+
+export function SpotRegistration({ spots, votes, mountainId, mountainCenter, terrainMountainId, routeCoordinates, mode,
+  recentCourses, selectedHikeId, onCourseSelect, onError, onCreate, onUseExisting }: Props) {
   const [coordinate, setCoordinate] = useState<Coordinate | null>(null)
+  const [locationState, setLocationState] = useState<LocationState>('idle')
+  const [locationFocus, setLocationFocus] = useState<{ coordinate: Coordinate; request: number; zoom: number; resetZoom: boolean } | null>(null)
   const [type, setType] = useState<SpotType | undefined>()
   const [name, setName] = useState('')
   const [photos, setPhotos] = useState<PendingPhoto[]>([])
@@ -35,6 +53,33 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, ter
     ...mountainSpots.filter(spot => !isSpotHidden(votes[spot.id])).map(spot => ({ id: spot.id, name: spot.name, kind: 'spot' as const, coordinate: spot.coordinate, spotType: spot.type })),
     ...(coordinate ? [{ id: 'new-position', name: '선택한 위치', kind: 'point' as const, coordinate, shortLabel: '✓' }] : []),
   ]
+  const recentRoutes = useMemo<CommunityMapRoute[]>(() => recentCourses.map(course => ({
+    id: course.hikeRecordId,
+    color: course.color,
+    coordinates: course.coordinates,
+    selected: course.hikeRecordId === selectedHikeId,
+  })), [recentCourses, selectedHikeId])
+  const locate = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationState('unavailable')
+      return
+    }
+    setLocationState('loading')
+    navigator.geolocation.getCurrentPosition(position => {
+      const current: Coordinate = [position.coords.longitude, position.coords.latitude]
+      setCoordinate(current)
+      setDistinct(false)
+      setLocationFocus(previous => ({ coordinate: current, request: (previous?.request ?? 0) + 1, zoom: 16, resetZoom: true }))
+      setLocationState('ready')
+    }, () => setLocationState('unavailable'), { enableHighAccuracy: true, timeout: 10_000, maximumAge: 30_000 })
+  }, [])
+
+  useEffect(() => {
+    if (mode !== 'active') return
+    const frame = window.requestAnimationFrame(locate)
+    return () => window.cancelAnimationFrame(frame)
+  }, [locate, mode])
+
   async function createSpot() {
     setSubmitted(true)
     if (!coordinate || !type || !name.trim()) {
@@ -57,13 +102,33 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, ter
   }
   return <div className="community-form-layout community-register">
     <div className="community-form-layout__scroll">
-      <h2>새 스팟 등록</h2><p className="community-form-subtitle">지도에서 위치 지정</p>
-      <div className="community-register__map"><CommunityMap markers={markers} mountainId={terrainMountainId} center={mountainSpots[0]?.coordinate ?? mountainCenter} zoom={15}
-        showRoute={(routeCoordinates?.length ?? 0) > 1} highlightedRoute={routeCoordinates}
+      <h2>새 스팟 등록</h2>
+      {mode === 'postHike' && recentCourses.length > 0 && <fieldset className="community-course-options community-register__courses">
+        <legend className="community-field-label">최근에 다녀온 코스</legend>
+        {recentCourses.map(course => <label key={course.hikeRecordId} className="community-course-option">
+          <input type="radio" name="spot-course" checked={course.hikeRecordId === selectedHikeId}
+            onChange={() => onCourseSelect(course.hikeRecordId)} />
+          <span className="community-course-option__indicator" aria-hidden="true" />
+          <span className="community-course-option__copy"><strong>{course.name}</strong>
+            <small>{new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(course.finishedAt))} 완료</small></span>
+        </label>)}
+      </fieldset>}
+      <div className="community-register__map"><CommunityMap markers={markers} mountainId={terrainMountainId} center={mountainCenter} zoom={14}
+        className="community-page__map--select" focusTarget={locationFocus ?? undefined}
+        showRoute={mode === 'active' ? (routeCoordinates?.length ?? 0) > 1 : recentRoutes.length > 0}
+        highlightedRoute={mode === 'active' ? routeCoordinates : undefined}
+        highlightedRoutes={mode === 'postHike' ? recentRoutes : undefined}
+        fitHighlightedRoute={!locationFocus}
         ariaLabel="새 스팟 위치 지정" onMapSelect={point => { setCoordinate(point); setDistinct(false) }}
-        onMarkerSelect={marker => { const found = spots.find(spot => spot.id === marker.id); if (found) { setCoordinate(found.coordinate); setDistinct(false) } }} />
+        onMarkerSelect={marker => { const found = spots.find(spot => spot.id === marker.id); if (found) onUseExisting(found, photos) }} />
       </div>
-      <p className="community-register__location">{coordinate ? `선택한 위치 · ${type ? spotTypeOptions.find(option => option.value === type)?.label : '종류를 선택해 주세요'}` : '지도를 눌러 위치를 선택해 주세요.'}</p>
+      <div className="community-register__location">
+        <span>{locationState === 'loading' ? '현재 위치를 확인하고 있어요.'
+          : locationState === 'unavailable' && mode === 'active' ? '현재 위치를 받지 못해 등산 중인 코스를 보여드려요.'
+            : coordinate ? `선택한 위치 · ${type ? spotTypeOptions.find(option => option.value === type)?.label : '종류를 선택해 주세요'}`
+              : '지도를 눌러 위치를 선택해 주세요.'}</span>
+        {mode === 'active' && <button type="button" disabled={locationState === 'loading'} onClick={locate}>현재 위치로 이동</button>}
+      </div>
       {submitted && !coordinate && <p className="community-field-error" role="alert">지도에서 위치를 선택해 주세요.</p>}
       <span className="community-field-label">스팟 종류</span>
       <SpotTypeSelector options={spotTypeOptions.map(option => ({ ...option, icon: <Icon name={option.icon} size={22} /> }))}

@@ -240,6 +240,35 @@ class FacilityPostgisIntegrationTest {
         return new FacilityInput(id, type, "시험 시설", longitude, latitude, "USE_YN=1", LocalDate.of(2014, 12, 19), null);
     }
 
+    @Test
+    void allFacilityTypesUseStoredMountainAndRadiusAndRemainVisibleInReview() throws Exception {
+        var seed = importer.importFile(document(List.of(point("seed", 10, 10, FacilityType.RESTROOM))));
+        long target = mountain(seed.sourceId());
+        long other = mountain(seed.sourceId());
+        long courseId = jdbc.queryForObject("""
+                INSERT INTO course (mountain_id,course_name,course_geometry,source_id,source_hash,imported_at)
+                VALUES (?,'all-types',ST_GeomFromText('LINESTRING(10 10,10.02 10)',4326),?,?,now()) RETURNING course_id
+                """, Long.class, target, seed.sourceId(), "d".repeat(64));
+        for (FacilityType type : FacilityType.values()) {
+            var records = List.of(
+                    assigned(point(type + "-near", 10.01, 10.0005, type), target),
+                    assigned(point(type + "-far", 10.01, 10.01, type), target),
+                    assigned(point(type + "-other-near", 10.01, 10.0005, type), other),
+                    assigned(point(type + "-other-far", 10.01, 10.01, type), other),
+                    point(type + "-unassigned", 10.01, 10.0005, type));
+            assertThat(importer.importFile(document(records)).inserted()).isEqualTo(5);
+            assertThat(importer.importFile(document(records)).skipped()).isEqualTo(5);
+            mvc.perform(get("/v1/courses/" + courseId + "/facilities")
+                            .param("type", type.name()).param("radiusMeters", "100"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].sourceRecordId").value(type + "-near"));
+            mvc.perform(get("/v1/facilities/review").param("sourceId", String.valueOf(seed.sourceId()))
+                            .param("type", type.name()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.features.length()").value(type == FacilityType.RESTROOM ? 6 : 5));
+        }
+    }
+
     private FacilityInput assigned(FacilityInput input, Long mountainId) {
         return new FacilityInput(input.sourceRecordId(), input.type(), input.name(), input.longitude(),
                 input.latitude(), input.sourceReportedStatus(), input.sourceDate(), mountainId);
@@ -249,7 +278,7 @@ class FacilityPostgisIntegrationTest {
         return jdbc.queryForObject("""
                 INSERT INTO mountain (mountain_name,mountain_display_location,source_id,source_hash,imported_at)
                 VALUES ('membership-test',ST_SetSRID(ST_MakePoint(10,10),4326),?, ?,now()) RETURNING mountain_id
-                """, Long.class, sourceId, "c".repeat(64));
+                """, Long.class, sourceId, UUID.randomUUID().toString().replace("-", "").repeat(2));
     }
 
     private Path document(List<FacilityInput> records) throws Exception {
