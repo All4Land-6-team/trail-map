@@ -181,6 +181,8 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   }, [map, fitHighlightedRoute, highlightedRoute, highlightedRoutes])
 
   const courseDetailDimension = className?.includes('community-page__map--detail-course') ? dimension : null
+  const spotDetailTerrainReady = className?.includes('community-page__map--detail-spot')
+    && dimension === '3D' && terrainStatus === 'ready'
 
   useEffect(() => {
     if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return
@@ -222,14 +224,28 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       : className.includes('community-page__map--mountain-focus')
         ? Math.max(visibleTop + 44, Math.min(visibleCenter - 28, visibleTop + 48))
         : visibleCenter + (focusTarget.verticalOffset ?? 0)
+    const targetZoom = focusTarget.zoom === undefined ? map.getZoom() : focusTarget.resetZoom
+      ? focusTarget.zoom : Math.max(map.getZoom(), focusTarget.zoom)
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     map.easeTo({ center: focusTarget.coordinate, offset: [0, focusY - mapHeight / 2],
-      zoom: focusTarget.zoom === undefined ? map.getZoom() : focusTarget.resetZoom
-        ? focusTarget.zoom : Math.max(map.getZoom(), focusTarget.zoom),
+      zoom: targetZoom,
       bearing: focusTarget.resetOrientation ? 0 : undefined,
       pitch: focusTarget.resetOrientation ? dimension === '3D' ? MAIN_MAP_3D_PITCH : 0 : undefined,
-      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550,
+      duration: reducedMotion ? 0 : 550,
       easing: progress => 1 - (1 - progress) ** 3 })
-  }, [map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension])
+    if (spotDetailTerrainReady) {
+      const alignSpotAfterTerrainLoads = () => {
+        const camera = map.calculateAnchoredCameraOptions({
+          anchorLocation: focusTarget.coordinate,
+          anchorScreenPoint: [map.getContainer().clientWidth / 2, focusY],
+          zoom: targetZoom,
+        })
+        map.easeTo({ ...camera, duration: reducedMotion ? 0 : 220 })
+      }
+      map.once('idle', alignSpotAfterTerrainLoads)
+      return () => { map.off('idle', alignSpotAfterTerrainLoads) }
+    }
+  }, [map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetailTerrainReady])
 
   useEffect(() => {
     if (!map || !onMapSelect) return

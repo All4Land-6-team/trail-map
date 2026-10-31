@@ -49,7 +49,7 @@
 .community-map__custom-symbol { display:grid; min-width:30px; height:30px; padding:4px; place-items:center; border:1px solid var(--community-course-color,var(--af-green)); border-radius:50%; color:var(--community-course-color,var(--af-green)); background:#fff; font-size:11px; font-weight:700; }
 .community-map__custom-marker--point .community-map__custom-symbol { color:#fff; background:var(--af-green); }
 .community-map__custom-label { max-width:100px; overflow:hidden; padding:3px 7px; border-radius:10px; color:var(--af-green-dark); background:#fff; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
-.community-map-filters { position:absolute; z-index:8; top:82px; left:12px; display:flex; width:calc(100% - 12px); gap:7px; overflow-x:auto; scrollbar-width:none; }
+.community-map-filters { position:absolute; z-index:11; top:82px; left:12px; display:flex; width:calc(100% - 12px); gap:7px; overflow-x:auto; scrollbar-width:none; }
 .community-map-filters::-webkit-scrollbar { display:none; }
 .community-map-filters .af-chip { flex:none; height:34px; padding-inline:14px; }
 .community-map__dimension.af-map-action { position:absolute; z-index:3; top:128px; right:17px; width:40px; height:40px; border:0; border-radius:12px; color:var(--af-green-dark); background:#fff; box-shadow:0 3px 5px rgb(23 71 54 / 10%); }

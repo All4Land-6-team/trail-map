@@ -86,6 +86,7 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.match(cssSource, /community-map__pin \.af-spot-marker::before \{[^}]*inset:7px/);
   assert.match(cssSource, /community-map__cluster-choices \{[^}]*left:calc\(50% \+ 19px\);[^}]*width:164px;[^}]*padding:10px/);
   assert.match(cssSource, /community-map__cluster-choices--left \{[^}]*right:calc\(50% \+ 19px\)/);
+  assert.match(cssSource, /community-map-filters \{[^}]*z-index:11/);
   assert.match(mapSource, /clusterIdentity\(group\)/);
   assert.match(mapSource, /rightSpace >= 183 \|\| rightSpace >= leftSpace/);
   assert.match(mapSource, /returningToMainMap && mainMapViewport\.current/);
@@ -348,7 +349,10 @@ test('코스 상세 지도는 고정 확대 대신 전체 경로 경계에 맞�
   assert.match(mapSource, /bottom: Math\.max\(24, mapHeight - visibleBottom \+ 24\)[\s\S]*maxZoom: 16/);
   assert.match(mapSource, /courseDetailDimension === '3D'[\s\S]*map\.cameraForBounds\(bounds, \{ padding, offset: \[0, -72\], maxZoom: 16 \}\)/);
   assert.match(mapSource, /camera\.zoom \?\? map\.getZoom\(\)\) \+ 0\.7, 16/);
-  assert.match(mapSource, /\}, \[map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension\]\)/);
+  assert.match(mapSource, /spotDetailTerrainReady = className\?\.includes\('community-page__map--detail-spot'\)[\s\S]*terrainStatus === 'ready'/);
+  assert.match(mapSource, /calculateAnchoredCameraOptions\(\{[\s\S]*anchorLocation: focusTarget\.coordinate[\s\S]*anchorScreenPoint: \[map\.getContainer\(\)\.clientWidth \/ 2, focusY\]/);
+  assert.match(mapSource, /map\.once\('idle', alignSpotAfterTerrainLoads\)/);
+  assert.match(mapSource, /\}, \[map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetailTerrainReady\]\)/);
   assert.doesNotMatch(pageSource, /courseDetailFocus[\s\S]{0,120}zoom: 16/);
 });
 
