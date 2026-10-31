@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Marker, MercatorCoordinate, type MapLibreMap } from 'maplibre-gl'
+import { Marker, MercatorCoordinate, type LngLatBoundsLike, type MapLibreMap } from 'maplibre-gl'
 import BaseMap, { type MapRoute } from '../../../components/map/BaseMap'
 import { MapAction, MountainMarker, SpotMarker, supportsTerrain, type MapDimension, type TerrainStatus } from '../../../components/map'
 import mountainFlag from '../../../assets/icons/mountain-flag.svg'
@@ -36,7 +36,7 @@ type Props = {
   overviewMarker?: CommunityMapMarker
   mountainId?: string
   center?: Coordinate
-  focusTarget?: { coordinate: Coordinate; request: number; zoom?: number; resetZoom?: boolean }
+  focusTarget?: { coordinate: Coordinate; request: number; zoom?: number; resetZoom?: boolean; resetOrientation?: boolean; verticalOffset?: number }
   zoom?: number
   showRoute?: boolean
   showMountainFlag?: boolean
@@ -55,11 +55,12 @@ type Props = {
 
 const EMPTY_ROUTES: readonly MapRoute[] = []
 const DEFAULT_CENTER: Coordinate = [126.977, 37.659]
+const MAIN_MAP_3D_PITCH = 50
 const MARKER_CLUSTER_DISTANCE = 45
-const INDIVIDUAL_OVERLAP_DISTANCE = 30
+const INDIVIDUAL_OVERLAP_DISTANCE = 20
 const OVERLAP_RELEASE_ZOOM = 16
 const CLUSTER_CHOICE_ZOOM = OVERLAP_RELEASE_ZOOM - 0.5
-const CLUSTER_CHOICE_MIN_ZOOM = 15
+const CLUSTER_CHOICE_MIN_ZOOM = 13
 
 type ProjectedMarker = { marker: CommunityMapMarker; x: number; y: number; mapX: number; mapY: number }
 type ClusterChoiceState = { key: string; markers: CommunityMapMarker[]; align: 'left' | 'right' }
@@ -161,7 +162,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
 
   useEffect(() => {
     if (!map || terrainEnabled) return
-    const pitch = isMainMap && dimension === '3D' ? 50 : 0
+    const pitch = isMainMap && dimension === '3D' ? MAIN_MAP_3D_PITCH : 0
     if (map.getPitch() === pitch) return
     map.easeTo({ pitch, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350 })
   }, [map, isMainMap, dimension, terrainEnabled])
@@ -178,6 +179,8 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350,
     })
   }, [map, fitHighlightedRoute, highlightedRoute, highlightedRoutes])
+
+  const courseDetailDimension = className?.includes('community-page__map--detail-course') ? dimension : null
 
   useEffect(() => {
     if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return
@@ -197,23 +200,36 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     if (className.includes('community-page__map--detail-course') && highlightedRoute && highlightedRoute.length > 1) {
       const longitudes = highlightedRoute.map(([longitude]) => longitude)
       const latitudes = highlightedRoute.map(([, latitude]) => latitude)
-      map.fitBounds([[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]], {
-        padding: { top: visibleTop + 24, right: 24, bottom: Math.max(24, mapHeight - visibleBottom + 24), left: 24 },
+      const bounds: LngLatBoundsLike = [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]]
+      const padding = { top: visibleTop + 24, right: 24, bottom: Math.max(24, mapHeight - visibleBottom + 24), left: 24 }
+      const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550
+      if (courseDetailDimension === '3D') {
+        const camera = map.cameraForBounds(bounds, { padding, offset: [0, -72], maxZoom: 16 })
+        if (camera) {
+          map.easeTo({ ...camera, zoom: Math.min((camera.zoom ?? map.getZoom()) + 0.7, 16), duration })
+          return
+        }
+      }
+      map.fitBounds(bounds, {
+        padding,
         maxZoom: 16,
-        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550,
+        duration,
       })
       return
     }
     const focusY = className.includes('community-page__map--detail-mountain')
       ? window.matchMedia('(max-height: 720px)').matches ? 154 : 160
       : className.includes('community-page__map--mountain-focus')
-        ? Math.max(visibleTop + 44, Math.min(visibleCenter - 28, visibleTop + 48)) : visibleCenter
+        ? Math.max(visibleTop + 44, Math.min(visibleCenter - 28, visibleTop + 48))
+        : visibleCenter + (focusTarget.verticalOffset ?? 0)
     map.easeTo({ center: focusTarget.coordinate, offset: [0, focusY - mapHeight / 2],
       zoom: focusTarget.zoom === undefined ? map.getZoom() : focusTarget.resetZoom
         ? focusTarget.zoom : Math.max(map.getZoom(), focusTarget.zoom),
+      bearing: focusTarget.resetOrientation ? 0 : undefined,
+      pitch: focusTarget.resetOrientation ? dimension === '3D' ? MAIN_MAP_3D_PITCH : 0 : undefined,
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550,
       easing: progress => 1 - (1 - progress) ** 3 })
-  }, [map, focusTarget, className, highlightedRoute, isMainMap])
+  }, [map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension])
 
   useEffect(() => {
     if (!map || !onMapSelect) return

@@ -562,7 +562,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const mapFocus = useMemo(() => {
     const mountainCenter = mountain.position as Coordinate
     const coordinate = mapFocusCategory === 'spot' ? spotFocusCenter ?? mountainCenter : mountainCenter
-    return { coordinate, request: categoryFocusRequest, zoom: CATEGORY_MAP_ZOOM[mapFocusCategory], resetZoom: true }
+    const verticalOffset = mapFocusCategory === 'all' || mapFocusCategory === 'course' ? -20 : undefined
+    return { coordinate, request: categoryFocusRequest, zoom: CATEGORY_MAP_ZOOM[mapFocusCategory], resetZoom: true, resetOrientation: true, verticalOffset }
   }, [mountain.position, mapFocusCategory, categoryFocusRequest, spotFocusCenter])
   const selectedSpot = spots.find(spot => spot.id === detailSpotId)
   const selectedCourse = useMemo(() => courses.find(course => course.id === detailCourseId && course.mountainId === mountainId)
