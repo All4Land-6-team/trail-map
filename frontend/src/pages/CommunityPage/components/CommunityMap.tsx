@@ -183,7 +183,6 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   const courseDetailDimension = className?.includes('community-page__map--detail-course') ? dimension : null
   const spotDetailTerrainReady = className?.includes('community-page__map--detail-spot')
     && dimension === '3D' && terrainStatus === 'ready'
-
   useEffect(() => {
     if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return
     const leavingMainMap = !isMainMap && wasMainMap.current
@@ -240,7 +239,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
           anchorScreenPoint: [map.getContainer().clientWidth / 2, focusY],
           zoom: targetZoom,
         })
-        map.easeTo({ ...camera, duration: reducedMotion ? 0 : 220 })
+        map.jumpTo(camera)
       }
       map.once('idle', alignSpotAfterTerrainLoads)
       return () => { map.off('idle', alignSpotAfterTerrainLoads) }

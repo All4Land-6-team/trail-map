@@ -349,9 +349,11 @@ test('코스 상세 지도는 고정 확대 대신 전체 경로 경계에 맞�
   assert.match(mapSource, /bottom: Math\.max\(24, mapHeight - visibleBottom \+ 24\)[\s\S]*maxZoom: 16/);
   assert.match(mapSource, /courseDetailDimension === '3D'[\s\S]*map\.cameraForBounds\(bounds, \{ padding, offset: \[0, -72\], maxZoom: 16 \}\)/);
   assert.match(mapSource, /camera\.zoom \?\? map\.getZoom\(\)\) \+ 0\.7, 16/);
+  assert.match(pageSource, /communityApi\.spotDetail\([\s\S]*setDetailSpotFocus\(current => current[\s\S]*coordinate: spot\.coordinate/);
   assert.match(mapSource, /spotDetailTerrainReady = className\?\.includes\('community-page__map--detail-spot'\)[\s\S]*terrainStatus === 'ready'/);
   assert.match(mapSource, /calculateAnchoredCameraOptions\(\{[\s\S]*anchorLocation: focusTarget\.coordinate[\s\S]*anchorScreenPoint: \[map\.getContainer\(\)\.clientWidth \/ 2, focusY\]/);
   assert.match(mapSource, /map\.once\('idle', alignSpotAfterTerrainLoads\)/);
+  assert.match(mapSource, /map\.jumpTo\(camera\)/);
   assert.match(mapSource, /\}, \[map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetailTerrainReady\]\)/);
   assert.doesNotMatch(pageSource, /courseDetailFocus[\s\S]{0,120}zoom: 16/);
 });

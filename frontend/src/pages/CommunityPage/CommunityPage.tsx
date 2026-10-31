@@ -508,6 +508,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         merged.set(spot.id, spot)
         return [...merged.values()]
       })
+      setDetailSpotFocus(current => current
+        && current.coordinate[0] === spot.coordinate[0] && current.coordinate[1] === spot.coordinate[1]
+        ? current : { coordinate: spot.coordinate, request: (current?.request ?? 0) + 1, zoom: 16 })
       setVotes(current => ({ ...current, [spot.id]: toVote(result) }))
     }).catch(error => {
       if (!controller.signal.aborted) notify(error instanceof Error ? error.message : '스팟 상세를 불러오지 못했습니다.')
