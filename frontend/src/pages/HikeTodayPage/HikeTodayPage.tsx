@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { findCourse, toDateKey } from "../../api/hikeMock";
+import { hikeStartErrorMessage, startOrResumeHikeRecord } from "../../api/hikeRecordApi";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
 import { Toast } from "../../components/feedback";
@@ -12,6 +13,7 @@ import { useToastMessage } from "../../hooks/useToastMessage";
 import { useHikeSchedules } from "../../store/hikeScheduleStore";
 import { courseFixtures } from "../../api/courseMock";
 import { startHikeSession, useHikeSession } from "../../store/hikeSessionStore";
+import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
 import { hikePaths, navigateTab } from "../hikeRoutes";
 import "../hikePages.css";
 import "./HikeTodayPage.css";
@@ -29,11 +31,28 @@ export function HikeTodayPage() {
   const location = useLocationPermission();
   const toast = useToastMessage();
   const session = useHikeSession();
-  const continueHike = (alertsOn: boolean) => {
-    if (!schedule) return;
+  // 새로고침 후에도 진행 중인 등산이 있으면 시작 버튼이 그 등산으로 이어지게 한다.
+  useRestoreActiveHike();
+  const [starting, setStarting] = useState(false);
+  // 일정 API로 저장한 일정이면 등산 기록을 만든 뒤 넘어간다. 예시 일정은 화면 메모리로만 진행한다.
+  const continueHike = async (alertsOn: boolean) => {
+    if (!schedule || starting) return;
     const mountainId = courseFixtures.find(item => item.id === schedule.courseId)?.mountainId;
     if (!mountainId) return;
-    startHikeSession(schedule, mountainId, alertsOn);
+    setAskingAlerts(false);
+    let record;
+    if (schedule.scheduleId !== undefined) {
+      setStarting(true);
+      try {
+        record = await startOrResumeHikeRecord(schedule.scheduleId);
+      } catch (error) {
+        toast.show(hikeStartErrorMessage(error));
+        return;
+      } finally {
+        setStarting(false);
+      }
+    }
+    startHikeSession(schedule, mountainId, alertsOn, record);
     navigate(hikePaths.active(alertsOn));
   };
 
@@ -78,8 +97,8 @@ export function HikeTodayPage() {
                 일정 보기 ›
               </button>
             </div>
-            <Button fullWidth className="hike-today-page__start" label={location.checking ? "위치 확인 중" : "등산 시작하기"}
-              disabled={location.checking} trailingIcon={<Icon name="ArrowRight" size={20} color="currentColor" />}
+            <Button fullWidth className="hike-today-page__start" label={location.checking ? "위치 확인 중" : starting ? "등산 시작 중" : "등산 시작하기"}
+              disabled={location.checking || starting} trailingIcon={<Icon name="ArrowRight" size={20} color="currentColor" />}
               onClick={() => void startHike()} />
           </div>
         </section>
@@ -94,7 +113,7 @@ export function HikeTodayPage() {
 
     {location.notice && <LocationPermissionSheet notice={location.notice} retrying={location.checking}
       onRetry={() => void startHike()} onDismiss={location.dismiss} />}
-    {askingAlerts && <HikeAlertConfirm onAccept={() => continueHike(true)}
-      onDecline={() => continueHike(false)} onDismiss={() => setAskingAlerts(false)} />}
+    {askingAlerts && <HikeAlertConfirm onAccept={() => void continueHike(true)}
+      onDecline={() => void continueHike(false)} onDismiss={() => setAskingAlerts(false)} />}
   </div>;
 }

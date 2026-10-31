@@ -1,4 +1,4 @@
-import { DEV_COURSE_IDS } from "../constants/hikeCourseIds";
+import { DEV_COURSE_IDS } from "../constants/hikeCourseIds.ts";
 import type { HikeSchedule } from "../types/hike";
 
 // 등산 일정 API (/api/v1/hike-schedules, 이슈 #56·#61).
@@ -41,11 +41,11 @@ export class HikeScheduleApiError extends Error {
   }
 }
 
-function apiBaseUrl() {
+export function apiBaseUrl() {
   return (import.meta.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
 }
 
-function userId() {
+export function userId() {
   return import.meta.env?.VITE_HIKE_USER_ID || DEFAULT_USER_ID;
 }
 

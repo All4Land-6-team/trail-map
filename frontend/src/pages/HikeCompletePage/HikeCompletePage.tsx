@@ -18,7 +18,9 @@ export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId
     <Button label="내 등산 캘린더로" onClick={backToCalendar} /></main>;
   const finishedAt = session.finishedAt;
   const result = { ...session.schedule, mountainId: session.mountainId,
-    durationMinutes: Math.max(0, Math.floor((Date.parse(finishedAt) - Date.parse(session.startedAt)) / 60_000)),
+    // 기록 API로 종료했으면 서버가 계산한 소요 시간을 쓴다.
+    durationMinutes: session.durationSeconds !== undefined ? Math.floor(session.durationSeconds / 60)
+      : Math.max(0, Math.floor((Date.parse(finishedAt) - Date.parse(session.startedAt)) / 60_000)),
     sunset: findCourse(session.schedule.courseId)?.sunset ?? "정보 없음" };
 
   return <div className="hike-page hike-complete-page">
@@ -37,15 +39,15 @@ export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId
       </section>
 
       <dl className="hike-complete-page__stats">
-        <div><dt>이동 거리</dt><dd>기록 없음</dd></div>
+        <div><dt>이동 거리</dt><dd>{session.traveledMeters === undefined ? "기록 없음" : `${(session.traveledMeters / 1000).toFixed(1)} km`}</dd></div>
         <div><dt>소요 시간</dt><dd>{formatDuration(result.durationMinutes)}</dd></div>
       </dl>
 
       <div className="hike-complete-page__sunset">
         <p className="hike-complete-page__sunset-time">일몰 {result.sunset}</p>
-        <p className="hike-complete-page__sunset-note">
-          GPS 이동 기록은 아직 연동되지 않았어요.
-        </p>
+        {session.hikeRecordId === undefined && <p className="hike-complete-page__sunset-note">
+          예시 일정으로 진행해 GPS 이동 기록이 저장되지 않았어요.
+        </p>}
       </div>
 
       <section className="hike-complete-page__review" aria-labelledby="hike-review-question">
