@@ -1,9 +1,9 @@
 package com.all4land.trailmap.domain.community.entity;
 
 public enum CommunitySpotType {
-    SHELTER,
-    WATER,
+    REST_AREA,
+    DRINKING_FOUNTAIN,
     RESTROOM,
-    PHOTO,
+    PHOTO_SPOT,
     OTHER
 }

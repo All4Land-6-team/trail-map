@@ -12,7 +12,6 @@ public record CommunitySpotResponse(
         CommunitySpotType type,
         double longitude,
         double latitude,
-        boolean official,
         String status,
         long yesVotes,
         long noVotes,

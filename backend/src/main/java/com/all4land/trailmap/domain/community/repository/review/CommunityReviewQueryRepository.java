@@ -1,6 +1,7 @@
 package com.all4land.trailmap.domain.community.repository.review;
 
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
+import com.all4land.trailmap.domain.community.dto.response.CommunityMountainReviewSummaryResponse;
 import com.all4land.trailmap.domain.community.repository.result.CommunityReviewQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.EligibleHikeQueryResult;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +22,7 @@ import java.util.Optional;
 public class CommunityReviewQueryRepository {
 
     private static final String ELIGIBLE_HIKE_SQL = """
-            SELECT DISTINCT ON (record.course_id)
-                   record.hike_record_id,
+            SELECT record.hike_record_id,
                    record.course_id,
                    course.course_name,
                    course.mountain_id,
@@ -35,7 +35,7 @@ public class CommunityReviewQueryRepository {
               AND record.hike_status = 'COMPLETED'
               AND record.deleted_at IS NULL
               AND record.ended_at BETWEEN :windowStart AND :windowEnd
-            ORDER BY record.course_id, record.ended_at DESC, record.hike_record_id DESC
+            ORDER BY record.ended_at DESC, record.hike_record_id DESC
             """;
 
     private static final String REVIEW_SELECT = """
@@ -81,8 +81,7 @@ public class CommunityReviewQueryRepository {
 
     private static final String COURSE_REVIEW_SQL = """
             WITH selected_review AS (
-                SELECT DISTINCT ON (review.user_id)
-                       review.review_id,
+                SELECT review.review_id,
                        review.course_id AS target_id,
                        review.hike_record_id,
                        review.user_id,
@@ -91,10 +90,8 @@ public class CommunityReviewQueryRepository {
                        review.visited_date,
                        review.created_at
                 FROM course_review review
-                LEFT JOIN hike_record record ON record.hike_record_id = review.hike_record_id
                 WHERE review.course_id = :targetId
                   AND review.deleted_at IS NULL
-                ORDER BY review.user_id, record.ended_at DESC NULLS LAST, review.created_at DESC
             )
             """ + REVIEW_SELECT.formatted("course_review_id");
 
@@ -178,6 +175,23 @@ public class CommunityReviewQueryRepository {
 
     public List<CommunityReviewQueryResult> findMountainReviews(Long mountainId, int limit, int offset) {
         return findReviews(MOUNTAIN_REVIEW_SQL, reviewParameters(mountainId, limit, offset));
+    }
+
+    public CommunityMountainReviewSummaryResponse findMountainReviewSummary(Long mountainId) {
+        return jdbcTemplate.queryForObject("""
+                SELECT count(*) AS review_count,
+                       avg(review.rating)::double precision AS average_rating,
+                       (SELECT count(*)
+                        FROM photo
+                        JOIN mountain_review photo_review ON photo_review.review_id = photo.mountain_review_id
+                        WHERE photo_review.mountain_id = :mountainId
+                          AND photo_review.deleted_at IS NULL
+                          AND photo.deleted_at IS NULL) AS photo_count
+                FROM mountain_review review
+                WHERE review.mountain_id = :mountainId AND review.deleted_at IS NULL
+                """, new MapSqlParameterSource("mountainId", mountainId), (rs, row) ->
+                new CommunityMountainReviewSummaryResponse(rs.getLong("review_count"),
+                        rs.getObject("average_rating", Double.class), rs.getLong("photo_count")));
     }
 
     public List<CommunityReviewQueryResult> findCourseReviews(Long courseId, int limit, int offset) {

@@ -7,7 +7,10 @@ import com.all4land.trailmap.domain.community.dto.response.CommunityCourseRespon
 import com.all4land.trailmap.domain.community.dto.response.CommunityMountainResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotDetailResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunitySpotPageResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunitySpotMapResponse;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
+import com.all4land.trailmap.domain.community.entity.CommunitySpotType;
 import com.all4land.trailmap.domain.community.service.CommunityQueryService;
 import com.all4land.trailmap.global.response.SuccessResponse;
 import com.all4land.trailmap.global.user.CurrentUserId;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -54,6 +58,26 @@ public class CommunityQueryController {
             @Valid @ModelAttribute CommunitySpotMapRequest request
     ) {
         return response(SuccessResponse.ok(queryService.getSpots(userId, mountainId, request)));
+    }
+
+    @GetMapping("/mountains/{mountainId}/spots/map")
+    public ResponseEntity<SuccessResponse<List<CommunitySpotMapResponse>>> getMapMarkers(
+            @CurrentUserId Long userId,
+            @Positive @PathVariable Long mountainId,
+            @Valid @ModelAttribute CommunitySpotMapRequest request
+    ) {
+        return response(SuccessResponse.ok(queryService.getMapMarkers(userId, mountainId, request)));
+    }
+
+    @GetMapping("/mountains/{mountainId}/spots/list")
+    public ResponseEntity<SuccessResponse<CommunitySpotPageResponse>> getSpotPage(
+            @CurrentUserId Long userId,
+            @Positive @PathVariable Long mountainId,
+            @RequestParam(required = false) CommunitySpotType type,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String cursor
+    ) {
+        return response(SuccessResponse.ok(queryService.getSpotPage(userId, mountainId, type, size, cursor)));
     }
 
     @GetMapping("/mountains/{mountainId}/spots/{targetType}/{targetId}")

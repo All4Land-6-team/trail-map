@@ -7,7 +7,7 @@
 .community-page button { cursor:pointer; }
 .community-page button:focus-visible { outline:2px solid var(--af-green); outline-offset:2px; }
 .community-page .af-rating-input__star { width:44px; height:44px; }
-.community-page__topbar { position:absolute; z-index:4; top:calc(16px + env(safe-area-inset-top)); left:12px; width:calc(100% - 24px); margin:0; }
+.community-page__topbar { position:absolute; z-index:8; top:calc(16px + env(safe-area-inset-top)); left:12px; width:calc(100% - 24px); margin:0; }
 .community-page__nav { position:relative; z-index:4; flex:none; min-height:var(--community-nav-height); margin-top:auto; padding-bottom:env(safe-area-inset-bottom); }
 .community-page__map { position:absolute; z-index:1; inset:0 0 var(--community-nav-height); min-height:0; }
 .community-map { position:relative; width:100%; height:100%; overflow:hidden; background:#eef5eb; }
@@ -17,9 +17,17 @@
 .community-map__markers { position:absolute; inset:0; pointer-events:none; }
 .community-map__pin { position:absolute; z-index:2; display:grid; min-width:44px; min-height:44px; transform:translate(-50%,-50%); place-items:center; pointer-events:auto; }
 .community-map__pin .af-mountain-marker,.community-map__pin .af-spot-marker { pointer-events:auto; }
+.community-map__mountain-marker { position:relative; display:flex; width:44px; height:44px; align-items:center; justify-content:center; }
+.community-map__mountain-marker .af-mountain-marker--point { position:relative; width:44px; height:44px; }
+.community-map__mountain-marker .af-mountain-marker__label { position:absolute; top:50%; left:calc(50% + 14px); transform:translateY(-50%); }
+.community-map__mountain-marker--label-hidden .af-mountain-marker__label { display:none; }
+.community-map__mountain-marker--label-hidden .af-mountain-marker--point:focus-visible { outline:2px solid var(--af-green); outline-offset:3px; border-radius:50%; }
+.community-map__mountain-flag { position:absolute; z-index:1; top:5px; left:calc(50% - 3px); width:12px; height:18px; pointer-events:none; }
 .community-map__pin--course { z-index:3; }
-.community-map__pin .af-spot-marker { position:relative; }
-.community-map__pin .af-spot-marker__label { position:absolute; top:calc(100% + 4px); left:50%; width:max-content; max-width:116px; overflow:hidden; transform:translateX(-50%); padding:3px 6px; border-radius:6px; color:var(--af-ink); background:#fff; font-size:10px; line-height:15px; text-overflow:ellipsis; white-space:nowrap; box-shadow:0 1px 5px rgb(23 71 54 / 8%); }
+.community-map__pin .af-spot-marker { position:relative; width:44px; height:44px; border:0; background:transparent; }
+.community-map__pin .af-spot-marker::before { position:absolute; inset:7px; border:1px solid currentColor; border-radius:50%; background:#fff; content:""; }
+.community-map__pin .af-spot-marker>.af-icon { position:relative; z-index:1; }
+.community-map__pin .af-spot-marker__label { position:absolute; top:calc(50% + 19px); left:50%; width:max-content; max-width:116px; overflow:hidden; transform:translateX(-50%); padding:3px 6px; border-radius:6px; color:var(--af-ink); background:#fff; font-size:10px; line-height:15px; text-overflow:ellipsis; white-space:nowrap; box-shadow:0 1px 5px rgb(23 71 54 / 8%); }
 .community-page__map--main .community-map__pin .af-spot-marker__label { display:none; }
 .community-page__map--main[data-marker-mode="overview"] .af-mountain-marker--point { width:44px; height:44px; justify-content:center; }
 .community-page__map--main[data-marker-mode="overview"] .af-mountain-marker__label { display:none; }
@@ -27,10 +35,13 @@
 .community-page__map--detail-spot .community-map__pin:not(.community-map__pin--selected) .af-spot-marker__label { display:none; }
 .community-page__map--detail-spot .community-map__pin--selected { z-index:3; }
 .community-map__cluster { display:grid; width:44px; height:44px; padding:0; place-items:center; border:0; background:transparent; cursor:pointer; }
-.community-map__cluster span { display:grid; width:34px; height:34px; place-items:center; border:2px solid #fff; border-radius:50%; color:#fff; background:var(--af-green); box-shadow:0 2px 8px rgb(23 71 54 / 20%); font:700 12px/1 "Noto Sans KR",sans-serif; }
-.community-map__cluster-choices { position:absolute; z-index:5; top:145px; right:18px; left:18px; display:flex; max-height:min(40dvh,250px); flex-direction:column; gap:6px; overflow-y:auto; padding:14px; border:1px solid var(--af-line); border-radius:14px; background:#fff; box-shadow:0 5px 18px #173d3233; }
-.community-map__cluster-choices>button:not(.community-map__cluster-close) { min-height:44px; padding:8px; border:0; border-radius:8px; color:var(--af-ink); background:var(--community-surface); text-align:left; }
-.community-map__cluster-close { position:absolute; top:6px; right:6px; width:44px; height:44px; border:0; color:var(--af-ink); background:transparent; font-size:24px; }
+.community-map__cluster span { display:grid; width:30px; height:30px; place-items:center; border:2px solid #fff; border-radius:50%; color:#fff; background:var(--af-green); box-shadow:0 2px 8px rgb(23 71 54 / 20%); font:700 12px/1 "Noto Sans KR",sans-serif; }
+.community-map__pin--cluster-choice { z-index:6; }
+.community-map__cluster-choices { position:absolute; z-index:5; top:50%; left:calc(50% + 19px); display:flex; width:164px; max-height:min(32dvh,210px); transform:translateY(-50%); flex-direction:column; gap:4px; overflow-y:auto; padding:10px; border:1px solid var(--af-line); border-radius:12px; background:#fff; box-shadow:0 4px 14px #173d3229; }
+.community-map__cluster-choices--left { right:calc(50% + 19px); left:auto; }
+.community-map__cluster-choices>strong { padding:2px 36px 4px 4px; font-size:13px; line-height:20px; }
+.community-map__cluster-choices>button:not(.community-map__cluster-close) { min-height:44px; padding:6px 8px; border:0; border-radius:7px; color:var(--af-ink); background:var(--community-surface); font-size:12px; line-height:18px; text-align:left; }
+.community-map__cluster-close { position:absolute; top:2px; right:2px; width:44px; height:44px; border:0; color:var(--af-ink); background:transparent; font-size:20px; }
 .community-map__fallback { position:absolute; z-index:4; top:132px; right:14px; left:14px; display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--af-line); border-radius:10px; color:var(--af-ink); background:#fff; font-size:12px; line-height:18px; box-shadow:0 2px 8px #173d321a; }
 .community-map__fallback span { flex:1; }
 .community-map__fallback button { flex:none; min-height:44px; padding:5px 9px; border:0; border-radius:8px; color:#fff; background:var(--af-green); }
@@ -38,7 +49,7 @@
 .community-map__custom-symbol { display:grid; min-width:30px; height:30px; padding:4px; place-items:center; border:1px solid var(--community-course-color,var(--af-green)); border-radius:50%; color:var(--community-course-color,var(--af-green)); background:#fff; font-size:11px; font-weight:700; }
 .community-map__custom-marker--point .community-map__custom-symbol { color:#fff; background:var(--af-green); }
 .community-map__custom-label { max-width:100px; overflow:hidden; padding:3px 7px; border-radius:10px; color:var(--af-green-dark); background:#fff; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
-.community-map-filters { position:absolute; z-index:3; top:82px; left:12px; display:flex; width:calc(100% - 12px); gap:7px; overflow-x:auto; scrollbar-width:none; }
+.community-map-filters { position:absolute; z-index:8; top:82px; left:12px; display:flex; width:calc(100% - 12px); gap:7px; overflow-x:auto; scrollbar-width:none; }
 .community-map-filters::-webkit-scrollbar { display:none; }
 .community-map-filters .af-chip { flex:none; height:34px; padding-inline:14px; }
 .community-map__dimension.af-map-action { position:absolute; z-index:3; top:128px; right:17px; width:40px; height:40px; border:0; border-radius:12px; color:var(--af-green-dark); background:#fff; box-shadow:0 3px 5px rgb(23 71 54 / 10%); }
@@ -87,6 +98,14 @@
 .community-page__sheet--map .af-review-preview { width:100%; min-height:83px; margin-top:12px; }
 .community-page__sheet--map .community-empty-preview { margin-top:6px; cursor:default; }
 .community-preview-row { display:flex; align-items:center; gap:12px; width:100%; min-height:76px; margin-top:6px; padding:10px 12px; border:0; border-radius:13px; color:var(--af-green); background:#f2f7f1; text-align:left; }
+.community-rows-skeleton__row { display:flex; align-items:center; gap:12px; min-height:76px; margin-top:6px; padding:10px 12px; border-radius:13px; background:#f2f7f1; }
+.community-rows-skeleton__photo { flex:none; width:56px; height:56px; border-radius:10px; background:#dce9dc; }
+.community-rows-skeleton__copy { display:flex; flex:1; flex-direction:column; gap:9px; }
+.community-rows-skeleton__copy span { width:62%; height:12px; border-radius:6px; background:#dce9dc; }
+.community-rows-skeleton__copy span+span { width:42%; height:9px; }
+.community-rows-skeleton__photo,.community-rows-skeleton__copy span,.community-photo-skeleton__heading,.community-photo-skeleton__strip span { animation:community-skeleton-pulse 1.4s ease-in-out infinite alternate; }
+@keyframes community-skeleton-pulse { to { opacity:.5; } }
+@media(prefers-reduced-motion:reduce) { .community-rows-skeleton__photo,.community-rows-skeleton__copy span,.community-photo-skeleton__heading,.community-photo-skeleton__strip span { animation:none; } }
 .community-preview-row:active { background:#e9f1e6; }
 .community-preview-row__text { display:flex; flex:1; flex-direction:column; gap:4px; min-width:0; color:var(--af-ink); }
 .community-preview-row__heading { display:flex; align-items:center; min-width:0; gap:6px; }
@@ -132,6 +151,10 @@
 .community-gallery-heading { display:flex; align-items:center; gap:8px; margin:8px 0 7px; color:var(--af-ink); font-size:12px; }
 .community-gallery-heading button { margin-left:auto; }
 .community-gallery-heading button { display:flex; min-height:36px; align-items:center; gap:2px; padding:3px 0 3px 8px; border:0; color:var(--af-green-dark); background:transparent; font:600 12px/18px "Noto Sans KR",sans-serif; }
+.community-photo-skeleton { padding-top:8px; }
+.community-photo-skeleton__heading { display:block; width:72px; height:14px; margin-bottom:9px; border-radius:7px; background:#dce9dc; }
+.community-photo-skeleton__strip { display:flex; gap:8px; overflow:hidden; padding-bottom:8px; }
+.community-photo-skeleton__strip span { flex:0 0 150px; width:150px; height:150px; border-radius:12px; background:#dce9dc; }
 .community-review-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:11px 0 6px; color:var(--af-ink); font-size:12px; }
 .community-review-heading button { display:flex; min-height:36px; align-items:center; gap:2px; margin-left:auto; padding:3px 0 3px 8px; border:0; color:var(--af-green-dark); background:transparent; font:600 12px/18px "Noto Sans KR",sans-serif; }
 .community-gallery-strip { display:flex; gap:8px; max-width:100%; overflow-x:auto; padding:0 1px 8px; scroll-snap-type:x proximity; overscroll-behavior-inline:contain; scrollbar-width:none; }

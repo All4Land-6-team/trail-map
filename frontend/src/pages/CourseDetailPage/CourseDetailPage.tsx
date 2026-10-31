@@ -93,7 +93,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
       if (!courses) return null;
       const course = courses.find(item => String(item.courseId) === courseId || item.externalId === courseId);
       setCommunityCourse(course ?? null);
-      return course ? communityApi.courseReviews(String(course.courseId), controller.signal) : null;
+      return course ? communityApi.courseReviews(String(course.courseId), controller.signal, 2) : null;
     }).then(reviews => {
       if (reviews) setCommunityReviews(reviews);
     }).catch(() => {

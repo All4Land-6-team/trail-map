@@ -10,6 +10,8 @@ import com.all4land.trailmap.global.response.SuccessResponse;
 import com.all4land.trailmap.global.user.CurrentUserId;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -49,17 +52,21 @@ public class CommunityPhotoController {
     @GetMapping("/mountains/{mountainId}/photos")
     public ResponseEntity<SuccessResponse<List<CommunityPhotoResponse>>> getMountainPhotos(
             @CurrentUserId Long userId,
-            @Positive @PathVariable Long mountainId
+            @Positive @PathVariable Long mountainId,
+            @Min(1) @Max(100) @RequestParam(required = false) Integer limit,
+            @Min(0) @RequestParam(required = false) Integer offset
     ) {
-        return response(SuccessResponse.ok(photoService.getMountainPhotos(userId, mountainId)));
+        return response(SuccessResponse.ok(photoService.getMountainPhotos(userId, mountainId, limit, offset)));
     }
 
     @GetMapping("/courses/{courseId}/photos")
     public ResponseEntity<SuccessResponse<List<CommunityPhotoResponse>>> getCoursePhotos(
             @CurrentUserId Long userId,
-            @Positive @PathVariable Long courseId
+            @Positive @PathVariable Long courseId,
+            @Min(1) @Max(100) @RequestParam(required = false) Integer limit,
+            @Min(0) @RequestParam(required = false) Integer offset
     ) {
-        return response(SuccessResponse.ok(photoService.getCoursePhotos(userId, courseId)));
+        return response(SuccessResponse.ok(photoService.getCoursePhotos(userId, courseId, limit, offset)));
     }
 
     @GetMapping("/mountains/{mountainId}/spots/{targetType}/{targetId}/photos")
@@ -67,10 +74,12 @@ public class CommunityPhotoController {
             @CurrentUserId Long userId,
             @Positive @PathVariable Long mountainId,
             @PathVariable CommunitySpotTargetType targetType,
-            @Positive @PathVariable Long targetId
+            @Positive @PathVariable Long targetId,
+            @Min(1) @Max(100) @RequestParam(required = false) Integer limit,
+            @Min(0) @RequestParam(required = false) Integer offset
     ) {
         return response(SuccessResponse.ok(
-                photoService.getSpotPhotos(userId, mountainId, targetType, targetId)
+                photoService.getSpotPhotos(userId, mountainId, targetType, targetId, limit, offset)
         ));
     }
 

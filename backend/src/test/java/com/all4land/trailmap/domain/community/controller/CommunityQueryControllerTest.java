@@ -35,7 +35,7 @@ class CommunityQueryControllerTest {
         given(queryService.getSpots(eq(7L), eq(3L), any())).willReturn(List.of(
                 new CommunitySpotResponse(
                         CommunitySpotTargetType.FACILITY, 10L, 3L, "백운탐방지원센터 화장실",
-                        CommunitySpotType.RESTROOM, 126.981, 37.661, true, "AVAILABLE",
+                        CommunitySpotType.RESTROOM, 126.981, 37.661, "AVAILABLE",
                         2, 1, CommunityVoteType.YES, 4, 3, "facility/10/photo.webp"
                 )
         ));
