@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +27,7 @@ public class FacilityImportService {
     private final ObjectMapper mapper;
     private final Validator validator;
 
-    /** 원본은 불변으로 유지하며 산 소속만 갱신한다. 실패하면 모든 INSERT/UPDATE를 롤백한다. */
+    /** 신규 시설만 저장한다. 기존 시설의 원본과 산 소속은 변경하지 않는다. */
     @Transactional
     public ImportResult importFile(Path path) {
         FacilityImportDocument document;
@@ -64,21 +63,17 @@ public class FacilityImportService {
         long sourceId = repository.findOrCreateSource(document.source());
         var existing = repository.findExisting(sourceId);
         var inserts = new ArrayList<FacilityInput>();
-        var updates = new ArrayList<FacilityInput>();
         for (FacilityInput record : document.facilities()) {
             var previous = existing.get(record.sourceRecordId());
             if (previous == null) {
                 inserts.add(record);
             } else if (!previous.sourceHash().equals(hashes.get(record.sourceRecordId()))) {
                 throw new IllegalArgumentException("Existing record changed; update is not supported: " + record.sourceRecordId());
-            } else if (!Objects.equals(previous.mountainId(), record.mountainId())) {
-                updates.add(record);
             }
         }
         repository.insert(sourceId, inserts, hashes);
-        repository.updateMountains(sourceId, updates);
-        return new ImportResult(sourceId, document.facilities().size(), inserts.size(), updates.size(),
-                document.facilities().size() - inserts.size() - updates.size());
+        return new ImportResult(sourceId, document.facilities().size(), inserts.size(), 0,
+                document.facilities().size() - inserts.size());
     }
 
     private String hash(FacilityInput record) {

@@ -52,6 +52,16 @@ class FacilityPostgisIntegrationTest {
             "TEST", "EPSG:4326", "20141219");
 
     @Test
+    void acceptsEmptyResultWhenAllNewCandidatesWereExcluded() throws Exception {
+        var result = importer.importFile(document(List.of()));
+        assertThat(result.total()).isZero();
+        assertThat(result.inserted()).isZero();
+        assertThat(result.updated()).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM facility WHERE source_id = ?", Integer.class,
+                result.sourceId())).isZero();
+    }
+
+    @Test
     void importsPointsAndRepeatedImportDoesNotDuplicateOrUpdate() throws Exception {
         Path file = document(List.of(point("1", 10.01, 10.0005, FacilityType.RESTROOM),
                 point("2", 10.01, 10.0005, FacilityType.RESTROOM)));
@@ -82,10 +92,7 @@ class FacilityPostgisIntegrationTest {
 
     @Test
     void usesMetersAndEntireCourseLineAndFiltersFacilityType() throws Exception {
-        var result = importer.importFile(document(List.of(
-                point("near", 10.01, 10.0005, FacilityType.RESTROOM),
-                point("far", 10.01, 10.01, FacilityType.RESTROOM),
-                point("shelter", 10.01, 10.0005, FacilityType.SHELTER))));
+        var result = importer.importFile(document(List.of()));
         long mountainId = jdbc.queryForObject("""
                 INSERT INTO mountain (mountain_name, mountain_display_location, source_id, source_hash, imported_at)
                 VALUES ('test', ST_SetSRID(ST_MakePoint(10,10),4326), ?, ?, now()) RETURNING mountain_id
@@ -116,7 +123,7 @@ class FacilityPostgisIntegrationTest {
         mvc.perform(get(endpoint).param("type", "DRINKING_WATER").param("radiusMeters", "100"))
                 .andExpect(jsonPath("$.data.length()").value(1))
                 .andExpect(jsonPath("$.data[0].sourceRecordId").value("water"));
-        // 경계가 바뀌어도 조회는 저장된 소속을 사용한다. 재판정/적재는 별도 작업이다.
+        // 경계가 바뀌어도 조회는 저장된 소속을 사용한다. 기존 시설은 갱신하지 않는다.
         jdbc.update("UPDATE mountain SET mountain_boundary = ST_Multi(ST_MakeEnvelope(20,20,21,21,4326)) WHERE mountain_id = ?", mountainId);
         mvc.perform(get(endpoint).param("type", "RESTROOM").param("radiusMeters", "50"))
                 .andExpect(jsonPath("$.data.length()").value(0));
@@ -129,7 +136,7 @@ class FacilityPostgisIntegrationTest {
     }
 
     @Test
-    void changesOnlyMembershipAndPreservesLegacyHashIdsAndReports() throws Exception {
+    void keepsExistingMembershipAndPreservesLegacyHashIdsAndReports() throws Exception {
         var original = point("legacy", 10, 10, FacilityType.RESTROOM);
         var first = importer.importFile(document(List.of(original)));
         long mountainId = mountain(first.sourceId());
@@ -148,13 +155,15 @@ class FacilityPostgisIntegrationTest {
                 VALUES (?,?,'AVAILABLE',CURRENT_DATE) RETURNING facility_report_id
                 """, Long.class, id, userId);
         var inside = document(List.of(assigned(original, mountainId)));
-        assertThat(importer.importFile(inside).updated()).isEqualTo(1);
+        var changedMembership = importer.importFile(inside);
+        assertThat(changedMembership.updated()).isZero();
+        assertThat(changedMembership.skipped()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT mountain_id FROM facility WHERE facility_id = ?", Long.class, id))
-                .isEqualTo(mountainId);
+                .isNull();
         var repeat = importer.importFile(inside);
         assertThat(repeat.updated()).isZero();
         assertThat(repeat.skipped()).isEqualTo(1);
-        assertThat(importer.importFile(document(List.of(original))).updated()).isEqualTo(1);
+        assertThat(importer.importFile(document(List.of(original))).updated()).isZero();
         assertThat(jdbc.queryForObject("SELECT mountain_id FROM facility WHERE facility_id = ?", Long.class, id)).isNull();
         assertThat(jdbc.queryForObject("SELECT (to_jsonb(f)-'mountain_id')::text FROM facility f WHERE facility_id = ?", String.class, id))
                 .isEqualTo(before);
@@ -181,7 +190,7 @@ class FacilityPostgisIntegrationTest {
     }
 
     @Test
-    void changedOriginalPreventsAllMembershipUpdatesInSameFile() throws Exception {
+    void changedOriginalPreventsAllInsertsInSameFile() throws Exception {
         var a = point("a", 10, 10, FacilityType.RESTROOM);
         var b = point("b", 10, 10, FacilityType.RESTROOM);
         var first = importer.importFile(document(List.of(a, b)));

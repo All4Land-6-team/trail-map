@@ -14,7 +14,7 @@ import java.util.List;
 public record FacilityImportDocument(
         @NotNull @Min(2) @Max(2) Integer schemaVersion,
         @NotNull @Valid Source source,
-        @NotEmpty @Size(max = 100000) List<@NotNull @Valid FacilityInput> facilities,
+        @NotNull @Size(max = 100000) List<@NotNull @Valid FacilityInput> facilities,
         JsonNode report
 ) {
     public record Source(

@@ -27,6 +27,12 @@ Java 21, Spring Boot, PostgreSQL/PostGIS 기반 백엔드입니다.
 docker exec -i <PostGIS 컨테이너> psql -U postgres -d trail_map < docs/dev-seed-hike-courses.sql
 ```
 
+### 북한산 추정 경계 (로컬 DB)
+
+2026-10-28에 로컬 `trail_map` DB의 산 ID 2 (`Bukhansan (test)`) `mountain_boundary`에 북한산 **추정 경계**를 저장했다. 원본은 Git에서 제외된 `data/raw/knps/boundaries/portal-15017313/park-boundary.zip`의 `NPK_CD=L999M001S009` 공원경계버퍼다. 원본 EPSG:5179 도형을 3,000m 안쪽으로 축소한 뒤 EPSG:4326 MultiPolygon으로 저장했다. 현재 경계 면적은 약 88.87㎢이고 DB `data_source.source_id=41`에 이 변환을 기록했다.
+
+**이 도형은 원래 공원 경계를 복원한 공식 경계가 아니다.** 버퍼를 안쪽으로 축소하면서 좁은 부분과 굴곡이 달라질 수 있다. 현재 로컬 DB에만 적용된 값이며 Flyway migration이나 다른 DB에는 반영되지 않는다. 2026-10-28에 기존 시설 104건을 한 차례 다시 판정해 안쪽 101건에 `mountain_id=2`, 바깥쪽 화장실 3건에 `mountain_id=NULL`을 저장했다. 이는 과거 DB 작업 기록이며 현재 적재기는 기존 시설을 재판정하지 않는다. 버퍼 없는 원본은 별도 검증이 필요하다.
+
 ## 코드 구조
 
 - 공통 설정·응답·예외·감사 엔티티는 `global`에 둡니다.
@@ -126,7 +132,7 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 ## 공식 시설 데이터
 
-산 소속 판정이 완료된 JSON v2를 적재한다. 기존 시설 소속 갱신과 코스 조회 조건은 [산 경계 문서](../docs/facility-mountain-boundary.md)를 참고한다.
+산 소속 판정이 완료된 JSON v2의 신규 시설만 적재한다. 기존 시설의 산 소속은 갱신하지 않는다. 판정과 코스 조회 조건은 [산 경계 문서](../docs/facility-mountain-boundary.md)를 참고한다.
 
 화장실 시범 전처리·JDBC 적재·조회 API·검증 방법은 [시설 데이터 문서](../docs/facilities.md)를 참고합니다.
 

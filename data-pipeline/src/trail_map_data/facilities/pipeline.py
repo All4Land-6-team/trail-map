@@ -55,7 +55,7 @@ def build_candidates(*, restrooms: Path, springs: Path, structures: Path,
     ]
 
 
-def run(*, output_dir: Path, mountain_id: int = 2, overwrite: bool = False, **inputs) -> dict:
+def run(*, output_dir: Path, overwrite: bool = False, **inputs) -> dict:
     output_dir = Path(output_dir)
     paths = [output_dir / name for name in (*OUTPUT_NAMES, "report.json")]
     input_paths = {Path(inputs[name]).resolve() for name in ("restrooms", "springs", "structures")}
@@ -66,7 +66,7 @@ def run(*, output_dir: Path, mountain_id: int = 2, overwrite: bool = False, **in
             raise FileExistsError(path)
     candidates = build_candidates(**inputs)
     # 전 출처를 같은 경계 스냅샷으로 판정한다. 실패 시 출력 파일을 만들지 않는다.
-    documents = mountain_membership.preprocess_many(candidates, mountain_id=mountain_id)
+    documents = mountain_membership.preprocess_many(candidates)
     counts = Counter(record["type"] for document in documents for record in document["facilities"])
     report = {
         "schemaVersion": 2, "total": sum(counts.values()), "byType": dict(sorted(counts.items())),
@@ -84,7 +84,6 @@ def main() -> None:
         parser.add_argument(f"--{name}", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--park-code", default="1501")
-    parser.add_argument("--mountain-id", type=int, default=2)
     parser.add_argument("--encoding", default="cp949")
     parser.add_argument("--restroom-date", default="2014-12-19")
     parser.add_argument("--spring-date", default="2024-05-22")

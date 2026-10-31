@@ -2,7 +2,8 @@
 
 Issue #75는 #66 음수대와 #67 쉼터의 로컬 구현·선별 기준·테스트를 이어받는다.
 `feature/66-facility-drinking-water`의 API·화면·CSV 처리와
-`feature/67-facility-shelters`의 쉼터 전처리를 최신 develop의 산 소속 판정과 통합했다.
+`feature/67-facility-shelters`의 쉼터 전처리를 산 소속 판정과 통합했다.
+Issue #81부터 신규 후보는 모든 산의 경계에서 정확히 한 곳과 일치해야 적재 대상이 된다.
 기존 작업 폴더의 미커밋 파일은 변경하지 않았다.
 
 ## 처리 흐름
@@ -19,7 +20,7 @@ Issue #75는 #66 음수대와 #67 쉼터의 로컬 구현·선별 기준·테스
 
 좌표·필수값·중복 검증은 `contract.py`, CSV 식별자·후보 범위는 `csv_common.py`, 파일 저장은 `document.py`를 공유한다. CSV의 기존 `csv-...` 및 `reviewed-deokjaesaem`, SHP의 `OBJECTID`와 원본 필드는 유지한다. 개별 어댑터의 JSON v1 생성 명령도 후보 검토용으로 유지한다.
 
-산 소속은 `mountain_membership.py`의 `ST_Covers`로 판정한다. 내부·경계선은 대상 ID, 외부는 `null`이며 외부 후보도 삭제하지 않는다. 경계가 `NULL`이면 기본 대상 ID 2를 할당한다. 없는 산·유효하지 않은 경계·DB 오류는 실패로 처리한다. 세 출처를 같은 읽기 전용 REPEATABLE READ 트랜잭션에서 판정하고, 모든 판정이 성공한 뒤 파일을 저장한다. 입력/판정 실패 시 기존 출력을 교체하지 않는다. 출력은 파일 단위로 원자적으로 교체하며, 저장 도중 디스크 오류가 나면 명령을 재실행해야 한다.
+산 소속은 `mountain_membership.py`의 `ST_Covers`로 판정한다. 정확히 한 산의 경계 내부·경계선에 있는 신규 후보만 해당 산 ID로 출력한다. 경계 밖·경계가 없는 산·두 산 이상과 일치한 후보·동일 출처의 기존 시설은 제외하며 보고서에 사유를 남긴다. 유효하지 않은 경계·DB 오류는 실패로 처리한다. 세 출처를 같은 읽기 전용 REPEATABLE READ 트랜잭션에서 판정하고, 모든 판정이 성공한 뒤 파일을 저장한다. 입력/판정 실패 시 기존 출력을 교체하지 않는다. 출력은 파일 단위로 원자적으로 교체하며, 저장 도중 디스크 오류가 나면 명령을 재실행해야 한다.
 
 ## 전처리 실행
 
@@ -38,7 +39,7 @@ Python 3.12 이상, PostgreSQL/PostGIS, Java 21, Node 24를 사용한다. 프로
     $env:PGPASSWORD = $env:DB_PASSWORD
     & data-pipeline/.venv-facility/Scripts/python.exe -m trail_map_data.facilities.pipeline --restrooms 'D:/Project/trail-map/data/raw/knps/restrooms/국립공원공단_국립공원 화장실 공간데이터_20141219/GSTN_TOILET_PT.shp' --springs 'D:/Project/trail-map/data/raw/knps/drinking-water/springs/GSTN_SPRG_PT.csv' --structures 'D:/Project/trail-map/data/raw/knps/drinking-water/structures/국립공원공단_기타구축물_20240911.csv' --output-dir 'D:/Project/trail-map/data/processed/knps/facilities'
 
-기존 출력 교체는 `--overwrite`를 명시한다. `--mountain-id` 기본값은 2, `--park-code`는 1501, `--encoding`은 cp949다. 원본 날짜는 `--restroom-date`, `--spring-date`, `--structure-date`로 지정한다. 날짜나 원본을 변경하면 선별 결과도 다시 검토한다. 후보가 없는 자료는 기존 어댑터와 같이 실패한다.
+기존 출력 교체는 `--overwrite`를 명시한다. 산 ID 기본값은 없으며 DB의 모든 유효한 경계와 비교한다. `--park-code`는 1501, `--encoding`은 cp949다. 원본 날짜는 `--restroom-date`, `--spring-date`, `--structure-date`로 지정한다. 날짜나 원본을 변경하면 선별 결과도 다시 검토한다. 후보가 없는 자료는 기존 어댑터와 같이 실패한다.
 
 ## 출처별 적재
 
@@ -48,7 +49,7 @@ Python 3.12 이상, PostgreSQL/PostGIS, Java 21, Node 24를 사용한다. 프로
     .\gradlew.bat bootRun --args='--spring.main.web-application-type=none --facility.import.enabled=true --facility.import.file=D:/Project/trail-map/data/processed/knps/facilities/springs.json'
     .\gradlew.bat bootRun --args='--spring.main.web-application-type=none --facility.import.enabled=true --facility.import.file=D:/Project/trail-map/data/processed/knps/facilities/structures.json'
 
-각 출처는 독립 트랜잭션이다. 세 명령이 모두 성공한 뒤 조회를 확인한다. 기존 행은 출처·원본 ID로 찾고 원본 내용이 같으면 산 소속만 필요 시 갱신한다. `mountainId`는 기존 원본 해시 계산에서 제외한다. 시설 ID·원본 해시·적재 시각·제보 참조를 유지하며 원본 변경은 해당 파일 전체를 거부한다. 전체 DB를 초기화하거나 기존 행을 삭제하지 않는다.
+각 출처는 독립 트랜잭션이다. 세 명령이 모두 성공한 뒤 조회를 확인한다. 기존 행은 출처·원본 ID로 찾아 건너뛰고 산 소속도 변경하지 않는다. `mountainId`는 기존 원본 해시 계산에서 제외한다. 시설 ID·원본 해시·적재 시각·제보 참조를 유지하며 원본 변경은 해당 파일 전체를 거부한다. 전체 DB를 초기화하거나 기존 행을 삭제하지 않는다.
 
 ## 프론트와 백엔드 동시 실행
 
@@ -107,7 +108,7 @@ Python 공간 테스트는 임시 테이블, Java 시설 테스트는 롤백되�
 
 ### 로컬 검증 기록 (2026-10-27)
 
-- Python 62개 통과. 실제 PostGIS 임시 폴리곤의 내부·외부·경계선·경계 NULL, 출처 병합·동일 결과 재생성·DB 실패 시 기존 출력 보존 포함.
+- 당시 Python 62개 통과. 당시 판정 규칙의 내부·외부·경계선·경계 NULL, 출처 병합·동일 결과 재생성·DB 실패 시 기존 출력 보존 포함.
 - 프론트 전체 테스트 90개 통과. 린트와 운영 빌드 통과.
 - Docker Desktop과 Java 21에서 백엔드 전체 테스트 79개 통과, 실패·생략 0개. 실제 PostGIS 시설 테스트 10개와 bootJar 성공.
 - 최초 적재: 출처 4는 95개 건너뜀, 출처 6은 1개 건너뜀, 출처 7은 기존 음수대 3개를 유지하고 쉼터 5개 추가.
@@ -118,6 +119,6 @@ Python 공간 테스트는 임시 테이블, Java 시설 테스트는 롤백되�
 
 ## 실제 경계와 코스 연결 후
 
-공원경계버퍼는 사용하지 않는다. 버퍼 없는 실제 경계 확보와 북한산·도봉산 산 ID 분리는 후속 작업이다. 현재 경계 NULL에서의 기본 할당 2는 공간적으로 산 내부임을 확인한 결과가 아니다.
+2026-10-28 로컬 DB에 적용한 축소 버퍼는 공식 원본 경계가 아닌 추정 경계다. 버퍼 없는 실제 경계 확보와 북한산·도봉산 산 ID 분리는 후속 작업이다. 경계가 없는 산에는 새 시설의 기본 소속을 할당하지 않는다.
 
-경계를 입력한 뒤 공통 전처리·세 출처 적재를 다시 실행해야 외부 시설의 소속이 `null`로 바뀐다. 실제 코스 연결 시 `Course.backendCourseId`와 지도 경로를 동일 DB 코스에서 제공해야 한다. 현재 백운대 DB 코스 2는 mock 경로이므로 250m 안에 쉼터·음수대가 없을 수 있다. 결과를 만들기 위해 반경이나 원본 좌표를 변경하지 않는다.
+경계를 입력한 뒤 새 후보에 공통 전처리·출처별 적재를 실행한다. 기존 시설의 소속은 이 과정에서 바뀌지 않는다. 실제 코스 연결 시 `Course.backendCourseId`와 지도 경로를 동일 DB 코스에서 제공해야 한다. 현재 백운대 DB 코스 2는 mock 경로이므로 250m 안에 쉼터·음수대가 없을 수 있다. 결과를 만들기 위해 반경이나 원본 좌표를 변경하지 않는다.

@@ -48,11 +48,18 @@ def test_common_candidates_preserve_source_fields_and_merge_only_same_source(inp
         pipeline.merge_source_documents(water, collision)
 
 
-def test_full_pipeline_outputs_v2_and_reclassification_keeps_outside_candidates(inputs, tmp_path, database, monkeypatch):
+def test_full_pipeline_outputs_v2_and_excludes_outside_candidates(inputs, tmp_path, database, monkeypatch):
     monkeypatch.setattr(mountain_membership, "preprocess_many",
                         lambda documents, **kw: mountain_membership.classify_documents(documents, database, **kw))
     output = tmp_path / "output"
-    initial = pipeline.run(**inputs, output_dir=output)
+    without_boundary = pipeline.run(**inputs, output_dir=output)
+    assert without_boundary["total"] == 0
+    assert all(source["report"]["mountainMembership"]["included"] == 0
+               for source in without_boundary["sources"])
+
+    database.execute("""UPDATE pg_temp.mountain SET mountain_boundary =
+        ST_Multi(ST_MakeEnvelope(126.99,37.69,127.04,37.71,4326))""")
+    initial = pipeline.run(**inputs, output_dir=output, overwrite=True)
     assert initial["byType"] == {"RESTROOM": 1, "DRINKING_WATER": 2, "SHELTER": 1}
     assert initial["total"] == 4
     original = [json.loads((output / name).read_text(encoding="utf-8")) for name in pipeline.OUTPUT_NAMES]
@@ -62,7 +69,7 @@ def test_full_pipeline_outputs_v2_and_reclassification_keeps_outside_candidates(
     database.execute("""UPDATE pg_temp.mountain SET mountain_boundary =
         ST_Multi(ST_MakeEnvelope(127,37.69,127.02,37.71,4326))""")
     updated = pipeline.run(**inputs, output_dir=output, overwrite=True)
-    assert updated["total"] == 4
+    assert updated["total"] == 3
     counts = [d["report"]["mountainMembership"]["counts"] for d in updated["sources"]]
     assert sum(c["inside"] for c in counts) == 1
     assert sum(c["onBoundary"] for c in counts) == 2
@@ -70,10 +77,12 @@ def test_full_pipeline_outputs_v2_and_reclassification_keeps_outside_candidates(
     for name, before in zip(pipeline.OUTPUT_NAMES, original):
         after = json.loads((output / name).read_text(encoding="utf-8"))
         assert after["source"] == before["source"]
-        for a, b in zip(after["facilities"], before["facilities"]):
+        previous = {record["sourceRecordId"]: record for record in before["facilities"]}
+        for a in after["facilities"]:
+            b = previous[a["sourceRecordId"]]
             assert {k: v for k, v in a.items() if k != "mountainId"} == {k: v for k, v in b.items() if k != "mountainId"}
-    assert after["facilities"][0]["type"] in {"SHELTER", "DRINKING_WATER"}
-    assert next(r for r in after["facilities"] if r["type"] == "SHELTER")["mountainId"] is None
+    assert [record["type"] for record in after["facilities"]] == ["DRINKING_WATER"]
+    assert updated["sources"][-1]["report"]["mountainMembership"]["excludedRecords"][0]["reason"] == "outside"
 
 
 def test_failed_classification_or_existing_output_never_replaces_files(inputs, tmp_path, monkeypatch):

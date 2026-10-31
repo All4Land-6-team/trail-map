@@ -48,30 +48,16 @@ public class FacilityImportRepository {
                 """, params, Long.class);
     }
 
-    public record ExistingFacility(String sourceHash, Long mountainId) {}
+    public record ExistingFacility(String sourceHash) {}
 
     public Map<String, ExistingFacility> findExisting(long sourceId) {
         Map<String, ExistingFacility> records = new HashMap<>();
-        jdbc.query("SELECT source_record_id, source_hash, mountain_id FROM facility WHERE source_id = :id FOR UPDATE",
+        jdbc.query("SELECT source_record_id, source_hash FROM facility WHERE source_id = :id FOR UPDATE",
                 new MapSqlParameterSource("id", sourceId), rs -> {
                     records.put(rs.getString("source_record_id"),
-                            new ExistingFacility(rs.getString("source_hash"), rs.getObject("mountain_id", Long.class)));
+                            new ExistingFacility(rs.getString("source_hash")));
                 });
         return records;
-    }
-
-    public void updateMountains(long sourceId, List<FacilityInput> records) {
-        if (records.isEmpty()) {
-            return;
-        }
-        var batch = records.stream().map(record -> new MapSqlParameterSource("sourceId", sourceId)
-                .addValue("recordId", record.sourceRecordId())
-                .addValue("mountainId", record.mountainId(), Types.BIGINT)).toArray(MapSqlParameterSource[]::new);
-        jdbc.batchUpdate("""
-                UPDATE facility SET mountain_id = :mountainId
-                WHERE source_id = :sourceId AND source_record_id = :recordId
-                    AND mountain_id IS DISTINCT FROM :mountainId
-                """, batch);
     }
 
     public void insert(long sourceId, List<FacilityInput> records, Map<String, String> hashes) {
