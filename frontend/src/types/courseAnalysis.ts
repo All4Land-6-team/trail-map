@@ -56,6 +56,15 @@ export type AnalysisSample = {
   sampleStatus: string;
 };
 export type CourseAnalysisProfile = { analysis: CourseAnalysis; samples: AnalysisSample[] };
+export type LoadedCourseAnalysis = {
+  analysis: CourseAnalysis;
+  profile: CourseAnalysisProfile | null;
+  profileError: string | null;
+};
+export type CourseAnalysisState =
+  | { status: 'loading' }
+  | { status: 'unavailable' | 'error'; message: string }
+  | { status: 'success'; data: LoadedCourseAnalysis };
 export type CourseComparison = {
   mountainId: number;
   mountainName: string;

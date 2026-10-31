@@ -27,6 +27,11 @@
 .course-analysis__intro h1 { margin: 0; font-size: 17px; line-height: 26px; font-weight: 700; letter-spacing: -.03em; }
 .course-analysis__intro p { margin: 3px 0 0; color: #617b6c; font-size: 11px; line-height: 16px; }
 .course-analysis__profile { padding-top: 9px; }
+.course-analysis-status { margin: 8px 0; color: #617b6c; font-size: 11px; line-height: 17px; overflow-wrap: anywhere; }
+.course-analysis-status p { margin: 4px 0; }
+.course-analysis-status summary { cursor: pointer; color: var(--af-green-dark); }
+.course-analysis-status button { margin-top: 4px; padding: 5px 8px; border: 1px solid var(--af-line); border-radius: 6px; background: #fff; color: var(--af-green-dark); font: inherit; cursor: pointer; }
+.course-analysis-status button:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
 .course-analysis__heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .course-analysis__heading h2 { margin: 0; font-size: 13px; line-height: 20px; font-weight: 700; }
 .course-analysis__heading > span { color: #617b6c; font-size: 10px; line-height: 16px; }

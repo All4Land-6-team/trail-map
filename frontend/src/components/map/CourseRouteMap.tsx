@@ -27,6 +27,8 @@ export type CourseRouteMapProps = {
   variant?: "list" | "detail";
   profileSample?: CourseProfileSample | null;
   summitCoordinate?: [number, number] | null;
+  summitLabel?: string;
+  dataLabel?: string | null;
   spots?: readonly CourseSpot[];
   selectedSpotId?: string;
   focusSpotId?: string;
@@ -35,7 +37,7 @@ export type CourseRouteMapProps = {
 };
 
 export function CourseRouteMap({ courses, selected, mountainId, center, mapBottomInset = 0, onSelect, onNotify, variant = "list", profileSample,
-  summitCoordinate, spots, selectedSpotId, focusSpotId, showSpotLabels = false, onSpotSelect }: CourseRouteMapProps) {
+  summitCoordinate, summitLabel = "정상", dataLabel, spots, selectedSpotId, focusSpotId, showSpotLabels = false, onSpotSelect }: CourseRouteMapProps) {
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [routesReady, setRoutesReady] = useState(false);
   const [dimension, setDimension] = useState<MapDimension>("2D");
@@ -51,8 +53,12 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
 
   useEffect(() => {
     if (!map) return;
+    let pending = true;
     function updateRoutes() {
-      if (!map || !map.isStyleLoaded()) return;
+      // 분석 응답 시점에 이전 GeoJSON source가 처리 중이면 load 이벤트는 이미 끝났을 수 있다.
+      // idle에서 한 번 더 반영하되, 반영 후 idle마다 setData·카메라 맞춤을 반복하지 않는다.
+      if (!map || !map.isStyleLoaded()) { pending = true; return; }
+      pending = false;
       const data: GeoJSONSourceSpecification["data"] = { type: "FeatureCollection", features: courses.map(course => ({
         type: "Feature", properties: { courseId: course.id }, geometry: { type: "LineString", coordinates: course.routeCoordinates },
       })) };
@@ -85,7 +91,10 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
     }
     map.on("load", updateRoutes);
     map.on("resize", updateRoutes);
-    const onIdle = () => { if (map.getSource(SOURCE) && map.isSourceLoaded(SOURCE)) setRoutesReady(true); };
+    const onIdle = () => {
+      if (pending) updateRoutes();
+      if (map.getSource(SOURCE) && map.isSourceLoaded(SOURCE)) setRoutesReady(true);
+    };
     map.on("idle", onIdle);
     updateRoutes();
     return () => { map.off("load", updateRoutes); map.off("resize", updateRoutes); map.off("idle", onIdle); };
@@ -103,18 +112,23 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
 
   useEffect(() => {
     if (!map) return;
+    const observer = new ResizeObserver(() => map.resize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+
+  useEffect(() => {
+    if (!map) return;
     const update = () => {
       const point = summitCoordinate ?? selected?.routeCoordinates.at(-1);
       setSummit(point ? map.project(point) : null);
       setProfilePoint(profileSample ? map.project(profileSample.coordinate) : null);
       setSpotPoints((spots ?? []).map(spot => ({ spot, ...map.project(spot.coordinate) })));
     };
-    const observer = new ResizeObserver(() => { map.resize(); update(); });
-    observer.observe(map.getContainer());
     map.on("move", update);
     map.on("resize", update);
     update();
-    return () => { observer.disconnect(); map.off("move", update); map.off("resize", update); };
+    return () => { map.off("move", update); map.off("resize", update); };
   }, [map, selected, summitCoordinate, profileSample, spots]);
 
   useEffect(() => {
@@ -142,7 +156,7 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
       onTerrainStatusChange={setTerrainStatus} />
     {summit && (variant === "list" || summitCoordinate) && <div className="course-map__summit" style={{ left: summit.x, top: summit.y }}>
       {variant === "detail" ? <><img className="course-map__peak" src={detailPeakAsset} alt="" />
-        <img src={detailSummitAsset} alt="" /><span>정상</span></> : <><img src={summitAsset} alt="" /><span>정상</span></>}
+        <img src={detailSummitAsset} alt="" /><span>{summitLabel}</span></> : <><img src={summitAsset} alt="" /><span>{summitLabel}</span></>}
     </div>}
     {profilePoint && profileSample && <span className="course-map__profile-point"
       data-profile-distance={profileSample.distanceKm} data-profile-coordinate={profileSample.coordinate.join(",")}
@@ -161,6 +175,6 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
       <MapAction iconName="Locate" disabled={!map || locating} aria-busy={locating}
         aria-label={locating ? "현재 위치 확인 중" : "현재 위치"} onClick={locate} />
     </div>
-    <span className="course-map__example">{variant === "detail" ? "경로·분석 예시" : "예시 경로"}</span>
+    {dataLabel !== null && <span className="course-map__example">{dataLabel ?? (variant === "detail" ? "경로·분석 예시" : "예시 경로")}</span>}
   </div>;
 }
