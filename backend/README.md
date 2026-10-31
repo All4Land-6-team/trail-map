@@ -108,6 +108,7 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 - `GET /api/v1/community/mountains/{mountainId}/review-eligibility`: 산 후기 작성이 가능한 최근 산행을 조회합니다.
 - `GET /api/v1/community/courses/{courseId}/review-eligibility`: 코스 후기 작성이 가능한 최근 산행을 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}/review-eligibility`: 스팟 후기 작성이 가능한 최근 산행을 조회합니다.
+- `GET /api/v1/community/mountains/{mountainId}/eligible-hikes`: 후기 대상과 무관하게 사용자 스팟 등록 등에 사용할 수 있는 최근 완료 산행을 조회합니다.
 - `POST /api/v1/community/mountains/{mountainId}/reviews`: 산 후기와 1~5점 평점을 등록합니다.
 - `POST /api/v1/community/courses/{courseId}/reviews`: 코스 후기를 등록합니다.
 - `POST /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}/reviews`: 공식 시설 또는 사용자 스팟 후기를 등록합니다.
@@ -125,7 +126,7 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 지도·스팟 API의 `targetType`은 `FACILITY` 또는 `USER_SPOT`, 스팟 `type`은 `REST_AREA`, `DRINKING_FOUNTAIN`, `RESTROOM`, `PHOTO_SPOT`, `OTHER`를 사용합니다. 사진 업로드 API의 `targetType`은 `MOUNTAIN_REVIEW`, `COURSE_REVIEW`, `SPOT_REVIEW`, `USER_SPOT`을 사용합니다. 후기 목록은 `limit`(기본 20, 최대 100)과 `offset`(기본 0)을 지원합니다. `representativePhotoUrl`과 `photoUrls`는 비공개 R2 객체의 만료 가능한 조회 URL을 반환합니다.
 
-후기와 사용자 스팟 등록에는 본인의 `COMPLETED` 산행 중 종료 후 24시간 이내인 `hikeRecordId`가 필요합니다. 같은 코스를 여러 번 완주했다면 가장 최근 기록만 작성 자격으로 인정합니다. 사용자 스팟 등록 시 50m 이내에 같은 유형의 후보가 있으면 `409`를 반환하며, 사용자가 별도 장소임을 확인한 뒤 `confirmDistinct=true`로 다시 요청할 수 있습니다. 사진 업로드는 R2 연동 API에서 별도로 처리합니다.
+후기와 사용자 스팟 등록에는 본인의 `COMPLETED` 산행 중 종료 후 24시간 이내인 `hikeRecordId`가 필요합니다. 후기는 같은 `hikeRecordId`와 같은 산·코스·사용자 스팟·공식 시설 대상에 한 번만 작성할 수 있으며, 다른 산행 기록이나 다른 대상에는 작성할 수 있습니다. 사용자 스팟 등록 시 50m 이내에 같은 유형의 후보가 있으면 `409`를 반환하며, 사용자가 별도 장소임을 확인한 뒤 `confirmDistinct=true`로 다시 요청할 수 있습니다. 사진 업로드는 R2 연동 API에서 별도로 처리합니다.
 
 스팟 평가는 사용자와 대상별로 한 건만 유지됩니다. 사용자 스팟은 `NO` 평가가 3건 이상이면 `HIDDEN`으로 변경되어 지도와 중복 후보에서 제외되고, 평가 변경·취소로 3건 미만이 되면 `RECONFIRMATION_REQUIRED`로 다시 노출됩니다. 공식 시설은 평가 수만 집계하며 자동으로 숨기지 않습니다.
 

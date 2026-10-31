@@ -259,7 +259,7 @@ class CommunityQueryApiIntegrationTest {
     }
 
     @Test
-    void 산_코스_스팟_후기를_조회하고_코스는_사용자별_최근_완료_후기만_반환한다() throws Exception {
+    void 산_코스_스팟_후기를_조회하고_코스는_산행별_후기를_최신순으로_반환한다() throws Exception {
         long oldRecordId = insertCompletedHike("2026-10-20 01:00:00+00", "2026-10-20 04:00:00+00");
         long latestRecordId = insertCompletedHike("2026-10-21 01:00:00+00", "2026-10-21 04:00:00+00");
         long mountainReviewId = jdbcTemplate.queryForObject("""
@@ -304,9 +304,11 @@ class CommunityQueryApiIntegrationTest {
 
         mockMvc.perform(asUser(get("/v1/community/courses/" + courseId + "/reviews")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].content").value("최근 코스 후기"))
-                .andExpect(jsonPath("$.data[0].hikeRecordId").value(latestRecordId));
+                .andExpect(jsonPath("$.data[0].hikeRecordId").value(latestRecordId))
+                .andExpect(jsonPath("$.data[1].content").value("예전 코스 후기"))
+                .andExpect(jsonPath("$.data[1].hikeRecordId").value(oldRecordId));
 
         mockMvc.perform(asUser(get("/v1/community/courses/" + courseId + "/preview")))
                 .andExpect(status().isOk())

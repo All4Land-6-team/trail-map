@@ -169,6 +169,12 @@ export const communityApi = {
     request<CommunityPhotoDto[]>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/photos?limit=${limit}&offset=${offset}`, { signal }),
   mountainEligibility: (mountainId: string, signal?: AbortSignal) =>
     request<CommunityEligibilityDto>(`/mountains/${mountainId}/review-eligibility`, { signal }),
+  eligibleHikes: (mountainId: string, signal?: AbortSignal) =>
+    request<CommunityEligibilityDto>(`/mountains/${mountainId}/eligible-hikes`, { signal }),
+  courseEligibility: (courseId: string, signal?: AbortSignal) =>
+    request<CommunityEligibilityDto>(`/courses/${courseId}/review-eligibility`, { signal }),
+  spotEligibility: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal) =>
+    request<CommunityEligibilityDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/review-eligibility`, { signal }),
   createReview: (kind: ReviewKind, mountainId: string, targetId: string, targetType: CommunitySpotDto['targetType'] | undefined,
     body: { hikeRecordId: number; content: string; rating?: number }) => {
     const path = kind === 'mountain' ? `/mountains/${mountainId}/reviews`

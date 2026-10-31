@@ -288,11 +288,12 @@ test('같은 유형·50m 이내 스팟만 중복 후보이며 거리순으로 �
   assert.equal(result[0].meters, 0);
 });
 
-test('커뮤니티 메인과 산 후기 상세 지도에 선택한 산의 모든 코스 경로를 표시한다', () => {
+test('커뮤니티 메인과 산·스팟 후기 상세 지도에 선택한 산의 모든 코스 경로를 표시한다', () => {
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(source, /allCourseRoutes = useMemo\(\(\) => visibleCourseTargets\.map\(course => \(\{/);
-  assert.match(source, /showAllCourseRoutes = screen === 'map' \|\| screen === 'mountainDetail'/);
+  assert.match(source, /showAllCourseRoutes = screen === 'map' \|\| screen === 'mountainDetail' \|\| screen === 'spotDetail'/);
   assert.match(source, /highlightedRoutes=\{showAllCourseRoutes \? allCourseRoutes : undefined\}/);
+  assert.match(source, /highlightedRoute=\{screen === 'courseDetail' \? selectedCourse\.coordinates : undefined\}/);
 });
 
 test('커뮤니티 전체 화면은 코스 목록의 집계와 대표 사진을 재사용하고 상세 진입 시에만 미리보기를 조회한다', () => {
@@ -347,15 +348,21 @@ test('완료한 산행 후 24시간 이내에만 그 산의 후기를 작성할 
   assert.equal(canWriteReview([], 'bukhansan', now), false);
 });
 
-test('24시간 이내 완료 코스는 최신순으로 표시하고 같은 코스는 최신 기록만 남긴다', () => {
+test('24시간 이내 완료 산행은 같은 코스라도 각각 최신순으로 표시한다', () => {
   const now = Date.parse('2026-10-18T12:00:00+09:00');
   const hike = (id, courseId, hours) => ({ id, courseId, mountainId: 'bukhansan', courseName: courseId, distanceKm: 4.2,
     finishedAt: new Date(now - hours * 60 * 60 * 1000).toISOString() });
   const eligible = eligibleCourseCompletions([
     hike('a-old', 'course-a', 8), hike('b', 'course-b', 2), hike('a-new', 'course-a', 1), hike('expired', 'course-c', 25),
   ], 'bukhansan', now);
-  assert.deepEqual(eligible.map(item => item.id), ['a-new', 'b']);
+  assert.deepEqual(eligible.map(item => item.id), ['a-new', 'b', 'a-old']);
   assert.equal(canWriteCourseReview(eligible, 'bukhansan', 'course-a', 'a-new', now), true);
   assert.equal(canWriteCourseReview(eligible, 'bukhansan', 'course-b', 'a-new', now), false);
-  assert.equal(canWriteCourseReview(eligible, 'bukhansan', 'course-a', 'a-old', now), false);
+  assert.equal(canWriteCourseReview(eligible, 'bukhansan', 'course-a', 'a-old', now), true);
+});
+
+test('일반 코스 상세는 사진 없이 최신 후기 2개만 요청한다', () => {
+  const source = readFileSync(new URL('../src/pages/CourseDetailPage/CourseDetailPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /communityApi\.courseReviews\(String\(course\.courseId\), controller\.signal, 2\)/);
+  assert.doesNotMatch(source, /communityApi\.coursePhotos/);
 });

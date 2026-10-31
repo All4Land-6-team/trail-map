@@ -22,12 +22,13 @@ import com.all4land.trailmap.domain.community.repository.result.CommunitySpotQue
 import com.all4land.trailmap.domain.community.repository.review.CommunityReviewQueryRepository;
 import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotQueryRepository;
 import com.all4land.trailmap.domain.community.storage.R2PhotoStorage;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Base64;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -43,6 +44,7 @@ public class CommunityQueryService {
     private final CommunityReviewQueryRepository reviewQueryRepository;
     private final CommunitySpotQueryRepository spotQueryRepository;
     private final R2PhotoStorage r2PhotoStorage;
+    private final ObjectMapper objectMapper;
 
     public List<CommunityMountainResponse> getMountains(Long userId) {
         validateUser(userId);
@@ -60,14 +62,19 @@ public class CommunityQueryService {
     public List<CommunityCourseResponse> getCourses(Long userId, Long mountainId) {
         validateUser(userId);
         validateMountain(mountainId);
-        var courses = new LinkedHashMap<Long, CourseBuilder>();
-        mapQueryRepository.findCoursePoints(mountainId).forEach(point -> courses
-                .computeIfAbsent(point.courseId(), ignored -> new CourseBuilder(
-                        point.courseId(), point.mountainId(), point.externalId(), point.name(),
-                        point.distanceKm(), point.reviewCount(), point.photoCount(), point.representativePhotoKey()
+        return mapQueryRepository.findCourses(mountainId).stream()
+                .map(course -> new CommunityCourseResponse(
+                        course.courseId(),
+                        course.mountainId(),
+                        course.externalId(),
+                        course.name(),
+                        course.distanceKm(),
+                        course.reviewCount(),
+                        course.photoCount(),
+                        toReadUrl(course.representativePhotoKey()),
+                        parseRouteCoordinates(course.routeGeoJson())
                 ))
-                .coordinates().add(new CommunityCoordinateResponse(point.longitude(), point.latitude())));
-        return courses.values().stream().map(course -> course.toResponse(this::toReadUrl)).toList();
+                .toList();
     }
 
     public List<CommunitySpotResponse> getSpots(
@@ -265,36 +272,22 @@ public class CommunityQueryService {
         return objectKey == null ? null : r2PhotoStorage.createReadUrl(objectKey);
     }
 
-    private record CourseBuilder(
-            Long courseId,
-            Long mountainId,
-            String externalId,
-            String name,
-            double distanceKm,
-            long reviewCount,
-            long photoCount,
-            String representativePhotoKey,
-            List<CommunityCoordinateResponse> coordinates
-    ) {
-        private CourseBuilder(
-                Long courseId,
-                Long mountainId,
-                String externalId,
-                String name,
-                double distanceKm,
-                long reviewCount,
-                long photoCount,
-                String representativePhotoKey
-        ) {
-            this(courseId, mountainId, externalId, name, distanceKm, reviewCount, photoCount,
-                    representativePhotoKey, new java.util.ArrayList<>());
-        }
-
-        private CommunityCourseResponse toResponse(java.util.function.Function<String, String> readUrl) {
-            return new CommunityCourseResponse(
-                    courseId, mountainId, externalId, name, distanceKm, reviewCount, photoCount,
-                    representativePhotoKey == null ? null : readUrl.apply(representativePhotoKey), List.copyOf(coordinates)
-            );
+    private List<CommunityCoordinateResponse> parseRouteCoordinates(String routeGeoJson) {
+        try {
+            var coordinates = objectMapper.readTree(routeGeoJson).path("coordinates");
+            if (!coordinates.isArray()) {
+                throw new IllegalStateException("코스 경로 좌표가 배열이 아닙니다.");
+            }
+            var result = new java.util.ArrayList<CommunityCoordinateResponse>(coordinates.size());
+            for (var coordinate : coordinates) {
+                if (!coordinate.isArray() || coordinate.size() < 2) {
+                    throw new IllegalStateException("코스 경로 좌표가 올바르지 않습니다.");
+                }
+                result.add(new CommunityCoordinateResponse(coordinate.get(0).asDouble(), coordinate.get(1).asDouble()));
+            }
+            return List.copyOf(result);
+        } catch (JsonProcessingException error) {
+            throw new IllegalStateException("코스 경로 GeoJSON을 읽지 못했습니다.", error);
         }
     }
 }

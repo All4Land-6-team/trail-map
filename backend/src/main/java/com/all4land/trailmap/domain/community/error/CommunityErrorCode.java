@@ -25,7 +25,8 @@ public enum CommunityErrorCode implements BaseResponseCode {
     PHOTO_OBJECT_NOT_FOUND("COMMUNITY_400_4", BAD_REQUEST, "R2에 업로드된 사진을 찾을 수 없습니다."),
     REVIEW_NOT_ELIGIBLE("COMMUNITY_403_1", FORBIDDEN, "후기를 작성할 수 있는 산행 기록이 아닙니다."),
     PHOTO_FORBIDDEN("COMMUNITY_403_2", FORBIDDEN, "다른 사용자의 대상에는 사진을 연결할 수 없습니다."),
-    DUPLICATE_SPOT_CANDIDATE("COMMUNITY_409_1", CONFLICT, "50m 이내에 같은 유형의 스팟이 있습니다.");
+    DUPLICATE_SPOT_CANDIDATE("COMMUNITY_409_1", CONFLICT, "50m 이내에 같은 유형의 스팟이 있습니다."),
+    DUPLICATE_REVIEW("COMMUNITY_409_2", CONFLICT, "이 산행 기록으로 같은 대상에 이미 후기를 작성했습니다.");
 
     private final String code;
     private final int httpStatus;

@@ -5,7 +5,7 @@ import { Chip } from '../../components/common/Chip'
 import { BottomNavigation, TopBar, type BottomDestination } from '../../components/layout'
 import { BottomSheet, ModalLayer } from '../../components/overlay'
 import { EmptyState, Toast } from '../../components/feedback'
-import { communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityMapSpotDto, type CommunityMountainDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
+import { communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityEligibilityDto, type CommunityMapSpotDto, type CommunityMountainDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
 import type { CommunityReview, CommunityCourseReviewTarget, CommunitySpotTargetType, Coordinate, ReviewDraft, ReviewKind, SpotType } from '../../types/community'
 import type { CompletedHike } from '../../store/hikeSessionStore'
 import type { CommunitySpot, SpotVote } from '../../types/community'
@@ -68,6 +68,16 @@ function toCourse(course: CommunityCourseDto): CommunityCourseReviewTarget {
     name: course.name, coordinates: course.coordinates.map(point => [point.longitude, point.latitude]),
     distanceKm: Number(course.distanceKm.toFixed(1)), baselinePhotos: course.photoCount, baselineReviews: course.reviewCount,
     representativePhotoUrl: course.representativePhotoUrl ?? undefined, seedQuote: '' }
+}
+
+function toEligibleHikes(eligibility: CommunityEligibilityDto, courses: readonly CommunityCourseReviewTarget[], mountainId: string): CompletedHike[] {
+  return [...eligibility.hikes]
+    .sort((a, b) => Date.parse(b.endedAt) - Date.parse(a.endedAt))
+    .map(hike => ({
+      id: String(hike.hikeRecordId), courseId: String(hike.courseId), mountainId,
+      courseName: hike.courseName, distanceKm: courses.find(course => course.id === String(hike.courseId))?.distanceKm ?? 0,
+      finishedAt: hike.endedAt,
+    }))
 }
 
 function toSpot(spot: CommunitySpotDto): CommunitySpot {
@@ -217,6 +227,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const [mountainSummary, setMountainSummary] = useState<CommunityMountainReviewSummaryDto | null>(null)
   const [votes, setVotes] = useState<Record<string, SpotVote>>({})
   const [eligibleCourses, setEligibleCourses] = useState<CompletedHike[]>([])
+  const [reviewEligibleCourses, setReviewEligibleCourses] = useState<CompletedHike[]>([])
   const [spotHikeId, setSpotHikeId] = useState('')
   const [mountainId, setMountainId] = useState('')
   const [mountainFocus, setMountainFocus] = useState<{ coordinate: Coordinate; request: number; zoom: number; resetZoom: boolean } | null>(null)
@@ -283,7 +294,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     void Promise.all([
       communityApi.courses(mountainId, controller.signal),
       communityApi.mountainPreview(mountainId, controller.signal),
-      communityApi.mountainEligibility(mountainId, controller.signal),
+      communityApi.eligibleHikes(mountainId, controller.signal),
     ]).then(([courseResult, mountainPreview, eligibility]) => {
       const loadedCourses = courseResult.map(toCourse)
       if (controller.signal.aborted) return
@@ -292,13 +303,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       setReviews(mountainPreview.reviews.map(toReview))
       setPhotoPage({ key: `mountain:${mountainId}`, items: mountainPreview.photos.slice(0, 10).map(toGalleryPhoto),
         hasNext: mountainPreview.photos.length > 10, loading: false, error: false })
-      const eligibleHikes = [...eligibility.hikes]
-        .sort((a, b) => Date.parse(b.endedAt) - Date.parse(a.endedAt))
-        .map(hike => ({
-        id: String(hike.hikeRecordId), courseId: String(hike.courseId), mountainId,
-        courseName: hike.courseName, distanceKm: loadedCourses.find(course => course.id === String(hike.courseId))?.distanceKm ?? 0,
-        finishedAt: hike.endedAt,
-        }))
+      const eligibleHikes = toEligibleHikes(eligibility, loadedCourses, mountainId)
       setEligibleCourses(eligibleHikes)
       setSpotHikeId(current => eligibleHikes.some(hike => hike.id === current) ? current : eligibleHikes[0]?.id ?? '')
       setDraft(current => current.kind === 'mountain' && !current.completedHikeId && eligibleHikes[0]
@@ -553,7 +558,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const allCourseRoutes = useMemo(() => visibleCourseTargets.map(course => ({
     id: course.id, color: communityCourseColor(course.name), coordinates: course.coordinates,
   })), [visibleCourseTargets])
-  const showAllCourseRoutes = screen === 'map' || screen === 'mountainDetail'
+  const showAllCourseRoutes = screen === 'map' || screen === 'mountainDetail' || screen === 'spotDetail'
   const mapFocus = useMemo(() => {
     const mountainCenter = mountain.position as Coordinate
     const coordinate = mapFocusCategory === 'spot' ? spotFocusCenter ?? mountainCenter : mountainCenter
@@ -623,7 +628,6 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const mountainRating = mountainSummary?.averageRating ?? null
   const mountainPhotos = mountainReviews.flatMap(review => review.photos)
   const mountainPhotoTotal = mountainSummary?.photoCount ?? mountainPhotos.length
-  const reviewEligible = eligibleCourses.length > 0
   const reviewEligibilityMessage = '이 산의 완료된 산행이 있어야 하며 완료 후 24시간 안에 작성할 수 있어요.'
   const selectedSpotReviews = selectedSpot ? currentReviews('spot', selectedSpot.id) : []
   const spotGalleryPhotos = selectedSpot && photoPage.key === `spot:${mountainId}:${selectedSpot.id}` ? photoPage.items : []
@@ -691,10 +695,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     if (screens.length === 1) { onExit?.(); return }
     setScreens(current => current.slice(0, -1))
   }
-  const registerReview = (start: () => void) => {
-    if (!reviewEligible) { notify(reviewEligibilityMessage); return }
-    start()
-  }
+  const registerReview = (start: () => void) => start()
   const showDetail = (kind: ReviewKind, targetId?: string) => {
     if (screen === 'map') mapScrollTop.current = rootRef.current?.querySelector<HTMLElement>('.community-page__sheet--map .af-bottom-sheet__content')?.scrollTop ?? mapScrollTop.current
     if (kind === 'spot' && targetId) focusSpot(targetId)
@@ -736,14 +737,34 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     setDetailSpotId(id)
     setDetailSpotFocus(current => ({ coordinate: spot.coordinate, request: (current?.request ?? 0) + 1, zoom: 16 }))
   }
-  const beginReview = (kind: ReviewKind, targetId: string) => {
-    if (!reviewEligible) { notify(reviewEligibilityMessage); return }
+  const beginReview = async (kind: ReviewKind, targetId: string) => {
+    let targetEligibleHikes = eligibleCourses
+    if (targetId) {
+      try {
+        const targetSpot = kind === 'spot' ? spots.find(spot => spot.id === targetId) : undefined
+        const eligibility = kind === 'mountain'
+          ? await communityApi.mountainEligibility(mountainId)
+          : kind === 'course'
+            ? await communityApi.courseEligibility(targetId)
+            : targetSpot
+              ? await communityApi.spotEligibility(mountainId, targetSpot.targetType, targetSpot.targetId)
+              : null
+        if (!eligibility) { notify('후기를 남길 대상을 찾지 못했습니다.'); return }
+        targetEligibleHikes = toEligibleHikes(eligibility, visibleCourseTargets, mountainId)
+      } catch (error) {
+        notify(error instanceof Error ? error.message : '후기 작성 조건을 확인하지 못했습니다.')
+        return
+      }
+    }
+    if (targetEligibleHikes.length === 0) { notify(reviewEligibilityMessage); return }
+    setReviewEligibleCourses(targetEligibleHikes)
     if (kind === 'course') {
-      const selected = eligibleCourses.find(hike => hike.courseId === targetId) ?? eligibleCourses[0]
+      const selected = targetEligibleHikes.find(hike => hike.courseId === targetId) ?? targetEligibleHikes[0]
       if (!selected) { notify(reviewEligibilityMessage); return }
       setDraft({ ...blankDraft(kind, selected.courseId), completedHikeId: selected.id })
-    } else setDraft({ ...blankDraft(kind, targetId), completedHikeId: eligibleCourses[0].id })
-    move('review')
+    } else setDraft({ ...blankDraft(kind, targetId), completedHikeId: targetEligibleHikes[0].id })
+    if (screen === 'spotPicker' && screens.includes('review')) back()
+    else move('review')
   }
   const startMapReview = (kind: ReviewKind) => {
     if (kind === 'mountain') beginReview('mountain', mountainId)
@@ -755,11 +776,11 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     setErrors(current => { const next = { ...current }; for (const key of Object.keys(patch)) delete next[key]; return next })
   }
   const submitReview = async () => {
-    if (!reviewEligible || submitting) { notify(reviewEligibilityMessage); return }
+    if (reviewEligibleCourses.length === 0 || submitting) { notify(reviewEligibilityMessage); return }
     const next: Record<string, string> = {}
     if (draft.kind === 'mountain' && draft.rating === 0) next.rating = '평점을 선택해 주세요.'
     if (draft.kind === 'spot' && !spots.some(spot => spot.id === draft.targetId && !isSpotHidden(votes[spot.id]))) next.target = '후기를 남길 스팟을 선택해 주세요.'
-    if (draft.kind === 'course' && !eligibleCourses.some(hike => hike.courseId === draft.targetId && hike.id === draft.completedHikeId)) next.target = '후기를 남길 코스를 다시 선택해 주세요.'
+    if (draft.kind === 'course' && !reviewEligibleCourses.some(hike => hike.courseId === draft.targetId && hike.id === draft.completedHikeId)) next.target = '후기를 남길 코스를 다시 선택해 주세요.'
     if (!draft.completedHikeId) next.target = '후기를 작성할 수 있는 산행 기록이 없습니다.'
     if (!draft.content.trim()) next.content = '후기 내용을 입력해 주세요.'
     if (Object.keys(next).length) { setErrors(next); notify(Object.values(next)[0]); return }
@@ -883,10 +904,11 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       zoom={MAIN_MAP_ZOOM}
       focusTarget={screen === 'map' ? mapFocus : screen === 'mountainDetail' ? mountainDetailFocus : screen === 'spotDetail' ? detailSpotFocus ?? undefined
         : screen === 'courseDetail' ? courseDetailFocus : undefined}
-      showRoute={showAllCourseRoutes ? allCourseRoutes.some(route => route.coordinates.length > 1) : selectedCourse.coordinates.length > 1}
+      showRoute={showAllCourseRoutes ? allCourseRoutes.some(route => route.coordinates.length > 1)
+        : screen === 'courseDetail' && selectedCourse.coordinates.length > 1}
       overviewMarker={{ id: mountain.id, name: mountain.name, coordinate: mountain.position as Coordinate, kind: 'mountain' }}
-      highlightedRoute={selectedCourse.coordinates}
-      highlightedRouteColor={selectedCourseColor}
+      highlightedRoute={screen === 'courseDetail' ? selectedCourse.coordinates : undefined}
+      highlightedRouteColor={screen === 'courseDetail' ? selectedCourseColor : undefined}
       highlightedRoutes={showAllCourseRoutes ? allCourseRoutes : undefined}
       onViewportChange={screen === 'map' || screen === 'spotDetail' ? reportMapBounds : undefined}
       markers={screen === 'map' ? mapMarkers : screen === 'mountainDetail'
@@ -1057,8 +1079,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     </ModalLayer>}
 
     {screen === 'review' && <ReviewForm draft={draft} mountainName={mountain.name} spot={draftSpot} errors={errors}
-      canSubmit={!submitting && reviewEligible && (draft.kind !== 'course' || eligibleCourses.some(hike => hike.courseId === draft.targetId && hike.id === draft.completedHikeId))}
-      eligibleCourses={eligibleCourses}
+      canSubmit={!submitting && reviewEligibleCourses.length > 0 && (draft.kind !== 'course' || reviewEligibleCourses.some(hike => hike.courseId === draft.targetId && hike.id === draft.completedHikeId))}
+      eligibleCourses={reviewEligibleCourses}
       onChange={updateDraft} onError={notify} onChooseSpot={() => { setPickerSpotId(draft.targetId || null); move('spotPicker') }}
       onNewSpot={() => move('newSpot')} onSubmit={submitReview} />}
 
@@ -1071,8 +1093,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         <button type="button" className="community-inline-link" onClick={() => move('newSpot')}>찾는 스팟이 없나요? 새 스팟 등록</button>
       </div><div className="community-form-layout__action"><Button fullWidth label="이 스팟으로 후기 작성" onClick={() => {
         if (!pickerSpotId || !visibleSpots.some(spot => spot.id === pickerSpotId)) { notify('스팟을 선택해 주세요.'); return }
-        const hike = eligibleCourses[0]
-        updateDraft({ kind: 'spot', targetId: pickerSpotId, completedHikeId: hike?.id }); if (screens.includes('review')) back(); else move('review')
+        void beginReview('spot', pickerSpotId)
       }} /></div>
     </div>}
 
@@ -1097,6 +1118,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         setMapSpots(current => [...current.filter(item => item.id !== saved.id), saved])
         setSpots(current => [...current, saved]); setVotes(current => ({ ...current, [saved.id]: { yes: 0, no: 0, viewer: null } })); setDetailSpotId(saved.id)
         if (onSpotRegistered) { onSpotRegistered(); return }
+        setReviewEligibleCourses(eligibleCourses)
         if (screens.includes('review')) { updateDraft({ kind: 'spot', targetId: saved.id, completedHikeId: hike.id }); setScreens(current => current.slice(0, -1)) }
         else { setDraft({ ...blankDraft('spot', saved.id), completedHikeId: hike.id }); setScreens(['mountainSelect', 'map', 'review']) }
         notify('스팟을 등록했어요. 이어서 후기를 작성해 주세요.')
@@ -1105,6 +1127,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         const hike = eligibleCourses.find(item => item.id === spotHikeId) ?? eligibleCourses[0]
         setDetailSpotId(spot.id)
         if (onSpotRegistered) { onSpotRegistered(); return }
+        setReviewEligibleCourses(eligibleCourses)
         if (screens.includes('review')) { updateDraft({ kind: 'spot', targetId: spot.id, completedHikeId: hike?.id, photos }); setScreens(current => current.slice(0, -1)) }
         else { setDraft({ ...blankDraft('spot', spot.id), completedHikeId: hike?.id, photos }); setScreens(['mountainSelect', 'map', 'review']) }
         notify('기존 스팟을 선택했습니다. 사진을 추가하고 후기를 이어서 작성할 수 있어요.')
