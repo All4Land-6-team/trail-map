@@ -4,7 +4,7 @@ import test from 'node:test';
 import { communityApi } from '../src/api/community.ts';
 import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SPOT_HIDE_NEGATIVE_VOTES, canWriteCourseReview, canWriteReview, castSpotVote, distanceMeters, eligibleCourseCompletions, isSpotHidden, nearbySpotCandidates } from '../src/utils/community.ts';
 import { communityMarkerMode } from '../src/pages/CommunityPage/components/communityMapZoom.ts';
-import { groupCommunityMapPoints, spreadCommunityMapPoints } from '../src/pages/CommunityPage/components/communityMapClusters.ts';
+import { groupCommunityMapPoints } from '../src/pages/CommunityPage/components/communityMapClusters.ts';
 import { bufferMapBounds, coversMapBounds, nearestCoordinate } from '../src/pages/CommunityPage/components/communityMapBounds.ts';
 import { communityCourseColor } from '../src/constants/community.ts';
 
@@ -32,23 +32,13 @@ test('지도 클러스터는 입력 순서와 관계없이 가까운 그룹을 �
   assert.deepEqual(reversed.map(group => group.join(',')).sort(), grouped.map(group => group.join(',')).sort());
 });
 
-test('개별 마커 단계에서는 실제로 겹치는 마커만 묶을 수 있다', () => {
+test('개별 마커 해제 전에는 가까운 마커를 묶는다', () => {
   const groups = groupCommunityMapPoints([
     { value: 'same-a', x: 10, y: 10 },
     { value: 'same-b', x: 10, y: 10 },
     { value: 'separate', x: 41, y: 10 },
   ], 30);
   assert.deepEqual(groups.map(group => group.map(point => point.value)), [['same-a', 'same-b'], ['separate']]);
-});
-
-test('충분히 확대하면 겹친 마커를 원래 중심 주변으로 벌린다', () => {
-  const spread = spreadCommunityMapPoints([
-    { value: 'a', x: 100, y: 100 },
-    { value: 'b', x: 100, y: 100 },
-  ], 30, 46);
-  assert.equal(Math.round(Math.hypot(spread[0].x - spread[1].x, spread[0].y - spread[1].y)), 46);
-  assert.equal((spread[0].x + spread[1].x) / 2, 100);
-  assert.equal((spread[0].y + spread[1].y) / 2, 100);
 });
 
 test('지도 스팟 조회 영역은 화면 밖까지 포함하고 영역을 벗어날 때만 다시 조회한다', () => {
@@ -79,10 +69,11 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.match(mapSource, /community-page__map--detail-mountain'[\s\S]*max-height: 720px\)'[\s\S]*154 : 160/);
   assert.match(mapSource, /MARKER_CLUSTER_DISTANCE = 45/);
   assert.match(mapSource, /INDIVIDUAL_OVERLAP_DISTANCE = 30/);
-  assert.match(mapSource, /OVERLAP_SPREAD_ZOOM = 16/);
-  assert.match(mapSource, /CLUSTER_CHOICE_ZOOM = OVERLAP_SPREAD_ZOOM - 0\.5/);
+  assert.match(mapSource, /OVERLAP_RELEASE_ZOOM = 16/);
+  assert.match(mapSource, /CLUSTER_CHOICE_ZOOM = OVERLAP_RELEASE_ZOOM - 0\.5/);
   assert.match(mapSource, /CLUSTER_CHOICE_MIN_ZOOM = 15/);
-  assert.match(mapSource, /currentZoom >= OVERLAP_SPREAD_ZOOM/);
+  assert.doesNotMatch(mapSource, /spreadOverlappingMarkers/);
+  assert.match(mapSource, /currentZoom >= OVERLAP_RELEASE_ZOOM[\s\S]*map\(item => \[item\]\)/);
   assert.match(mapSource, /targetZoom = Math\.min\(CLUSTER_CHOICE_ZOOM, map\.getMaxZoom\(\)\)/);
   assert.match(mapSource, /map\.getZoom\(\) < CLUSTER_CHOICE_MIN_ZOOM/);
   assert.match(cssSource, /community-map__cluster span \{[^}]*width:30px;[^}]*height:30px/);
@@ -146,6 +137,29 @@ test('북한산 커뮤니티 지도들은 공용 Terrain-RGB 상태와 연결한
   assert.match(page, /community-page__map--detail[\s\S]*mountainId=\{terrainMountainId\}/);
   assert.match(page, /community-picker__map[\s\S]*mountainId=\{terrainMountainId\}/);
   assert.match(registration, /<CommunityMap[\s\S]*mountainId=\{terrainMountainId\}/);
+});
+
+test('커뮤니티 스팟과 클러스터는 3D 지형 뒤에서 흐리게 표시하고 이동 중 재배치하지 않는다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
+  assert.match(source, /import \{ createPortal \} from 'react-dom'/);
+  assert.match(source, /new Marker\(\{ element, anchor: 'center', opacityWhenCovered: 0\.2, subpixelPositioning: true \}\)/);
+  assert.match(source, /\[markerElements\] = useState\(\(\) => new Map<string, HTMLDivElement>\(\)\)/);
+  assert.match(source, /if \(!markerElements\.has\(key\)\) markerElements\.set\(key, document\.createElement\('div'\)\)/);
+  assert.match(source, /createPortal\(<div/);
+  assert.match(source, /map\.on\('moveend', update\)/);
+  assert.doesNotMatch(source, /map\.on\('move', update\)/);
+  assert.match(source, /document\.addEventListener\('pointerdown', closeOnOutsidePress\)/);
+  assert.match(source, /clusterChoicesRef\.current\?\.contains\(target\)/);
+  assert.match(css, /\.maplibregl-marker:has\(\.community-map__pin--cluster-choice\) \{ z-index:10; \}/);
+});
+
+test('클러스터는 3D 화면 투영이 아니라 줌 단계의 평면 지도 거리로 계산한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
+  assert.match(source, /MercatorCoordinate\.fromLngLat\(marker\.coordinate\)/);
+  assert.match(source, /useMapDistance \? item\.mapX : item\.x/);
+  assert.match(source, /markerMode === 'cluster'\)/);
+  assert.match(source, /lastReportedCamera\.zoom - zoom/);
 });
 
 test('커뮤니티 목데이터 없이 API와 R2 업로드 절차를 사용한다', async () => {

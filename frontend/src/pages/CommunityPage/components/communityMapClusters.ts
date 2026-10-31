@@ -37,15 +37,3 @@ export function groupCommunityMapPoints<T>(points: readonly CommunityClusterPoin
 
   return groups
 }
-
-export function spreadCommunityMapPoints<T>(points: readonly CommunityClusterPoint<T>[], distance: number, spacing: number) {
-  return groupCommunityMapPoints(points, distance).flatMap(group => {
-    if (group.length === 1) return group
-    const groupCenter = center(group)
-    const radius = spacing / (2 * Math.sin(Math.PI / group.length))
-    return group.map((point, index) => {
-      const angle = -Math.PI / 2 + (Math.PI * 2 * index) / group.length
-      return { ...point, x: groupCenter.x + Math.cos(angle) * radius, y: groupCenter.y + Math.sin(angle) * radius }
-    })
-  })
-}

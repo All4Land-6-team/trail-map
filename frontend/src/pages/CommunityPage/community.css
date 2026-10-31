@@ -14,8 +14,7 @@
 .community-map.community-page__map { position:absolute; height:auto; }
 .community-map__base,.community-map__base .base-map { width:100%; height:100%; }
 .community-map__base .base-map__notice:has(> button[aria-label="지도 오류 알림 닫기"]) { display:none; }
-.community-map__markers { position:absolute; inset:0; pointer-events:none; }
-.community-map__pin { position:absolute; z-index:2; display:grid; min-width:44px; min-height:44px; transform:translate(-50%,-50%); place-items:center; pointer-events:auto; }
+.community-map__pin { position:relative; z-index:2; display:grid; min-width:44px; min-height:44px; place-items:center; pointer-events:auto; }
 .community-map__pin .af-mountain-marker,.community-map__pin .af-spot-marker { pointer-events:auto; }
 .community-map__mountain-marker { position:relative; display:flex; width:44px; height:44px; align-items:center; justify-content:center; }
 .community-map__mountain-marker .af-mountain-marker--point { position:relative; width:44px; height:44px; }
@@ -36,6 +35,7 @@
 .community-page__map--detail-spot .community-map__pin--selected { z-index:3; }
 .community-map__cluster { display:grid; width:44px; height:44px; padding:0; place-items:center; border:0; background:transparent; cursor:pointer; }
 .community-map__cluster span { display:grid; width:30px; height:30px; place-items:center; border:2px solid #fff; border-radius:50%; color:#fff; background:var(--af-green); box-shadow:0 2px 8px rgb(23 71 54 / 20%); font:700 12px/1 "Noto Sans KR",sans-serif; }
+.community-map .maplibregl-marker:has(.community-map__pin--cluster-choice) { z-index:10; }
 .community-map__pin--cluster-choice { z-index:6; }
 .community-map__cluster-choices { position:absolute; z-index:5; top:50%; left:calc(50% + 19px); display:flex; width:164px; max-height:min(32dvh,210px); transform:translateY(-50%); flex-direction:column; gap:4px; overflow-y:auto; padding:10px; border:1px solid var(--af-line); border-radius:12px; background:#fff; box-shadow:0 4px 14px #173d3229; }
 .community-map__cluster-choices--left { right:calc(50% + 19px); left:auto; }
