@@ -280,7 +280,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       group.reduce((total, item) => total + item.marker.coordinate[1], 0) / group.length,
     ]
     const naturalPoint = map?.project(coordinate)
-    return { key, group, coordinate, offset: naturalPoint ? [x - naturalPoint.x, y - naturalPoint.y] : [0, 0], element: markerElements.get(key)! }
+    return { key, group, coordinate, offset: group.length > 1 && naturalPoint ? [x - naturalPoint.x, y - naturalPoint.y] : [0, 0], element: markerElements.get(key)! }
   })
 
   useEffect(() => {

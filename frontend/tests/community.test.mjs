@@ -84,6 +84,8 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.match(mapSource, /clusterIdentity\(group\)/);
   assert.match(mapSource, /rightSpace >= 183 \|\| rightSpace >= leftSpace/);
   assert.match(mapSource, /returningToMainMap && mainMapViewport\.current/);
+  assert.match(mapSource, /map\.easeTo\(\{ \.\.\.mainMapViewport\.current/);
+  assert.match(mapSource, /offset: group\.length > 1 && naturalPoint \? \[x - naturalPoint\.x, y - naturalPoint\.y\] : \[0, 0\]/);
   assert.doesNotMatch(mapSource, /map\.on\('zoomend'/);
   assert.match(cssSource, /community-map__mountain-marker \{[^}]*width:44px;[^}]*height:44px/);
   assert.match(cssSource, /community-map__mountain-marker \.af-mountain-marker__label \{[^}]*position:absolute/);
@@ -152,6 +154,13 @@ test('커뮤니티 스팟과 클러스터는 3D 지형 뒤에서 흐리게 표�
   assert.match(source, /document\.addEventListener\('pointerdown', closeOnOutsidePress\)/);
   assert.match(source, /clusterChoicesRef\.current\?\.contains\(target\)/);
   assert.match(css, /\.maplibregl-marker:has\(\.community-map__pin--cluster-choice\) \{ z-index:10; \}/);
+});
+
+test('스팟 상세 지도 조회는 메인 지도의 마커 목록을 덮어쓰지 않는다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /const cacheKey = `\$\{screen\}:\$\{mountainId\}:\$\{type \?\? 'all'\}`/);
+  assert.match(source, /if \(screen === 'map'\) setMapSpots\(loaded\)/);
+  assert.match(source, /if \(screen === 'map' && shownMapSpotKey\.current !== cacheKey\)/);
 });
 
 test('클러스터는 3D 화면 투영이 아니라 줌 단계의 평면 지도 거리로 계산한다', () => {

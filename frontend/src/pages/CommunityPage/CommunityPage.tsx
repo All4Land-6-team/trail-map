@@ -383,17 +383,17 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     const controller = new AbortController()
     const type = screen === 'map' && mapCategory === 'spot' && spotTypeFilter !== 'all'
       ? toSpotType(spotTypeFilter) : undefined
-    const cacheKey = `${mountainId}:${type ?? 'all'}`
+    const cacheKey = `${screen}:${mountainId}:${type ?? 'all'}`
     const cached = mapSpotCache.current.get(cacheKey)
     if (cached && Date.now() - cached.fetchedAt < MAP_SPOT_CACHE_MS && coversMapBounds(cached.bounds, mapBounds)) {
-      if (shownMapSpotKey.current !== cacheKey) {
+      if (screen === 'map' && shownMapSpotKey.current !== cacheKey) {
         setMapSpots(cached.spots.map(toMapSpot))
         setVotes(current => ({ ...Object.fromEntries(cached.spots.map(spot => [`${spot.targetType}:${spot.targetId}`, toVote(spot)])), ...current }))
         shownMapSpotKey.current = cacheKey
       }
       return
     }
-    if (shownMapSpotKey.current !== cacheKey) {
+    if (screen === 'map' && shownMapSpotKey.current !== cacheKey) {
       setMapSpots([])
       shownMapSpotKey.current = cacheKey
     }
@@ -402,7 +402,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       if (controller.signal.aborted) return
       mapSpotCache.current.set(cacheKey, { bounds: queryBounds, spots: result, fetchedAt: Date.now() })
       const loaded = result.map(toMapSpot)
-      setMapSpots(loaded)
+      if (screen === 'map') setMapSpots(loaded)
       setSpots(current => {
         const merged = new Map(current.map(spot => [spot.id, spot]))
         loaded.forEach(spot => { if (!merged.has(spot.id)) merged.set(spot.id, spot) })
