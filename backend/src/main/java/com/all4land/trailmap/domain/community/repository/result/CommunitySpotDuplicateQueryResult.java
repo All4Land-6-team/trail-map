@@ -11,7 +11,6 @@ public record CommunitySpotDuplicateQueryResult(
         double longitude,
         double latitude,
         double distanceMeters,
-        boolean official,
         String status
 ) {
 }

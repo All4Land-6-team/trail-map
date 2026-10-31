@@ -92,17 +92,18 @@ class CommunityCommandApiIntegrationTest {
     }
 
     @Test
-    void 최근_24시간_내_코스별_최신_완료_산행만_후기_자격으로_반환한다() throws Exception {
+    void 최근_24시간_내_완료_산행을_같은_코스라도_모두_후기_자격으로_반환한다() throws Exception {
         insertCompletedHike(courseId, 30);
         long previousId = insertCompletedHike(courseId, 8);
         long latestId = insertCompletedHike(courseId, 2);
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/review-eligibility")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.eligible").value(true))
-                .andExpect(jsonPath("$.data.hikes.length()").value(1))
+                .andExpect(jsonPath("$.data.eligible").doesNotExist())
+                .andExpect(jsonPath("$.data.hikes.length()").value(2))
                 .andExpect(jsonPath("$.data.hikes[0].hikeRecordId").value(latestId))
-                .andExpect(jsonPath("$.data.hikes[0].courseId").value(courseId));
+                .andExpect(jsonPath("$.data.hikes[0].courseId").value(courseId))
+                .andExpect(jsonPath("$.data.hikes[1].hikeRecordId").value(previousId));
 
         assertThat(previousId).isNotEqualTo(latestId);
     }
@@ -137,6 +138,50 @@ class CommunityCommandApiIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM spot_review WHERE facility_id = ?", Integer.class, facilityId
         )).isEqualTo(1);
+    }
+
+    @Test
+    void 같은_산행과_같은_대상의_후기만_중복을_거부한다() throws Exception {
+        long firstHikeId = insertCompletedHike(courseId, 2);
+        long secondHikeId = insertCompletedHike(courseId, 1);
+        String mountainReviewUrl = "/v1/community/mountains/" + mountainId + "/reviews";
+
+        mockMvc.perform(asUser(post(mountainReviewUrl))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reviewJson(firstHikeId, "첫 산 후기", 5)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/eligible-hikes")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hikes.length()").value(2));
+        mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/review-eligibility")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hikes.length()").value(1))
+                .andExpect(jsonPath("$.data.hikes[0].hikeRecordId").value(secondHikeId));
+
+        mockMvc.perform(asUser(post(mountainReviewUrl))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reviewJson(firstHikeId, "중복 산 후기", 4)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("COMMUNITY_409_2"));
+        mockMvc.perform(asUser(post(mountainReviewUrl))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reviewJson(secondHikeId, "다른 산행의 산 후기", 4)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(asUser(post("/v1/community/courses/" + courseId + "/reviews"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reviewJson(firstHikeId, "같은 산행의 다른 대상 후기", null)))
+                .andExpect(status().isCreated());
+        mockMvc.perform(asUser(post("/v1/community/courses/" + courseId + "/reviews"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reviewJson(firstHikeId, "중복 코스 후기", null)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("COMMUNITY_409_2"));
+        mockMvc.perform(asUser(get("/v1/community/courses/" + courseId + "/review-eligibility")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hikes.length()").value(1))
+                .andExpect(jsonPath("$.data.hikes[0].hikeRecordId").value(secondHikeId));
     }
 
     @Test
@@ -242,12 +287,12 @@ class CommunityCommandApiIntegrationTest {
         String voteUrl = "/v1/community/mountains/%d/spots/USER_SPOT/%d/vote"
                 .formatted(mountainId, userSpotId);
 
-        castVote(userId, voteUrl, "NO").andExpect(jsonPath("$.data.hidden").value(false));
-        castVote(secondUserId, voteUrl, "NO").andExpect(jsonPath("$.data.hidden").value(false));
+        castVote(userId, voteUrl, "NO").andExpect(jsonPath("$.data.hidden").doesNotExist());
+        castVote(secondUserId, voteUrl, "NO").andExpect(jsonPath("$.data.hidden").doesNotExist());
         castVote(thirdUserId, voteUrl, "NO")
                 .andExpect(jsonPath("$.data.noVotes").value(3))
                 .andExpect(jsonPath("$.data.status").value("HIDDEN"))
-                .andExpect(jsonPath("$.data.hidden").value(true));
+                .andExpect(jsonPath("$.data.hidden").doesNotExist());
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/spots"))
                         .param("west", "126.97")
@@ -262,7 +307,7 @@ class CommunityCommandApiIntegrationTest {
                 .andExpect(jsonPath("$.data.yesVotes").value(1))
                 .andExpect(jsonPath("$.data.noVotes").value(2))
                 .andExpect(jsonPath("$.data.status").value("RECONFIRMATION_REQUIRED"))
-                .andExpect(jsonPath("$.data.hidden").value(false));
+                .andExpect(jsonPath("$.data.hidden").doesNotExist());
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/spots"))
                         .param("west", "126.97")
@@ -285,7 +330,7 @@ class CommunityCommandApiIntegrationTest {
         castVote(thirdUserId, voteUrl, "NO")
                 .andExpect(jsonPath("$.data.noVotes").value(3))
                 .andExpect(jsonPath("$.data.status").value("AVAILABLE"))
-                .andExpect(jsonPath("$.data.hidden").value(false));
+                .andExpect(jsonPath("$.data.hidden").doesNotExist());
 
         mockMvc.perform(asUser(get("/v1/community/mountains/%d/spots/FACILITY/%d"
                         .formatted(mountainId, facilityId))))

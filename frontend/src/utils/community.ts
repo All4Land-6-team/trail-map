@@ -11,11 +11,8 @@ function isEligibleCompletion(hike: CompletedHike, mountainId: string, now: numb
 }
 
 export function eligibleCourseCompletions(completedHikes: readonly CompletedHike[], mountainId: string, now = Date.now()): CompletedHike[] {
-  const newestByCourse = new Map<string, CompletedHike>()
-  completedHikes.filter(hike => isEligibleCompletion(hike, mountainId, now))
+  return completedHikes.filter(hike => isEligibleCompletion(hike, mountainId, now))
     .sort((a, b) => Date.parse(b.finishedAt) - Date.parse(a.finishedAt))
-    .forEach(hike => { if (!newestByCourse.has(hike.courseId)) newestByCourse.set(hike.courseId, hike) })
-  return [...newestByCourse.values()]
 }
 
 export function canWriteReview(completedHikes: readonly CompletedHike[], mountainId: string, now = Date.now()): boolean {

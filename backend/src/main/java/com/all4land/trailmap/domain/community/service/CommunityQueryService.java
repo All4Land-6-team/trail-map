@@ -8,8 +8,12 @@ import com.all4land.trailmap.domain.community.dto.response.CommunityCourseRespon
 import com.all4land.trailmap.domain.community.dto.response.CommunityMountainResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotDetailResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunitySpotPageResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunitySpotMapResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityMountainReviewSummaryResponse;
 import com.all4land.trailmap.domain.community.entity.CommunityReviewKind;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
+import com.all4land.trailmap.domain.community.entity.CommunitySpotType;
 import com.all4land.trailmap.domain.community.error.CommunityErrorCode;
 import com.all4land.trailmap.domain.community.exception.CommunityException;
 import com.all4land.trailmap.domain.community.repository.map.CommunityMapQueryRepository;
@@ -18,12 +22,18 @@ import com.all4land.trailmap.domain.community.repository.result.CommunitySpotQue
 import com.all4land.trailmap.domain.community.repository.review.CommunityReviewQueryRepository;
 import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotQueryRepository;
 import com.all4land.trailmap.domain.community.storage.R2PhotoStorage;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.LinkedHashMap;
+import java.util.Base64;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +44,7 @@ public class CommunityQueryService {
     private final CommunityReviewQueryRepository reviewQueryRepository;
     private final CommunitySpotQueryRepository spotQueryRepository;
     private final R2PhotoStorage r2PhotoStorage;
+    private final ObjectMapper objectMapper;
 
     public List<CommunityMountainResponse> getMountains(Long userId) {
         validateUser(userId);
@@ -51,14 +62,19 @@ public class CommunityQueryService {
     public List<CommunityCourseResponse> getCourses(Long userId, Long mountainId) {
         validateUser(userId);
         validateMountain(mountainId);
-        var courses = new LinkedHashMap<Long, CourseBuilder>();
-        mapQueryRepository.findCoursePoints(mountainId).forEach(point -> courses
-                .computeIfAbsent(point.courseId(), ignored -> new CourseBuilder(
-                        point.courseId(), point.mountainId(), point.externalId(), point.name(),
-                        point.distanceKm(), point.reviewCount()
+        return mapQueryRepository.findCourses(mountainId).stream()
+                .map(course -> new CommunityCourseResponse(
+                        course.courseId(),
+                        course.mountainId(),
+                        course.externalId(),
+                        course.name(),
+                        course.distanceKm(),
+                        course.reviewCount(),
+                        course.photoCount(),
+                        toReadUrl(course.representativePhotoKey()),
+                        parseRouteCoordinates(course.routeGeoJson())
                 ))
-                .coordinates().add(new CommunityCoordinateResponse(point.longitude(), point.latitude())));
-        return courses.values().stream().map(CourseBuilder::toResponse).toList();
+                .toList();
     }
 
     public List<CommunitySpotResponse> getSpots(
@@ -71,6 +87,48 @@ public class CommunityQueryService {
         return spotQueryRepository.findSpots(userId, mountainId, request).stream()
                 .map(this::toSpotResponse)
                 .toList();
+    }
+
+    public List<CommunitySpotMapResponse> getMapMarkers(Long userId, Long mountainId, CommunitySpotMapRequest request) {
+        validateUser(userId);
+        validateMountain(mountainId);
+        return spotQueryRepository.findMapMarkers(userId, mountainId, request);
+    }
+
+    public CommunitySpotPageResponse getSpotPage(Long userId, Long mountainId, CommunitySpotType type, int size, String cursor) {
+        validateUser(userId);
+        validateMountain(mountainId);
+        if (size < 1 || size > 20) throw new CommunityException(CommunityErrorCode.INVALID_SPOT_CURSOR);
+        OffsetDateTime afterReviewAt = null;
+        String afterType = null;
+        Long afterId = null;
+        if (cursor != null) {
+            try {
+                var parts = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8).split("\\|", -1);
+                if (parts.length != 5 || !parts[0].equals(String.valueOf(mountainId))
+                        || !parts[1].equals(type == null ? "ALL" : type.name())
+                        || !(parts[3].equals("FACILITY") || parts[3].equals("USER_SPOT"))) {
+                    throw new IllegalArgumentException();
+                }
+                if (!parts[2].equals("NONE")) {
+                    afterReviewAt = OffsetDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(parts[2])), ZoneOffset.UTC);
+                }
+                afterType = parts[3];
+                afterId = Long.parseLong(parts[4]);
+                if (afterId <= 0) throw new IllegalArgumentException();
+            } catch (IllegalArgumentException error) {
+                throw new CommunityException(CommunityErrorCode.INVALID_SPOT_CURSOR);
+            }
+        }
+        var found = spotQueryRepository.findSpotPage(userId, mountainId, type, afterReviewAt, afterType, afterId, size + 1);
+        var items = found.stream().limit(size).map(this::toSpotResponse).toList();
+        var last = found.size() > size ? found.get(size - 1) : null;
+        var next = last == null ? null : Base64.getUrlEncoder().withoutPadding().encodeToString(
+                (mountainId + "|" + (type == null ? "ALL" : type.name()) + "|"
+                        + (last.latestReviewAt() == null ? "NONE" : last.latestReviewAt().toInstant().toEpochMilli()) + "|"
+                        + last.targetType().name() + "|" + last.targetId())
+                        .getBytes(StandardCharsets.UTF_8));
+        return new CommunitySpotPageResponse(items, next, last != null);
     }
 
     public CommunitySpotDetailResponse getSpot(
@@ -97,6 +155,12 @@ public class CommunityQueryService {
                 reviewQueryRepository.findMountainReviews(mountainId, page.resolvedLimit(), page.resolvedOffset()),
                 CommunityReviewKind.MOUNTAIN
         );
+    }
+
+    public CommunityMountainReviewSummaryResponse getMountainReviewSummary(Long userId, Long mountainId) {
+        validateUser(userId);
+        validateMountain(mountainId);
+        return reviewQueryRepository.findMountainReviewSummary(mountainId);
     }
 
     public List<CommunityReviewResponse> getCourseReviews(
@@ -153,7 +217,6 @@ public class CommunityQueryService {
                 spot.type(),
                 spot.longitude(),
                 spot.latitude(),
-                spot.official(),
                 spot.status(),
                 spot.yesVotes(),
                 spot.noVotes(),
@@ -173,7 +236,6 @@ public class CommunityQueryService {
                 spot.type(),
                 spot.longitude(),
                 spot.latitude(),
-                spot.official(),
                 spot.status(),
                 spot.sourceName(),
                 spot.sourceUrl(),
@@ -210,30 +272,22 @@ public class CommunityQueryService {
         return objectKey == null ? null : r2PhotoStorage.createReadUrl(objectKey);
     }
 
-    private record CourseBuilder(
-            Long courseId,
-            Long mountainId,
-            String externalId,
-            String name,
-            double distanceKm,
-            long reviewCount,
-            List<CommunityCoordinateResponse> coordinates
-    ) {
-        private CourseBuilder(
-                Long courseId,
-                Long mountainId,
-                String externalId,
-                String name,
-                double distanceKm,
-                long reviewCount
-        ) {
-            this(courseId, mountainId, externalId, name, distanceKm, reviewCount, new java.util.ArrayList<>());
-        }
-
-        private CommunityCourseResponse toResponse() {
-            return new CommunityCourseResponse(
-                    courseId, mountainId, externalId, name, distanceKm, reviewCount, List.copyOf(coordinates)
-            );
+    private List<CommunityCoordinateResponse> parseRouteCoordinates(String routeGeoJson) {
+        try {
+            var coordinates = objectMapper.readTree(routeGeoJson).path("coordinates");
+            if (!coordinates.isArray()) {
+                throw new IllegalStateException("코스 경로 좌표가 배열이 아닙니다.");
+            }
+            var result = new java.util.ArrayList<CommunityCoordinateResponse>(coordinates.size());
+            for (var coordinate : coordinates) {
+                if (!coordinate.isArray() || coordinate.size() < 2) {
+                    throw new IllegalStateException("코스 경로 좌표가 올바르지 않습니다.");
+                }
+                result.add(new CommunityCoordinateResponse(coordinate.get(0).asDouble(), coordinate.get(1).asDouble()));
+            }
+            return List.copyOf(result);
+        } catch (JsonProcessingException error) {
+            throw new IllegalStateException("코스 경로 GeoJSON을 읽지 못했습니다.", error);
         }
     }
 }

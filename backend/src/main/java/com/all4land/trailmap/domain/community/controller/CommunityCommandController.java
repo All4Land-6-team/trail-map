@@ -38,6 +38,14 @@ public class CommunityCommandController {
 
     private final CommunityCommandService commandService;
 
+    @GetMapping("/mountains/{mountainId}/eligible-hikes")
+    public ResponseEntity<SuccessResponse<CommunityReviewEligibilityResponse>> getEligibleHikes(
+            @CurrentUserId Long userId,
+            @Positive @PathVariable Long mountainId
+    ) {
+        return response(SuccessResponse.ok(commandService.getEligibleHikes(userId, mountainId)));
+    }
+
     @GetMapping("/mountains/{mountainId}/review-eligibility")
     public ResponseEntity<SuccessResponse<CommunityReviewEligibilityResponse>> getMountainReviewEligibility(
             @CurrentUserId Long userId,
