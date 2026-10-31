@@ -685,6 +685,18 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     return () => { observer.disconnect(); controller.abort() }
   }, [activePhotoKey, activePhotoKind, mapCategory, mountainId, notify, photoPage.error, photoPage.hasNext, photoPage.items.length, photoPage.key, screen, selectedCourse.id, selectedGalleryIndex, selectedSpot?.targetId, selectedSpot?.targetType])
   const move = (next: CommunityScreen) => { setErrors({}); setReviewKindPickerOpen(false); resetSheet(); setScreens(current => [...current, next]) }
+  const scheduleMapFocus = (category: MapCategory, delay: number) => {
+    if (categoryFocusFrame.current !== null) window.cancelAnimationFrame(categoryFocusFrame.current)
+    if (categoryFocusTimer.current !== null) window.clearTimeout(categoryFocusTimer.current)
+    categoryFocusTimer.current = window.setTimeout(() => {
+      categoryFocusFrame.current = window.requestAnimationFrame(() => {
+        setMapFocusCategory(category)
+        setCategoryFocusRequest(current => current + 1)
+        categoryFocusFrame.current = null
+      })
+      categoryFocusTimer.current = null
+    }, delay)
+  }
   const confirmMountainSelection = () => {
     if (!mountainId) return
     mapScrollTop.current = 0
@@ -692,6 +704,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     setMapFocusCategory('all')
     setSpotTypeFilter('all')
     move('map')
+    scheduleMapFocus('all', 240)
   }
   const back = () => {
     setErrors({})
@@ -714,16 +727,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       setSpotFocusCenter(nearestCoordinate(visibleListedSpots.map(spot => spot.coordinate), mountain.position as Coordinate))
     }
     setMapCategory(category)
-    if (categoryFocusFrame.current !== null) window.cancelAnimationFrame(categoryFocusFrame.current)
-    if (categoryFocusTimer.current !== null) window.clearTimeout(categoryFocusTimer.current)
-    categoryFocusTimer.current = window.setTimeout(() => {
-      categoryFocusFrame.current = window.requestAnimationFrame(() => {
-        setMapFocusCategory(category)
-        setCategoryFocusRequest(current => current + 1)
-        categoryFocusFrame.current = null
-      })
-      categoryFocusTimer.current = null
-    }, sheetPeek ? 240 : 0)
+    scheduleMapFocus(category, sheetPeek ? 240 : 0)
     const content = rootRef.current?.querySelector<HTMLElement>('.community-page__sheet--map .af-bottom-sheet__content')
     if (content) content.scrollTop = 0
   }

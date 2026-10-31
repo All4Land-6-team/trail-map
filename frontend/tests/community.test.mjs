@@ -97,6 +97,13 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.match(cssSource, /community-map__mountain-marker \.af-mountain-marker__label \{[^}]*position:absolute/);
 });
 
+test('산 선택 직후에도 전체 필터와 같은 지도 위치를 사용한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /const scheduleMapFocus = \(category: MapCategory, delay: number\) => \{[\s\S]*window\.clearTimeout\(categoryFocusTimer\.current\)[\s\S]*setMapFocusCategory\(category\)[\s\S]*setCategoryFocusRequest\(current => current \+ 1\)/);
+  assert.match(source, /const confirmMountainSelection = \(\) => \{[\s\S]*setMapCategory\('all'\)[\s\S]*move\('map'\)[\s\S]*scheduleMapFocus\('all', 240\)/);
+  assert.match(source, /const changeMapCategory = \(category: MapCategory\) => \{[\s\S]*setMapCategory\(category\)[\s\S]*scheduleMapFocus\(category, sheetPeek \? 240 : 0\)/);
+});
+
 test('산 필터만 라벨을 표시하고 다른 화면에는 라벨 없는 깃발 산 기본점을 표시한다', () => {
   const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   const map = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
@@ -350,11 +357,11 @@ test('코스 상세 지도는 고정 확대 대신 전체 경로 경계에 맞�
   assert.match(mapSource, /courseDetailDimension === '3D'[\s\S]*map\.cameraForBounds\(bounds, \{ padding, offset: \[0, -72\], maxZoom: 16 \}\)/);
   assert.match(mapSource, /camera\.zoom \?\? map\.getZoom\(\)\) \+ 0\.7, 16/);
   assert.match(pageSource, /communityApi\.spotDetail\([\s\S]*setDetailSpotFocus\(current => current[\s\S]*coordinate: spot\.coordinate/);
-  assert.match(mapSource, /spotDetailTerrainReady = className\?\.includes\('community-page__map--detail-spot'\)[\s\S]*terrainStatus === 'ready'/);
-  assert.match(mapSource, /calculateAnchoredCameraOptions\(\{[\s\S]*anchorLocation: focusTarget\.coordinate[\s\S]*anchorScreenPoint: \[map\.getContainer\(\)\.clientWidth \/ 2, focusY\]/);
-  assert.match(mapSource, /map\.once\('idle', alignSpotAfterTerrainLoads\)/);
-  assert.match(mapSource, /map\.jumpTo\(camera\)/);
-  assert.match(mapSource, /\}, \[map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetailTerrainReady\]\)/);
+  assert.match(mapSource, /spotDetail3D = className\?\.includes\('community-page__map--detail-spot'\) && dimension === '3D'/);
+  assert.match(mapSource, /if \(spotDetail3D && terrainStatus !== 'ready' && terrainStatus !== 'error'\) return/);
+  assert.match(mapSource, /spotDetailTerrainReady = spotDetail3D && terrainStatus === 'ready'/);
+  assert.match(mapSource, /if \(spotDetailTerrainReady\) \{[\s\S]*map\.easeTo\(\{ center: focusTarget\.coordinate,[\s\S]*duration: 0 \}\)[\s\S]*map\.panBy\([\s\S]*duration: 0[\s\S]*map\.jumpTo\(initialCamera\)[\s\S]*map\.easeTo\(\{ \.\.\.camera,[\s\S]*duration: reducedMotion \? 0 : 550/);
+  assert.match(mapSource, /\}, \[map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetail3D, spotDetailTerrainReady, terrainStatus, dimension\]\)/);
   assert.doesNotMatch(pageSource, /courseDetailFocus[\s\S]{0,120}zoom: 16/);
 });
 

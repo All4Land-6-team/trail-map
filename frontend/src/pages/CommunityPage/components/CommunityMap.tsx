@@ -181,8 +181,8 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   }, [map, fitHighlightedRoute, highlightedRoute, highlightedRoutes])
 
   const courseDetailDimension = className?.includes('community-page__map--detail-course') ? dimension : null
-  const spotDetailTerrainReady = className?.includes('community-page__map--detail-spot')
-    && dimension === '3D' && terrainStatus === 'ready'
+  const spotDetail3D = className?.includes('community-page__map--detail-spot') && dimension === '3D'
+  const spotDetailTerrainReady = spotDetail3D && terrainStatus === 'ready'
   useEffect(() => {
     if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return
     const leavingMainMap = !isMainMap && wasMainMap.current
@@ -226,25 +226,35 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     const targetZoom = focusTarget.zoom === undefined ? map.getZoom() : focusTarget.resetZoom
       ? focusTarget.zoom : Math.max(map.getZoom(), focusTarget.zoom)
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (spotDetail3D && terrainStatus !== 'ready' && terrainStatus !== 'error') return
+    if (spotDetailTerrainReady) {
+      // 목표 줌의 지형 투영을 동기 계산한 뒤 원래 카메라에서 한 번만 이동한다.
+      const initialCamera = {
+        center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch(),
+      }
+      map.easeTo({ center: focusTarget.coordinate, offset: [0, focusY - mapHeight / 2], zoom: targetZoom, duration: 0 })
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const point = map.project(focusTarget.coordinate)
+        const offset: [number, number] = [point.x - map.getContainer().clientWidth / 2, point.y - focusY]
+        if (Math.abs(offset[0]) < 1 && Math.abs(offset[1]) < 1) break
+        map.panBy([offset[0] * 0.75, offset[1] * 0.75], { duration: 0 })
+      }
+      const camera = {
+        center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch(),
+      }
+      map.jumpTo(initialCamera)
+      map.easeTo({ ...camera,
+        duration: reducedMotion ? 0 : 550,
+        easing: progress => 1 - (1 - progress) ** 3 })
+      return
+    }
     map.easeTo({ center: focusTarget.coordinate, offset: [0, focusY - mapHeight / 2],
       zoom: targetZoom,
       bearing: focusTarget.resetOrientation ? 0 : undefined,
       pitch: focusTarget.resetOrientation ? dimension === '3D' ? MAIN_MAP_3D_PITCH : 0 : undefined,
       duration: reducedMotion ? 0 : 550,
       easing: progress => 1 - (1 - progress) ** 3 })
-    if (spotDetailTerrainReady) {
-      const alignSpotAfterTerrainLoads = () => {
-        const camera = map.calculateAnchoredCameraOptions({
-          anchorLocation: focusTarget.coordinate,
-          anchorScreenPoint: [map.getContainer().clientWidth / 2, focusY],
-          zoom: targetZoom,
-        })
-        map.jumpTo(camera)
-      }
-      map.once('idle', alignSpotAfterTerrainLoads)
-      return () => { map.off('idle', alignSpotAfterTerrainLoads) }
-    }
-  }, [map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetailTerrainReady])
+  }, [map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetail3D, spotDetailTerrainReady, terrainStatus, dimension])
 
   useEffect(() => {
     if (!map || !onMapSelect) return
