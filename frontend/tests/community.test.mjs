@@ -4,16 +4,55 @@ import test from 'node:test';
 import { communityApi } from '../src/api/community.ts';
 import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SPOT_HIDE_NEGATIVE_VOTES, canWriteCourseReview, canWriteReview, castSpotVote, distanceMeters, eligibleCourseCompletions, isSpotHidden, nearbySpotCandidates } from '../src/utils/community.ts';
 import { communityMarkerMode } from '../src/pages/CommunityPage/components/communityMapZoom.ts';
+import { bufferMapBounds, centerCoordinateBounds, coversMapBounds } from '../src/pages/CommunityPage/components/communityMapBounds.ts';
 import { communityCourseColor } from '../src/constants/community.ts';
 
 test('커뮤니티 지도 줌 단계는 기본점, 숫자 클러스터, 개별 아이콘 순으로 전환한다', () => {
   assert.equal(communityMarkerMode(9.5), 'overview');
   assert.equal(communityMarkerMode(12), 'overview');
-  assert.equal(communityMarkerMode(12.99), 'overview');
-  assert.equal(communityMarkerMode(13), 'cluster');
+  assert.equal(communityMarkerMode(12.49), 'overview');
+  assert.equal(communityMarkerMode(12.5), 'cluster');
   assert.equal(communityMarkerMode(14), 'cluster');
-  assert.equal(communityMarkerMode(15.99), 'cluster');
-  assert.equal(communityMarkerMode(16), 'individual');
+  assert.equal(communityMarkerMode(14.49), 'cluster');
+  assert.equal(communityMarkerMode(14.5), 'individual');
+  assert.equal(communityMarkerMode(18), 'individual');
+});
+
+test('지도 스팟 조회 영역은 화면 밖까지 포함하고 영역을 벗어날 때만 다시 조회한다', () => {
+  const viewport = { west: 126.9, south: 37.5, east: 127.1, north: 37.7 };
+  const buffered = bufferMapBounds(viewport);
+  assert.equal(coversMapBounds(buffered, viewport), true);
+  assert.equal(coversMapBounds(buffered, { west: 127, south: 37.55, east: 127.18, north: 37.74 }), true);
+  assert.equal(coversMapBounds(buffered, { west: 127.1, south: 37.6, east: 127.3, north: 37.8 }), false);
+});
+
+test('코스 필터 중심은 모든 경로를 감싸는 좌표 범위의 가운데를 사용한다', () => {
+  const center = centerCoordinateBounds([[126.8, 37.4], [127.2, 37.8], [127, 37.5]], [0, 0]);
+  assert.equal(center[0], 127);
+  assert.ok(Math.abs(center[1] - 37.6) < Number.EPSILON * 37.6);
+  assert.deepEqual(centerCoordinateBounds([], [126.9, 37.6]), [126.9, 37.6]);
+});
+
+test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심과 줌을 사용한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const mapSource = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
+  assert.match(source, /all: 12\.5, mountain: MAIN_MAP_ZOOM, spot: 14\.5, course: 12/);
+  assert.match(source, /mapCategory === 'spot' \? spotFocusCenter \?\? mountainCenter/);
+  assert.match(source, /zoom: MOUNTAIN_DETAIL_ZOOM/);
+  assert.match(mapSource, /center: focusTarget\?\.coordinate \?\? marker\.coordinate/);
+});
+
+test('활성 커뮤니티 탭을 다시 눌러도 산 선택과 지도 화면을 강제로 전환하지 않는다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /if \(destination === 'community'\) return/);
+  assert.doesNotMatch(source, /destination === 'community'[\s\S]{0,100}setScreens\(\['mountainSelect', 'map'\]\)/);
+});
+
+test('상세 사진 로딩에는 스켈레톤을 적용하고 바텀시트 진입 모션은 사용하지 않는다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
+  assert.match(source, /photoPage\.loading && photoPage\.items\.length === 0 && <CommunityPhotoSkeleton/);
+  assert.doesNotMatch(styles, /community-sheet-enter/);
 });
 
 test('북한산 커뮤니티 지도들은 공용 Terrain-RGB 상태와 연결한다', () => {
@@ -88,13 +127,68 @@ test('스팟 등록 지도는 등산 중 현재 위치를 우선하고 실패하
   assert.match(map, /fitHighlightedRoute[\s\S]*map\.fitBounds/);
 });
 
+test('등산 중 스팟 공유는 기존 스팟 선택부터 시작하고 새 스팟 등록을 선택 화면에서 제공한다', () => {
+  const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+  const activePage = readFileSync(new URL('../src/pages/HikeActivePage/HikeActivePage.tsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(activePage, /screen: "spotPicker"/);
+  assert.match(app, /entry === 'spotPicker'/);
+  assert.match(page, /screen === 'spotPicker'[\s\S]*찾는 스팟이 없나요\? 새 스팟 등록/);
+});
+
+test('산·스팟·코스 후기 전체보기에서 처음 20개와 다음 20개를 조회한다', () => {
+  const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(page, /communityApi\.mountainReviews\(mountainId, controller\.signal, 21\)/);
+  assert.match(page, /communityApi\.spotReviews\(mountainId, listSpot!\.targetType, listSpot!\.targetId, controller\.signal, 21\)/);
+  assert.match(page, /communityApi\.courseReviews\(detailCourseId, controller\.signal, 21, offset\)/);
+  assert.match(page, /new IntersectionObserver/);
+});
+
+test('산 전체 스팟 목록은 지도 영역 없이 유형과 이어보기 커서를 전송한다', async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async url => {
+    calls.push(String(url));
+    return Response.json({ data: { items: [], nextCursor: null, hasNext: false } });
+  };
+  try {
+    await communityApi.spotList('2', undefined, 'RESTROOM', 'next-page');
+    assert.equal(calls[0], 'http://localhost:8080/api/v1/community/mountains/2/spots/list?size=20&type=RESTROOM&cursor=next-page');
+    const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+    assert.match(page, /communityApi\.spotList\(mountainId, controller\.signal, listType, spotListCursor\)/);
+    assert.match(page, /new IntersectionObserver\([\s\S]*\{ root, rootMargin: '120px' \}/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('스팟 상세에서 목록으로 돌아올 때 기존 목록을 유지하며 갱신한다', () => {
+  const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(page, /const spotListKey = `\$\{mountainId\}:\$\{listType \?\? 'all'\}`/);
+  assert.match(page, /const keepCurrentList = shownSpotListKey\.current === spotListKey/);
+  assert.match(page, /if \(!keepCurrentList\) \{\s*setListedSpots\(\[\]\)/);
+  assert.match(page, /return \[\.\.\.loaded, \.\.\.current\.filter\(spot => !loadedIds\.has\(spot\.id\)\)\]/);
+});
+
 test('지도 마커 ID가 겹쳐도 종류에 맞는 상세 화면을 연다', () => {
   const mapSource = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(pageSource, /id: `\$\{spot\.targetType\}:\$\{spot\.targetId\}`/);
   assert.match(mapSource, /onMarkerSelect\?\.\(marker\)/);
   assert.match(pageSource, /marker\.kind === 'mountain'[\s\S]*showDetail\('mountain', marker\.id\)/);
   assert.match(pageSource, /marker\.kind === 'course'[\s\S]*showDetail\('course', marker\.id\)/);
   assert.match(pageSource, /showDetail\('spot', marker\.id\)/);
+  assert.match(pageSource, /targetId: spot\.id/);
+});
+
+test('커뮤니티 지도는 현재 영역의 공식 시설을 조회하고 출처를 구분해 표시한다', () => {
+  const apiSource = readFileSync(new URL('../src/api/community.ts', import.meta.url), 'utf8');
+  const mapSource = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
+  const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(apiSource, /west: String\(bounds\.west\)[\s\S]*north: String\(bounds\.north\)/);
+  assert.match(mapSource, /map\.on\('moveend', report\)/);
+  assert.match(pageSource, /communityApi\.spots\(mountainId, queryBounds, controller\.signal, type\)/);
+  assert.match(pageSource, /targetType: spot\.targetType/);
 });
 
 const base = [126.978, 37.659];

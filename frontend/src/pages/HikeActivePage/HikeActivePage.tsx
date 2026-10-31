@@ -64,7 +64,7 @@ export function HikeActivePage() {
 
     {overlay === "share" && <HikeShareSheet onClose={() => setOverlay(null)} onShareSpot={() => {
       setOverlay(null);
-      const query = new URLSearchParams({ screen: "newSpot", mode: "active", mountain: session.mountainId,
+      const query = new URLSearchParams({ screen: "spotPicker", mode: "active", mountain: session.mountainId,
         course: session.schedule.courseId,
         returnTo: session.phase === "downhill" ? hikePaths.downhill(alertsOn) : hikePaths.active(alertsOn) });
       navigate(`community?${query}`);

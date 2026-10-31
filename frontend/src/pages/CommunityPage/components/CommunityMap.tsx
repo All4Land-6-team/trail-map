@@ -3,8 +3,10 @@ import type { MapLibreMap } from 'maplibre-gl'
 import BaseMap, { type MapRoute } from '../../../components/map/BaseMap'
 import { MapAction, MountainMarker, SpotMarker, supportsTerrain, type MapDimension, type TerrainStatus } from '../../../components/map'
 import { Icon } from '../../../components/common/Icon'
-import type { Coordinate, SpotType } from '../../../types/community'
+import type { CommunitySpotTargetType, Coordinate, SpotType } from '../../../types/community'
 import { communityMarkerMode } from './communityMapZoom'
+
+export type CommunityMapBounds = { west: number; south: number; east: number; north: number }
 
 export type CommunityMapMarker = {
   id: string
@@ -13,6 +15,7 @@ export type CommunityMapMarker = {
   kind: 'mountain' | 'spot' | 'course' | 'point'
   coordinate: Coordinate
   spotType?: SpotType
+  targetType?: CommunitySpotTargetType
   selected?: boolean
   shortLabel?: string
   color?: string
@@ -39,6 +42,7 @@ type Props = {
   highlightedRoutes?: readonly CommunityMapRoute[]
   onMarkerSelect?: (marker: CommunityMapMarker) => void
   onMapSelect?: (coordinate: Coordinate) => void
+  onViewportChange?: (bounds: CommunityMapBounds) => void
   children?: ReactNode
   className?: string
   ariaLabel?: string
@@ -46,7 +50,7 @@ type Props = {
 
 const EMPTY_ROUTES: readonly MapRoute[] = []
 const DEFAULT_CENTER: Coordinate = [126.977, 37.659]
-const MARKER_CLUSTER_DISTANCE = 48
+const MARKER_CLUSTER_DISTANCE = 50
 
 type ProjectedMarker = { marker: CommunityMapMarker; x: number; y: number }
 
@@ -77,7 +81,7 @@ function visibleMapArea(map: MapLibreMap) {
 }
 
 export function CommunityMap({ markers = [], overviewMarker, mountainId, center = DEFAULT_CENTER, focusTarget, zoom = 14, showRoute = true,
-  highlightedRoute, fitHighlightedRoute = false, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
+  highlightedRoute, fitHighlightedRoute = false, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, onViewportChange, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [projected, setProjected] = useState<ProjectedMarker[]>([])
   const [markerMode, setMarkerMode] = useState(() => communityMarkerMode(zoom))
@@ -124,7 +128,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       const marker = overviewSnapshot ?? markerSnapshot.find(item => item.kind === 'mountain')
       if (!marker) return
       const { visibleCenter, mapHeight } = visibleMapArea(map)
-      map.easeTo({ center: marker.coordinate, offset: [0, visibleCenter - mapHeight / 2],
+      map.easeTo({ center: focusTarget?.coordinate ?? marker.coordinate, offset: [0, visibleCenter - mapHeight / 2],
         duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220 })
     }
     const observer = new ResizeObserver(() => { map.resize(); update() })
@@ -134,7 +138,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     map.on('zoomend', focusOverview)
     update()
     return () => { observer.disconnect(); map.off('move', update); map.off('resize', update); map.off('zoomend', focusOverview) }
-  }, [map, markerSnapshot, overviewSnapshot, isMainMap])
+  }, [map, markerSnapshot, overviewSnapshot, isMainMap, focusTarget])
 
   useEffect(() => {
     if (!map) return
@@ -199,6 +203,18 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     return () => { map.off('click', select) }
   }, [map, onMapSelect])
 
+  useEffect(() => {
+    if (!map || !onViewportChange) return
+    const report = () => {
+      const bounds = map.getBounds()
+      onViewportChange({ west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() })
+    }
+    map.on('moveend', report)
+    if (map.loaded()) report()
+    else map.once('load', report)
+    return () => { map.off('moveend', report); map.off('load', report) }
+  }, [map, onViewportChange])
+
   const markerGroups = isMainMap && markerMode === 'cluster' ? groupNearbyMarkers(projected)
     : projected.filter(({ marker }) => marker.kind !== 'mountain').map(item => [item])
   const mountainMarkers = projected.filter(({ marker }) => marker.kind === 'mountain')
@@ -243,7 +259,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
           ? <MountainMarker name={marker.name} variant="point" selected={marker.selected} aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker)} />
           : marker.kind === 'spot' && marker.spotType !== 'other'
             ? <SpotMarker kind={marker.spotType ?? 'photo'} label={marker.name} aria-pressed={marker.selected}
-                aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker)} />
+                aria-label={`${marker.targetType === 'FACILITY' ? '공식 시설' : '사용자 스팟'} ${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker)} />
             : <button type="button" className={`community-map__custom-marker community-map__custom-marker--${marker.kind}`}
                 style={marker.color ? { '--community-course-color': marker.color } as CSSProperties : undefined}
                 aria-label={`${marker.name} 선택`} aria-pressed={marker.selected} onClick={() => onMarkerSelect?.(marker)}>

@@ -68,13 +68,13 @@ function App() {
     const fromHikeComplete = query.get('from') === 'hikes/complete'
     const returnTo = internalReturnPath(query.get('returnTo'), fromHikeComplete ? 'hikes/complete' : '')
     const entry = query.get('screen')
-    const initialScreen = entry === 'spotDetail' || entry === 'courseReviewList' || entry === 'map' || entry === 'newSpot' ? entry : fromHikeComplete ? 'review' : 'mountainSelect'
+    const initialScreen = entry === 'spotDetail' || entry === 'courseReviewList' || entry === 'map' || entry === 'spotPicker' || entry === 'newSpot' ? entry : fromHikeComplete ? 'review' : 'mountainSelect'
     return <Suspense fallback={<main className="app-route-loading" aria-busy="true">커뮤니티 화면을 불러오는 중이에요</main>}>
       <CommunityPage key={route} initialScreen={initialScreen} initialMountainId={query.get('mountain') ?? completedHikes[0]?.mountainId}
         initialSpotId={query.get('spot') ?? undefined}
         initialCourseId={query.get('course') ?? undefined}
         spotRegistrationMode={query.get('mode') === 'active' ? 'active' : 'postHike'}
-        onSpotRegistered={entry === 'newSpot' && returnTo.startsWith('hikes/') ? () => { window.location.hash = returnTo } : undefined}
+        onSpotRegistered={(entry === 'newSpot' || (entry === 'spotPicker' && query.get('mode') === 'active')) && returnTo.startsWith('hikes/') ? () => { window.location.hash = returnTo } : undefined}
         onExit={() => { window.location.hash = returnTo }} onNavigateOutside={navigateFromBottom} />
     </Suspense>
   }

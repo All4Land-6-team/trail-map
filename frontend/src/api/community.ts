@@ -1,4 +1,4 @@
-import type { Coordinate, PendingPhoto, ReviewKind, SpotType } from '../types/community'
+import type { CommunitySpotTargetType, Coordinate, PendingPhoto, ReviewKind, SpotType } from '../types/community'
 
 const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
 const USER_ID = import.meta.env?.VITE_HIKE_USER_ID || '1'
@@ -21,18 +21,18 @@ export type CommunityCourseDto = {
   name: string
   distanceKm: number
   reviewCount: number
+  photoCount: number
   coordinates: { longitude: number; latitude: number }[]
 }
 
 export type CommunitySpotDto = {
-  targetType: 'FACILITY' | 'USER_SPOT'
+  targetType: CommunitySpotTargetType
   targetId: number
   mountainId: number
   name: string
-  type: 'SHELTER' | 'WATER' | 'RESTROOM' | 'PHOTO' | 'OTHER'
+  type: 'REST_AREA' | 'DRINKING_FOUNTAIN' | 'RESTROOM' | 'PHOTO_SPOT' | 'OTHER'
   longitude: number
   latitude: number
-  official: boolean
   status: string
   yesVotes: number
   noVotes: number
@@ -41,6 +41,10 @@ export type CommunitySpotDto = {
   photoCount: number
   representativePhotoUrl: string | null
 }
+
+export type CommunitySpotBounds = { west: number; south: number; east: number; north: number }
+export type CommunityMapSpotDto = Omit<CommunitySpotDto, 'reviewCount' | 'photoCount' | 'representativePhotoUrl'>
+export type CommunitySpotPageDto = { items: CommunitySpotDto[]; nextCursor: string | null; hasNext: boolean }
 
 export type CommunityReviewDto = {
   reviewId: number
@@ -55,6 +59,10 @@ export type CommunityReviewDto = {
   photoUrls: string[]
 }
 
+export type CommunityMountainReviewSummaryDto = { reviewCount: number; averageRating: number | null; photoCount: number }
+export type CommunityReviewPreviewDto = { reviews: CommunityReviewDto[]; photos: CommunityPhotoDto[] }
+export type CommunityMountainPreviewDto = CommunityReviewPreviewDto & { summary: CommunityMountainReviewSummaryDto }
+
 export type EligibleHikeDto = {
   hikeRecordId: number
   courseId: number
@@ -62,7 +70,7 @@ export type EligibleHikeDto = {
   endedAt: string
 }
 
-export type CommunityEligibilityDto = { eligible: boolean; hikes: EligibleHikeDto[] }
+export type CommunityEligibilityDto = { hikes: EligibleHikeDto[] }
 
 export type CommunityPhotoDto = {
   photoId: number
@@ -74,6 +82,7 @@ export type CommunityPhotoDto = {
   author: string
   reviewContent: string | null
   createdAt: string
+  reviewRating: number | null
 }
 
 export type CreatedSpotDto = {
@@ -93,7 +102,6 @@ export type SpotVoteDto = {
   noVotes: number
   viewerVote: 'YES' | 'NO' | null
   status: string
-  hidden: boolean
 }
 
 export class CommunityApiError extends Error {
@@ -125,15 +133,39 @@ export const communityApi = {
   mountains: (signal?: AbortSignal) => request<CommunityMountainDto[]>('/mountains', { signal }),
   courses: (mountainId: string, signal?: AbortSignal) =>
     request<CommunityCourseDto[]>(`/mountains/${mountainId}/courses`, { signal }),
-  spots: (mountainId: string, signal?: AbortSignal) => request<CommunitySpotDto[]>(
-    `/mountains/${mountainId}/spots?west=124&south=33&east=132&north=39`, { signal },
-  ),
-  mountainReviews: (mountainId: string, signal?: AbortSignal) =>
-    request<CommunityReviewDto[]>(`/mountains/${mountainId}/reviews?limit=100`, { signal }),
-  courseReviews: (courseId: string, signal?: AbortSignal) =>
-    request<CommunityReviewDto[]>(`/courses/${courseId}/reviews?limit=100`, { signal }),
-  spotReviews: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal) =>
-    request<CommunityReviewDto[]>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/reviews?limit=100`, { signal }),
+  spots: (mountainId: string, bounds: CommunitySpotBounds, signal?: AbortSignal, type?: CommunitySpotDto['type']) => {
+    const query = new URLSearchParams({
+      west: String(bounds.west), south: String(bounds.south), east: String(bounds.east), north: String(bounds.north),
+    })
+    if (type) query.set('type', type)
+    return request<CommunityMapSpotDto[]>(`/mountains/${mountainId}/spots/map?${query}`, { signal })
+  },
+  spotList: (mountainId: string, signal?: AbortSignal, type?: CommunitySpotDto['type'], cursor?: string) => {
+    const query = new URLSearchParams({ size: '20' })
+    if (type) query.set('type', type)
+    if (cursor) query.set('cursor', cursor)
+    return request<CommunitySpotPageDto>(`/mountains/${mountainId}/spots/list?${query}`, { signal })
+  },
+  spotDetail: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal) =>
+    request<CommunitySpotDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}`, { signal }),
+  mountainReviews: (mountainId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
+    request<CommunityReviewDto[]>(`/mountains/${mountainId}/reviews?limit=${limit}&offset=${offset}`, { signal }),
+  mountainPreview: (mountainId: string, signal?: AbortSignal) =>
+    request<CommunityMountainPreviewDto>(`/mountains/${mountainId}/preview`, { signal }),
+  coursePreview: (courseId: string, signal?: AbortSignal) =>
+    request<CommunityReviewPreviewDto>(`/courses/${courseId}/preview`, { signal }),
+  spotPreview: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal) =>
+    request<CommunityReviewPreviewDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/preview`, { signal }),
+  courseReviews: (courseId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
+    request<CommunityReviewDto[]>(`/courses/${courseId}/reviews?limit=${limit}&offset=${offset}`, { signal }),
+  spotReviews: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
+    request<CommunityReviewDto[]>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/reviews?limit=${limit}&offset=${offset}`, { signal }),
+  mountainPhotos: (mountainId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
+    request<CommunityPhotoDto[]>(`/mountains/${mountainId}/photos?limit=${limit}&offset=${offset}`, { signal }),
+  coursePhotos: (courseId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
+    request<CommunityPhotoDto[]>(`/courses/${courseId}/photos?limit=${limit}&offset=${offset}`, { signal }),
+  spotPhotos: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
+    request<CommunityPhotoDto[]>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/photos?limit=${limit}&offset=${offset}`, { signal }),
   mountainEligibility: (mountainId: string, signal?: AbortSignal) =>
     request<CommunityEligibilityDto>(`/mountains/${mountainId}/review-eligibility`, { signal }),
   createReview: (kind: ReviewKind, mountainId: string, targetId: string, targetType: CommunitySpotDto['targetType'] | undefined,
@@ -197,14 +229,14 @@ async function uploadPhotos(
 
 export function toSpotType(type: SpotType): CommunitySpotDto['type'] {
   const types: Record<SpotType, CommunitySpotDto['type']> = {
-    shelter: 'SHELTER', water: 'WATER', restroom: 'RESTROOM', photo: 'PHOTO', other: 'OTHER',
+    shelter: 'REST_AREA', water: 'DRINKING_FOUNTAIN', restroom: 'RESTROOM', photo: 'PHOTO_SPOT', other: 'OTHER',
   }
   return types[type]
 }
 
 export function fromSpotType(type: CommunitySpotDto['type']): SpotType {
   const types: Record<CommunitySpotDto['type'], SpotType> = {
-    SHELTER: 'shelter', WATER: 'water', RESTROOM: 'restroom', PHOTO: 'photo', OTHER: 'other',
+    REST_AREA: 'shelter', DRINKING_FOUNTAIN: 'water', RESTROOM: 'restroom', PHOTO_SPOT: 'photo', OTHER: 'other',
   }
   return types[type]
 }

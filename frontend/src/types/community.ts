@@ -1,5 +1,6 @@
 export type ReviewKind = 'mountain' | 'spot' | 'course'
 export type SpotType = 'shelter' | 'water' | 'restroom' | 'photo' | 'other'
+export type CommunitySpotTargetType = 'FACILITY' | 'USER_SPOT'
 export type Coordinate = [longitude: number, latitude: number]
 
 export type PendingPhoto = {
@@ -8,8 +9,10 @@ export type PendingPhoto = {
 }
 
 export type CommunitySpot = {
+  /** targetType과 DB ID를 합친 화면 내부 식별자. facility_id와 spot_id는 서로 겹칠 수 있다. */
   id: string
-  targetType: 'FACILITY' | 'USER_SPOT'
+  targetId: string
+  targetType: CommunitySpotTargetType
   name: string
   type: SpotType
   coordinate: Coordinate
@@ -19,7 +22,6 @@ export type CommunitySpot = {
   seedQuote?: string
   photos: string[]
   status?: string
-  userCreated?: boolean
 }
 
 export type CommunityCourseReviewTarget = {
