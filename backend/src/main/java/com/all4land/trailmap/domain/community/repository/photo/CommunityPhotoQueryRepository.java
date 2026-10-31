@@ -26,7 +26,8 @@ public class CommunityPhotoQueryRepository {
                    COALESCE(mountain_review.review_content,
                             course_review.review_content,
                             spot_review.review_content) AS review_content,
-                   photo.created_at
+                   photo.created_at,
+                   mountain_review.rating::double precision AS review_rating
             FROM photo
             JOIN app_user ON app_user.user_id = photo.user_id
             LEFT JOIN mountain_review ON mountain_review.review_id = photo.mountain_review_id
@@ -44,30 +45,33 @@ public class CommunityPhotoQueryRepository {
                     resultSet.getInt("display_order"),
                     resultSet.getString("author"),
                     resultSet.getString("review_content"),
-                    resultSet.getObject("created_at", java.time.OffsetDateTime.class)
+                    resultSet.getObject("created_at", java.time.OffsetDateTime.class),
+                    resultSet.getObject("review_rating", Double.class)
             );
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    public List<CommunityPhotoQueryResult> findMountainPhotos(Long mountainId) {
+    public List<CommunityPhotoQueryResult> findMountainPhotos(Long mountainId, Integer limit, Integer offset) {
         return findAll("""
                 photo.deleted_at IS NULL
                 AND mountain_review.mountain_id = :targetId
                 AND mountain_review.deleted_at IS NULL
-                """, mountainId);
+                """, mountainId, limit, offset);
     }
 
-    public List<CommunityPhotoQueryResult> findCoursePhotos(Long courseId) {
+    public List<CommunityPhotoQueryResult> findCoursePhotos(Long courseId, Integer limit, Integer offset) {
         return findAll("""
                 photo.deleted_at IS NULL
                 AND course_review.course_id = :targetId
                 AND course_review.deleted_at IS NULL
-                """, courseId);
+                """, courseId, limit, offset);
     }
 
     public List<CommunityPhotoQueryResult> findSpotPhotos(
             CommunitySpotTargetType targetType,
-            Long targetId
+            Long targetId,
+            Integer limit,
+            Integer offset
     ) {
         String targetCondition = switch (targetType) {
             case FACILITY -> """
@@ -79,7 +83,7 @@ public class CommunityPhotoQueryRepository {
                     OR spot_review.spot_id = :targetId
                     """;
         };
-        return findAll("photo.deleted_at IS NULL AND (" + targetCondition + ")", targetId);
+        return findAll("photo.deleted_at IS NULL AND (" + targetCondition + ")", targetId, limit, offset);
     }
 
     public Optional<CommunityPhotoQueryResult> findPhoto(Long photoId) {
@@ -94,10 +98,15 @@ public class CommunityPhotoQueryRepository {
         ).stream().findFirst();
     }
 
-    private List<CommunityPhotoQueryResult> findAll(String condition, Long targetId) {
+    private List<CommunityPhotoQueryResult> findAll(String condition, Long targetId, Integer limit, Integer offset) {
         String sql = PHOTO_SELECT + " WHERE " + condition + """
                 ORDER BY photo.created_at DESC, photo.display_order, photo.photo_id DESC
                 """;
-        return jdbcTemplate.query(sql, new MapSqlParameterSource("targetId", targetId), ROW_MAPPER);
+        var parameters = new MapSqlParameterSource("targetId", targetId);
+        if (limit != null) {
+            sql += " LIMIT :limit OFFSET :offset";
+            parameters.addValue("limit", limit).addValue("offset", offset == null ? 0 : offset);
+        }
+        return jdbcTemplate.query(sql, parameters, ROW_MAPPER);
     }
 }

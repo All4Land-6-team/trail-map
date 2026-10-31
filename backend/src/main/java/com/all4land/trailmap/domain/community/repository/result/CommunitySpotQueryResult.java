@@ -4,6 +4,8 @@ import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotType;
 import com.all4land.trailmap.domain.community.entity.CommunityVoteType;
 
+import java.time.OffsetDateTime;
+
 public record CommunitySpotQueryResult(
         CommunitySpotTargetType targetType,
         Long targetId,
@@ -12,7 +14,6 @@ public record CommunitySpotQueryResult(
         CommunitySpotType type,
         double longitude,
         double latitude,
-        boolean official,
         String status,
         String sourceName,
         String sourceUrl,
@@ -21,6 +22,7 @@ public record CommunitySpotQueryResult(
         CommunityVoteType viewerVote,
         long reviewCount,
         long photoCount,
-        String representativePhotoKey
+        String representativePhotoKey,
+        OffsetDateTime latestReviewAt
 ) {
 }

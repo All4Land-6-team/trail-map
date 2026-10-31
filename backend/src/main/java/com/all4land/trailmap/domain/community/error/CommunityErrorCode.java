@@ -19,6 +19,7 @@ public enum CommunityErrorCode implements BaseResponseCode {
     PHOTO_TARGET_NOT_FOUND("COMMUNITY_404_5", NOT_FOUND, "사진을 연결할 대상을 찾을 수 없습니다."),
     PHOTO_NOT_FOUND("COMMUNITY_404_6", NOT_FOUND, "사진을 찾을 수 없습니다."),
     INVALID_REVIEW_REQUEST("COMMUNITY_400_1", BAD_REQUEST, "후기 요청 값이 올바르지 않습니다."),
+    INVALID_SPOT_CURSOR("COMMUNITY_400_5", BAD_REQUEST, "스팟 목록 이어보기 값이 올바르지 않습니다."),
     INVALID_PHOTO("COMMUNITY_400_2", BAD_REQUEST, "사진 정보가 올바르지 않습니다."),
     PHOTO_LIMIT_EXCEEDED("COMMUNITY_400_3", BAD_REQUEST, "대상별 사진은 최대 3장까지 등록할 수 있습니다."),
     PHOTO_OBJECT_NOT_FOUND("COMMUNITY_400_4", BAD_REQUEST, "R2에 업로드된 사진을 찾을 수 없습니다."),

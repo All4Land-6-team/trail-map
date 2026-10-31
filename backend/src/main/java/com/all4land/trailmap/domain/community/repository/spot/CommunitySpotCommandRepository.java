@@ -25,19 +25,19 @@ public class CommunitySpotCommandRepository {
                        facility.facility_id AS target_id,
                        COALESCE(facility.facility_name, '이름 없는 시설') AS name,
                        CASE UPPER(facility.facility_type)
-                           WHEN 'REST_AREA' THEN 'SHELTER'
-                           WHEN 'SHELTER' THEN 'SHELTER'
-                           WHEN 'DRINKING_FOUNTAIN' THEN 'WATER'
-                           WHEN 'WATER' THEN 'WATER'
-                           WHEN 'SPRING' THEN 'WATER'
+                           WHEN 'REST_AREA' THEN 'REST_AREA'
+                           WHEN 'SHELTER' THEN 'REST_AREA'
+                           WHEN 'DRINKING_FOUNTAIN' THEN 'DRINKING_FOUNTAIN'
+                           WHEN 'DRINKING_WATER' THEN 'DRINKING_FOUNTAIN'
+                           WHEN 'WATER' THEN 'DRINKING_FOUNTAIN'
+                           WHEN 'SPRING' THEN 'DRINKING_FOUNTAIN'
                            WHEN 'RESTROOM' THEN 'RESTROOM'
                            WHEN 'TOILET' THEN 'RESTROOM'
-                           WHEN 'PHOTO_SPOT' THEN 'PHOTO'
-                           WHEN 'VIEWPOINT' THEN 'PHOTO'
+                           WHEN 'PHOTO_SPOT' THEN 'PHOTO_SPOT'
+                           WHEN 'VIEWPOINT' THEN 'PHOTO_SPOT'
                            ELSE 'OTHER'
                        END AS spot_type,
                        facility.facility_location AS location,
-                       TRUE AS official,
                        COALESCE(facility.official_status, 'OFFICIAL') AS status
                 FROM facility
                 WHERE facility.mountain_id = :mountainId
@@ -47,15 +47,8 @@ public class CommunitySpotCommandRepository {
                 SELECT 'USER_SPOT' AS target_type,
                        spot.spot_id AS target_id,
                        COALESCE(spot.spot_name, '이름 없는 스팟') AS name,
-                       CASE spot.spot_type
-                           WHEN 'REST_AREA' THEN 'SHELTER'
-                           WHEN 'DRINKING_FOUNTAIN' THEN 'WATER'
-                           WHEN 'RESTROOM' THEN 'RESTROOM'
-                           WHEN 'PHOTO_SPOT' THEN 'PHOTO'
-                           ELSE 'OTHER'
-                       END AS spot_type,
+                       spot.spot_type,
                        spot.spot_location AS location,
-                       FALSE AS official,
                        spot.spot_status AS status
                 FROM user_spot spot
                 WHERE spot.mountain_id = :mountainId
@@ -71,7 +64,6 @@ public class CommunitySpotCommandRepository {
                    ST_X(candidate.location) AS longitude,
                    ST_Y(candidate.location) AS latitude,
                    ST_Distance(candidate.location::geography, request_point.location::geography) AS distance_meters,
-                   candidate.official,
                    candidate.status
             FROM candidate
             CROSS JOIN request_point
@@ -108,7 +100,6 @@ public class CommunitySpotCommandRepository {
                     resultSet.getDouble("longitude"),
                     resultSet.getDouble("latitude"),
                     resultSet.getDouble("distance_meters"),
-                    resultSet.getBoolean("official"),
                     resultSet.getString("status")
             );
 
@@ -189,8 +180,7 @@ public class CommunitySpotCommandRepository {
         var parameters = spotParameters(mountainId, type, longitude, latitude)
                 .addValue("userId", userId)
                 .addValue("hikeRecordId", hikeRecordId)
-                .addValue("name", name)
-                .addValue("spotType", toDatabaseType(type));
+                .addValue("name", name);
         return jdbcTemplate.queryForObject(INSERT_SQL, parameters, Long.class);
     }
 
@@ -205,15 +195,5 @@ public class CommunitySpotCommandRepository {
                 .addValue("spotType", type.name())
                 .addValue("longitude", longitude)
                 .addValue("latitude", latitude);
-    }
-
-    private static String toDatabaseType(CommunitySpotType type) {
-        return switch (type) {
-            case SHELTER -> "REST_AREA";
-            case WATER -> "DRINKING_FOUNTAIN";
-            case RESTROOM -> "RESTROOM";
-            case PHOTO -> "PHOTO_SPOT";
-            case OTHER -> "OTHER";
-        };
     }
 }
