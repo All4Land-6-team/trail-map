@@ -119,6 +119,13 @@ class CommunityQueryApiIntegrationTest {
 
     @Test
     void 커뮤니티_산과_코스_목록을_지도_좌표와_함께_조회한다() throws Exception {
+        long courseReviewId = jdbcTemplate.queryForObject("""
+                INSERT INTO course_review (user_id, course_id, review_content, visited_date)
+                VALUES (?, ?, '대표 사진이 있는 코스 후기', CURRENT_DATE)
+                RETURNING review_id
+                """, Long.class, userId, courseId);
+        insertPhoto("course/%d/representative.webp".formatted(courseReviewId), "course_review_id", courseReviewId);
+
         mockMvc.perform(asUser(get("/v1/community/mountains")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].mountainId").value(mountainId))
@@ -130,6 +137,11 @@ class CommunityQueryApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].courseId").value(courseId))
                 .andExpect(jsonPath("$.data[0].externalId").value("bukhansan-baegundae"))
+                .andExpect(jsonPath("$.data[0].reviewCount").value(1))
+                .andExpect(jsonPath("$.data[0].photoCount").value(1))
+                .andExpect(jsonPath("$.data[0].representativePhotoUrl", containsString(
+                        "course/%d/representative.webp".formatted(courseReviewId)
+                )))
                 .andExpect(jsonPath("$.data[0].coordinates.length()").value(2))
                 .andExpect(jsonPath("$.data[0].coordinates[0].longitude").value(126.97))
                 .andExpect(jsonPath("$.data[0].coordinates[1].latitude").value(37.67));
@@ -168,18 +180,20 @@ class CommunityQueryApiIntegrationTest {
 
     @Test
     void 산_전체_스팟_목록은_지도_영역과_무관하게_커서로_이어_조회한다() throws Exception {
+        jdbcTemplate.update("UPDATE spot_review SET created_at = '2026-10-30T09:00:00Z' WHERE facility_id = ?", facilityId);
+        jdbcTemplate.update("UPDATE spot_review SET created_at = '2026-10-31T09:00:00Z' WHERE spot_id = ?", userSpotId);
         var first = mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/spots/list")
                         .param("size", "1")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
-                .andExpect(jsonPath("$.data.items[0].targetType").value("FACILITY"))
+                .andExpect(jsonPath("$.data.items[0].targetType").value("USER_SPOT"))
                 .andExpect(jsonPath("$.data.hasNext").value(true))
                 .andReturn();
         String cursor = JsonPath.read(first.getResponse().getContentAsString(), "$.data.nextCursor");
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/spots/list")
                         .param("size", "1").param("cursor", cursor)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.items[0].targetType").value("USER_SPOT"))
+                .andExpect(jsonPath("$.data.items[0].targetType").value("FACILITY"))
                 .andExpect(jsonPath("$.data.hasNext").value(false));
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/spots/list")
                         .param("size", "1").param("type", "RESTROOM").param("cursor", cursor)))

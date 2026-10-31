@@ -8,6 +8,7 @@ public record CommunityCoursePointQueryResult(
         double distanceKm,
         long reviewCount,
         long photoCount,
+        String representativePhotoKey,
         int sequence,
         double longitude,
         double latitude

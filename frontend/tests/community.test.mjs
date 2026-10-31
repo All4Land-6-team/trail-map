@@ -4,18 +4,51 @@ import test from 'node:test';
 import { communityApi } from '../src/api/community.ts';
 import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SPOT_HIDE_NEGATIVE_VOTES, canWriteCourseReview, canWriteReview, castSpotVote, distanceMeters, eligibleCourseCompletions, isSpotHidden, nearbySpotCandidates } from '../src/utils/community.ts';
 import { communityMarkerMode } from '../src/pages/CommunityPage/components/communityMapZoom.ts';
-import { bufferMapBounds, centerCoordinateBounds, coversMapBounds } from '../src/pages/CommunityPage/components/communityMapBounds.ts';
+import { groupCommunityMapPoints, spreadCommunityMapPoints } from '../src/pages/CommunityPage/components/communityMapClusters.ts';
+import { bufferMapBounds, coversMapBounds, nearestCoordinate } from '../src/pages/CommunityPage/components/communityMapBounds.ts';
 import { communityCourseColor } from '../src/constants/community.ts';
 
 test('커뮤니티 지도 줌 단계는 기본점, 숫자 클러스터, 개별 아이콘 순으로 전환한다', () => {
   assert.equal(communityMarkerMode(9.5), 'overview');
-  assert.equal(communityMarkerMode(12), 'overview');
-  assert.equal(communityMarkerMode(12.49), 'overview');
-  assert.equal(communityMarkerMode(12.5), 'cluster');
-  assert.equal(communityMarkerMode(14), 'cluster');
-  assert.equal(communityMarkerMode(14.49), 'cluster');
+  assert.equal(communityMarkerMode(11.99), 'overview');
+  assert.equal(communityMarkerMode(12), 'cluster');
+  assert.equal(communityMarkerMode(13.49), 'cluster');
+  assert.equal(communityMarkerMode(13.5), 'individual');
+  assert.equal(communityMarkerMode(14), 'individual');
   assert.equal(communityMarkerMode(14.5), 'individual');
   assert.equal(communityMarkerMode(18), 'individual');
+});
+
+test('지도 클러스터는 입력 순서와 관계없이 가까운 그룹을 하나로 합친다', () => {
+  const points = [
+    { value: 'a', x: 0, y: 0 },
+    { value: 'b', x: 55, y: 0 },
+    { value: 'c', x: 40, y: 0 },
+    { value: 'far', x: 150, y: 0 },
+  ];
+  const grouped = groupCommunityMapPoints(points, 45).map(group => group.map(point => point.value).sort());
+  const reversed = groupCommunityMapPoints([...points].reverse(), 45).map(group => group.map(point => point.value).sort());
+  assert.deepEqual(grouped, [['a', 'b', 'c'], ['far']]);
+  assert.deepEqual(reversed.map(group => group.join(',')).sort(), grouped.map(group => group.join(',')).sort());
+});
+
+test('개별 마커 단계에서는 실제로 겹치는 마커만 묶을 수 있다', () => {
+  const groups = groupCommunityMapPoints([
+    { value: 'same-a', x: 10, y: 10 },
+    { value: 'same-b', x: 10, y: 10 },
+    { value: 'separate', x: 41, y: 10 },
+  ], 30);
+  assert.deepEqual(groups.map(group => group.map(point => point.value)), [['same-a', 'same-b'], ['separate']]);
+});
+
+test('충분히 확대하면 겹친 마커를 원래 중심 주변으로 벌린다', () => {
+  const spread = spreadCommunityMapPoints([
+    { value: 'a', x: 100, y: 100 },
+    { value: 'b', x: 100, y: 100 },
+  ], 30, 46);
+  assert.equal(Math.round(Math.hypot(spread[0].x - spread[1].x, spread[0].y - spread[1].y)), 46);
+  assert.equal((spread[0].x + spread[1].x) / 2, 100);
+  assert.equal((spread[0].y + spread[1].y) / 2, 100);
 });
 
 test('지도 스팟 조회 영역은 화면 밖까지 포함하고 영역을 벗어날 때만 다시 조회한다', () => {
@@ -26,26 +59,73 @@ test('지도 스팟 조회 영역은 화면 밖까지 포함하고 영역을 벗
   assert.equal(coversMapBounds(buffered, { west: 127.1, south: 37.6, east: 127.3, north: 37.8 }), false);
 });
 
-test('코스 필터 중심은 모든 경로를 감싸는 좌표 범위의 가운데를 사용한다', () => {
-  const center = centerCoordinateBounds([[126.8, 37.4], [127.2, 37.8], [127, 37.5]], [0, 0]);
-  assert.equal(center[0], 127);
-  assert.ok(Math.abs(center[1] - 37.6) < Number.EPSILON * 37.6);
-  assert.deepEqual(centerCoordinateBounds([], [126.9, 37.6]), [126.9, 37.6]);
+test('스팟 필터 중심은 빈 중간 지점이 아니라 산과 가장 가까운 실제 스팟을 사용한다', () => {
+  assert.deepEqual(nearestCoordinate([[126.8, 37.4], [127.01, 37.61], [127.2, 37.8]], [127, 37.6]), [127.01, 37.61]);
+  assert.deepEqual(nearestCoordinate([], [127, 37.6]), [127, 37.6]);
 });
 
 test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심과 줌을 사용한다', () => {
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   const mapSource = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
-  assert.match(source, /all: 12\.5, mountain: MAIN_MAP_ZOOM, spot: 14\.5, course: 12/);
-  assert.match(source, /mapCategory === 'spot' \? spotFocusCenter \?\? mountainCenter/);
+  const cssSource = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
+  assert.match(source, /all: 12\.5, mountain: MAIN_MAP_ZOOM, spot: 14\.5, course: 11\.99/);
+  assert.match(source, /mapFocusCategory === 'spot' \? spotFocusCenter \?\? mountainCenter/);
+  assert.doesNotMatch(source, /courseMapCenter/);
+  assert.match(source, /setSpotFocusCenter\(nearestCoordinate\(visibleListedSpots\.map/);
+  assert.match(source, /setMapFocusCategory\(category\)/);
+  assert.match(source, /sheetPeek \? 240 : 0/);
   assert.match(source, /zoom: MOUNTAIN_DETAIL_ZOOM/);
-  assert.match(mapSource, /center: focusTarget\?\.coordinate \?\? marker\.coordinate/);
+  assert.match(source, /const MOUNTAIN_DETAIL_ZOOM = CATEGORY_MAP_ZOOM\.mountain/);
+  assert.match(mapSource, /community-page__map--detail-mountain'[\s\S]*max-height: 720px\)'[\s\S]*154 : 160/);
+  assert.match(mapSource, /MARKER_CLUSTER_DISTANCE = 45/);
+  assert.match(mapSource, /INDIVIDUAL_OVERLAP_DISTANCE = 30/);
+  assert.match(mapSource, /OVERLAP_SPREAD_ZOOM = 16/);
+  assert.match(mapSource, /CLUSTER_CHOICE_ZOOM = OVERLAP_SPREAD_ZOOM - 0\.5/);
+  assert.match(mapSource, /CLUSTER_CHOICE_MIN_ZOOM = 15/);
+  assert.match(mapSource, /currentZoom >= OVERLAP_SPREAD_ZOOM/);
+  assert.match(mapSource, /targetZoom = Math\.min\(CLUSTER_CHOICE_ZOOM, map\.getMaxZoom\(\)\)/);
+  assert.match(mapSource, /map\.getZoom\(\) < CLUSTER_CHOICE_MIN_ZOOM/);
+  assert.match(cssSource, /community-map__cluster span \{[^}]*width:30px;[^}]*height:30px/);
+  assert.match(cssSource, /community-map__pin \.af-spot-marker \{[^}]*width:44px;[^}]*height:44px/);
+  assert.match(cssSource, /community-map__pin \.af-spot-marker::before \{[^}]*inset:7px/);
+  assert.match(cssSource, /community-map__cluster-choices \{[^}]*left:calc\(50% \+ 19px\);[^}]*width:164px;[^}]*padding:10px/);
+  assert.match(cssSource, /community-map__cluster-choices--left \{[^}]*right:calc\(50% \+ 19px\)/);
+  assert.match(mapSource, /clusterIdentity\(group\)/);
+  assert.match(mapSource, /rightSpace >= 183 \|\| rightSpace >= leftSpace/);
+  assert.match(mapSource, /returningToMainMap && mainMapViewport\.current/);
+  assert.doesNotMatch(mapSource, /map\.on\('zoomend'/);
+  assert.match(cssSource, /community-map__mountain-marker \{[^}]*width:44px;[^}]*height:44px/);
+  assert.match(cssSource, /community-map__mountain-marker \.af-mountain-marker__label \{[^}]*position:absolute/);
 });
 
-test('활성 커뮤니티 탭을 다시 눌러도 산 선택과 지도 화면을 강제로 전환하지 않는다', () => {
+test('산 필터만 라벨을 표시하고 다른 화면에는 라벨 없는 깃발 산 기본점을 표시한다', () => {
+  const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const map = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
+  assert.match(page, /const mapMarkers:[\s\S]*\{ id: mountain\.id, name: mountain\.name, coordinate: mountain\.position/);
+  assert.match(page, /\{\(screen === 'map' \|\| isDetail\) && <CommunityMap[\s\S]*showMountainFlag/);
+  assert.match(page, /showMountainLabel=\{screen === 'map' && mapCategory === 'mountain'\}/);
+  assert.doesNotMatch(page, /community-page__map--select"[^>]*showMountainFlag/);
+  assert.match(map, /mountain-flag\.svg/);
+  assert.match(map, /showMountainFlag && <img[\s\S]*community-map__mountain-flag/);
+  assert.match(map, /community-map__mountain-marker--label-hidden/);
+});
+
+test('활성 커뮤니티 탭을 다시 누르면 선택값 없이 산 선택 첫 화면으로 돌아간다', () => {
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
-  assert.match(source, /if \(destination === 'community'\) return/);
-  assert.doesNotMatch(source, /destination === 'community'[\s\S]{0,100}setScreens\(\['mountainSelect', 'map'\]\)/);
+  assert.match(source, /if \(destination === 'community'\) \{[\s\S]*setScreens\(\['mountainSelect'\]\)[\s\S]*setMountainId\(''\)[\s\S]*setMountainFocus\(null\)/);
+});
+
+test('산 선택 첫 화면은 홈 지도 위치에서 미선택으로 시작하고 선택할 때만 확대한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+  assert.match(source, /const MOUNTAIN_SELECT_CENTER: Coordinate = SOUTH_KOREA_MAINLAND_CENTER/);
+  assert.match(source, /const MOUNTAIN_SELECT_ZOOM = 6\.1/);
+  assert.match(source, /zoom=\{MOUNTAIN_SELECT_ZOOM\}/);
+  assert.match(source, /zoom: MOUNTAIN_SELECT_FOCUS_ZOOM, resetZoom: true/);
+  assert.doesNotMatch(source, /initialMountainId = 'bukhansan'/);
+  assert.doesNotMatch(source, /\?\? loaded\[0\]/);
+  assert.match(source, /disabled=\{!mountainId\}/);
+  assert.match(app, /initialMountainId=\{query\.get\('mountain'\) \?\? \(fromHikeComplete \? completedHikes\[0\]\?\.mountainId : undefined\)\}/);
 });
 
 test('상세 사진 로딩에는 스켈레톤을 적용하고 바텀시트 진입 모션은 사용하지 않는다', () => {
@@ -175,6 +255,8 @@ test('지도 마커 ID가 겹쳐도 종류에 맞는 상세 화면을 연다', (
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(pageSource, /id: `\$\{spot\.targetType\}:\$\{spot\.targetId\}`/);
   assert.match(mapSource, /onMarkerSelect\?\.\(marker\)/);
+  assert.match(mapSource, /markerIdentity = \(marker: CommunityMapMarker\) => `\$\{marker\.kind\}:\$\{marker\.id\}`/);
+  assert.match(mapSource, /key=\{markerIdentity\(marker\)\}/);
   assert.match(pageSource, /marker\.kind === 'mountain'[\s\S]*showDetail\('mountain', marker\.id\)/);
   assert.match(pageSource, /marker\.kind === 'course'[\s\S]*showDetail\('course', marker\.id\)/);
   assert.match(pageSource, /showDetail\('spot', marker\.id\)/);
@@ -206,10 +288,21 @@ test('같은 유형·50m 이내 스팟만 중복 후보이며 거리순으로 �
   assert.equal(result[0].meters, 0);
 });
 
-test('커뮤니티 메인 지도에 선택한 산의 모든 코스 경로를 표시한다', () => {
+test('커뮤니티 메인과 산 후기 상세 지도에 선택한 산의 모든 코스 경로를 표시한다', () => {
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(source, /allCourseRoutes = useMemo\(\(\) => visibleCourseTargets\.map\(course => \(\{/);
-  assert.match(source, /highlightedRoutes=\{screen === 'map' \? allCourseRoutes : undefined\}/);
+  assert.match(source, /showAllCourseRoutes = screen === 'map' \|\| screen === 'mountainDetail'/);
+  assert.match(source, /highlightedRoutes=\{showAllCourseRoutes \? allCourseRoutes : undefined\}/);
+});
+
+test('커뮤니티 전체 화면은 코스 목록의 집계와 대표 사진을 재사용하고 상세 진입 시에만 미리보기를 조회한다', () => {
+  const apiSource = readFileSync(new URL('../src/api/community.ts', import.meta.url), 'utf8');
+  const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(apiSource, /CommunityCourseDto[\s\S]*representativePhotoUrl: string \| null/);
+  assert.doesNotMatch(pageSource, /courseResult\.map\(course => communityApi\.courseReviews/);
+  assert.match(pageSource, /activePhotoKind === 'course' \? communityApi\.coursePreview\(selectedCourse\.id/);
+  assert.match(pageSource, /코스 후기 \(\{visibleCourseTargets\.length\}개\)/);
+  assert.match(pageSource, /course\.representativePhotoUrl/);
 });
 
 test('북한산 코스 경로는 이름별 고정 색상을 사용한다', () => {

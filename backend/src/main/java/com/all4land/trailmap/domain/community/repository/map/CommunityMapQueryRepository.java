@@ -52,6 +52,14 @@ public class CommunityMapQueryRepository {
                         WHERE review.course_id = course.course_id
                           AND review.deleted_at IS NULL
                           AND photo.deleted_at IS NULL) AS photo_count,
+                       (SELECT photo.object_key
+                        FROM photo
+                        JOIN course_review review ON review.review_id = photo.course_review_id
+                        WHERE review.course_id = course.course_id
+                          AND review.deleted_at IS NULL
+                          AND photo.deleted_at IS NULL
+                        ORDER BY review.created_at DESC, photo.display_order, photo.photo_id
+                        LIMIT 1) AS representative_photo_key,
                        (point).path[1] AS sequence,
                        ST_X((point).geom) AS longitude,
                        ST_Y((point).geom) AS latitude
@@ -68,6 +76,7 @@ public class CommunityMapQueryRepository {
                         resultSet.getDouble("distance_km"),
                         resultSet.getLong("review_count"),
                         resultSet.getLong("photo_count"),
+                        resultSet.getString("representative_photo_key"),
                         resultSet.getInt("sequence"),
                         resultSet.getDouble("longitude"),
                         resultSet.getDouble("latitude")

@@ -22,6 +22,7 @@ export type CommunityCourseDto = {
   distanceKm: number
   reviewCount: number
   photoCount: number
+  representativePhotoUrl: string | null
   coordinates: { longitude: number; latitude: number }[]
 }
 

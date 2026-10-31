@@ -30,6 +30,9 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Base64;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Service
 @RequiredArgsConstructor
@@ -61,10 +64,10 @@ public class CommunityQueryService {
         mapQueryRepository.findCoursePoints(mountainId).forEach(point -> courses
                 .computeIfAbsent(point.courseId(), ignored -> new CourseBuilder(
                         point.courseId(), point.mountainId(), point.externalId(), point.name(),
-                        point.distanceKm(), point.reviewCount(), point.photoCount()
+                        point.distanceKm(), point.reviewCount(), point.photoCount(), point.representativePhotoKey()
                 ))
                 .coordinates().add(new CommunityCoordinateResponse(point.longitude(), point.latitude())));
-        return courses.values().stream().map(CourseBuilder::toResponse).toList();
+        return courses.values().stream().map(course -> course.toResponse(this::toReadUrl)).toList();
     }
 
     public List<CommunitySpotResponse> getSpots(
@@ -89,28 +92,34 @@ public class CommunityQueryService {
         validateUser(userId);
         validateMountain(mountainId);
         if (size < 1 || size > 20) throw new CommunityException(CommunityErrorCode.INVALID_SPOT_CURSOR);
+        OffsetDateTime afterReviewAt = null;
         String afterType = null;
         Long afterId = null;
         if (cursor != null) {
             try {
-                var parts = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8).split(":", -1);
-                if (parts.length != 4 || !parts[0].equals(String.valueOf(mountainId))
+                var parts = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8).split("\\|", -1);
+                if (parts.length != 5 || !parts[0].equals(String.valueOf(mountainId))
                         || !parts[1].equals(type == null ? "ALL" : type.name())
-                        || !(parts[2].equals("FACILITY") || parts[2].equals("USER_SPOT"))) {
+                        || !(parts[3].equals("FACILITY") || parts[3].equals("USER_SPOT"))) {
                     throw new IllegalArgumentException();
                 }
-                afterType = parts[2];
-                afterId = Long.parseLong(parts[3]);
+                if (!parts[2].equals("NONE")) {
+                    afterReviewAt = OffsetDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(parts[2])), ZoneOffset.UTC);
+                }
+                afterType = parts[3];
+                afterId = Long.parseLong(parts[4]);
                 if (afterId <= 0) throw new IllegalArgumentException();
             } catch (IllegalArgumentException error) {
                 throw new CommunityException(CommunityErrorCode.INVALID_SPOT_CURSOR);
             }
         }
-        var found = spotQueryRepository.findSpotPage(userId, mountainId, type, afterType, afterId, size + 1);
+        var found = spotQueryRepository.findSpotPage(userId, mountainId, type, afterReviewAt, afterType, afterId, size + 1);
         var items = found.stream().limit(size).map(this::toSpotResponse).toList();
         var last = found.size() > size ? found.get(size - 1) : null;
         var next = last == null ? null : Base64.getUrlEncoder().withoutPadding().encodeToString(
-                (mountainId + ":" + (type == null ? "ALL" : type.name()) + ":" + last.targetType().name() + ":" + last.targetId())
+                (mountainId + "|" + (type == null ? "ALL" : type.name()) + "|"
+                        + (last.latestReviewAt() == null ? "NONE" : last.latestReviewAt().toInstant().toEpochMilli()) + "|"
+                        + last.targetType().name() + "|" + last.targetId())
                         .getBytes(StandardCharsets.UTF_8));
         return new CommunitySpotPageResponse(items, next, last != null);
     }
@@ -264,6 +273,7 @@ public class CommunityQueryService {
             double distanceKm,
             long reviewCount,
             long photoCount,
+            String representativePhotoKey,
             List<CommunityCoordinateResponse> coordinates
     ) {
         private CourseBuilder(
@@ -273,14 +283,17 @@ public class CommunityQueryService {
                 String name,
                 double distanceKm,
                 long reviewCount,
-                long photoCount
+                long photoCount,
+                String representativePhotoKey
         ) {
-            this(courseId, mountainId, externalId, name, distanceKm, reviewCount, photoCount, new java.util.ArrayList<>());
+            this(courseId, mountainId, externalId, name, distanceKm, reviewCount, photoCount,
+                    representativePhotoKey, new java.util.ArrayList<>());
         }
 
-        private CommunityCourseResponse toResponse() {
+        private CommunityCourseResponse toResponse(java.util.function.Function<String, String> readUrl) {
             return new CommunityCourseResponse(
-                    courseId, mountainId, externalId, name, distanceKm, reviewCount, photoCount, List.copyOf(coordinates)
+                    courseId, mountainId, externalId, name, distanceKm, reviewCount, photoCount,
+                    representativePhotoKey == null ? null : readUrl.apply(representativePhotoKey), List.copyOf(coordinates)
             );
         }
     }

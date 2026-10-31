@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -121,7 +122,12 @@ public class CommunitySpotQueryRepository {
                                 OR (spot.target_type = 'USER_SPOT' AND review.spot_id = spot.target_id))
                         ))
                     ORDER BY photo.created_at DESC, photo.photo_id DESC
-                    LIMIT 1) AS representative_photo_key
+                    LIMIT 1) AS representative_photo_key,
+                   (SELECT max(review.created_at)
+                    FROM spot_review review
+                    WHERE review.deleted_at IS NULL
+                      AND ((spot.target_type = 'FACILITY' AND review.facility_id = spot.target_id)
+                        OR (spot.target_type = 'USER_SPOT' AND review.spot_id = spot.target_id))) AS latest_review_at
             FROM community_spot spot
             """;
 
@@ -152,11 +158,21 @@ public class CommunitySpotQueryRepository {
             ORDER BY spot.target_type, spot.target_id
             """;
 
-    private static final String SPOT_PAGE_SQL = SPOT_CTE + SPOT_SELECT + """
+    private static final String SPOT_PAGE_SQL = SPOT_CTE + ", spot_page AS (" + SPOT_SELECT + """
+            )
+            SELECT *
+            FROM spot_page spot
             WHERE (CAST(:spotType AS varchar) IS NULL OR spot.spot_type = CAST(:spotType AS varchar))
               AND (CAST(:afterType AS varchar) IS NULL
-                OR (spot.target_type, spot.target_id) > (CAST(:afterType AS varchar), :afterId))
-            ORDER BY spot.target_type, spot.target_id
+                OR (CAST(:afterReviewAt AS timestamptz) IS NOT NULL AND (
+                    spot.latest_review_at < CAST(:afterReviewAt AS timestamptz)
+                    OR spot.latest_review_at IS NULL
+                    OR (spot.latest_review_at = CAST(:afterReviewAt AS timestamptz)
+                        AND (spot.target_type, spot.target_id) > (CAST(:afterType AS varchar), :afterId))))
+                OR (CAST(:afterReviewAt AS timestamptz) IS NULL
+                    AND spot.latest_review_at IS NULL
+                    AND (spot.target_type, spot.target_id) > (CAST(:afterType AS varchar), :afterId)))
+            ORDER BY spot.latest_review_at DESC NULLS LAST, spot.target_type, spot.target_id
             LIMIT :limit
             """;
 
@@ -182,7 +198,8 @@ public class CommunitySpotQueryRepository {
                     enumValue(resultSet.getString("viewer_vote"), CommunityVoteType.class),
                     resultSet.getLong("review_count"),
                     resultSet.getLong("photo_count"),
-                    resultSet.getString("representative_photo_key")
+                    resultSet.getString("representative_photo_key"),
+                    resultSet.getObject("latest_review_at", OffsetDateTime.class)
             );
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -218,10 +235,11 @@ public class CommunitySpotQueryRepository {
 
     public List<CommunitySpotQueryResult> findSpotPage(
             Long userId, Long mountainId, CommunitySpotType type,
-            String afterType, Long afterId, int limit
+            OffsetDateTime afterReviewAt, String afterType, Long afterId, int limit
     ) {
         var parameters = spotParameters(userId, mountainId)
                 .addValue("spotType", type == null ? null : type.name())
+                .addValue("afterReviewAt", afterReviewAt)
                 .addValue("afterType", afterType)
                 .addValue("afterId", afterId)
                 .addValue("limit", limit);

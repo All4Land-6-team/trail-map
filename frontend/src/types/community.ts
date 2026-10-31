@@ -33,6 +33,7 @@ export type CommunityCourseReviewTarget = {
   distanceKm: number
   baselinePhotos: number
   baselineReviews: number
+  representativePhotoUrl?: string
   seedQuote: string
 }
 

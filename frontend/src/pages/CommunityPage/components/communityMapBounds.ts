@@ -1,13 +1,10 @@
 import type { CommunityMapBounds } from './CommunityMap'
 import type { Coordinate } from '../../../types/community'
 
-export function centerCoordinateBounds(coordinates: readonly Coordinate[], fallback: Coordinate): Coordinate {
-  const valid = coordinates.filter(([longitude, latitude]) => Number.isFinite(longitude) && Number.isFinite(latitude))
-  if (valid.length === 0) return fallback
-  const longitudes = valid.map(([longitude]) => longitude)
-  const latitudes = valid.map(([, latitude]) => latitude)
-  return [(Math.min(...longitudes) + Math.max(...longitudes)) / 2,
-    (Math.min(...latitudes) + Math.max(...latitudes)) / 2]
+export function nearestCoordinate(coordinates: readonly Coordinate[], reference: Coordinate): Coordinate {
+  if (coordinates.length === 0) return reference
+  const distance = ([longitude, latitude]: Coordinate) => (longitude - reference[0]) ** 2 + (latitude - reference[1]) ** 2
+  return coordinates.slice(1).reduce((nearest, coordinate) => distance(coordinate) < distance(nearest) ? coordinate : nearest, coordinates[0])
 }
 
 export function bufferMapBounds(bounds: CommunityMapBounds): CommunityMapBounds {
