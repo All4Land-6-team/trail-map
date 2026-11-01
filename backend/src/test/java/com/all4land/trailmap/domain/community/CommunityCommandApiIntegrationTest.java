@@ -99,7 +99,7 @@ class CommunityCommandApiIntegrationTest {
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/review-eligibility")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.eligible").value(true))
+                .andExpect(jsonPath("$.data.eligible").doesNotExist())
                 .andExpect(jsonPath("$.data.hikes.length()").value(1))
                 .andExpect(jsonPath("$.data.hikes[0].hikeRecordId").value(latestId))
                 .andExpect(jsonPath("$.data.hikes[0].courseId").value(courseId));
@@ -242,12 +242,12 @@ class CommunityCommandApiIntegrationTest {
         String voteUrl = "/v1/community/mountains/%d/spots/USER_SPOT/%d/vote"
                 .formatted(mountainId, userSpotId);
 
-        castVote(userId, voteUrl, "NO").andExpect(jsonPath("$.data.hidden").value(false));
-        castVote(secondUserId, voteUrl, "NO").andExpect(jsonPath("$.data.hidden").value(false));
+        castVote(userId, voteUrl, "NO").andExpect(jsonPath("$.data.hidden").doesNotExist());
+        castVote(secondUserId, voteUrl, "NO").andExpect(jsonPath("$.data.hidden").doesNotExist());
         castVote(thirdUserId, voteUrl, "NO")
                 .andExpect(jsonPath("$.data.noVotes").value(3))
                 .andExpect(jsonPath("$.data.status").value("HIDDEN"))
-                .andExpect(jsonPath("$.data.hidden").value(true));
+                .andExpect(jsonPath("$.data.hidden").doesNotExist());
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/spots"))
                         .param("west", "126.97")
@@ -262,7 +262,7 @@ class CommunityCommandApiIntegrationTest {
                 .andExpect(jsonPath("$.data.yesVotes").value(1))
                 .andExpect(jsonPath("$.data.noVotes").value(2))
                 .andExpect(jsonPath("$.data.status").value("RECONFIRMATION_REQUIRED"))
-                .andExpect(jsonPath("$.data.hidden").value(false));
+                .andExpect(jsonPath("$.data.hidden").doesNotExist());
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/spots"))
                         .param("west", "126.97")
@@ -285,7 +285,7 @@ class CommunityCommandApiIntegrationTest {
         castVote(thirdUserId, voteUrl, "NO")
                 .andExpect(jsonPath("$.data.noVotes").value(3))
                 .andExpect(jsonPath("$.data.status").value("AVAILABLE"))
-                .andExpect(jsonPath("$.data.hidden").value(false));
+                .andExpect(jsonPath("$.data.hidden").doesNotExist());
 
         mockMvc.perform(asUser(get("/v1/community/mountains/%d/spots/FACILITY/%d"
                         .formatted(mountainId, facilityId))))

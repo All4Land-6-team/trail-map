@@ -16,12 +16,13 @@ type Props = {
   mountainCenter: Coordinate
   terrainMountainId?: string
   routeCoordinates?: Coordinate[]
+  onViewportChange?: (bounds: { west: number; south: number; east: number; north: number }) => void
   mode: 'active' | 'postHike'
   recentCourses: readonly SpotRegistrationCourse[]
   selectedHikeId?: string
   onCourseSelect: (hikeRecordId: string) => void
   onError: (message: string) => void
-  onCreate: (spot: Omit<CommunitySpot, 'id' | 'targetType' | 'baselinePhotos' | 'baselineReviews' | 'photos'>, photos: PendingPhoto[], distinct: boolean) => Promise<void>
+  onCreate: (spot: Omit<CommunitySpot, 'id' | 'targetId' | 'targetType' | 'baselinePhotos' | 'baselineReviews' | 'photos'>, photos: PendingPhoto[], distinct: boolean) => Promise<void>
   onUseExisting: (spot: CommunitySpot, photos: PendingPhoto[]) => void
 }
 
@@ -37,7 +38,7 @@ export type SpotRegistrationCourse = {
 type LocationState = 'idle' | 'loading' | 'ready' | 'unavailable'
 
 export function SpotRegistration({ spots, votes, mountainId, mountainCenter, terrainMountainId, routeCoordinates, mode,
-  recentCourses, selectedHikeId, onCourseSelect, onError, onCreate, onUseExisting }: Props) {
+  recentCourses, selectedHikeId, onCourseSelect, onError, onCreate, onUseExisting, onViewportChange }: Props) {
   const [coordinate, setCoordinate] = useState<Coordinate | null>(null)
   const [locationState, setLocationState] = useState<LocationState>('idle')
   const [locationFocus, setLocationFocus] = useState<{ coordinate: Coordinate; request: number; zoom: number; resetZoom: boolean } | null>(null)
@@ -50,7 +51,8 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, ter
   const mountainSpots = useMemo(() => spots.filter(spot => spot.mountainId === mountainId), [spots, mountainId])
   const candidates = useMemo(() => coordinate && type ? nearbySpotCandidates(mountainSpots, coordinate, type, votes) : [], [mountainSpots, coordinate, type, votes])
   const markers: CommunityMapMarker[] = [
-    ...mountainSpots.filter(spot => !isSpotHidden(votes[spot.id])).map(spot => ({ id: spot.id, name: spot.name, kind: 'spot' as const, coordinate: spot.coordinate, spotType: spot.type })),
+    ...mountainSpots.filter(spot => !isSpotHidden(votes[spot.id])).map(spot => ({ id: spot.id, name: spot.name, kind: 'spot' as const,
+      coordinate: spot.coordinate, spotType: spot.type, targetType: spot.targetType })),
     ...(coordinate ? [{ id: 'new-position', name: '선택한 위치', kind: 'point' as const, coordinate, shortLabel: '✓' }] : []),
   ]
   const recentRoutes = useMemo<CommunityMapRoute[]>(() => recentCourses.map(course => ({
@@ -93,7 +95,7 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, ter
     if (creating) return
     setCreating(true)
     try {
-      await onCreate({ name: name.trim(), type, coordinate, mountainId, seedQuote: undefined, userCreated: true }, photos, distinct)
+      await onCreate({ name: name.trim(), type, coordinate, mountainId, seedQuote: undefined }, photos, distinct)
     } catch (error) {
       onError(error instanceof Error ? error.message : '스팟을 등록하지 못했습니다.')
     } finally {
@@ -119,6 +121,7 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, ter
         highlightedRoute={mode === 'active' ? routeCoordinates : undefined}
         highlightedRoutes={mode === 'postHike' ? recentRoutes : undefined}
         fitHighlightedRoute={!locationFocus}
+        onViewportChange={onViewportChange}
         ariaLabel="새 스팟 위치 지정" onMapSelect={point => { setCoordinate(point); setDistinct(false) }}
         onMarkerSelect={marker => { const found = spots.find(spot => spot.id === marker.id); if (found) onUseExisting(found, photos) }} />
       </div>

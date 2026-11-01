@@ -12,7 +12,6 @@ public record CommunitySpotDetailResponse(
         CommunitySpotType type,
         double longitude,
         double latitude,
-        boolean official,
         String status,
         String sourceName,
         String sourceUrl,

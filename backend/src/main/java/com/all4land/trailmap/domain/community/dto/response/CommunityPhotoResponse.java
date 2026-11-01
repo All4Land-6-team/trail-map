@@ -11,6 +11,7 @@ public record CommunityPhotoResponse(
         int displayOrder,
         String author,
         String reviewContent,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        Double reviewRating
 ) {
 }

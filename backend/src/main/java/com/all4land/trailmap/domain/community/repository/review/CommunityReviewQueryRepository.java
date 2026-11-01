@@ -1,6 +1,7 @@
 package com.all4land.trailmap.domain.community.repository.review;
 
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
+import com.all4land.trailmap.domain.community.dto.response.CommunityMountainReviewSummaryResponse;
 import com.all4land.trailmap.domain.community.repository.result.CommunityReviewQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.EligibleHikeQueryResult;
 import lombok.RequiredArgsConstructor;
@@ -178,6 +179,23 @@ public class CommunityReviewQueryRepository {
 
     public List<CommunityReviewQueryResult> findMountainReviews(Long mountainId, int limit, int offset) {
         return findReviews(MOUNTAIN_REVIEW_SQL, reviewParameters(mountainId, limit, offset));
+    }
+
+    public CommunityMountainReviewSummaryResponse findMountainReviewSummary(Long mountainId) {
+        return jdbcTemplate.queryForObject("""
+                SELECT count(*) AS review_count,
+                       avg(review.rating)::double precision AS average_rating,
+                       (SELECT count(*)
+                        FROM photo
+                        JOIN mountain_review photo_review ON photo_review.review_id = photo.mountain_review_id
+                        WHERE photo_review.mountain_id = :mountainId
+                          AND photo_review.deleted_at IS NULL
+                          AND photo.deleted_at IS NULL) AS photo_count
+                FROM mountain_review review
+                WHERE review.mountain_id = :mountainId AND review.deleted_at IS NULL
+                """, new MapSqlParameterSource("mountainId", mountainId), (rs, row) ->
+                new CommunityMountainReviewSummaryResponse(rs.getLong("review_count"),
+                        rs.getObject("average_rating", Double.class), rs.getLong("photo_count")));
     }
 
     public List<CommunityReviewQueryResult> findCourseReviews(Long courseId, int limit, int offset) {

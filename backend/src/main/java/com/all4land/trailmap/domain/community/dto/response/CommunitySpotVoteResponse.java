@@ -9,7 +9,6 @@ public record CommunitySpotVoteResponse(
         long yesVotes,
         long noVotes,
         CommunityVoteType viewerVote,
-        String status,
-        boolean hidden
+        String status
 ) {
 }

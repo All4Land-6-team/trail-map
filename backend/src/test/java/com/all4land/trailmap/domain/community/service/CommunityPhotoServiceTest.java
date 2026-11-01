@@ -161,7 +161,7 @@ class CommunityPhotoServiceTest {
         var createdAt = OffsetDateTime.parse("2026-10-25T10:00:00+09:00");
         given(photoQueryRepository.findPhoto(31L)).willReturn(Optional.of(new CommunityPhotoQueryResult(
                 31L, objectKey, "북한산.jpg", "image/jpeg", 1024L, 0,
-                "산길친구", "전망이 좋아요", createdAt
+                "산길친구", "전망이 좋아요", createdAt, null
         )));
         given(r2PhotoStorage.createReadUrl(objectKey)).willReturn("https://read.test/photo");
 

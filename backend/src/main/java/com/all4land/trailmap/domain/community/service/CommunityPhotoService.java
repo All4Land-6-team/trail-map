@@ -87,27 +87,29 @@ public class CommunityPhotoService {
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.PHOTO_NOT_FOUND));
     }
 
-    public List<CommunityPhotoResponse> getMountainPhotos(Long userId, Long mountainId) {
+    public List<CommunityPhotoResponse> getMountainPhotos(Long userId, Long mountainId, Integer limit, Integer offset) {
         validateUser(userId);
         if (!mapQueryRepository.existsMountain(mountainId)) {
             throw new CommunityException(CommunityErrorCode.MOUNTAIN_NOT_FOUND);
         }
-        return toResponses(photoQueryRepository.findMountainPhotos(mountainId));
+        return toResponses(photoQueryRepository.findMountainPhotos(mountainId, limit, offset));
     }
 
-    public List<CommunityPhotoResponse> getCoursePhotos(Long userId, Long courseId) {
+    public List<CommunityPhotoResponse> getCoursePhotos(Long userId, Long courseId, Integer limit, Integer offset) {
         validateUser(userId);
         if (!mapQueryRepository.existsCourse(courseId)) {
             throw new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND);
         }
-        return toResponses(photoQueryRepository.findCoursePhotos(courseId));
+        return toResponses(photoQueryRepository.findCoursePhotos(courseId, limit, offset));
     }
 
     public List<CommunityPhotoResponse> getSpotPhotos(
             Long userId,
             Long mountainId,
             CommunitySpotTargetType targetType,
-            Long targetId
+            Long targetId,
+            Integer limit,
+            Integer offset
     ) {
         validateUser(userId);
         if (!mapQueryRepository.existsMountain(mountainId)) {
@@ -116,7 +118,7 @@ public class CommunityPhotoService {
         if (spotQueryRepository.findSpot(userId, mountainId, targetType, targetId).isEmpty()) {
             throw new CommunityException(CommunityErrorCode.SPOT_NOT_FOUND);
         }
-        return toResponses(photoQueryRepository.findSpotPhotos(targetType, targetId));
+        return toResponses(photoQueryRepository.findSpotPhotos(targetType, targetId, limit, offset));
     }
 
     public CommunityPhotoResponse getPhoto(Long userId, Long photoId) {
@@ -218,7 +220,8 @@ public class CommunityPhotoService {
                 photo.displayOrder(),
                 photo.author(),
                 photo.reviewContent(),
-                photo.createdAt()
+                photo.createdAt(),
+                photo.reviewRating()
         );
     }
 }

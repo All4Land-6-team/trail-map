@@ -242,7 +242,7 @@ public class CommunityCommandService {
         List<EligibleHikeResponse> hikes = reviewQueryRepository.findEligibleHikes(
                 userId, mountainId, courseId, now.minus(REVIEW_WINDOW), now
         ).stream().map(CommunityCommandService::eligibleHikeResponse).toList();
-        return CommunityReviewEligibilityResponse.from(hikes);
+        return new CommunityReviewEligibilityResponse(hikes);
     }
 
     private CommunityVoteTargetQueryResult lockVoteTarget(
@@ -289,8 +289,7 @@ public class CommunityCommandService {
                 yesVotes,
                 noVotes,
                 viewerVote,
-                status,
-                target.targetType() == CommunitySpotTargetType.USER_SPOT && "HIDDEN".equals(status)
+                status
         );
     }
 
@@ -381,7 +380,6 @@ public class CommunityCommandService {
                 spot.longitude(),
                 spot.latitude(),
                 spot.distanceMeters(),
-                spot.official(),
                 spot.status()
         );
     }

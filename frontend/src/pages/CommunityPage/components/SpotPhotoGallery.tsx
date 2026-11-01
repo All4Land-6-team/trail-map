@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { useRef, type KeyboardEvent, type PointerEvent, type ReactNode, type RefObject } from 'react'
 import { Icon } from '../../../components/common/Icon'
 import type { CommunityReview, ReviewKind } from '../../../types/community'
 
@@ -9,6 +9,7 @@ export type CommunityGalleryPhoto = {
   exampleText?: string
   exampleRating?: number
   exampleDate?: string
+  author?: string
   source: 'review' | 'spot' | 'example'
 }
 
@@ -19,16 +20,16 @@ type GalleryProps = {
 
 function PhotoContent({ photo }: { photo: CommunityGalleryPhoto }) {
   return photo.src
-    ? <img src={photo.src} alt={photo.source === 'example' ? '화면용 예시 사진' : photo.review ? '방문자가 후기에 올린 사진' : '스팟에 등록된 사진'} loading="lazy" />
+    ? <img src={photo.src} alt={photo.source === 'example' ? '화면용 예시 사진' : photo.source === 'review' ? '방문자가 후기에 올린 사진' : '스팟에 등록된 사진'} loading="lazy" />
     : <span className="community-gallery-placeholder"><Icon name="Peak" size={30} /><small>원본 사진 준비 중</small></span>
 }
 
-export function CommunityPhotoStrip({ photos, onOpen, onViewAll, kindLabel, headingAside }: GalleryProps & { onViewAll: () => void; kindLabel: string; headingAside?: ReactNode }) {
+export function CommunityPhotoStrip({ photos, onOpen, onViewAll, kindLabel, headingAside, totalCount, endRef }: GalleryProps & { onViewAll: () => void; kindLabel: string; headingAside?: ReactNode; totalCount?: number; endRef?: RefObject<HTMLButtonElement | null> }) {
   if (photos.length === 0) return <div className="community-gallery-empty">아직 등록된 사진이 없어요.</div>
   return <>
-    <div className="community-gallery-heading"><strong>사진 {photos.length}장</strong>{headingAside}<button type="button" aria-label={`${kindLabel} 사진 전체보기`} onClick={onViewAll}>전체보기 <Icon name="ChevronRight" size={16} /></button></div>
+    <div className="community-gallery-heading"><strong>사진 {totalCount ?? photos.length}장</strong>{headingAside}<button type="button" aria-label={`${kindLabel} 사진 전체보기`} onClick={onViewAll}>전체보기 <Icon name="ChevronRight" size={16} /></button></div>
     <div className="community-gallery-strip" role="region" aria-label={`${kindLabel} 사진 가로 목록`} tabIndex={0}>
-      {photos.map((photo, index) => <button type="button" key={photo.id} className="community-gallery-tile"
+      {photos.map((photo, index) => <button type="button" key={photo.id} ref={index === photos.length - 1 ? endRef : undefined} className="community-gallery-tile"
         aria-label={`${index + 1}번째 사진, ${photo.source === 'example' ? '예시 사진' : photo.source === 'review' ? '후기 사진' : '스팟 등록 사진'} 보기`}
         onClick={() => onOpen(photo.id)}><PhotoContent photo={photo} /></button>)}
     </div>
@@ -77,7 +78,7 @@ export function CommunityPhotoReview({ photo, kind, index, total, onPrevious, on
     event.preventDefault()
     changePhoto(event.key === 'ArrowLeft' ? 'previous' : 'next')
   }
-  const nickname = photo.review ? photo.review.author ?? '나' : photo.source === 'example' ? '등산객' : '스팟 등록자'
+  const nickname = photo.review?.author ?? photo.author ?? (photo.source === 'example' ? '등산객' : '스팟 등록자')
   const rating = photo.review?.rating ?? photo.exampleRating
   const date = photo.review
     ? new Date(photo.review.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })
