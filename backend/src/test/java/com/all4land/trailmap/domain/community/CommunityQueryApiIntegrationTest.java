@@ -255,7 +255,9 @@ class CommunityQueryApiIntegrationTest {
                 .andExpect(jsonPath("$.data.sourceUrl").value("https://example.test/facilities"))
                 .andExpect(jsonPath("$.data.representativePhotoUrl", containsString(
                         "facility/%d/review.webp".formatted(facilityId)
-                )));
+                )))
+                .andExpect(jsonPath("$.data.reviews[0].kind").value("SPOT"))
+                .andExpect(jsonPath("$.data.photos.length()").value(2));
     }
 
     @Test
@@ -324,11 +326,6 @@ class CommunityQueryApiIntegrationTest {
                         "facility/%d/review.webp".formatted(facilityId)
                 )));
 
-        mockMvc.perform(asUser(get("/v1/community/mountains/%d/spots/FACILITY/%d/preview"
-                        .formatted(mountainId, facilityId))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.reviews[0].kind").value("SPOT"))
-                .andExpect(jsonPath("$.data.photos").isArray());
     }
 
     @Test

@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -67,10 +68,11 @@ public class CommunityCommandController {
             @CurrentUserId Long userId,
             @Positive @PathVariable Long mountainId,
             @PathVariable CommunitySpotTargetType targetType,
-            @Positive @PathVariable Long targetId
+            @Positive @PathVariable Long targetId,
+            @Positive @RequestParam(required = false) Long hikeRecordId
     ) {
         return response(SuccessResponse.ok(
-                commandService.getSpotReviewEligibility(userId, mountainId, targetType, targetId)
+                commandService.getSpotReviewEligibility(userId, mountainId, targetType, targetId, hikeRecordId)
         ));
     }
 

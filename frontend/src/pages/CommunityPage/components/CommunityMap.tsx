@@ -43,6 +43,7 @@ type Props = {
   showMountainLabel?: boolean
   highlightedRoute?: Coordinate[]
   fitHighlightedRoute?: boolean
+  cooperativeGestures?: boolean
   highlightedRouteColor?: string
   highlightedRoutes?: readonly CommunityMapRoute[]
   onMarkerSelect?: (marker: CommunityMapMarker) => void
@@ -89,7 +90,7 @@ function visibleMapArea(map: MapLibreMap) {
 }
 
 export function CommunityMap({ markers = [], overviewMarker, mountainId, center = DEFAULT_CENTER, focusTarget, zoom = 14, showRoute = true, showMountainFlag = false, showMountainLabel = true,
-  highlightedRoute, fitHighlightedRoute = false, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, onViewportChange, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
+  highlightedRoute, fitHighlightedRoute = false, cooperativeGestures = false, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, onViewportChange, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [projected, setProjected] = useState<ProjectedMarker[]>([])
   const [markerMode, setMarkerMode] = useState(() => communityMarkerMode(zoom))
@@ -159,6 +160,12 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     // 시트는 지도 위 오버레이이므로 시트의 높이로 카메라 중심을 옮기지 않는다.
     map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 })
   }, [map, className])
+
+  useEffect(() => {
+    if (!map) return
+    if (cooperativeGestures) map.cooperativeGestures.enable()
+    else map.cooperativeGestures.disable()
+  }, [map, cooperativeGestures])
 
   useEffect(() => {
     if (!map || terrainEnabled) return
@@ -394,7 +401,9 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
           <button type="button" className="community-map__cluster"
             aria-label={`겹친 지도 항목 ${group.length}개 ${markerMode === 'individual' ? '목록 보기' : '확대 또는 목록 보기'}`} onClick={() => expandCluster(group)}><span>{group.length}</span></button>
           {choiceOpen && <div ref={clusterChoicesRef} className={`community-map__cluster-choices community-map__cluster-choices--${clusterChoice.align}`}
-            role="dialog" aria-label="겹친 지도 항목 선택" onKeyDown={event => { if (event.key === 'Escape') setClusterChoice(null) }}>
+            role="dialog" aria-label="겹친 지도 항목 선택"
+            onPointerDown={event => event.stopPropagation()} onWheel={event => event.stopPropagation()} onTouchMove={event => event.stopPropagation()}
+            onKeyDown={event => { if (event.key === 'Escape') setClusterChoice(null) }}>
             <button type="button" className="community-map__cluster-close" onClick={() => setClusterChoice(null)} aria-label="목록 닫기">×</button>
             <strong>이 위치의 항목</strong>{clusterChoice.markers.map(marker => <button type="button" className="community-map__cluster-choice" key={markerIdentity(marker)} onClick={() => { onMarkerSelect?.(marker); setClusterChoice(null) }}>{marker.name}</button>)}
           </div>}

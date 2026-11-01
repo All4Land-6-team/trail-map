@@ -3,7 +3,6 @@ package com.all4land.trailmap.domain.community.controller;
 import com.all4land.trailmap.domain.community.dto.request.CommunityReviewPageRequest;
 import com.all4land.trailmap.domain.community.dto.response.CommunityMountainPreviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewPreviewResponse;
-import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.service.CommunityPhotoService;
 import com.all4land.trailmap.domain.community.service.CommunityQueryService;
 import com.all4land.trailmap.global.response.SuccessResponse;
@@ -46,20 +45,6 @@ public class CommunityPreviewController {
         var preview = new CommunityReviewPreviewResponse(
                 queryService.getCourseReviews(userId, courseId, THREE_REVIEWS),
                 photoService.getCoursePhotos(userId, courseId, 11, 0)
-        );
-        return response(SuccessResponse.ok(preview));
-    }
-
-    @GetMapping("/mountains/{mountainId}/spots/{targetType}/{targetId}/preview")
-    public ResponseEntity<SuccessResponse<CommunityReviewPreviewResponse>> spotPreview(
-            @CurrentUserId Long userId,
-            @Positive @PathVariable Long mountainId,
-            @PathVariable CommunitySpotTargetType targetType,
-            @Positive @PathVariable Long targetId
-    ) {
-        var preview = new CommunityReviewPreviewResponse(
-                queryService.getSpotReviews(userId, mountainId, targetType, targetId, THREE_REVIEWS),
-                photoService.getSpotPhotos(userId, mountainId, targetType, targetId, 11, 0)
         );
         return response(SuccessResponse.ok(preview));
     }

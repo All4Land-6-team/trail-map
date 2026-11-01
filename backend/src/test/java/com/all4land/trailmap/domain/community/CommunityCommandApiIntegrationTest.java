@@ -230,7 +230,9 @@ class CommunityCommandApiIntegrationTest {
                         .content(spotJson(hikeRecordId, true)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.type").value("RESTROOM"))
-                .andExpect(jsonPath("$.data.status").value("PENDING"));
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andExpect(jsonPath("$.data.review.kind").value("SPOT"))
+                .andExpect(jsonPath("$.data.review.content").value("찾기 쉬워요."));
 
         assertThat(jdbcTemplate.queryForObject("""
                 SELECT count(*)
@@ -240,6 +242,56 @@ class CommunityCommandApiIntegrationTest {
                   AND spot_type = 'RESTROOM'
                   AND ST_X(spot_location) = 126.9811
                 """, Integer.class, userId, hikeRecordId)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM spot_review WHERE hike_record_id = ?", Integer.class, hikeRecordId
+        )).isEqualTo(1);
+    }
+
+    @Test
+    void 등산_중에도_기존_스팟_후기와_새_스팟_첫_후기를_등록한다() throws Exception {
+        long activeHikeId = insertActiveHike(courseId, "IN_PROGRESS");
+
+        String eligibilityUrl = "/v1/community/mountains/%d/spots/FACILITY/%d/review-eligibility"
+                .formatted(mountainId, facilityId);
+        mockMvc.perform(asUser(get(eligibilityUrl)).param("hikeRecordId", String.valueOf(activeHikeId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hikes[0].hikeRecordId").value(activeHikeId));
+
+        mockMvc.perform(asUser(post("/v1/community/mountains/%d/spots/FACILITY/%d/reviews"
+                                .formatted(mountainId, facilityId)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reviewJson(activeHikeId, "등산 중 시설 후기", null)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.hikeRecordId").value(activeHikeId));
+
+        mockMvc.perform(asUser(get(eligibilityUrl)).param("hikeRecordId", String.valueOf(activeHikeId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("COMMUNITY_409_2"));
+
+        String clientRequestId = UUID.randomUUID().toString();
+        String request = spotJson(activeHikeId, true, clientRequestId);
+        mockMvc.perform(asUser(post("/v1/community/mountains/" + mountainId + "/spots"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.review.hikeRecordId").value(activeHikeId));
+        mockMvc.perform(asUser(post("/v1/community/mountains/" + mountainId + "/spots"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.review.hikeRecordId").value(activeHikeId));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM user_spot WHERE client_request_id = ?::uuid", Integer.class, clientRequestId
+        )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM spot_review WHERE hike_record_id = ?", Integer.class, activeHikeId
+        )).isEqualTo(2);
+
+        mockMvc.perform(asUser(post("/v1/community/mountains/" + mountainId + "/reviews"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reviewJson(activeHikeId, "산 후기는 아직 안 돼요", 5)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -379,6 +431,23 @@ class CommunityCommandApiIntegrationTest {
                 """, Long.class, scheduleId, userId, targetCourseId, endedHoursAgo, endedHoursAgo);
     }
 
+    private long insertActiveHike(long targetCourseId, String status) {
+        long scheduleId = jdbcTemplate.queryForObject("""
+                INSERT INTO hike_schedule (user_id, course_id, scheduled_starts_at, deleted_at)
+                VALUES (?, ?, now() - interval '2 hours', now())
+                RETURNING schedule_id
+                """, Long.class, userId, targetCourseId);
+        return jdbcTemplate.queryForObject("""
+                INSERT INTO hike_record
+                    (schedule_id, user_id, course_id, course_version, recorded_course_geometry,
+                     started_at, hike_status)
+                VALUES (?, ?, ?, 1,
+                        ST_GeomFromText('LINESTRING(126.97 37.65, 126.99 37.67)', 4326),
+                        now() - interval '2 hours', ?)
+                RETURNING hike_record_id
+                """, Long.class, scheduleId, userId, targetCourseId, status);
+    }
+
     private static String reviewJson(long hikeRecordId, String content, Integer rating) {
         String ratingJson = rating == null ? "null" : rating.toString();
         return """
@@ -387,16 +456,22 @@ class CommunityCommandApiIntegrationTest {
     }
 
     private static String spotJson(long hikeRecordId, boolean confirmDistinct) {
+        return spotJson(hikeRecordId, confirmDistinct, UUID.randomUUID().toString());
+    }
+
+    private static String spotJson(long hikeRecordId, boolean confirmDistinct, String clientRequestId) {
         return """
                 {
+                  "clientRequestId": "%s",
                   "hikeRecordId": %d,
                   "type": "RESTROOM",
                   "name": "새 화장실",
                   "longitude": 126.9811,
                   "latitude": 37.661,
-                  "confirmDistinct": %s
+                  "confirmDistinct": %s,
+                  "reviewContent": "찾기 쉬워요."
                 }
-                """.formatted(hikeRecordId, confirmDistinct);
+                """.formatted(clientRequestId, hikeRecordId, confirmDistinct);
     }
 
     private static String hash() {

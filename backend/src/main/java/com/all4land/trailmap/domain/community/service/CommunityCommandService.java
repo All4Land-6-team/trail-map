@@ -23,6 +23,7 @@ import com.all4land.trailmap.domain.community.repository.map.CommunityMapQueryRe
 import com.all4land.trailmap.domain.community.repository.result.CommunitySpotDuplicateQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.CommunityVoteTargetQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.EligibleHikeQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CreatedUserSpotQueryResult;
 import com.all4land.trailmap.domain.community.repository.review.CourseReviewRepository;
 import com.all4land.trailmap.domain.community.repository.review.CommunityReviewQueryRepository;
 import com.all4land.trailmap.domain.community.repository.review.MountainReviewRepository;
@@ -92,10 +93,17 @@ public class CommunityCommandService {
             Long userId,
             Long mountainId,
             CommunitySpotTargetType targetType,
-            Long targetId
+            Long targetId,
+            Long hikeRecordId
     ) {
         validateUser(userId);
         validateSpot(userId, mountainId, targetType, targetId);
+        if (hikeRecordId != null) {
+            EligibleHikeQueryResult hike = requireSpotReviewEligibleHike(
+                    userId, mountainId, hikeRecordId, targetType, targetId
+            );
+            return new CommunityReviewEligibilityResponse(List.of(eligibleHikeResponse(hike)));
+        }
         return eligibility(userId, mountainId, null, CommunityReviewKind.SPOT, targetType, targetId);
     }
 
@@ -161,8 +169,8 @@ public class CommunityCommandService {
         validateRatingAbsent(request);
         validateUser(userId);
         validateSpot(userId, mountainId, targetType, targetId);
-        EligibleHikeQueryResult hike = requireReviewEligibleHike(
-                userId, mountainId, null, request.hikeRecordId(), CommunityReviewKind.SPOT, targetType, targetId
+        EligibleHikeQueryResult hike = requireSpotReviewEligibleHike(
+                userId, mountainId, request.hikeRecordId(), targetType, targetId
         );
         SpotReview review = saveReview(() -> spotReviewRepository.saveAndFlush(SpotReview.create(
                 userId,
@@ -198,7 +206,11 @@ public class CommunityCommandService {
     ) {
         validateUser(userId);
         validateMountain(mountainId);
-        requireEligibleHike(userId, mountainId, null, request.hikeRecordId());
+        var existing = spotCommandRepository.findByClientRequestId(userId, request.clientRequestId());
+        if (existing.isPresent()) {
+            return createdSpotResponse(userId, existing.get());
+        }
+        EligibleHikeQueryResult hike = requireSpotEligibleHike(userId, mountainId, request.hikeRecordId());
 
         List<CommunitySpotDuplicateQueryResult> duplicates = spotCommandRepository.findDuplicates(
                 mountainId, request.type(), request.longitude(), request.latitude()
@@ -215,7 +227,27 @@ public class CommunityCommandService {
                 request.type(),
                 name,
                 request.longitude(),
-                request.latitude()
+                request.latitude(),
+                request.clientRequestId()
+        ).orElseGet(() -> spotCommandRepository.findByClientRequestId(userId, request.clientRequestId())
+                .map(CreatedUserSpotQueryResult::spotId)
+                .orElseThrow(() -> new IllegalStateException("스팟 등록 결과를 찾지 못했습니다.")));
+        var existingReview = spotReviewRepository.findByHikeRecordIdAndSpotIdAndDeletedAtIsNull(hike.hikeRecordId(), spotId);
+        if (existingReview.isPresent()) {
+            return createdSpotResponse(userId, spotCommandRepository.findByClientRequestId(userId, request.clientRequestId())
+                    .orElseThrow(() -> new IllegalStateException("스팟 등록 결과를 찾지 못했습니다.")));
+        }
+        SpotReview review = saveReview(() -> spotReviewRepository.saveAndFlush(SpotReview.create(
+                userId,
+                CommunitySpotTargetType.USER_SPOT,
+                spotId,
+                hike.hikeRecordId(),
+                request.reviewContent().trim(),
+                hike.endedAt().atZoneSameInstant(SERVICE_ZONE).toLocalDate()
+        )));
+        CommunityReviewResponse reviewResponse = reviewResponse(
+                review.getReviewId(), CommunityReviewKind.SPOT, spotId, hike.hikeRecordId(), userId,
+                review.getContent(), null, review.getVisitedDate(), review.getCreatedAt()
         );
         return new CommunitySpotCreatedResponse(
                 spotId,
@@ -224,7 +256,8 @@ public class CommunityCommandService {
                 request.type(),
                 request.longitude(),
                 request.latitude(),
-                "PENDING"
+                "PENDING",
+                reviewResponse
         );
     }
 
@@ -354,6 +387,28 @@ public class CommunityCommandService {
         return hike;
     }
 
+    private EligibleHikeQueryResult requireSpotEligibleHike(Long userId, Long mountainId, Long hikeRecordId) {
+        OffsetDateTime now = OffsetDateTime.now(SERVICE_ZONE);
+        return reviewQueryRepository.findSpotEligibleHike(
+                        userId, mountainId, hikeRecordId, now.minus(REVIEW_WINDOW), now
+                )
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.REVIEW_NOT_ELIGIBLE));
+    }
+
+    private EligibleHikeQueryResult requireSpotReviewEligibleHike(
+            Long userId,
+            Long mountainId,
+            Long hikeRecordId,
+            CommunitySpotTargetType targetType,
+            Long targetId
+    ) {
+        EligibleHikeQueryResult hike = requireSpotEligibleHike(userId, mountainId, hikeRecordId);
+        if (reviewExists(CommunityReviewKind.SPOT, targetType, targetId, hikeRecordId)) {
+            throw new CommunityException(CommunityErrorCode.DUPLICATE_REVIEW);
+        }
+        return hike;
+    }
+
     private boolean reviewExists(
             CommunityReviewKind kind,
             CommunitySpotTargetType targetType,
@@ -415,6 +470,17 @@ public class CommunityCommandService {
                 visitedDate,
                 createdAt.atZone(SERVICE_ZONE).toOffsetDateTime(),
                 List.of()
+        );
+    }
+
+    private CommunitySpotCreatedResponse createdSpotResponse(Long userId, CreatedUserSpotQueryResult spot) {
+        SpotReview review = spotReviewRepository
+                .findByHikeRecordIdAndSpotIdAndDeletedAtIsNull(spot.hikeRecordId(), spot.spotId())
+                .orElseThrow(() -> new IllegalStateException("스팟 후기 등록 결과를 찾지 못했습니다."));
+        return new CommunitySpotCreatedResponse(
+                spot.spotId(), spot.mountainId(), spot.name(), spot.type(), spot.longitude(), spot.latitude(), spot.status(),
+                reviewResponse(review.getReviewId(), CommunityReviewKind.SPOT, spot.spotId(), spot.hikeRecordId(), userId,
+                        review.getContent(), null, review.getVisitedDate(), review.getCreatedAt())
         );
     }
 
