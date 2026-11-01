@@ -93,6 +93,11 @@ class HikeRecordApiIntegrationTest {
                 .andExpect(jsonPath("$.data.endedAt").value(nullValue()))
                 .andExpect(jsonPath("$.data.traveledDistanceMeters").value(nullValue()))
                 .andExpect(jsonPath("$.data.traveledPath.length()").value(0))
+                // 남은 거리 계산용 코스 경로는 시작 시 저장한 코스 그대로다. 길이는 구면 거리(약 1.42km).
+                .andExpect(jsonPath("$.data.coursePath.length()").value(2))
+                .andExpect(jsonPath("$.data.coursePath[0][0]").value(126.97))
+                .andExpect(jsonPath("$.data.coursePath[1][1]").value(37.66))
+                .andExpect(jsonPath("$.data.courseDistanceMeters").value(closeTo(1418.0, 5.0)))
                 .andReturn().getResponse().getContentAsString().transform(body -> id(body, "$.data.hikeRecordId"));
 
         // 첫 위치 하나만 받아도 저장한다. 이동 거리는 0이다.
