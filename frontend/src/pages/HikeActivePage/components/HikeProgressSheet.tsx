@@ -9,6 +9,10 @@ export type HikeProgressSheetProps = {
   courseName: string;
   traveledKm: number;
   remainingKm: number;
+  /** 코스상 진행률(%). 없으면 이동·남은 거리 비율로 그린다(예시 데이터 모드). */
+  progressPercent?: number;
+  /** 코스에서 떨어져 있을 때 진행 바 아래에 작게 보여 줄 문구 */
+  courseNotice?: string;
   sunset: string;
   /** 등산 중에만 알림 토글을 보여 준다 */
   alertsOn?: boolean;
@@ -19,13 +23,13 @@ export type HikeProgressSheetProps = {
 
 /** HIKE-05·07 하단 시트: 진행 상태 · 이동/남은 거리 · 일몰 · 알림 · 하산/종료 버튼 */
 export function HikeProgressSheet({
-  stage, courseName, traveledKm, remainingKm, sunset,
+  stage, courseName, traveledKm, remainingKm, progressPercent, courseNotice, sunset,
   alertsOn = false, onAlertsChange, onStartDescent, onEnd,
 }: HikeProgressSheetProps) {
   const { sheetRef, bodyRef, collapsed: sheetCollapsed, sheetClassName, sheetStyle, handleProps: sheetHandleProps } = useDraggableSheet();
   const descent = stage === "descent";
   const total = traveledKm + remainingKm;
-  const percent = total > 0 ? Math.round((traveledKm / total) * 100) : 0;
+  const percent = progressPercent ?? (total > 0 ? Math.round((traveledKm / total) * 100) : 0);
 
   return <section ref={sheetRef} style={sheetStyle} aria-label="등산 진행 상황"
     className={["hike-progress-sheet", descent && "hike-progress-sheet--descent", sheetClassName].filter(Boolean).join(" ")}>
@@ -43,6 +47,7 @@ export function HikeProgressSheet({
         aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
         <span style={{ width: `${percent}%` }} />
       </div>
+      {courseNotice && <p className="hike-progress-sheet__notice" role="status">{courseNotice}</p>}
       <div className="hike-progress-sheet__sunset">
         <Icon name="Sun" size={24} />
         <span>일몰 {sunset}</span>

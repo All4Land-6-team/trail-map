@@ -4,6 +4,7 @@ import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotType;
 import com.all4land.trailmap.domain.community.repository.result.CommunitySpotDuplicateQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.CommunityVoteTargetQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CreatedUserSpotQueryResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
@@ -25,19 +27,19 @@ public class CommunitySpotCommandRepository {
                        facility.facility_id AS target_id,
                        COALESCE(facility.facility_name, '이름 없는 시설') AS name,
                        CASE UPPER(facility.facility_type)
-                           WHEN 'REST_AREA' THEN 'SHELTER'
-                           WHEN 'SHELTER' THEN 'SHELTER'
-                           WHEN 'DRINKING_FOUNTAIN' THEN 'WATER'
-                           WHEN 'WATER' THEN 'WATER'
-                           WHEN 'SPRING' THEN 'WATER'
+                           WHEN 'REST_AREA' THEN 'REST_AREA'
+                           WHEN 'SHELTER' THEN 'REST_AREA'
+                           WHEN 'DRINKING_FOUNTAIN' THEN 'DRINKING_FOUNTAIN'
+                           WHEN 'DRINKING_WATER' THEN 'DRINKING_FOUNTAIN'
+                           WHEN 'WATER' THEN 'DRINKING_FOUNTAIN'
+                           WHEN 'SPRING' THEN 'DRINKING_FOUNTAIN'
                            WHEN 'RESTROOM' THEN 'RESTROOM'
                            WHEN 'TOILET' THEN 'RESTROOM'
-                           WHEN 'PHOTO_SPOT' THEN 'PHOTO'
-                           WHEN 'VIEWPOINT' THEN 'PHOTO'
+                           WHEN 'PHOTO_SPOT' THEN 'PHOTO_SPOT'
+                           WHEN 'VIEWPOINT' THEN 'PHOTO_SPOT'
                            ELSE 'OTHER'
                        END AS spot_type,
                        facility.facility_location AS location,
-                       TRUE AS official,
                        COALESCE(facility.official_status, 'OFFICIAL') AS status
                 FROM facility
                 WHERE facility.mountain_id = :mountainId
@@ -47,15 +49,8 @@ public class CommunitySpotCommandRepository {
                 SELECT 'USER_SPOT' AS target_type,
                        spot.spot_id AS target_id,
                        COALESCE(spot.spot_name, '이름 없는 스팟') AS name,
-                       CASE spot.spot_type
-                           WHEN 'REST_AREA' THEN 'SHELTER'
-                           WHEN 'DRINKING_FOUNTAIN' THEN 'WATER'
-                           WHEN 'RESTROOM' THEN 'RESTROOM'
-                           WHEN 'PHOTO_SPOT' THEN 'PHOTO'
-                           ELSE 'OTHER'
-                       END AS spot_type,
+                       spot.spot_type,
                        spot.spot_location AS location,
-                       FALSE AS official,
                        spot.spot_status AS status
                 FROM user_spot spot
                 WHERE spot.mountain_id = :mountainId
@@ -71,7 +66,6 @@ public class CommunitySpotCommandRepository {
                    ST_X(candidate.location) AS longitude,
                    ST_Y(candidate.location) AS latitude,
                    ST_Distance(candidate.location::geography, request_point.location::geography) AS distance_meters,
-                   candidate.official,
                    candidate.status
             FROM candidate
             CROSS JOIN request_point
@@ -86,7 +80,7 @@ public class CommunitySpotCommandRepository {
 
     private static final String INSERT_SQL = """
             INSERT INTO user_spot (
-                user_id, mountain_id, hike_record_id, spot_type, spot_location, spot_name, spot_status
+                user_id, mountain_id, hike_record_id, spot_type, spot_location, spot_name, spot_status, client_request_id
             ) VALUES (
                 :userId,
                 :mountainId,
@@ -94,10 +88,24 @@ public class CommunitySpotCommandRepository {
                 :spotType,
                 ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
                 :name,
-                'PENDING'
+                'PENDING',
+                :clientRequestId
             )
+            ON CONFLICT (user_id, client_request_id) WHERE client_request_id IS NOT NULL DO NOTHING
             RETURNING spot_id
             """;
+
+    private static final RowMapper<CreatedUserSpotQueryResult> CREATED_SPOT_ROW_MAPPER = (resultSet, rowNumber) ->
+            new CreatedUserSpotQueryResult(
+                    resultSet.getLong("spot_id"),
+                    resultSet.getLong("mountain_id"),
+                    resultSet.getLong("hike_record_id"),
+                    CommunitySpotType.valueOf(resultSet.getString("spot_type")),
+                    resultSet.getString("spot_name"),
+                    resultSet.getDouble("longitude"),
+                    resultSet.getDouble("latitude"),
+                    resultSet.getString("spot_status")
+            );
 
     private static final RowMapper<CommunitySpotDuplicateQueryResult> DUPLICATE_ROW_MAPPER =
             (resultSet, rowNumber) -> new CommunitySpotDuplicateQueryResult(
@@ -108,7 +116,6 @@ public class CommunitySpotCommandRepository {
                     resultSet.getDouble("longitude"),
                     resultSet.getDouble("latitude"),
                     resultSet.getDouble("distance_meters"),
-                    resultSet.getBoolean("official"),
                     resultSet.getString("status")
             );
 
@@ -177,21 +184,42 @@ public class CommunitySpotCommandRepository {
         return jdbcTemplate.query(DUPLICATE_SQL, parameters, DUPLICATE_ROW_MAPPER);
     }
 
-    public Long insert(
+    public Optional<Long> insert(
             Long userId,
             Long mountainId,
             Long hikeRecordId,
             CommunitySpotType type,
             String name,
             double longitude,
-            double latitude
+            double latitude,
+            UUID clientRequestId
     ) {
         var parameters = spotParameters(mountainId, type, longitude, latitude)
                 .addValue("userId", userId)
                 .addValue("hikeRecordId", hikeRecordId)
                 .addValue("name", name)
-                .addValue("spotType", toDatabaseType(type));
-        return jdbcTemplate.queryForObject(INSERT_SQL, parameters, Long.class);
+                .addValue("clientRequestId", clientRequestId);
+        return jdbcTemplate.query(INSERT_SQL, parameters, (resultSet, rowNumber) -> resultSet.getLong("spot_id"))
+                .stream().findFirst();
+    }
+
+    public Optional<CreatedUserSpotQueryResult> findByClientRequestId(Long userId, UUID clientRequestId) {
+        return jdbcTemplate.query("""
+                SELECT spot_id,
+                       mountain_id,
+                       hike_record_id,
+                       spot_type,
+                       spot_name,
+                       ST_X(spot_location) AS longitude,
+                       ST_Y(spot_location) AS latitude,
+                       spot_status
+                FROM user_spot
+                WHERE user_id = :userId
+                  AND client_request_id = :clientRequestId
+                  AND deleted_at IS NULL
+                """, new MapSqlParameterSource()
+                .addValue("userId", userId)
+                .addValue("clientRequestId", clientRequestId), CREATED_SPOT_ROW_MAPPER).stream().findFirst();
     }
 
     private static MapSqlParameterSource spotParameters(
@@ -205,15 +233,5 @@ public class CommunitySpotCommandRepository {
                 .addValue("spotType", type.name())
                 .addValue("longitude", longitude)
                 .addValue("latitude", latitude);
-    }
-
-    private static String toDatabaseType(CommunitySpotType type) {
-        return switch (type) {
-            case SHELTER -> "REST_AREA";
-            case WATER -> "DRINKING_FOUNTAIN";
-            case RESTROOM -> "RESTROOM";
-            case PHOTO -> "PHOTO_SPOT";
-            case OTHER -> "OTHER";
-        };
     }
 }

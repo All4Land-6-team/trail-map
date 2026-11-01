@@ -172,7 +172,8 @@ public class HikeRecordService {
                 record,
                 courseRepository.findCourseSummary(record.courseId())
                         .orElseThrow(() -> new HikeException(HikeErrorCode.COURSE_NOT_FOUND)),
-                recordRepository.findTraveledPath(record.hikeRecordId())
+                recordRepository.findTraveledPath(record.hikeRecordId()),
+                recordRepository.findCoursePath(record.hikeRecordId())
         );
     }
 

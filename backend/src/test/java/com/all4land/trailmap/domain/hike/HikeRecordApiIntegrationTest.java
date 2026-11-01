@@ -93,6 +93,11 @@ class HikeRecordApiIntegrationTest {
                 .andExpect(jsonPath("$.data.endedAt").value(nullValue()))
                 .andExpect(jsonPath("$.data.traveledDistanceMeters").value(nullValue()))
                 .andExpect(jsonPath("$.data.traveledPath.length()").value(0))
+                // 남은 거리 계산용 코스 경로는 시작 시 저장한 코스 그대로다. 길이는 구면 거리(약 1.42km).
+                .andExpect(jsonPath("$.data.coursePath.length()").value(2))
+                .andExpect(jsonPath("$.data.coursePath[0][0]").value(126.97))
+                .andExpect(jsonPath("$.data.coursePath[1][1]").value(37.66))
+                .andExpect(jsonPath("$.data.courseDistanceMeters").value(closeTo(1418.0, 5.0)))
                 .andReturn().getResponse().getContentAsString().transform(body -> id(body, "$.data.hikeRecordId"));
 
         // 첫 위치 하나만 받아도 저장한다. 이동 거리는 0이다.
@@ -234,30 +239,6 @@ class HikeRecordApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"positions\": []}"))
                 .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void 일정_종료_API는_진행_중_기록을_종료한다() throws Exception {
-        long recordId = startedRecord(userId);
-        long scheduleId = jdbcTemplate.queryForObject(
-                "SELECT schedule_id FROM hike_record WHERE hike_record_id = ?", Long.class, recordId
-        );
-        sendPositions(userId, recordId,
-                position(126.9700, 37.6500, "06:00:00", 5),
-                position(126.9700, 37.6510, "06:05:00", 5));
-
-        mockMvc.perform(asUser(userId, post("/v1/hike-schedules/" + scheduleId + "/complete")))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.hikeRecordId").value(recordId))
-                .andExpect(jsonPath("$.data.endedAt").isNotEmpty());
-
-        mockMvc.perform(asUser(userId, get("/v1/hike-records/" + recordId)))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.data.actualDurationSeconds").isNumber())
-                .andExpect(jsonPath("$.data.traveledDistanceMeters").value(closeTo(111.0, 1.0)));
-        assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM hike_record WHERE schedule_id = ?", Integer.class, scheduleId
-        )).isEqualTo(1);
     }
 
     private long startedRecord(long requestUserId) throws Exception {

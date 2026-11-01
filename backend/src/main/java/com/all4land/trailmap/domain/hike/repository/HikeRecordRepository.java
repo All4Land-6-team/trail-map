@@ -19,7 +19,8 @@ public class HikeRecordRepository {
             SELECT hike_record_id, schedule_id, course_id, hike_status, started_at, ended_at,
                    traveled_distance_meters, actual_duration_seconds,
                    ST_X(ST_EndPoint(traveled_path)) AS last_longitude,
-                   ST_Y(ST_EndPoint(traveled_path)) AS last_latitude
+                   ST_Y(ST_EndPoint(traveled_path)) AS last_latitude,
+                   ST_Length(recorded_course_geometry::geography) AS course_distance_meters
             FROM hike_record
             """;
 
@@ -33,7 +34,8 @@ public class HikeRecordRepository {
             resultSet.getObject("traveled_distance_meters", Double.class),
             resultSet.getObject("actual_duration_seconds", Integer.class),
             resultSet.getObject("last_longitude", Double.class),
-            resultSet.getObject("last_latitude", Double.class)
+            resultSet.getObject("last_latitude", Double.class),
+            resultSet.getObject("course_distance_meters", Double.class)
     );
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -90,13 +92,23 @@ public class HikeRecordRepository {
 
     /** 이동 경로 좌표 [경도, 위도] 목록. 위치를 받지 않았으면 빈 목록이다. */
     public List<List<Double>> findTraveledPath(Long hikeRecordId) {
+        return findPathPoints("traveled_path", hikeRecordId);
+    }
+
+    /** column은 이 클래스의 고정 컬럼 이름만 받는다. */
+    private List<List<Double>> findPathPoints(String column, Long hikeRecordId) {
         return jdbcTemplate.query("""
                         SELECT ST_X(point.geom) AS longitude, ST_Y(point.geom) AS latitude
-                        FROM hike_record, ST_DumpPoints(traveled_path) AS point
+                        FROM hike_record, ST_DumpPoints(%s) AS point
                         WHERE hike_record_id = :hikeRecordId
                         ORDER BY point.path
-                        """, new MapSqlParameterSource("hikeRecordId", hikeRecordId),
+                        """.formatted(column), new MapSqlParameterSource("hikeRecordId", hikeRecordId),
                 (resultSet, rowNumber) -> List.of(resultSet.getDouble("longitude"), resultSet.getDouble("latitude")));
+    }
+
+    /** 기록 시작 시 저장한 코스 경로 좌표 [경도, 위도] 목록. 남은 거리 계산과 지도 표시에 쓴다. */
+    public List<List<Double>> findCoursePath(Long hikeRecordId) {
+        return findPathPoints("recorded_course_geometry", hikeRecordId);
     }
 
     /**
@@ -149,40 +161,4 @@ public class HikeRecordRepository {
                 .addValue("endedAt", endedAt));
     }
 
-    public HikeRecordCompletion complete(Long userId, Long scheduleId, OffsetDateTime endedAt) {
-        var parameters = new MapSqlParameterSource()
-                .addValue("userId", userId)
-                .addValue("scheduleId", scheduleId)
-                .addValue("endedAt", endedAt);
-        jdbcTemplate.update("""
-                INSERT INTO hike_record
-                    (schedule_id, user_id, course_id, course_version, recorded_course_geometry,
-                     started_at, ended_at, hike_status, actual_duration_seconds)
-                SELECT schedule.schedule_id,
-                       schedule.user_id,
-                       schedule.course_id,
-                       course.course_version,
-                       course.course_geometry,
-                       LEAST(schedule.scheduled_starts_at, :endedAt),
-                       :endedAt,
-                       'COMPLETED',
-                       EXTRACT(EPOCH FROM (:endedAt - LEAST(schedule.scheduled_starts_at, :endedAt)))::integer
-                FROM hike_schedule schedule
-                JOIN course ON course.course_id = schedule.course_id
-                WHERE schedule.schedule_id = :scheduleId
-                  AND schedule.user_id = :userId
-                  AND schedule.deleted_at IS NULL
-                ON CONFLICT (schedule_id) DO NOTHING
-                """, parameters);
-        return jdbcTemplate.queryForObject("""
-                SELECT hike_record_id, schedule_id, course_id, ended_at
-                FROM hike_record
-                WHERE schedule_id = :scheduleId AND user_id = :userId AND deleted_at IS NULL
-                """, parameters, (resultSet, rowNumber) -> new HikeRecordCompletion(
-                resultSet.getLong("hike_record_id"),
-                resultSet.getLong("schedule_id"),
-                resultSet.getLong("course_id"),
-                resultSet.getObject("ended_at", OffsetDateTime.class)
-        ));
-    }
 }

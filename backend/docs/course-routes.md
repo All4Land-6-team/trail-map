@@ -1,7 +1,7 @@
 # 코스 LineString 조회 및 후보 데이터 적재 (#95)
 
 `course.course_geometry`를 재사용하며 고도·경사 분석은 생성/수정하지 않는다.
-신규 V5는 데이터셋 지문과 코스별 경유지·검증 상태를 보관한다. 기존 시드 코스,
+신규 V7은 데이터셋 지문과 코스별 경유지·검증 상태를 보관한다. 기존 시드 코스,
 후기, 일정 및 분석 결과를 변경하거나 삭제하지 않는다.
 
 ## 입력과 한계
@@ -78,7 +78,7 @@ ROUTE_TEST_JDBC_URL=jdbc:postgresql://localhost:5432/trail_map \
   bash gradlew test --tests '*CourseRoutePostgisIntegrationTest' --rerun-tasks
 ```
 
-PostGIS 테스트는 명시한 개발 DB에만 접속한다. 고유한 임시 스키마 안에서 V2~V5를 적용하고
+PostGIS 테스트는 명시한 개발 DB에만 접속한다. 고유한 임시 스키마 안에서 V2~V7을 적용하고
 13개 적재·재적재·산별 분리·GeoJSON·거리·변경 거절을 검증한 뒤 스키마/행을 모두 롤백한다.
 public의 기존 코스/분석은 읽거나 변경하지 않는다. PostGIS 확장이 설치된 개발 DB와
 테스트 스키마 생성 권한이 필요하다.

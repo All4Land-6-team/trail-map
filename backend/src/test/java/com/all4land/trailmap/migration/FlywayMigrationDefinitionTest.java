@@ -1,6 +1,7 @@
 package com.all4land.trailmap.migration;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -8,6 +9,15 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class FlywayMigrationDefinitionTest {
+
+    @Test
+    void 병합된_마이그레이션은_버전_중복_없이_순서대로_존재한다() throws IOException {
+        var migrations = new PathMatchingResourcePatternResolver()
+                .getResources("classpath*:db/migration/V*__*.sql");
+        assertThat(migrations)
+                .extracting(resource -> resource.getFilename().split("__", 2)[0])
+                .containsExactlyInAnyOrder("V1", "V2", "V3", "V4", "V5", "V6", "V7");
+    }
 
     private static final String[] CORE_TABLES = {
             "data_source",
@@ -95,6 +105,23 @@ class FlywayMigrationDefinitionTest {
                 .contains("ST_NPoints(traveled_path) >= 2");
     }
 
+    @Test
+    void 다섯_번째_마이그레이션은_산행과_대상별_중복_후기를_막는다() throws IOException {
+        String migration = readMigration("db/migration/V5__prevent_duplicate_community_reviews.sql");
+
+        assertThat(migration)
+                .contains("row_number() OVER")
+                .contains("UPDATE mountain_review review")
+                .contains("UPDATE course_review review")
+                .contains("UPDATE spot_review review")
+                .contains("ranked.duplicate_rank > 1")
+                .contains("ON mountain_review (hike_record_id, mountain_id)")
+                .contains("ON course_review (hike_record_id, course_id)")
+                .contains("ON spot_review (hike_record_id, spot_id)")
+                .contains("ON spot_review (hike_record_id, facility_id)")
+                .contains("WHERE deleted_at IS NULL AND hike_record_id IS NOT NULL");
+    }
+
     private String readMigration(String path) throws IOException {
         try (var inputStream = getClass().getClassLoader().getResourceAsStream(path)) {
             assertThat(inputStream).as("migration resource %s", path).isNotNull();
@@ -103,8 +130,8 @@ class FlywayMigrationDefinitionTest {
     }
 
     @Test
-    void 다섯_번째_마이그레이션은_후보_경로_출처와_검증_상태를_보관한다() throws IOException {
-        assertThat(readMigration("db/migration/V5__add_course_route_catalog.sql"))
+    void 일곱_번째_마이그레이션은_후보_경로_출처와_검증_상태를_보관한다() throws IOException {
+        assertThat(readMigration("db/migration/V7__add_course_route_catalog.sql"))
                 .contains("CREATE TABLE course_route_dataset", "CREATE TABLE course_route_metadata",
                         "file_hash VARCHAR(64)", "validation_status VARCHAR(100)",
                         "UNIQUE (dataset_key, source_record_id)", "UNIQUE (dataset_key, route_order)")

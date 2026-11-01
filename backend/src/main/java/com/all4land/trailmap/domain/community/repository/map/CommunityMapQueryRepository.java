@@ -1,6 +1,6 @@
 package com.all4land.trailmap.domain.community.repository.map;
 
-import com.all4land.trailmap.domain.community.repository.result.CommunityCoursePointQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunityCourseQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.CommunityMountainQueryResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -34,7 +34,7 @@ public class CommunityMapQueryRepository {
         ));
     }
 
-    public List<CommunityCoursePointQueryResult> findCoursePoints(Long mountainId) {
+    public List<CommunityCourseQueryResult> findCourses(Long mountainId) {
         return jdbcTemplate.query("""
                 SELECT course.course_id,
                        course.mountain_id,
@@ -46,24 +46,35 @@ public class CommunityMapQueryRepository {
                         FROM course_review review
                         WHERE review.course_id = course.course_id
                           AND review.deleted_at IS NULL) AS review_count,
-                       (point).path[1] AS sequence,
-                       ST_X((point).geom) AS longitude,
-                       ST_Y((point).geom) AS latitude
+                       (SELECT count(*)
+                        FROM photo
+                        JOIN course_review review ON review.review_id = photo.course_review_id
+                        WHERE review.course_id = course.course_id
+                          AND review.deleted_at IS NULL
+                          AND photo.deleted_at IS NULL) AS photo_count,
+                       (SELECT photo.object_key
+                        FROM photo
+                        JOIN course_review review ON review.review_id = photo.course_review_id
+                        WHERE review.course_id = course.course_id
+                          AND review.deleted_at IS NULL
+                          AND photo.deleted_at IS NULL
+                        ORDER BY review.created_at DESC, photo.display_order, photo.photo_id
+                        LIMIT 1) AS representative_photo_key,
+                       ST_AsGeoJSON(course.course_geometry, 9) AS route_geo_json
                 FROM course
-                CROSS JOIN LATERAL ST_DumpPoints(course.course_geometry) point
                 WHERE course.mountain_id = :mountainId
-                ORDER BY course.course_id, sequence
+                ORDER BY course.course_id
                 """, new MapSqlParameterSource("mountainId", mountainId),
-                (resultSet, rowNumber) -> new CommunityCoursePointQueryResult(
+                (resultSet, rowNumber) -> new CommunityCourseQueryResult(
                         resultSet.getLong("course_id"),
                         resultSet.getLong("mountain_id"),
                         resultSet.getString("external_id"),
                         resultSet.getString("course_name"),
                         resultSet.getDouble("distance_km"),
                         resultSet.getLong("review_count"),
-                        resultSet.getInt("sequence"),
-                        resultSet.getDouble("longitude"),
-                        resultSet.getDouble("latitude")
+                        resultSet.getLong("photo_count"),
+                        resultSet.getString("representative_photo_key"),
+                        resultSet.getString("route_geo_json")
                 ));
     }
 

@@ -44,7 +44,8 @@ class CourseRoutePostgisIntegrationTest {
             jdbc.execute("SET LOCAL search_path TO " + schema + ", public");
             var connection = DataSourceUtils.getConnection(dataSource);
             for (String migration : new String[]{"V2__create_core_schema.sql", "V3__support_community_reviews_and_spots.sql",
-                    "V4__add_hike_record_traveled_path.sql", "V5__add_course_route_catalog.sql"}) {
+                    "V4__add_hike_record_traveled_path.sql", "V5__prevent_duplicate_community_reviews.sql",
+                    "V6__add_community_spot_request_id.sql", "V7__add_course_route_catalog.sql"}) {
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/" + migration));
             }
             long sourceId = jdbc.queryForObject("INSERT INTO data_source (source_name, source_format) VALUES ('test', 'TEST') RETURNING source_id", Long.class);

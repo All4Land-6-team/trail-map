@@ -9,6 +9,7 @@
 .hike-progress-sheet__distances { display: flex; justify-content: space-between; margin-top: 14px; font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-progress-sheet__track { height: 4px; margin-top: 6px; overflow: hidden; border-radius: 2px; background: #dde7db; }
 .hike-progress-sheet__track > span { display: block; height: 100%; border-radius: inherit; background: var(--af-green); }
+.hike-progress-sheet__notice { margin: 6px 0 0; color: var(--af-muted); font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-progress-sheet__sunset { display: flex; align-items: center; gap: 6px; min-height: 42px; margin-top: 12px; padding-bottom: 12px; border-bottom: 1px solid #e3ece2; font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-progress-sheet__bell { display: grid; width: 40px; height: 40px; margin-left: auto; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
 .hike-progress-sheet__bell:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }

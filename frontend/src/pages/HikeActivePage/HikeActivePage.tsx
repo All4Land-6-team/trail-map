@@ -26,7 +26,7 @@ export function HikeActivePage() {
   const [recenterKey, setRecenterKey] = useState(0);
   const alertsOn = session?.alertsOn ?? false;
   const [overlay, setOverlay] = useState<"share" | "end" | null>(null);
-  const controls = useHikeControls(session);
+  const controls = useHikeControls(session, hike);
   const finish = () => void controls.finish();
   if (!session && restoring) return <main className="hike-page__empty-state"><p>진행 중인 등산을 불러오는 중이에요.</p></main>;
   if (!session || !hike || session.phase === "complete") return <main className="hike-page__empty-state">
@@ -35,8 +35,8 @@ export function HikeActivePage() {
   return <div className="hike-page hike-map-page hike-active-page">
     <main className="hike-page__body hike-map-page__body">
       <div className="hike-map-page__map">
-        <HikeRouteMap route={hike.route} peak={hike.peak} traveledKm={controls.traveledKm ?? hike.traveledKm}
-          {...controls.tracking ? { position: session.currentPosition, traveledPath: session.traveledPath } : { currentIndex: hike.currentIndex }}
+        <HikeRouteMap route={controls.route} peak={controls.peak} traveledKm={controls.traveledKm ?? hike.traveledKm}
+          {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
           spots={hike.spots} filter={filter} dimension={dimension} recenterKey={recenterKey}
           label={`${hike.courseName} 등산 경로 지도`} />
         <div className="hike-map-page__top">
@@ -51,7 +51,8 @@ export function HikeActivePage() {
         </div>
       </div>
       <HikeProgressSheet stage={session.phase === "downhill" ? "descent" : "ascent"} courseName={hike.courseName}
-        traveledKm={controls.traveledKm ?? hike.traveledKm} remainingKm={hike.remainingKm} sunset={hike.sunset}
+        traveledKm={controls.traveledKm ?? hike.traveledKm} remainingKm={controls.remainingKm}
+        progressPercent={controls.progressPercent} courseNotice={controls.courseNotice} sunset={hike.sunset}
         alertsOn={alertsOn} onAlertsChange={setHikeAlerts}
         onStartDescent={() => void controls.descend(alertsOn)}
         onEnd={() => {
@@ -64,7 +65,7 @@ export function HikeActivePage() {
 
     {overlay === "share" && <HikeShareSheet onClose={() => setOverlay(null)} onShareSpot={() => {
       setOverlay(null);
-      const query = new URLSearchParams({ screen: "newSpot", mode: "active", mountain: session.mountainId,
+      const query = new URLSearchParams({ screen: "spotPicker", mode: "active", mountain: session.mountainId,
         course: session.schedule.courseId,
         returnTo: session.phase === "downhill" ? hikePaths.downhill(alertsOn) : hikePaths.active(alertsOn) });
       navigate(`community?${query}`);
