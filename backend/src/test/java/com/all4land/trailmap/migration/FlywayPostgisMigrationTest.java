@@ -37,7 +37,7 @@ class FlywayPostgisMigrationTest {
         var result = flyway.migrate();
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("4");
+        assertThat(result.targetSchemaVersion).isEqualTo("5");
 
         try (var connection = DriverManager.getConnection(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()
@@ -54,7 +54,7 @@ class FlywayPostgisMigrationTest {
                     WHERE table_schema = 'public'
                       AND table_type = 'BASE TABLE'
                       AND table_name NOT IN ('flyway_schema_history', 'spatial_ref_sys')
-                    """)).isEqualTo(16);
+                    """)).isEqualTo(18);
 
             assertThat(queryForInt(connection, """
                     SELECT count(*)
@@ -62,7 +62,7 @@ class FlywayPostgisMigrationTest {
                     JOIN pg_namespace namespace ON namespace.oid = constraint_definition.connamespace
                     WHERE namespace.nspname = 'public'
                       AND constraint_definition.contype = 'f'
-                    """)).isEqualTo(38);
+                    """)).isEqualTo(43);
 
             assertThat(queryForSet(connection, """
                     SELECT column_name

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { loadCourseDetailData } from "../../../api/courseDetailMock";
+import { loadCourseDetailData } from "../../../api/courseRoutes";
 import type { CourseRequest } from "../../../types/course";
 import type { CourseDetailState } from "../../../types/courseDetail";
 

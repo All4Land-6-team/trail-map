@@ -6,6 +6,9 @@ import { supportsTerrain, type TerrainStatus } from "./terrain";
 import type { Course } from "../../types/course";
 import type { CourseProfileSample, CourseSpot } from "../../types/courseDetail";
 import { SpotMarker } from "./SpotMarker";
+import { useEnhancedCourseRoute, reducedRouteMotion } from "./useEnhancedCourseRoute";
+import { useCourseRoutePreview } from "./useCourseRoutePreview";
+import { recoverRouteTerrain } from "./routeMapCamera";
 import "./course-route-map.css";
 
 const summitAsset = new URL("../../assets/icons/course-summit.svg", import.meta.url).href;
@@ -18,6 +21,9 @@ const ACTIVE_OUTLINE = "discovery-active-outline";
 const ACTIVE_ROUTE = "discovery-active-route";
 export type CourseRouteMapProps = {
   courses: readonly Course[];
+  enhanced?: boolean;
+  onPreviewStart?: () => void;
+  onPreviewEnd?: () => void;
   selected: Course | null;
   mountainId?: string;
   center: [number, number];
@@ -36,10 +42,11 @@ export type CourseRouteMapProps = {
   onSpotSelect?: (id: string) => void;
 };
 
-export function CourseRouteMap({ courses, selected, mountainId, center, mapBottomInset = 0, onSelect, onNotify, variant = "list", profileSample,
+export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewStart, onPreviewEnd, mountainId, center, mapBottomInset = 0, onSelect, onNotify, variant = "list", profileSample,
   summitCoordinate, summitLabel = "정상", dataLabel, spots, selectedSpotId, focusSpotId, showSpotLabels = false, onSpotSelect }: CourseRouteMapProps) {
   const [map, setMap] = useState<MapLibreMap | null>(null);
-  const [routesReady, setRoutesReady] = useState(false);
+  const [readyInput, setReadyInput] = useState<{ map: MapLibreMap; courses: readonly Course[] } | null>(null);
+  const routesReady = readyInput?.map === map && readyInput?.courses === courses;
   const [dimension, setDimension] = useState<MapDimension>("2D");
   const [terrainStatus, setTerrainStatus] = useState<TerrainStatus>("idle");
   const [summit, setSummit] = useState<{ x: number; y: number } | null>(null);
@@ -49,6 +56,16 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
   const alive = useRef(true);
   const terrainEnabled = supportsTerrain(mountainId ?? selected?.mountainId ?? courses[0]?.mountainId);
   const onReady = useCallback((instance: MapLibreMap | null) => setMap(instance), []);
+  const enhancedRoute = useEnhancedCourseRoute(map, enhanced, selected, dimension, mapBottomInset);
+  const preview = useCourseRoutePreview({ map, enabled: enhanced && dimension === "3D" && terrainStatus === "ready",
+    courseId: selected?.id, metrics: enhancedRoute.metrics, activeSlot: enhancedRoute.activeSlot,
+    onStart: onPreviewStart, onEnd: onPreviewEnd, fitWhole: enhancedRoute.fitWhole, interruptCamera: enhancedRoute.interruptCamera });
+  const finishPreview = preview.finish;
+  useEffect(() => {
+    if (enhanced && terrainStatus === "error") {
+      recoverRouteTerrain(map, () => finishPreview(false), setDimension, reducedRouteMotion());
+    }
+  }, [map, enhanced, terrainStatus, finishPreview]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
   useEffect(() => {
@@ -75,6 +92,11 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
       const filter: FilterSpecification = ["==", ["get", "courseId"], selected?.id ?? ""];
       map.setFilter(ACTIVE_OUTLINE, filter);
       map.setFilter(ACTIVE_ROUTE, filter);
+      map.setLayoutProperty(ACTIVE_ROUTE, "visibility", enhanced ? "none" : "visible");
+      map.setLayoutProperty(ACTIVE_OUTLINE, "visibility", enhanced ? "none" : "visible");
+      map.setPaintProperty(ROUTE_LAYER, "line-opacity", enhanced ? .32 : .7);
+      map.setPaintProperty(ROUTE_LAYER, "line-width", enhanced ? 2 : 3);
+      if (enhanced) return;
       const height = map.getContainer().clientHeight;
       const inset = Math.min(mapBottomInset, Math.max(0, height - 1));
       const visibleHeight = Math.max(1, height - inset);
@@ -93,12 +115,13 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
     map.on("resize", updateRoutes);
     const onIdle = () => {
       if (pending) updateRoutes();
-      if (map.getSource(SOURCE) && map.isSourceLoaded(SOURCE)) setRoutesReady(true);
+      if (!pending && map.getSource(SOURCE) && map.isSourceLoaded(SOURCE)) setReadyInput(current =>
+        current?.map === map && current.courses === courses ? current : { map, courses });
     };
     map.on("idle", onIdle);
     updateRoutes();
     return () => { map.off("load", updateRoutes); map.off("resize", updateRoutes); map.off("idle", onIdle); };
-  }, [map, courses, selected, center, focusSpotId, spots, mapBottomInset]);
+  }, [map, courses, selected, center, focusSpotId, spots, mapBottomInset, enhanced]);
 
   useEffect(() => {
     if (!map) return;
@@ -119,23 +142,27 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
 
   useEffect(() => {
     if (!map) return;
+    if (enhanced && !profileSample && !spots?.length) return;
     const update = () => {
       const point = summitCoordinate ?? selected?.routeCoordinates.at(-1);
-      setSummit(point ? map.project(point) : null);
+      if (!enhanced) setSummit(point ? map.project(point) : null);
       setProfilePoint(profileSample ? map.project(profileSample.coordinate) : null);
-      setSpotPoints((spots ?? []).map(spot => ({ spot, ...map.project(spot.coordinate) })));
+      if (spots?.length) setSpotPoints(spots.map(spot => ({ spot, ...map.project(spot.coordinate) })));
+      else setSpotPoints(current => current.length ? [] : current);
     };
     map.on("move", update);
     map.on("resize", update);
     update();
     return () => { map.off("move", update); map.off("resize", update); };
-  }, [map, selected, summitCoordinate, profileSample, spots]);
+  }, [map, selected, summitCoordinate, profileSample, spots, enhanced]);
 
   useEffect(() => {
-    if (!terrainEnabled) map?.easeTo({ pitch: dimension === "3D" ? 50 : 0, duration: 350 });
-  }, [map, dimension, terrainEnabled]);
+    if (!terrainEnabled && !enhanced) map?.easeTo({ pitch: dimension === "3D" ? 50 : 0, duration: 350 });
+  }, [map, dimension, terrainEnabled, enhanced]);
 
   function locate() {
+    preview.pause();
+    if (enhanced) enhancedRoute.interruptCamera();
     if (!navigator.geolocation) { onNotify("현재 위치를 지원하지 않는 환경이에요."); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(position => {
@@ -150,11 +177,13 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
   }
 
   return <div className={`course-map course-map--${variant}`} data-selected-course={selected?.id ?? ""} data-map-mode={dimension} data-route-ready={routesReady}
+    data-route-count={courses.length} data-route-coordinate-count={courses.reduce((total, course) => total + course.routeCoordinates.length, 0)}
     aria-label={selected ? `지도 경로: ${selected.name}` : "코스 지도"}>
     <BaseMap className="course-map__base" showNavigationControl={false} onMapReady={onReady}
       terrainBeforeLayerId={ROUTE_LAYER} terrainMode={terrainEnabled ? dimension : undefined}
+      terrainCameraManaged={enhanced}
       onTerrainStatusChange={setTerrainStatus} />
-    {summit && (variant === "list" || summitCoordinate) && <div className="course-map__summit" style={{ left: summit.x, top: summit.y }}>
+    {!enhanced && summit && (variant === "list" || summitCoordinate) && <div className="course-map__summit" style={{ left: summit.x, top: summit.y }}>
       {variant === "detail" ? <><img className="course-map__peak" src={detailPeakAsset} alt="" />
         <img src={detailSummitAsset} alt="" /><span>{summitLabel}</span></> : <><img src={summitAsset} alt="" /><span>{summitLabel}</span></>}
     </div>}
@@ -174,7 +203,16 @@ export function CourseRouteMap({ courses, selected, mountainId, center, mapBotto
         onDimensionModeChange={() => setDimension(current => current === "2D" ? "3D" : "2D")} />
       <MapAction iconName="Locate" disabled={!map || locating} aria-busy={locating}
         aria-label={locating ? "현재 위치 확인 중" : "현재 위치"} onClick={locate} />
+      {enhanced && <MapAction className="course-map__overview" aria-label="전체 코스" icon={<span>전체 코스</span>}
+        disabled={!map || !enhancedRoute.metrics.valid}
+        onClick={() => { preview.finish(false); enhancedRoute.fitWhole(); }} />}
     </div>
+    {enhanced && dimension === "3D" && <div className="course-map__preview" data-preview-state={preview.state}>
+      {preview.state === "idle" ? <button type="button" disabled={!preview.available} onClick={preview.play}>코스 미리보기</button>
+        : <><button type="button" onClick={() => preview.state === "playing" ? preview.pause() : preview.play()}>{preview.state === "playing" ? "일시정지" : "재생"}</button>
+          <button type="button" onClick={() => preview.finish()}>종료</button><span className="course-map__preview-note">12초 코스 둘러보기 · 실제 이동 아님</span></>}
+      {!enhancedRoute.metrics.valid && <span className="course-map__preview-note">연결된 경로를 확인할 수 없어 재생할 수 없어요.</span>}
+    </div>}
     {dataLabel !== null && <span className="course-map__example">{dataLabel ?? (variant === "detail" ? "경로·분석 예시" : "예시 경로")}</span>}
   </div>;
 }

@@ -59,6 +59,7 @@ export function HomeMap({ mountains, selectedMountainId, onSelect, onMapClick }:
 
   return <div className="home-map">
     <BaseMap className="home-map__base" center={SOUTH_KOREA_MAINLAND_CENTER} zoom={6.1}
+      terrainMode="2D" terrainCameraManaged
       showNavigationControl={false} onMapReady={handleMapReady} />
     <div className="home-map__markers" aria-label="지도에서 산 선택">
       {positions.map(({ mountain, x, y, labelOffset, labelLeft }) => <div key={mountain.id}

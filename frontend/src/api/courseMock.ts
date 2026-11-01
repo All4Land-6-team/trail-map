@@ -9,7 +9,7 @@ const mockBaegundaeBackendId = import.meta.env?.DEV && Number.isSafeInteger(loca
 
 // 화면 개발용 합성 데이터이며 실제 등산로·분석값·실시간 통제 정보가 아니다.
 // 기존 등산 담기·내 등산 브랜치와 연결할 수 있도록 courseId를 유지한다.
-const courseExamples: readonly Course[] = [
+const courseExamples: readonly (Course & { durationMinutes: number })[] = [
   {
     "id": "daenammun",
     "mountainId": "bukhansan",
@@ -426,7 +426,7 @@ const courseExamples: readonly Course[] = [
 ];
 
 // 개발용 분석과 연결된 코스는 분석 존재 여부와 관계없이 상세에서 조회 상태를 확인할 수 있다.
-export const courseFixtures: readonly Course[] = courseExamples.map(course => {
+export const courseFixtures: readonly (Course & { durationMinutes: number })[] = courseExamples.map(course => {
   const analysisReference = developmentAnalysisReference(course.id, course.mountainId, import.meta.env?.DEV === true);
   return { ...course, analysisReference, detailAvailable: course.detailAvailable || !!analysisReference };
 });

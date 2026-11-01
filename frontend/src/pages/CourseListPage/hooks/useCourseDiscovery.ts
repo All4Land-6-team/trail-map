@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { loadCourseDiscoveryData } from "../../../api/courseMock";
+import { loadCourseDiscoveryData } from "../../../api/courseRoutes";
 import type { Course, CourseDiscoveryState, CourseFilters, CourseSort } from "../../../types/course";
 import { DEFAULT_COURSE_FILTERS, selectCourses } from "../../../utils/courseDiscovery";
 
 const EMPTY_COURSES: readonly Course[] = [];
 export function useCourseDiscovery(mountainId: string, initialCourseId?: string) {
-  const [state, setState] = useState<CourseDiscoveryState>({ status: "loading" });
+  const [result, setResult] = useState<{ key: string; state: CourseDiscoveryState } | null>(null);
   const [filters, setFilters] = useState<CourseFilters>({ ...DEFAULT_COURSE_FILTERS });
   const [sort, setSort] = useState<CourseSort>("difficulty");
   const [selectedId, setSelectedId] = useState<string | null>(initialCourseId ?? null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const key = JSON.stringify([mountainId, retryCount]);
+  const state: CourseDiscoveryState = result?.key === key ? result.state : { status: "loading" };
   const [toast, setToast] = useState<{ id: number; message: string } | null>(null);
   const toastSequence = useRef(0);
   const notify = useCallback((message: string) => setToast({ id: ++toastSequence.current, message }), []);
@@ -19,12 +21,12 @@ export function useCourseDiscovery(mountainId: string, initialCourseId?: string)
   useEffect(() => {
     const controller = new AbortController();
     loadCourseDiscoveryData(mountainId, controller.signal).then(data => {
-      if (!controller.signal.aborted) setState(data ? { status: "success", data } : { status: "missing" });
+      if (!controller.signal.aborted) setResult({ key, state: data ? { status: "success", data } : { status: "missing" } });
     }).catch(() => {
-      if (!controller.signal.aborted) setState({ status: "error" });
+      if (!controller.signal.aborted) setResult({ key, state: { status: "error" } });
     });
     return () => controller.abort();
-  }, [mountainId, retryCount]);
+  }, [mountainId, key]);
   useEffect(() => {
     if (!toast) return;
     const timeout = window.setTimeout(() => setToast(null), 3000);
@@ -37,6 +39,6 @@ export function useCourseDiscovery(mountainId: string, initialCourseId?: string)
   return {
     state, filters, setFilters, sort, setSort, courses, selectedCourse, setSelectedId,
     filterOpen, openFilter: () => { setToast(null); setFilterOpen(true); }, closeFilter, toast, notify,
-    retry: () => { setState({ status: "loading" }); setRetryCount(count => count + 1); },
+    retry: () => setRetryCount(count => count + 1),
   };
 }

@@ -101,4 +101,13 @@ class FlywayMigrationDefinitionTest {
             return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
+
+    @Test
+    void 다섯_번째_마이그레이션은_후보_경로_출처와_검증_상태를_보관한다() throws IOException {
+        assertThat(readMigration("db/migration/V5__add_course_route_catalog.sql"))
+                .contains("CREATE TABLE course_route_dataset", "CREATE TABLE course_route_metadata",
+                        "file_hash VARCHAR(64)", "validation_status VARCHAR(100)",
+                        "UNIQUE (dataset_key, source_record_id)", "UNIQUE (dataset_key, route_order)")
+                .doesNotContain("UPDATE course", "DELETE FROM", "ALTER TABLE course_analysis");
+    }
 }

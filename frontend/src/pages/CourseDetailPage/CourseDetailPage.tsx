@@ -14,7 +14,7 @@ import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionSt
 import type { CourseRequest } from "../../types/course";
 import type { CourseDetailView, CourseSpot, CourseSpotRequest, ProfileVisibility } from "../../types/courseDetail";
 import { selectCourseSpots, toggleProfileMetric } from "../../utils/courseProfile";
-import { detailAnalysisView } from "../../utils/courseDetailAnalysis";
+import { detailAnalysisView, detailRouteLabel } from "../../utils/courseDetailAnalysis";
 import { useCourseAnalysis } from "./hooks/useCourseAnalysis";
 import { CourseAnalysis } from "./components/CourseAnalysis";
 import { CourseSpots } from "./components/CourseSpots";
@@ -91,7 +91,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
       return communityApi.courses(String(mountain.mountainId), controller.signal);
     }).then(courses => {
       if (!courses) return null;
-      const course = courses.find(item => String(item.courseId) === courseId || item.externalId === courseId);
+      const course = courses.find(item => `db-${item.courseId}` === courseId || String(item.courseId) === courseId || item.externalId === courseId);
       setCommunityCourse(course ?? null);
       return course ? communityApi.courseReviews(String(course.courseId), controller.signal) : null;
     }).then(reviews => {
@@ -112,10 +112,12 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
     else setVisibility(next);
   }
   function save() {
+    if (data?.course.routeSource) return;
     setCourseSaved(courseId, !saved);
     notify(saved ? "장바구니에서 뺐어요." : "장바구니에 담았어요.");
   }
   function schedule() {
+    if (data?.course.routeSource) return;
     if (onScheduleOpen) onScheduleOpen(request);
     else {
       const path = courseDetailPath(request, view);
@@ -146,8 +148,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
           mapBottomInset={mapBottomInset}
           center={data.course.routeCoordinates[0]}
           onSelect={() => {}} onNotify={notify} summitCoordinate={summitCoordinate} summitLabel="최고 고도"
-          dataLabel={analysisState.status === "loading" ? "분석 경로 조회 중" : !samples.length
-            ? "분석 경로 없음" : analysisView.development ? "개발용 예시 경로" : null}
+          dataLabel={detailRouteLabel(data.course, analysisState, analysisView)}
           profileSample={view.tab === "analysis" ? sample : null} spots={view.tab === "spots" ? spots : undefined}
           selectedSpotId={selectedSpot?.id} focusSpotId={view.spotId} showSpotLabels={view.category !== "all"}
           onSpotSelect={spotId => changeView({ ...view, spotId })} />
@@ -168,9 +169,9 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
             shelters={shelters.state} onRetryShelters={shelters.retry}
             onCategory={category => changeView({ tab: "spots", category })} onOpen={openSpot} />}
         footer={<div className="course-detail-actions">
-          <Button variant="secondary" aria-pressed={saved} onClick={save}
+          <Button variant="secondary" disabled={!!data.course.routeSource} aria-pressed={saved} onClick={save}
             leadingIcon={saved ? <img src={savedBagAsset} alt="" /> : <Icon name="Bag" size={17} color="currentColor" />}>{saved ? "장바구니 담김" : "장바구니 담기"}</Button>
-          <Button onClick={schedule}>{hasSchedule ? "일정 변경 →" : "일정 등록 →"}</Button>
+          <Button disabled={!!data.course.routeSource} onClick={schedule}>{hasSchedule ? "일정 변경 →" : "일정 등록 →"}</Button>
         </div>} />
     </> : <div className="course-detail-page__status">
       <TopBar title="코스 상세" showAction={false} onBack={back} className="course-detail-page__top" />

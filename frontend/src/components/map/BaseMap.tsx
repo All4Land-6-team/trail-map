@@ -35,6 +35,7 @@ export type BaseMapProps = {
   showNavigationControl?: boolean
   terrainBeforeLayerId?: string
   terrainMode?: MapDimension
+  terrainCameraManaged?: boolean
   zoom?: number
   /** 지도 생성·해제 시 알린다. 레이어를 추가할 때는 load 이벤트를 기다린다. */
   onMapReady?: (map: MapLibreMap | null) => void
@@ -64,6 +65,7 @@ function BaseMap({
   showNavigationControl = true,
   terrainBeforeLayerId,
   terrainMode,
+  terrainCameraManaged,
   zoom,
   onMapReady,
   onTerrainStatusChange,
@@ -75,6 +77,7 @@ function BaseMap({
   const renderedRouteIdsRef = useRef<string[]>([])
   const routesRef = useRef(routes)
   const terrainModeRef = useRef(terrainMode)
+  const terrainCameraOptions = useRef({ cameraManaged: terrainCameraManaged })
   const [hasLoadError, setHasLoadError] = useState(false)
   const [hasTerrainError, setHasTerrainError] = useState(false)
   const [mapLoadVersion, setMapLoadVersion] = useState(0)
@@ -88,9 +91,10 @@ function BaseMap({
   useEffect(() => { routesRef.current = routes }, [routes])
   useEffect(() => {
     terrainModeRef.current = terrainMode
+    terrainCameraOptions.current = { cameraManaged: terrainCameraManaged }
     const map = mapRef.current
-    if (map && terrainMode && map.isStyleLoaded()) applyTerrainMode(map, terrainMode)
-  }, [terrainMode])
+    if (map && terrainMode && map.isStyleLoaded()) applyTerrainMode(map, terrainMode, terrainCameraOptions.current)
+  }, [terrainMode, terrainCameraManaged])
 
   useEffect(() => {
     const updateConnection = () => {
@@ -153,6 +157,10 @@ function BaseMap({
       setMapLoadVersion((version) => version + 1)
     }
     const handleError = (event: unknown) => {
+      if (import.meta.env.DEV) {
+        const error = event as { error?: { message?: string }; sourceId?: string };
+        console.error('MapLibre 지도 오류', error.error?.message ?? '원인 미확인', error.sourceId ?? '');
+      }
       if (!isTerrainSourceError(event)) {
         setHasLoadError(true)
         return
@@ -198,7 +206,7 @@ function BaseMap({
           ? terrainBeforeLayerId
           : renderedRouteIdsRef.current[0]
         installTerrainLayers(map, source, beforeLayerId)
-        applyTerrainMode(map, terrainModeRef.current ?? '2D')
+        applyTerrainMode(map, terrainModeRef.current ?? '2D', terrainCameraOptions.current)
         setHasTerrainError(false)
         onTerrainStatusChangeRef.current?.('ready')
       })
