@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { HIKE_RECORD_ERROR, hikeStartErrorMessage, startOrResumeHikeRecord } from "../src/api/hikeRecordApi.ts";
 import { flushHikePositions } from "../src/hooks/useHikeTracking.ts";
 import {
-  finishHikeSession, getCompletedHikes, getHikeSession, recordHikePosition, setHikeTraveledMeters, startHikeSession,
+  finishHikeSession, getCompletedHikes, getHikeSession, recordHikePosition, restoreHikeSession, setHikeTraveledMeters,
+  startHikeDescent, startHikeSession,
 } from "../src/store/hikeSessionStore.ts";
 
 // 서버 응답을 차례대로 돌려주는 가짜 fetch. 받은 요청은 requests에 남긴다.
@@ -41,7 +42,8 @@ const schedule = { scheduleId: 6, date: "2026-10-29", startTime: "11:40", course
 const record = (overrides = {}) => ({
   hikeRecordId: 10, scheduleId: 6, courseId: 2, courseName: "대남문 코스", mountainId: 1, mountainName: "북한산",
   status: "IN_PROGRESS", startedAt: "2026-10-29T02:40:00Z", endedAt: null,
-  traveledDistanceMeters: null, actualDurationSeconds: null, traveledPath: null, ...overrides,
+  traveledDistanceMeters: null, actualDurationSeconds: null, traveledPath: null,
+  courseDistanceMeters: 2_224, coursePath: [[126.95, 37.63], [126.95, 37.65]], ...overrides,
 });
 
 test("등산 시작 응답의 빈 이동 경로는 빈 배열로 바꾼다", async () => {
@@ -148,4 +150,67 @@ test("서버 오류(500)면 위치를 버리지 않는다", async () => {
   reset(fail(500, "COMMON_500"));
   await assert.rejects(flushHikePositions(23));
   assert.equal(queued(23).length, 2);
+});
+
+test("등산 기록 응답의 코스 경로와 길이를 받는다", async () => {
+  reset(ok(record()));
+  const started = await startOrResumeHikeRecord(6);
+  assert.deepEqual(started.coursePath, [[126.95, 37.63], [126.95, 37.65]]);
+  assert.equal(started.courseDistanceMeters, 2_224);
+  reset(ok(record({ coursePath: null, courseDistanceMeters: null })));
+  assert.deepEqual((await startOrResumeHikeRecord(6)).coursePath, []);
+});
+
+test("위치를 받으면 코스상 남은 거리를 다시 계산하고, 하산 중에는 시작점까지 남은 거리를 계산한다", () => {
+  finishHikeSession();
+  startHikeSession(schedule, "bukhansan", true, record({ hikeRecordId: 30, traveledPath: [] }));
+  assert.equal(getHikeSession().courseProgress, undefined);
+
+  // 코스 시작점에서 북쪽으로 약 1.11km
+  recordHikePosition([126.95, 37.64], true);
+  const ascent = getHikeSession().courseProgress;
+  assert.ok(Math.abs(ascent.alongMeters - 1_112) < 2);
+  assert.ok(Math.abs(ascent.remainingMeters - 1_112) < 2);
+
+  // 정상 근처에서 하산 시작: 진행 방향이 반대라 남은 거리는 시작점까지다.
+  recordHikePosition([126.95, 37.649], true);
+  startHikeDescent();
+  assert.ok(Math.abs(getHikeSession().courseProgress.remainingMeters - 2_113) < 3);
+});
+
+test("새로고침 후 이어 간 등산은 마지막 위치로 남은 거리를 계산한다", () => {
+  finishHikeSession();
+  restoreHikeSession({ schedule, mountainId: "bukhansan", alertsOn: true, phase: "active", startedAt: "2026-10-29T02:40:00Z",
+    hikeRecordId: 31, traveledPath: [[126.95, 37.635]], currentPosition: [126.95, 37.635],
+    coursePath: [[126.95, 37.63], [126.95, 37.65]], courseDistanceMeters: 2_224 });
+  assert.ok(Math.abs(getHikeSession().courseProgress.remainingMeters - 1_668) < 3);
+});
+
+test("하산을 시작하면 그 지점부터 하산 경로를 새로 그리고, 순번을 기록별로 보관한다", () => {
+  finishHikeSession();
+  startHikeSession(schedule, "bukhansan", true, record({ hikeRecordId: 40, traveledPath: [] }));
+  recordHikePosition([126.95, 37.635], true);
+  recordHikePosition([126.95, 37.649], true);
+  startHikeDescent();
+  assert.equal(getHikeSession().descentPathStart, 1);
+  assert.equal(storage.get("trail-map.hike-descent-start.40"), "1");
+
+  finishHikeSession();
+  assert.equal(storage.has("trail-map.hike-descent-start.40"), false);
+});
+
+test("새로고침 후 하산 중이면 보관한 순번을 쓰고, 없으면 정상에 가장 가까운 지점부터 그린다", () => {
+  const restored = (hikeRecordId, traveledPath) => ({ schedule, mountainId: "bukhansan", alertsOn: true, phase: "downhill",
+    startedAt: "2026-10-29T02:40:00Z", hikeRecordId, traveledPath, currentPosition: traveledPath.at(-1),
+    coursePath: [[126.95, 37.63], [126.95, 37.65]], courseDistanceMeters: 2_224 });
+  const path = [[126.95, 37.63], [126.95, 37.64], [126.95, 37.6495], [126.95, 37.645]];
+
+  finishHikeSession();
+  storage.set("trail-map.hike-descent-start.41", "1");
+  restoreHikeSession(restored(41, path));
+  assert.equal(getHikeSession().descentPathStart, 1);
+
+  finishHikeSession();
+  restoreHikeSession(restored(42, path));
+  assert.equal(getHikeSession().descentPathStart, 2);
 });
