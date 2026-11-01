@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test, { after } from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { createServer } from 'vite';
+import { createServer, loadEnv } from 'vite';
 import { analysis, profile, noAnalysis } from './fixtures/course-analysis.mjs';
 import { detailAnalysisView } from '../src/utils/courseDetailAnalysis.ts';
 
@@ -13,6 +13,11 @@ const { courseFixtures } = await server.ssrLoadModule('/src/api/courseMock.ts');
 const { cartCatalog } = await server.ssrLoadModule('/src/pages/CartPage/catalog.ts');
 const { loadCourseDetailData } = await server.ssrLoadModule('/src/api/courseDetailMock.ts');
 const course = courseFixtures.find(c => c.id === 'bukhansan-baegundae');
+const env = loadEnv('development', process.cwd(), 'VITE_');
+const localAnalysisCourseId = Number(env.VITE_MOCK_BAEGUNDAE_ANALYSIS_COURSE_ID);
+const localAnalysisMountainId = Number(env.VITE_MOCK_BAEGUNDAE_ANALYSIS_MOUNTAIN_ID);
+const localAnalysisConfigured = Number.isSafeInteger(localAnalysisCourseId) && localAnalysisCourseId > 0
+  && Number.isSafeInteger(localAnalysisMountainId) && localAnalysisMountainId > 0;
 const data = { course: { ...course, distanceKm: 99, elevationGainMeters: 9999 }, spots: [] };
 function render(state, selectedIndex = 0) {
   return renderToStaticMarkup(createElement(CourseAnalysis, {
@@ -22,14 +27,16 @@ function render(state, selectedIndex = 0) {
 }
 
 test('연결된 개발용 코스는 상세 진입 가능하고 비교·상세의 분석 연결은 같으며 시설 ID는 별도다', async () => {
-  for (const [id, db] of [['bukhansan-baegundae', 1], ['daenammun', 2], ['bibong', 3]]) {
+  for (const [id, db] of [['bukhansan-baegundae', localAnalysisConfigured ? localAnalysisCourseId : 1], ['daenammun', 2], ['bibong', 3]]) {
     const item = courseFixtures.find(c => c.id === id);
     assert.equal(item.detailAvailable, true); assert.equal(item.analysisReference.courseId, db);
     assert.deepEqual(item.analysisReference, cartCatalog.find(c => c.id === id).analysisReference);
     const base = await loadCourseDetailData({ mountainId: 'bukhansan', courseId: id }, new AbortController().signal);
     assert.equal('samples' in base, false);
   }
-  assert.equal(course.backendCourseId, 2); assert.equal(course.analysisReference.courseId, 1);
+  assert.equal(course.backendCourseId, 2);
+  assert.equal(course.analysisReference.courseId, localAnalysisConfigured ? localAnalysisCourseId : 1);
+  assert.equal(course.analysisReference.mountainId, localAnalysisConfigured ? localAnalysisMountainId : 1);
 });
 
 test('API 요약·반올림된 읽기 값·미확인 상태가 표시되고 기본 정보의 예시 지표는 섞이지 않는다', () => {

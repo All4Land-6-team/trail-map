@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadCourseDetailData } from "../../../api/courseRoutes";
+import { loadCourseDetailData as loadExampleDetail } from "../../../api/courseDetailMock";
 import type { CourseRequest } from "../../../types/course";
 import type { CourseDetailState } from "../../../types/courseDetail";
 
@@ -12,7 +13,10 @@ export function useCourseDetail({ mountainId, courseId }: CourseRequest) {
   const notify = useCallback((message: string) => setToast({ id: ++toastId.current, message }), []);
   useEffect(() => {
     const controller = new AbortController();
-    loadCourseDetailData({ mountainId, courseId }, controller.signal).then(data => {
+    const preview = import.meta.env.DEV && import.meta.env.VITE_COURSE_PHOTO_SPOTS_SOURCE === "mock"
+      && mountainId === "bukhansan" && courseId === "bukhansan-baegundae";
+    const loadDetail = preview ? loadExampleDetail : loadCourseDetailData;
+    loadDetail({ mountainId, courseId }, controller.signal).then(data => {
       if (!controller.signal.aborted) setResult({ key, state: data ? { status: "success", data } : { status: "missing" } });
     }).catch(() => { if (!controller.signal.aborted) setResult({ key, state: { status: "error" } }); });
     return () => controller.abort();

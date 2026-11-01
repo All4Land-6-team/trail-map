@@ -9,7 +9,7 @@ public record FacilityResponse(
         long facilityId, Long mountainId, String name, FacilityType type,
         double longitude, double latitude, String sourceReportedStatus,
         String sourceRecordId, LocalDate sourceDate, OffsetDateTime importedAt,
-        Double distanceMeters, Source source
+        Double distanceMeters, Source source, long photoCount, long reviewCount
 ) {
     public record Source(long sourceId, String name, String provider, String url,
                          String format, String crs, String version) {}

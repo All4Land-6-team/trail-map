@@ -21,7 +21,16 @@ public class FacilityRepository {
             ST_X(f.facility_location) AS longitude, ST_Y(f.facility_location) AS latitude,
             f.official_status, f.source_record_id, f.source_date, f.imported_at,
             s.source_id, s.source_name, s.provider_name, s.source_url,
-            s.source_format, s.source_crs, s.source_version
+            s.source_format, s.source_crs, s.source_version,
+            (SELECT count(*) FROM spot_review review
+             WHERE review.facility_id = f.facility_id AND review.deleted_at IS NULL) AS review_count,
+            (SELECT count(*) FROM photo
+             WHERE photo.deleted_at IS NULL
+               AND (photo.facility_id = f.facility_id
+                 OR photo.spot_review_id IN (
+                     SELECT review.review_id FROM spot_review review
+                     WHERE review.facility_id = f.facility_id AND review.deleted_at IS NULL
+                 ))) AS photo_count
             """;
     private static final String FROM = " FROM facility f JOIN data_source s ON s.source_id = f.source_id ";
     private static final RowMapper<FacilityResponse> ROW_MAPPER = (rs, rowNumber) -> new FacilityResponse(
@@ -32,7 +41,8 @@ public class FacilityRepository {
             rs.getObject("imported_at", OffsetDateTime.class), rs.getObject("distance_meters", Double.class),
             new FacilityResponse.Source(rs.getLong("source_id"), rs.getString("source_name"),
                     rs.getString("provider_name"), rs.getString("source_url"), rs.getString("source_format"),
-                    rs.getString("source_crs"), rs.getString("source_version"))
+                    rs.getString("source_crs"), rs.getString("source_version")),
+            rs.getLong("photo_count"), rs.getLong("review_count")
     );
     private final NamedParameterJdbcTemplate jdbc;
 

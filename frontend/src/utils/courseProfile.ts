@@ -12,6 +12,11 @@ export function selectCourseSpots(spots: readonly CourseSpot[], category: SpotCa
   return spots.filter(spot => category === "all" || spot.kind === category);
 }
 
+export function courseSpotAction(spot: CourseSpot, focusedSpotId?: string): "focus" | "open" | "unavailable" {
+  if (focusedSpotId !== spot.id || (spot.facilityId !== undefined && !spot.communityTarget)) return "focus";
+  return spot.communityTarget ? "open" : "unavailable";
+}
+
 /** 누적 선분 길이의 비율로 보간한다. 그래프와 지도는 반환된 동일 좌표를 참조한다. */
 export function coordinateAlongRoute(route: readonly [number, number][], ratio: number): [number, number] | null {
   if (!route.length) return null;

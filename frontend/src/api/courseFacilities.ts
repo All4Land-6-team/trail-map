@@ -32,19 +32,22 @@ export function parseCourseFacilities(value: unknown, radiusMeters = COURSE_FACI
   if (!isRecord(value) || value.success !== true || !Array.isArray(value.data)) throw new Error(FORMAT_ERROR);
   const ids = new Set<number>();
   const facilities = value.data.map((item): CourseFacility => {
-    if (!isRecord(item) || !isId(item.facilityId) || ids.has(item.facilityId)
+    if (!isRecord(item) || !isId(item.facilityId) || !isId(item.mountainId) || ids.has(item.facilityId)
       || item.type !== type || !(item.name === null || typeof item.name === 'string')
       || !isCoordinate(item.longitude, 180) || !isCoordinate(item.latitude, 90)
       || typeof item.distanceMeters !== 'number' || !Number.isFinite(item.distanceMeters)
       || item.distanceMeters < 0 || item.distanceMeters > radiusMeters
+      || !Number.isSafeInteger(item.photoCount) || (item.photoCount as number) < 0
+      || !Number.isSafeInteger(item.reviewCount) || (item.reviewCount as number) < 0
       || !(item.sourceDate === null || (typeof item.sourceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.sourceDate)))) {
       throw new Error(FORMAT_ERROR);
     }
     ids.add(item.facilityId);
     return {
-      facilityId: item.facilityId, name: item.name as string | null, type,
+      facilityId: item.facilityId, mountainId: item.mountainId, name: item.name as string | null, type,
       longitude: item.longitude, latitude: item.latitude, distanceMeters: item.distanceMeters,
       sourceDate: item.sourceDate as string | null,
+      photoCount: item.photoCount as number, reviewCount: item.reviewCount as number,
     };
   });
   return facilities.sort((a, b) => a.distanceMeters - b.distanceMeters || a.facilityId - b.facilityId);

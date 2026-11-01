@@ -13,13 +13,15 @@ import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
 import type { CourseRequest } from "../../types/course";
 import type { CourseDetailView, CourseSpot, CourseSpotRequest, ProfileVisibility } from "../../types/courseDetail";
-import { selectCourseSpots, toggleProfileMetric } from "../../utils/courseProfile";
+import { courseSpotAction, selectCourseSpots, toggleProfileMetric } from "../../utils/courseProfile";
 import { detailAnalysisView, detailRouteLabel } from "../../utils/courseDetailAnalysis";
 import { useCourseAnalysis } from "./hooks/useCourseAnalysis";
 import { CourseAnalysis } from "./components/CourseAnalysis";
 import { CourseSpots } from "./components/CourseSpots";
 import { useCourseDetail } from "./hooks/useCourseDetail";
 import { useCourseFacilities } from "./hooks/useCourseFacilities";
+import { useCoursePhotoSpots } from "./hooks/useCoursePhotoSpots";
+import { coursePhotoSpotDisplay } from "../../utils/coursePhotoSpotDisplay";
 import { withCourseFacilities } from "../../utils/courseFacilities";
 import { useDetailSheet } from "./hooks/useDetailSheet";
 import "./course-detail.css";
@@ -51,6 +53,12 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const savedIds = useSavedCourseIds();
   const saved = savedIds.includes(courseId);
   const data = state.status === "success" ? state.data : null;
+  const examplePhotos = import.meta.env.DEV && import.meta.env.VITE_COURSE_PHOTO_SPOTS_SOURCE === "mock"
+    && mountainId === "bukhansan" && courseId === "bukhansan-baegundae";
+  const photos = useCoursePhotoSpots(mountainId, courseId, !examplePhotos && !!data && view.tab === "spots"
+    && (view.category === "all" || view.category === "photo"), data?.course.analysisReference?.mountainId);
+  const photoState = coursePhotoSpotDisplay(photos.state, data?.spots ?? EMPTY_SPOTS, examplePhotos);
+  const photoSpots = photoState.status === "success" ? photoState.spots : EMPTY_SPOTS;
   const { state: analysisState, retry: retryAnalysis } = useCourseAnalysis(data?.course ?? null);
   const analysisView = useMemo(() => detailAnalysisView(data?.course ?? null, analysisState), [data, analysisState]);
   const { samples } = analysisView;
@@ -72,14 +80,13 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const reviewTotal = communityCourse?.reviewCount ?? communityReviews.length;
   const mapCourse = useMemo(() => data ? { ...data.course, routeCoordinates: analysisView.routeCoordinates } : null, [data, analysisView]);
   const courses = useMemo(() => mapCourse && mapCourse.routeCoordinates.length > 1 ? [mapCourse] : [], [mapCourse]);
-  const allSpots = useMemo(() => withCourseFacilities(data?.spots ?? EMPTY_SPOTS, [...restroomSpots, ...waterSpots, ...shelterSpots]),
-    [data, restroomSpots, waterSpots, shelterSpots]);
+  const allSpots = useMemo(() => withCourseFacilities(photoSpots, [...restroomSpots, ...waterSpots, ...shelterSpots]),
+    [photoSpots, restroomSpots, waterSpots, shelterSpots]);
   const spots = useMemo(() => selectCourseSpots(allSpots, view.category), [allSpots, view.category]);
   const summitCoordinate = useMemo(() => samples.reduce<(typeof samples)[number] | null>((highest, point) =>
     point.elevationMeters !== null && (!highest || point.elevationMeters > highest.elevationMeters!) ? point : highest, null)?.coordinate, [samples]);
   const selectedIndex = samples.length ? Math.max(0, Math.min(selection?.key === selectionKey ? selection.index : 0, samples.length - 1)) : -1;
   const sample = samples[selectedIndex] ?? null;
-  const selectedSpot = spots.find(spot => spot.id === view.spotId) ?? spots[0];
   const back = onBack ?? (() => navigateFromHome(coursePaths.list(mountainId, courseId)));
 
   useEffect(() => {
@@ -126,10 +133,16 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   }
   function openSpot(spot: CourseSpot) {
     const next = { ...view, spotId: spot.id };
-    if (spot.facilityId !== undefined) { changeView(next); return; }
+    const action = courseSpotAction(spot, view.spotId);
+    if (action === "focus") { changeView(next); return; }
+    if (action === "unavailable") {
+      notify(spot.example ? "화면 예시 스팟입니다. 커뮤니티에 등록된 스팟만 열 수 있어요." : "스팟 상세를 열 수 없어요.");
+      return;
+    }
     const returnPath = courseDetailPath(request, next, returnTo);
-    if (onSpotOpen) onSpotOpen({ ...request, spotId: spot.id, category: view.category, returnPath });
-    else notify("스팟 후기 화면은 커뮤니티 작업과 통합 후 연결됩니다.");
+    if (onSpotOpen && spot.communityTarget) onSpotOpen({ ...request, mountainId: spot.communityTarget.mountainId,
+      targetType: spot.communityTarget.targetType, spotId: spot.communityTarget.targetId, category: view.category, returnPath });
+    else notify("스팟 상세를 열 수 없어요.");
   }
   function navigateTab(destination: BottomDestination) {
     navigateFromHome(homePaths[destination]);
@@ -150,8 +163,11 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
           onSelect={() => {}} onNotify={notify} summitCoordinate={summitCoordinate} summitLabel="최고 고도"
           dataLabel={detailRouteLabel(data.course, analysisState, analysisView)}
           profileSample={view.tab === "analysis" ? sample : null} spots={view.tab === "spots" ? spots : undefined}
-          selectedSpotId={selectedSpot?.id} focusSpotId={view.spotId} showSpotLabels={view.category !== "all"}
-          onSpotSelect={spotId => changeView({ ...view, spotId })} />
+          selectedSpotId={view.spotId} focusSpotId={view.spotId} showSpotLabels={view.category !== "all"}
+          onSpotSelect={spotId => {
+            const spot = spots.find(item => item.id === spotId);
+            if (spot) openSpot(spot);
+          }} />
       </div>
       <TopBar title={`${data.course.name} 상세`} showAction={false} onBack={back} className="course-detail-page__top" />
       <BottomSheet title="코스 정보" showClose={false} showDescription={false} showFooter className="course-detail-sheet"
@@ -163,7 +179,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
           ? <CourseAnalysis data={data} analysisState={analysisState} analysisView={analysisView} onRetryAnalysis={retryAnalysis}
             reviews={reviewExcerpts} reviewTotal={reviewTotal} visibility={visibility} selectedIndex={selectedIndex}
             onSelect={index => setSelection({ key: selectionKey, index })} onToggle={toggleMetric} onReviewsOpen={onReviewsOpen ? () => onReviewsOpen(request) : undefined} />
-          : <CourseSpots spots={spots} category={view.category} selectedId={selectedSpot?.id}
+          : <CourseSpots spots={spots} category={view.category} selectedId={view.spotId}
+            photos={photoState} onRetryPhotos={photos.retry}
             restrooms={restrooms.state} onRetryRestrooms={restrooms.retry}
             water={water.state} onRetryWater={water.retry}
             shelters={shelters.state} onRetryShelters={shelters.retry}

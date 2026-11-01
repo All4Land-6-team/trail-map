@@ -96,6 +96,20 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 ## 커뮤니티 API
 
+### 코스별 사진 스팟 (#99)
+
+`GET /api/v1/community/courses/{courseId}/photo-spots`는 `X-User-Id`와 양의 정수 코스 ID를 받습니다.
+`user_spot.hike_record_id → hike_record.course_id`가 요청 코스와 일치하고 코스의 소속 산과 일치하는
+`PHOTO_SPOT` 사용자 스팟만 반환합니다. 응답은 기존 스팟 목록 형식이며 API 유형은 `PHOTO_SPOT`, 대상 종류는
+`USER_SPOT`입니다. 스팟 ID 오름차순으로 반환하고 삭제·숨김·등록 산행 미연결 스팟은 제외합니다.
+거리 반경, 후기 작성자의 코스, 사진 유무, 현재 후기 작성 가능 기간은 목록 포함 조건이 아닙니다.
+새 DB 컬럼이나 마이그레이션은 필요하지 않습니다.
+
+없는 코스는 기존 `COURSE_NOT_FOUND` 오류, 정상 빈 결과는 `data: []`입니다.
+스팟 사진 API는 직접 사진과 활성 후기 사진을 반환하며 삭제된 후기의 사진은 제외합니다.
+`CoursePhotoSpotServiceTest`, `CommunityQueryControllerTest`, `CommunityQueryApiIntegrationTest`에서
+검증합니다. PostGIS 통합 테스트는 Docker가 있을 때만 실행합니다.
+
 모든 커뮤니티 조회 요청은 임시 사용자 식별 헤더 `X-User-Id`가 필요합니다.
 
 등산 종료 시 `POST /api/v1/hike-records/{hikeRecordId}/finish`를 호출해 진행 중 기록을 `COMPLETED`로 변경합니다. 이 기록이 아래 후기 작성 자격에 사용됩니다.
@@ -152,6 +166,8 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 산 소속 판정이 완료된 JSON v2의 신규 시설만 적재한다. 기존 시설의 산 소속은 갱신하지 않는다. 판정과 코스 조회 조건은 [산 경계 문서](../docs/facility-mountain-boundary.md)를 참고한다.
 
 화장실 시범 전처리·JDBC 적재·조회 API·검증 방법은 [시설 데이터 문서](../docs/facilities.md)를 참고합니다.
+
+코스 주변 시설 조회 응답의 `photoCount`와 `reviewCount`는 DB에서 계산합니다. 활성 `spot_review`만 후기 수에 포함하고, 사진 수는 삭제되지 않은 시설 직접 사진과 활성 후기의 사진만 포함합니다. 삭제된 후기의 사진과 삭제된 사진은 제외합니다.
 
 ### 커뮤니티 사진 저장
 

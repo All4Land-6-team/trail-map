@@ -215,7 +215,7 @@ npm run build
 
 `api/courseAnalysis.ts`의 단일 요약 조회는 `GET /api/v1/courses/{courseId}/analysis`를 호출하고, 검증한 분석 ID의 `/api/v1/course-analyses/{analysisId}/profile`로 샘플을 읽습니다. #89의 타입·응답 검증·시간 초과·취소 처리를 재사용합니다. 요약은 요청한 코스·산 ID와 일치해야 하며 프로필은 동일한 분석 ID·버전·설정·지표의 결과여야 합니다.
 
-`Course.analysisReference`가 분석 연결의 접점입니다. 시설 시범 ID인 `backendCourseId`를 분석에 사용하지 않습니다. 개발 서버의 `courseMock.ts`는 기존 `DEV_COURSE_IDS`와 동일한 명시적 시드 연결을 제공하며 상세·비교가 이를 공유합니다. 운영 빌드에서는 이 개발 연결이 없으므로 실제 코스 API가 `analysisReference`를 제공하기 전까지 미연결 상태로 표시합니다.
+`Course.analysisReference`가 분석 연결의 접점입니다. 시설 시범 ID인 `backendCourseId`를 분석에 사용하지 않습니다. 개발 서버의 `courseMock.ts`는 기존 `DEV_COURSE_IDS`와 동일한 명시적 시드 연결을 제공하며 상세·비교가 이를 공유합니다. 백운대 분석이 다른 로컬 DB 코스에 적재됐다면 `frontend/.env.local`에 `VITE_MOCK_BAEGUNDAE_ANALYSIS_COURSE_ID`와 `VITE_MOCK_BAEGUNDAE_ANALYSIS_MOUNTAIN_ID`를 함께 지정합니다. 이 값은 개발 서버에서만 백운대 분석 연결에 적용됩니다. 운영 빌드에서는 이 개발 연결이 없으므로 실제 코스 API가 `analysisReference`를 제공하기 전까지 미연결 상태로 표시합니다.
 
 - 개발 검증 주소: `/#mountains/bukhansan/courses/bukhansan-baegundae`, `/#mountains/bukhansan/courses/daenammun`, `/#mountains/bukhansan/courses/bibong`.
 - 기존 #89 과정에서 적재한 분석 결과를 그대로 조회합니다. 이 변경만을 위해 DEM 재분석이나 DB 재적재를 할 필요는 없습니다. 백엔드가 실행되어 있어야 합니다.
@@ -225,7 +225,7 @@ npm run build
 - 선택 값은 거리 km 소수 2자리, 고도 m·경사 % 소수 1자리로 표시합니다. 첫 샘플의 경사와 결측은 0이 아닌 `—`이며 반올림은 표시 값에만 적용합니다.
 - `PARTIAL`·`NO_DATA`·`OUTDATED` 등의 상태와 품질 사유·분석 시각·확인 범위를 표시합니다. 개발용 예시 경로와 수직 기준 미확인 상태를 유지합니다. 오래된 분석은 해당 분석 시점의 프로필을 표시합니다.
 - 로딩·미연결·오류·분석 미존재·프로필 실패를 구분합니다. 프로필만 실패하면 요약은 유지하고 재시도를 제공하며, 코스 변경·화면 이탈 시 이전 요청 결과가 섞이지 않도록 합니다.
-- 스팟·통제 탭, 담기·일정·후기 복귀, 고도·경사 전환과 키보드·포인터 선택 및 시트 높이 조절은 유지합니다. 사진 스팟·기본 코스 정보의 실제 API 전환은 해당 담당 기능과 별도 통합합니다.
+- 스팟·통제 탭, 담기·일정·후기 복귀, 고도·경사 전환과 키보드·포인터 선택 및 시트 높이 조절은 유지합니다. 사진 스팟의 실제 조회는 아래 #99를 참고합니다. 기본 코스 정보의 실제 API 전환은 별도 통합합니다.
 
 검증: `npm run test:course-detail`은 기존 상세 테스트와 단일 조회·컴포넌트 검증을 함께 실행합니다. `npm run test:comparison`, `npm run test:course-facilities`, `npm run lint`, `npm run build`로 연관 기능도 확인합니다. 브라우저에서는 세 코스 상세 진입, 음수 경사·결측·품질 상태·재시도·요청 경합, 지도 선택 좌표, 시트 조절·담기·일정과 320×480·390×844·1280×900 배치를 확인합니다.
 
@@ -256,6 +256,23 @@ npm run build
 - 거리 보간은 `utils/courseRouteMotion.ts`, 카드 안착은 `utils/settledCarouselSelection.ts`, 시트 복원은 `utils/sheetPreviewSession.ts`로 분리합니다. 지도 레이어·카메라는 `useEnhancedCourseRoute`, 미리보기 생명주기는 `useCourseRoutePreview`에서 관리합니다.
 
 검증: `node --experimental-strip-types --test tests/*.mjs tests/*.cjs`, `npm run lint`, `npm run build`. 브라우저에서는 2D/3D 전환, 카드·점 선택, 시트 높이 변경, 미리보기 재생·정지·종료·지도 조작 시 정지, 작은 화면의 컨트롤 가림을 확인합니다.
+
+## 코스별 사진 스팟 조회 (#99)
+
+`홈 → 산 → 코스 → 스팟·통제정보 → 사진 스팟`에서 실제 경로(`db-{courseId}`)를 선택하면 해당 코스 ID로 `GET /api/v1/community/courses/{courseId}/photo-spots`를 호출하고 경로 응답의 산 ID와 일치하는지 확인합니다. 기존 문자열 ID는 커뮤니티 산·코스의 외부 ID로 확인합니다.
+다른 산을 순회하지 않으며 산·코스가 유일하게 확인되지 않으면 조회하지 않습니다.
+시설 조회·분석용 개발 ID나 산 이름만으로 다른 코스를 추정하지 않습니다. 연결되지 않은 코스는 준비 중,
+실패는 재시도로 구분합니다. 개발·운영 모두 실제 빈 결과는 0곳으로 표시합니다. 개발 서버에서 `VITE_COURSE_PHOTO_SPOTS_SOURCE=mock`을 지정하고 재시작한 뒤 `/#mountains/bukhansan/courses/bukhansan-baegundae?tab=spots&category=photo`에 접속하면 보존된 예시 2개를 확인할 수 있습니다. 실제 경로 주소는 계속 API를 사용합니다.
+
+로컬 DB에는 `data/task-notes/seed-course-photo-spots.sql`을 실행해 예시 2개와 동일한 이름·좌표의
+스팟을 등록할 수 있습니다. 등록 당시 산행의 코스 ID에 연결된 실제 사진 스팟을 우선 표시합니다. 지도 마커 또는 목록을 처음 누르면
+해당 스팟을 선택하고 지도 중앙으로 이동합니다. 같은 실제 사진 스팟을 다시 누르면 산 ID·`targetType`·대상 ID로 커뮤니티 상세에 진입하고,
+`returnTo`로 코스·카테고리·선택을 복원합니다.
+요청한 스팟이 없으면 임의의 다른 스팟으로 이동하지 않습니다. 공식 시설과 사용자 스팟의 내부 키는
+`targetType:targetId`로 구분합니다. 상세 사진첩은 스팟 사진 API에서 직접 등록 사진과 활성 후기 사진을 조회합니다.
+
+Node.js 24에서 `npm run test:course-photo-spots`, `npm run test:course-detail`,
+`node --test tests/community.test.mjs tests/screen-flow.test.mjs`, `npm run lint -- src`, `npm run build`로 검증합니다.
 
 ## 폴더 규칙
 
@@ -311,9 +328,9 @@ OpenFreeMap 배경지도는 공급원의 HTTP 응답에 따른 기본 브라우�
 
 `CourseDetailPage` → `useCourseFacilities` → `api/courseFacilities.ts` → `GET /api/v1/courses/{courseId}/facilities?type=RESTROOM&radiusMeters=250` → `utils/courseFacilities.ts` → `CourseSpots`와 `CourseRouteMap` 순서로 읽는다. 검토 API의 GeoJSON과 달리 코스 API는 `SuccessResponse.data` 배열을 반환한다. 프론트는 R만 수행하며 시설·코스를 생성하거나 변경하지 않는다.
 
-화장실·쉼터·음수대 및 전체 탭은 같은 API 결과를 사용한다. 합성 시설은 제거하며 오류·빈 응답에 대한 대체 데이터로도 표시하지 않는다. 시설 목록 선택은 지도 위치로 이동하고, 사진 예시 스팟의 이동은 기존대로 동작한다. 미연결 코스·조회 중·실패와 재시도·결과 없음 상태를 구분한다.
+화장실·쉼터·음수대 및 전체 탭은 같은 API 결과를 사용한다. 합성 시설은 제거하며 오류·빈 응답에 대한 대체 데이터로도 표시하지 않는다. 지도 마커나 목록에서 시설을 처음 누르면 해당 위치를 지도 중앙으로 이동하고, 같은 시설을 다시 누르면 API의 실제 산 ID·시설 ID로 커뮤니티 스팟 상세에 이동한다. 돌아오면 코스·카테고리·선택한 시설을 복원한다. 사진 예시 스팟은 화면 개발용으로 표시하고, 실제 DB 스팟은 같은 2단계 선택으로 커뮤니티 상세로 이동한다. 미연결 코스·조회 중·실패와 재시도·결과 없음 상태를 구분한다.
 
-250m는 시설 Point에서 코스 전체 LineString까지의 최단거리이며 도보 이동거리가 아니다. 코스는 9개 점의 합성 경로(약 1.2km)로 화면 분석 예시의 4.2km와 다르다. 시설 위치는 원본 자료의 좌표이며, 원본 기준일을 표시하고 과거 상태를 현재 운영 여부로 해석하지 않는다. 쉼터·음수대도 실제 API 결과이며 사진 스팟만 화면 예시다.
+250m는 시설 Point에서 코스 전체 LineString까지의 최단거리이며 도보 이동거리가 아니다. 코스는 9개 점의 합성 경로(약 1.2km)로 화면 분석 예시의 4.2km와 다르다. 시설 위치는 원본 자료의 좌표이며, 목록에는 원본 기준일과 현장 상태 안내를 표시하지 않는다. 시설의 사진·후기 수는 코스 시설 API가 DB에서 집계한 값을 표시하며, 누락된 값은 임의의 0으로 대체하지 않는다. 과거 상태를 현재 운영 여부로 해석하지 않는다. 쉼터·음수대는 실제 API 결과이며 사진 스팟은 실제 커뮤니티 결과를 우선 표시한다. 개발 화면에는 예시 스팟을 유지한다.
 
 `npm run test:course-facilities`, `npm run test:course-detail`, `npm run test:facilities`, `npm run lint`, `npm run build`로 API 계약·화장실 합성 데이터 제거·조회 실패 및 취소·기존 화면 로직·타입을 확인한다.
 

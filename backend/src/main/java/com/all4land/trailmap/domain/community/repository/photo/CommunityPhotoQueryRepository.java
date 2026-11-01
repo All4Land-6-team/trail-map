@@ -83,7 +83,8 @@ public class CommunityPhotoQueryRepository {
                     OR spot_review.spot_id = :targetId
                     """;
         };
-        return findAll("photo.deleted_at IS NULL AND (" + targetCondition + ")", targetId, limit, offset);
+        return findAll("photo.deleted_at IS NULL AND (photo.spot_review_id IS NULL OR spot_review.deleted_at IS NULL) AND ("
+                + targetCondition + ")", targetId, limit, offset);
     }
 
     public Optional<CommunityPhotoQueryResult> findPhoto(Long photoId) {

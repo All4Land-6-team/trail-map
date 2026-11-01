@@ -347,6 +347,60 @@ class CommunityQueryApiIntegrationTest {
         return request.header("X-User-Id", userId);
     }
 
+    @Test
+    void 등록_코스의_사진_스팟만_조회하고_다른_코스_후기는_소속을_바꾸지_않는다() throws Exception {
+        long firstCourse = courseId;
+        long firstHike = insertCompletedHike("2026-10-20 01:00:00+00", "2026-10-20 04:00:00+00");
+        courseId = jdbcTemplate.queryForObject("""
+                INSERT INTO course (mountain_id, course_name, course_geometry, source_id, source_hash, imported_at)
+                SELECT mountain_id, '다른 코스', course_geometry, source_id, ?, now()
+                FROM course WHERE course_id = ? RETURNING course_id
+                """, Long.class, hash(), firstCourse);
+        long secondHike = insertCompletedHike("2026-10-21 01:00:00+00", "2026-10-21 04:00:00+00");
+        long first = insertPhotoSpot(firstHike, "PHOTO_SPOT", "PENDING");
+        long second = insertPhotoSpot(secondHike, "PHOTO_SPOT", "PENDING");
+        insertPhotoSpot(firstHike, "REST_AREA", "PENDING");
+        insertPhotoSpot(firstHike, "PHOTO_SPOT", "HIDDEN");
+        insertPhotoSpot(null, "PHOTO_SPOT", "PENDING");
+        long deleted = insertPhotoSpot(firstHike, "PHOTO_SPOT", "PENDING");
+        jdbcTemplate.update("UPDATE user_spot SET deleted_at = now() WHERE spot_id = ?", deleted);
+        jdbcTemplate.update("""
+                INSERT INTO spot_review (user_id, spot_id, hike_record_id, review_content)
+                VALUES (?, ?, ?, '다른 코스에서 방문')
+                """, userId, first, secondHike);
+        for (long[] pair : new long[][]{{firstCourse, first}, {courseId, second}}) {
+            mockMvc.perform(asUser(get("/v1/community/courses/" + pair[0] + "/photo-spots")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].targetId").value(pair[1]))
+                    .andExpect(jsonPath("$.data[0].photoCount").value(0));
+        }
+        mockMvc.perform(asUser(get("/v1/community/courses/" + Long.MAX_VALUE + "/photo-spots")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 스팟_사진은_직접_사진과_활성_후기_사진만_포함한다() throws Exception {
+        insertPhoto("direct.webp", "spot_id", userSpotId);
+        long review = jdbcTemplate.queryForObject("""
+                INSERT INTO spot_review (user_id, spot_id, review_content)
+                VALUES (?, ?, '삭제된 후기') RETURNING review_id
+                """, Long.class, userId, userSpotId);
+        insertPhoto("deleted-review.webp", "spot_review_id", review);
+        jdbcTemplate.update("UPDATE spot_review SET deleted_at = now() WHERE review_id = ?", review);
+        mockMvc.perform(asUser(get("/v1/community/mountains/%d/spots/USER_SPOT/%d/photos".formatted(mountainId, userSpotId))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].url", containsString("direct.webp")));
+    }
+
+    private long insertPhotoSpot(Long hikeId, String type, String status) {
+        return jdbcTemplate.queryForObject("""
+                INSERT INTO user_spot (user_id, mountain_id, hike_record_id, spot_type, spot_location, spot_name, spot_status)
+                VALUES (?, ?, ?, ?, ST_SetSRID(ST_MakePoint(126.98, 37.66), 4326), '사진 명소', ?)
+                RETURNING spot_id
+                """, Long.class, userId, mountainId, hikeId, type, status);
+    }
+
     private long insertUser(String nickname) {
         return jdbcTemplate.queryForObject(
                 "INSERT INTO app_user (nickname) VALUES (?) RETURNING user_id",
