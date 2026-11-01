@@ -21,6 +21,7 @@ DB 스키마 변경은 Flyway migration SQL 파일로만 수행합니다.
 - `V5__prevent_duplicate_community_reviews.sql`: 기존 활성 중복은 최신 한 건만 남겨 소프트 삭제하고, 같은 산행 기록과 같은 산·코스·사용자 스팟·공식 시설 대상의 중복 등록을 막습니다. 다른 산행 기록이나 다른 대상의 후기는 허용합니다.
 - `V6__add_community_spot_request_id.sql`: 사용자 스팟 등록 요청 ID와 사용자별 부분 유일 인덱스를 추가해 재시도 중복을 방지합니다.
 - `V7__add_course_route_catalog.sql`: 후보 경로 데이터셋의 SHA-256·산 매핑과 코스별 경유지·검증 상태를 추가합니다. 기존 코스 및 분석 결과는 변경하지 않습니다.
+- `V8__add_course_guide_metadata.sql`: 공식 안내의 구간·시간·난이도·URL·확인일과 적용한 코스 버전·경로 지문을 보존합니다. 데이터는 별도 검증 CLI로 적재합니다.
 
 `app_user`는 로그인·회원가입 없이 사용하는 익명 사용자를 나타냅니다. 닉네임은 NULL과 중복을 허용하며, NULL이면 애플리케이션에서 `익명{user_id}` 형식으로 표시합니다.
 

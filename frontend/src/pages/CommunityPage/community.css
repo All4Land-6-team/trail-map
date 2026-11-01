@@ -1,4 +1,4 @@
-.community-page { --community-surface:#f3f7f0; --community-soft:#e9f1e6; --community-nav-height:calc(72px + env(safe-area-inset-bottom)); position:relative; display:flex; flex-direction:column; width:min(100%,390px); height:100dvh; min-height:480px; margin:0 auto; overflow:hidden; color:var(--af-ink); background:var(--community-surface); font-family:"Noto Sans KR",sans-serif; }
+.community-page { --community-surface:#f3f7f0; --community-soft:#e9f1e6; --community-nav-height:calc(72px + env(safe-area-inset-bottom)); position:relative; display:flex; flex-direction:column; width:min(100%,390px); height:var(--app-viewport-height); min-height:480px; margin:0 auto; overflow:hidden; color:var(--af-ink); background:var(--community-surface); font-family:"Noto Sans KR",sans-serif; }
 .community-page :is(.community-map__cluster-choices,.af-bottom-sheet__content,.community-spot-dropdown__menu,.community-gallery-page,.community-form-layout__scroll) { scrollbar-width:thin; scrollbar-color:var(--af-muted) transparent; }
 .community-page :is(.community-map__cluster-choices,.af-bottom-sheet__content,.community-spot-dropdown__menu,.community-gallery-page,.community-form-layout__scroll)::-webkit-scrollbar { width:6px; }
 .community-page :is(.community-map__cluster-choices,.af-bottom-sheet__content,.community-spot-dropdown__menu,.community-gallery-page,.community-form-layout__scroll)::-webkit-scrollbar-track { background:transparent; }
@@ -57,7 +57,7 @@
 .community-map-filters::-webkit-scrollbar { display:none; }
 .community-map-filters .af-chip { flex:none; height:34px; padding-inline:14px; }
 .community-map__dimension.af-map-action { position:absolute; z-index:3; top:128px; right:17px; width:40px; height:40px; border:0; border-radius:12px; color:var(--af-green-dark); background:#fff; box-shadow:0 3px 5px rgb(23 71 54 / 10%); }
-.community-page__sheet { position:absolute; z-index:2; right:0; bottom:var(--community-nav-height); left:0; height:var(--community-sheet-height,auto); max-height:calc(100dvh - var(--community-nav-height) - 170px); min-height:32px; overflow:hidden; padding:8px 20px 16px; border-radius:25px 25px 0 0; box-shadow:0 -8px 12px #173d320d; transition:var(--community-sheet-transition,none); }
+.community-page__sheet { position:absolute; z-index:2; right:0; bottom:var(--community-nav-height); left:0; height:var(--community-sheet-height,auto); max-height:calc(var(--app-viewport-height) - var(--community-nav-height) - 170px); min-height:32px; overflow:hidden; padding:8px 20px 16px; border-radius:25px 25px 0 0; box-shadow:0 -8px 12px #173d320d; transition:var(--community-sheet-transition,none); }
 .community-page__sheet--map { gap:6px; }
 @media(prefers-reduced-motion:reduce) { .community-page__sheet { transition:none; } }
 .community-page__sheet--peek { padding-bottom:0; }
@@ -133,7 +133,7 @@
 .community-detail-meta { margin:0 0 4px; color:#849d89; font-size:11px; }
 .community-detail-label { margin:10px 0 6px; color:var(--af-ink); font-size:12px; font-weight:600; }
 .community-page__sheet--detail .af-bottom-sheet__body { gap:4px; }
-.community-page__sheet--detail { max-height:calc(100dvh - var(--community-nav-height) - 96px); }
+.community-page__sheet--detail { max-height:calc(var(--app-viewport-height) - var(--community-nav-height) - 96px); }
 .community-page__sheet--detail .af-bottom-sheet__title-row { margin-top:3px; }
 .community-page__sheet--detail-level-photo .community-detail-label,
 .community-page__sheet--detail-level-photo .community-review-heading,
@@ -201,8 +201,8 @@
 .community-quote__photo:focus-visible { outline:2px solid var(--af-green); outline-offset:2px; }
 .community-photo-lightbox.af-modal-layer { z-index:10; display:grid; place-items:center; padding:20px; background:rgb(0 0 0 / 85%); }
 .community-registration-error.af-modal-layer { display:grid; place-items:center; padding:20px; }
-.community-photo-lightbox__dialog { position:relative; display:grid; width:100%; max-height:calc(100dvh - 88px); place-items:center; }
-.community-photo-lightbox__dialog img { display:block; max-width:100%; max-height:calc(100dvh - 88px); border-radius:8px; object-fit:contain; }
+.community-photo-lightbox__dialog { position:relative; display:grid; width:100%; max-height:calc(var(--app-viewport-height) - 88px); place-items:center; }
+.community-photo-lightbox__dialog img { display:block; max-width:100%; max-height:calc(var(--app-viewport-height) - 88px); border-radius:8px; object-fit:contain; }
 .community-photo-lightbox__close { position:absolute; top:-48px; right:0; display:grid; width:44px; height:44px; place-items:center; padding:0; border:0; border-radius:50%; color:#fff; background:transparent; }
 .community-photo-lightbox__close:focus-visible { outline-color:#fff; }
 .community-detail-metrics { color:#617b6c; font-size:10px; white-space:nowrap; }
@@ -311,7 +311,7 @@
 @keyframes community-toast-lifecycle { 0% { opacity:0; transform:translate(-50%,8px); } 7%,93% { opacity:1; transform:translate(-50%,0); } 100% { opacity:0; transform:translate(-50%,-4px); } }
 .community-page__toast { position:absolute; z-index:10; bottom:calc(146px + env(safe-area-inset-bottom)); left:50%; width:max-content; max-width:calc(100% - 32px); min-height:32px; transform:translateX(-50%); padding:8px 12px; border-radius:16px; font-size:11px; line-height:16px; text-align:center; pointer-events:none; animation:community-toast-lifecycle 2800ms linear both; }
 @media(prefers-reduced-motion:reduce) { .community-page__toast { animation:none; } }
-@media(max-height:740px) { .community-page__sheet--detail-mountain { max-height:calc(100dvh - var(--community-nav-height) - 200px); } .community-page__sheet--detail .community-gallery-strip .community-gallery-tile { flex-basis:132px; width:132px; height:132px; } }
+@media(max-height:740px) { .community-page__sheet--detail-mountain { max-height:calc(var(--app-viewport-height) - var(--community-nav-height) - 200px); } .community-page__sheet--detail .community-gallery-strip .community-gallery-tile { flex-basis:132px; width:132px; height:132px; } }
 @media(max-height:620px) { .community-form-layout__scroll { padding-top:10px; } }
 @media(max-height:720px) { .community-map-filters { top:76px; } .community-map__dimension.af-map-action { top:122px; } }
 @media(max-width:350px) { .community-page__sheet { padding-inline:14px; } .community-form-layout__scroll,.community-form-layout__action { padding-inline:14px; } }

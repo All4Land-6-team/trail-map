@@ -58,6 +58,9 @@ DB 스키마, PostGIS, Flyway migration 작업 시 `docs/migration.md`를 확인
 [코스 경로 문서](docs/course-routes.md)를 참고합니다. 후보 검증 상태를 보존하며,
 고도·경사 분석 및 기존 코스 데이터는 변경하지 않습니다.
 
+공식 시간·난이도와 출처를 보완하는 별도 JSON CLI 및 상세 화면 연동은
+[공식 코스 안내 정보](docs/course-guides.md)를 참고합니다.
+
 ## Terrain-RGB 타일 API
 
 북한산 Terrain-RGB 산출물은 프로젝트 루트의

@@ -13,7 +13,8 @@ export type CartCourse = {
   shortName: string;
   mountain: string;
   distanceKm: number;
-  durationMinutes: number;
+  durationMinutes: number | null;
+  scheduleAvailable?: boolean;
   averageSlopePercent?: number;
   color: string;
   routeCoordinates: [longitude: number, latitude: number][];

@@ -7,6 +7,7 @@ import type { CourseDetailData, ProfileVisibility } from "../../../types/courseD
 import type { CourseAnalysisState } from "../../../types/courseAnalysis";
 import { detailAnalysisView, formatProfileValue } from "../../../utils/courseDetailAnalysis";
 import { CourseAnalysisStatus } from "./CourseAnalysisStatus";
+import { CourseBasicInfo } from "./CourseBasicInfo";
 
 type Props = {
   data: CourseDetailData;
@@ -30,10 +31,11 @@ export function CourseAnalysis({ data, analysisState, analysisView, onRetryAnaly
   return <div className="course-analysis" role="tabpanel" id="course-analysis-panel" aria-label="코스 상세">
     <header className="course-analysis__intro">
       <h1>{course.name}</h1>
-      <p>{formatProfileValue(metrics?.distanceMeters == null ? null : metrics.distanceMeters / 1000, "km", 2)}
-        {" · 상승 "}{formatProfileValue(metrics?.elevationGainMeters, "m")}
+      <p>{!course.routeSource && <>{formatProfileValue(metrics?.distanceMeters == null ? null : metrics.distanceMeters / 1000, "km", 2)}{" · "}</>}
+        {"상승 "}{formatProfileValue(metrics?.elevationGainMeters, "m")}
         {" · 급경사 "}{formatProfileValue(metrics?.steepSectionRatioPercent, "%")}</p>
     </header>
+    {course.routeSource && <CourseBasicInfo course={course} />}
     <CourseAnalysisStatus state={analysisState} development={development} onRetry={onRetryAnalysis} />
     <section className="course-analysis__profile" aria-label="코스 프로필">
       <div className="course-analysis__heading"><h2>코스 프로필</h2><span>최고 {formatProfileValue(metrics?.maxElevationMeters, "m")}</span></div>

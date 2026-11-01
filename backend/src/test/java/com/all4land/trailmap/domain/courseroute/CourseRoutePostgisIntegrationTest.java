@@ -45,7 +45,7 @@ class CourseRoutePostgisIntegrationTest {
             var connection = DataSourceUtils.getConnection(dataSource);
             for (String migration : new String[]{"V2__create_core_schema.sql", "V3__support_community_reviews_and_spots.sql",
                     "V4__add_hike_record_traveled_path.sql", "V5__prevent_duplicate_community_reviews.sql",
-                    "V6__add_community_spot_request_id.sql", "V7__add_course_route_catalog.sql"}) {
+                    "V6__add_community_spot_request_id.sql", "V7__add_course_route_catalog.sql", "V8__add_course_guide_metadata.sql"}) {
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/" + migration));
             }
             long sourceId = jdbc.queryForObject("INSERT INTO data_source (source_name, source_format) VALUES ('test', 'TEST') RETURNING source_id", Long.class);
@@ -74,6 +74,42 @@ class CourseRoutePostgisIntegrationTest {
             assertThatThrownBy(() -> importer.importFile(file, bukhansan, dobongsan)).isInstanceOf(CourseRouteException.class);
             assertThat(service.getRoute(route.courseId())).isEqualTo(route);
             assertThat(jdbc.queryForObject("SELECT count(*) FROM course", Integer.class)).isEqualTo(13);
+            // Guide import must leave candidate geometry/version and its original replay intact.
+            var guideRepository = new com.all4land.trailmap.domain.courseroute.repository.CourseGuideRepository(jdbc);
+            var reader = new CourseRouteDocumentReader(mapper);
+            Path restored;
+            try { restored = write(mapper, directory, document(mapper)); } catch (java.io.IOException e) { throw new RuntimeException(e); }
+            var originalRoutes = reader.read(restored).routes();
+            var invalidGuides = CourseGuideDocumentReaderTest.guideDocument(mapper);
+            for (int i = 0; i < 12; i++) ((ObjectNode) invalidGuides.path("courses").get(i)).put("routeHash", originalRoutes.get(i).hash());
+            Path invalidFile = directory.resolve("invalid-guide.json");
+            try { mapper.writeValue(invalidFile.toFile(), invalidGuides); } catch (java.io.IOException e) { throw new RuntimeException(e); }
+            var guideService = new com.all4land.trailmap.domain.courseroute.service.CourseGuideImportService(
+                    new com.all4land.trailmap.domain.courseroute.service.CourseGuideDocumentReader(mapper), guideRepository, repository);
+            var nested = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+            nested.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_NESTED);
+            assertThatThrownBy(() -> nested.execute(status -> guideService.importFile(invalidFile)))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM course_guide_metadata", Integer.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM course WHERE official_duration_seconds IS NOT NULL", Integer.class)).isZero();
+            for (var original : originalRoutes) {
+                String officialId = "121500V%03d".formatted(original.order());
+                var guide = new com.all4land.trailmap.domain.courseroute.service.CourseGuideDocumentReader.Guide(
+                        original.recordId(), original.mountainKey(), original.hash(), officialId, original.via(),
+                        "하", 2000, 5400, "https://www.knps.or.kr/front/portal/visit/visitCourseSubMain.do?menuNo=8000275&parkId=121500&parkNavGb=guide&vcursId=" + officialId, "2026-11-01");
+                assertThat(guideRepository.importGuide(CourseRouteImportService.DATASET_KEY, guide, "b".repeat(64))).isTrue();
+                assertThat(guideRepository.importGuide(CourseRouteImportService.DATASET_KEY, guide, "b".repeat(64))).isFalse();
+                assertThatThrownBy(() -> guideRepository.importGuide(CourseRouteImportService.DATASET_KEY, guide, "c".repeat(64)))
+                        .isInstanceOf(IllegalStateException.class);
+            }
+            assertThat(importer.importFile(restored, bukhansan, dobongsan).existing()).isEqualTo(13);
+            var enriched = service.getRoute(route.courseId());
+            assertThat(enriched.guide().difficultyGrade()).isEqualTo("하");
+            assertThat(enriched.difficulty()).isEqualTo("BEGINNER");
+            assertThat(enriched.durationSeconds()).isEqualTo(5400);
+            assertThat(enriched.geometry()).isEqualTo(route.geometry());
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM course_guide_metadata", Integer.class)).isEqualTo(13);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM course_analysis", Integer.class)).isZero();
         });
     }
 

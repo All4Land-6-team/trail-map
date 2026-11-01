@@ -61,6 +61,7 @@ export function ComparisonMetricsScreen({
   onPlanHike,
 }: ComparisonMetricsScreenProps) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const schedulableCourses = courses.filter(course => course.scheduleAvailable !== false);
   const mountainName = analysisState.status === 'success' ? analysisState.data.mountainName : courses[0]?.mountain ?? '산';
 
   return (
@@ -131,21 +132,23 @@ export function ComparisonMetricsScreen({
         <Typography variant="descriptionSmall">이 코스들 중 하나를 일정으로 등록할까요?</Typography>
         <div>
           <Button variant="secondary" fullWidth onClick={onKeepCart}>담기 유지</Button>
-          <Button fullWidth onClick={() => setScheduleOpen(true)}>일정 등록</Button>
+          <Button fullWidth disabled={!schedulableCourses.length} onClick={() => setScheduleOpen(true)}>
+            {schedulableCourses.length ? "일정 등록" : "일정 연동 예정"}
+          </Button>
         </div>
       </section>
       <BottomNavigation active="saved" onNavigate={onNavigate} className="cart-bottom-nav" />
 
-      {scheduleOpen && (
+      {scheduleOpen && schedulableCourses.length > 0 && (
         <ScheduleRegistrationSheet
-          courses={courses}
+          courses={schedulableCourses}
           courseSummaries={Object.fromEntries(analysisCourses.map(course => [course.id,
             `${formatAnalysisDistance(course.analysis?.metrics.distanceMeters)} · ${formatAnalysisDuration(course.analysis?.metrics.estimatedDurationSeconds)}`]))}
           selectCourseFirst
           existingSchedules={plannedHikes}
           onClose={() => setScheduleOpen(false)}
           onConfirm={(courseId, schedule) => {
-            const course = courses.find((item) => item.id === courseId);
+            const course = schedulableCourses.find((item) => item.id === courseId);
             if (!course) return;
             onPlanHike({
               ...schedule,

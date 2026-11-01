@@ -26,6 +26,7 @@ export type Course = {
     checkNote: string | null;
   };
   officialDistanceMeters?: number | null;
+  guide?: { officialCourseId: string; routeLabel: string; difficultyGrade: "하" | "중" | "상"; sourceUrl: string; checkedOn: string } | null;
   elevationGainMeters: number | null;
   peakElevationMeters: number | null;
   steepRatioPercent: number | null;

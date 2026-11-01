@@ -115,7 +115,7 @@ export function CourseSelectionScreen({
                     <span className="cart-course-copy">
                       <Typography variant="controlLabel">{course.name}</Typography>
                       <Typography variant="descriptionSmall">
-                        {course.distanceKm} km · {formatCourseDuration(course.durationMinutes)}
+                        {course.distanceKm.toFixed(2)} km · {formatCourseDuration(course.durationMinutes)}
                       </Typography>
                     </span>
                   </button>

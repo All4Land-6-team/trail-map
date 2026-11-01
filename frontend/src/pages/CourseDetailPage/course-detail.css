@@ -26,6 +26,15 @@
 .course-analysis__intro { padding-bottom: 12px; border-bottom: 1px solid #e4ebe4; }
 .course-analysis__intro h1 { margin: 0; font-size: 17px; line-height: 26px; font-weight: 700; letter-spacing: -.03em; }
 .course-analysis__intro p { margin: 3px 0 0; color: #617b6c; font-size: 11px; line-height: 16px; }
+.course-basic-info { padding: 12px 0; border-bottom: 1px solid #e4ebe4; font-size: 12px; }
+.course-basic-info__route { margin: 0 0 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.course-basic-info dl { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 12px; }
+.course-basic-info dt { color: #617b6c; font-size: 11px; }
+.course-basic-info dd { margin: 4px 0 0; font-weight: 600; }
+.course-basic-info small { display: block; font-weight: 400; color: #617b6c; }
+.course-basic-info__note { margin: 6px 0; color: #617b6c; line-height: 1.6; font-size: 11px; }
+.course-basic-info a { display: inline-block; margin-top: 6px; color: #16765d; text-underline-offset: 3px; }
+.course-basic-info__checked { display: block; margin-top: 4px; color: #617b6c; font-size: 10px; }
 .course-analysis__profile { padding-top: 9px; }
 .course-analysis-status { margin: 8px 0; color: #617b6c; font-size: 11px; line-height: 17px; overflow-wrap: anywhere; }
 .course-analysis-status p { margin: 4px 0; }
@@ -75,7 +84,7 @@
 .course-detail-empty .af-empty-state__description { font-size: 11px; line-height: 18px; }
 .course-detail-page__toast { position: absolute; z-index: 12; bottom: calc(var(--detail-nav-height) + 74px); left: 50%; max-width: calc(100% - 32px); transform: translateX(-50%); text-align: center; pointer-events: none; }
 .course-detail-page__status { display: flex; position: absolute; inset: 70px 20px var(--detail-nav-height); align-items: center; justify-content: center; flex-direction: column; gap: 16px; text-align: center; }
-.course-detail-page__status .course-detail-page__top { position: fixed; top: 16px; right: auto; left: 50%; width: min(calc(100% - 24px), 366px); transform: translateX(-50%); }
+.course-detail-page__status .course-detail-page__top { position: fixed; top: calc(var(--app-frame-gap) + 16px); right: auto; left: 50%; width: min(calc(100% - 24px), 366px); transform: translateX(-50%); }
 @media (max-width: 350px) {
   .course-detail-sheet .af-bottom-sheet__title-row { margin-inline: 16px; }
   .course-detail-sheet .af-bottom-sheet__content { padding-inline: 16px; }

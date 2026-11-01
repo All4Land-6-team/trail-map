@@ -119,8 +119,8 @@ export function useCommunitySheet(detail = false, mapPreview = false, compactDet
   return {
     rootRef,
     style: { '--community-sheet-transition': dragging ? 'none' : 'height 220ms ease-out', '--community-sheet-height': dragHeight === null
-      ? detail ? detailLevel === 'peek' ? `${PEEK_HEIGHT}px` : detailLevel === 'reviews' ? `min(${compactDetail ? COMPACT_REVIEW_HEIGHT : REVIEW_HEIGHT}px, calc(100dvh - var(--community-nav-height) - ${DETAIL_MAP_CLEARANCE + REVIEW_TO_FULL_GAP}px))` : detailLevel === 'photo' ? `min(${PHOTO_HEIGHT}px, calc(100dvh - var(--community-nav-height) - ${DETAIL_MAP_CLEARANCE + PHOTO_TO_FULL_GAP}px))` : `calc(100dvh - var(--community-nav-height) - ${DETAIL_MAP_CLEARANCE}px)`
-        : level === 'content' ? mapPreview ? 'min(420px, calc(100dvh - var(--community-nav-height) - 170px))' : 'auto' : `${PEEK_HEIGHT}px`
+      ? detail ? detailLevel === 'peek' ? `${PEEK_HEIGHT}px` : detailLevel === 'reviews' ? `min(${compactDetail ? COMPACT_REVIEW_HEIGHT : REVIEW_HEIGHT}px, calc(var(--app-viewport-height) - var(--community-nav-height) - ${DETAIL_MAP_CLEARANCE + REVIEW_TO_FULL_GAP}px))` : detailLevel === 'photo' ? `min(${PHOTO_HEIGHT}px, calc(var(--app-viewport-height) - var(--community-nav-height) - ${DETAIL_MAP_CLEARANCE + PHOTO_TO_FULL_GAP}px))` : `calc(var(--app-viewport-height) - var(--community-nav-height) - ${DETAIL_MAP_CLEARANCE}px)`
+        : level === 'content' ? mapPreview ? 'min(420px, calc(var(--app-viewport-height) - var(--community-nav-height) - 170px))' : 'auto' : `${PEEK_HEIGHT}px`
       : `${dragHeight}px` } as CSSProperties,
     peek,
     level: currentLevel,
