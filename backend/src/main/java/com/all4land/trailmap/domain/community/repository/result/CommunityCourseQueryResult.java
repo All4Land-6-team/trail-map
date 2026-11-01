@@ -1,6 +1,6 @@
 package com.all4land.trailmap.domain.community.repository.result;
 
-public record CommunityCoursePointQueryResult(
+public record CommunityCourseQueryResult(
         Long courseId,
         Long mountainId,
         String externalId,
@@ -9,8 +9,6 @@ public record CommunityCoursePointQueryResult(
         long reviewCount,
         long photoCount,
         String representativePhotoKey,
-        int sequence,
-        double longitude,
-        double latitude
+        String routeGeoJson
 ) {
 }

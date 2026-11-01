@@ -22,8 +22,7 @@ import java.util.Optional;
 public class CommunityReviewQueryRepository {
 
     private static final String ELIGIBLE_HIKE_SQL = """
-            SELECT DISTINCT ON (record.course_id)
-                   record.hike_record_id,
+            SELECT record.hike_record_id,
                    record.course_id,
                    course.course_name,
                    course.mountain_id,
@@ -36,7 +35,7 @@ public class CommunityReviewQueryRepository {
               AND record.hike_status = 'COMPLETED'
               AND record.deleted_at IS NULL
               AND record.ended_at BETWEEN :windowStart AND :windowEnd
-            ORDER BY record.course_id, record.ended_at DESC, record.hike_record_id DESC
+            ORDER BY record.ended_at DESC, record.hike_record_id DESC
             """;
 
     private static final String REVIEW_SELECT = """
@@ -82,8 +81,7 @@ public class CommunityReviewQueryRepository {
 
     private static final String COURSE_REVIEW_SQL = """
             WITH selected_review AS (
-                SELECT DISTINCT ON (review.user_id)
-                       review.review_id,
+                SELECT review.review_id,
                        review.course_id AS target_id,
                        review.hike_record_id,
                        review.user_id,
@@ -92,10 +90,8 @@ public class CommunityReviewQueryRepository {
                        review.visited_date,
                        review.created_at
                 FROM course_review review
-                LEFT JOIN hike_record record ON record.hike_record_id = review.hike_record_id
                 WHERE review.course_id = :targetId
                   AND review.deleted_at IS NULL
-                ORDER BY review.user_id, record.ended_at DESC NULLS LAST, review.created_at DESC
             )
             """ + REVIEW_SELECT.formatted("course_review_id");
 

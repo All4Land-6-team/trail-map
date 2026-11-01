@@ -1,6 +1,6 @@
 package com.all4land.trailmap.domain.community.repository.map;
 
-import com.all4land.trailmap.domain.community.repository.result.CommunityCoursePointQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunityCourseQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.CommunityMountainQueryResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -34,7 +34,7 @@ public class CommunityMapQueryRepository {
         ));
     }
 
-    public List<CommunityCoursePointQueryResult> findCoursePoints(Long mountainId) {
+    public List<CommunityCourseQueryResult> findCourses(Long mountainId) {
         return jdbcTemplate.query("""
                 SELECT course.course_id,
                        course.mountain_id,
@@ -60,15 +60,12 @@ public class CommunityMapQueryRepository {
                           AND photo.deleted_at IS NULL
                         ORDER BY review.created_at DESC, photo.display_order, photo.photo_id
                         LIMIT 1) AS representative_photo_key,
-                       (point).path[1] AS sequence,
-                       ST_X((point).geom) AS longitude,
-                       ST_Y((point).geom) AS latitude
+                       ST_AsGeoJSON(course.course_geometry, 9) AS route_geo_json
                 FROM course
-                CROSS JOIN LATERAL ST_DumpPoints(course.course_geometry) point
                 WHERE course.mountain_id = :mountainId
-                ORDER BY course.course_id, sequence
+                ORDER BY course.course_id
                 """, new MapSqlParameterSource("mountainId", mountainId),
-                (resultSet, rowNumber) -> new CommunityCoursePointQueryResult(
+                (resultSet, rowNumber) -> new CommunityCourseQueryResult(
                         resultSet.getLong("course_id"),
                         resultSet.getLong("mountain_id"),
                         resultSet.getString("external_id"),
@@ -77,9 +74,7 @@ public class CommunityMapQueryRepository {
                         resultSet.getLong("review_count"),
                         resultSet.getLong("photo_count"),
                         resultSet.getString("representative_photo_key"),
-                        resultSet.getInt("sequence"),
-                        resultSet.getDouble("longitude"),
-                        resultSet.getDouble("latitude")
+                        resultSet.getString("route_geo_json")
                 ));
     }
 
