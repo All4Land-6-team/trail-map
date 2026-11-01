@@ -32,6 +32,14 @@ export function parseCourseRoute(value: unknown, mountainKey: string, expectedId
   const source = value.source;
   if (typeof source.name !== "string" || typeof source.validationStatus !== "string" || !source.validationStatus.trim()
     || ![source.provider, source.url, source.version, source.recordId, source.checkNote].every(textOrNull)) return fail();
+  const guide = value.guide;
+  if (guide != null && (!record(guide) || typeof guide.officialCourseId !== "string"
+    || typeof guide.routeLabel !== "string" || !["하", "중", "상"].includes(guide.difficultyGrade as string)
+    || typeof guide.checkedOn !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(guide.checkedOn)
+    || guide.sourceUrl !== `https://www.knps.or.kr/front/portal/visit/visitCourseSubMain.do?menuNo=8000275&parkId=121500&parkNavGb=guide&vcursId=${guide.officialCourseId}`
+    || !/^121500V0(0[1-9]|1[0-3])$/.test(guide.officialCourseId)
+    || ({ 하: "BEGINNER", 중: "INTERMEDIATE", 상: "EXPERT" } as Record<string, string>)[guide.difficultyGrade as string] !== value.difficulty
+    || value.durationSeconds === null || value.officialDistanceMeters === null)) return fail();
   return {
     id: `db-${value.courseId}`, backendCourseId: value.courseId,
     analysisReference: { courseId: value.courseId, mountainId: value.mountainId, development: false },
@@ -42,6 +50,7 @@ export function parseCourseRoute(value: unknown, mountainKey: string, expectedId
     elevationGainMeters: null, peakElevationMeters: null, steepRatioPercent: null,
     analysisStatus: "pending", detailAvailable: true, routeCoordinates: coordinates,
     routeSource: source as Course["routeSource"],
+    guide: (guide ?? null) as Course["guide"],
   };
 }
 

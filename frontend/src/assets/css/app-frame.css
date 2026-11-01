@@ -1,0 +1,34 @@
+:root {
+  --app-frame-gap: 0px;
+  --app-frame-radius: 0px;
+  --app-frame-shadow: none;
+  --app-viewport-height: calc(100dvh - var(--app-frame-gap) * 2);
+}
+
+/* Keep page margins inside the root rather than collapsing onto the body. */
+#root {
+  display: flow-root;
+}
+
+/* Only app screens use the phone frame; development previews keep their layout. */
+#root > :is(.home-page, .course-page, .course-detail-page, .community-page,
+  .cart-screen, .hike-page, .hike-screen, .app-route-loading) {
+  width: min(100%, 390px);
+  height: var(--app-viewport-height);
+  margin: var(--app-frame-gap) auto;
+  border-radius: var(--app-frame-radius);
+  box-shadow: var(--app-frame-shadow);
+}
+
+/* Short windows and installed PWAs retain the full available height. */
+@media (min-width: 600px) and (min-height: 720px) and (display-mode: browser) {
+  :root {
+    --app-frame-gap: 40px;
+    --app-frame-radius: 24px;
+    --app-frame-shadow: 0 8px 32px rgb(23 61 50 / 10%), 0 0 0 1px rgb(23 61 50 / 8%);
+  }
+
+  #root > .cart-screen {
+    min-height: min(640px, var(--app-viewport-height));
+  }
+}

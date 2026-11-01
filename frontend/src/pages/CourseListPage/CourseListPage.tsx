@@ -56,8 +56,9 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     discovery.closeFilter();
   }
   function saveCourse(id: string, saved: boolean) {
-    if (courses.find(course => course.id === id)?.routeSource) return;
-    setCourseSaved(id, saved);
+    const course = courses.find(course => course.id === id);
+    if (!course) return;
+    setCourseSaved(id, saved, course);
     notify(saved ? "장바구니에 담았어요." : "장바구니에서 뺐어요.");
   }
   function openCourse(course: Course) {

@@ -25,7 +25,7 @@ class CourseRouteControllerTest {
     void servesWgs84GeometryAndUnknownValuesWithoutUserHeader() throws Exception {
         var route = new CourseRouteResponse(42, 2, "bukhansan", "후보", 1, "시작~정상", 1234.5,
                 2000.0, null, null, new CourseRouteResponse.Geometry("LineString", List.of(List.of(127.0, 37.7), List.of(127.001, 37.701))),
-                new CourseRouteResponse.Source("후보 데이터", null, null, "hash", "BUKHAN_01", "candidate_smap_unverified", "확인 필요"));
+                new CourseRouteResponse.Source("후보 데이터", null, null, "hash", "BUKHAN_01", "candidate_smap_unverified", "확인 필요"), null);
         when(service.getRoute(42)).thenReturn(route);
         when(service.getCatalog("bukhansan")).thenReturn(List.of(route));
         mvc.perform(get("/v1/courses/42/route")).andExpect(status().isOk())

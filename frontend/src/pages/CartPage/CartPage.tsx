@@ -3,7 +3,7 @@ import type { BottomDestination } from "../../components/layout";
 import { useSavedCourseIds } from "../../store/courseSelectionStore";
 import { navigate } from "../../hooks/useHashRoute";
 import { cartCourseDetailPath } from "../../routes/courseDetailRoutes";
-import { cartCatalog } from "./catalog";
+import { getSavedCartCourses } from "./catalog";
 import { CartHomeScreen } from "./components/CartHomeScreen";
 import { CourseSelectionScreen } from "./components/CourseSelectionScreen";
 import { limitComparisonCourseIds, toggleComparisonCourseId } from "./data";
@@ -47,7 +47,7 @@ function LegacyCartCourseRedirect({ path }: { path: string }) {
 
 export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHike }: CartPageProps) {
   const savedIds = useSavedCourseIds();
-  const saved = cartCatalog.filter(course => savedIds.includes(course.id));
+  const saved = useMemo(() => getSavedCartCourses(savedIds), [savedIds]);
   const [path, search] = route.replace(/^#/, "").split("?");
   const query = new URLSearchParams(search);
   const mountainId = query.get("mountain") ?? (path.startsWith("cart/mountain/") ? path.slice(14) : "bukhansan");

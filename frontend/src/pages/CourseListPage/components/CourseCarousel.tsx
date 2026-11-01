@@ -100,7 +100,7 @@ export function CourseCarousel({ courses, selectedId, selectionRevision = 0, sav
         controlStatus="통제 확인 필요" distance={`${course.distanceKm.toFixed(2)} km`} duration={formatCourseDuration(course.durationMinutes)}
         elevationGain={course.elevationGainMeters == null ? "—" : `${course.elevationGainMeters} m`}
         peakElevation={course.peakElevationMeters == null ? "—" : `${course.peakElevationMeters} m`}
-        detailsAvailable={course.detailAvailable} actionsAvailable={!course.routeSource} saved={savedIds.includes(course.id)} scheduled={scheduledIds.includes(course.id)}
+        detailsAvailable={course.detailAvailable} scheduleAvailable={!course.routeSource} saved={savedIds.includes(course.id)} scheduled={scheduledIds.includes(course.id)}
         onSavedChange={saved => onSave(course.id, saved)} onScheduledChange={() => onSchedule(course)} onOpen={() => onOpen(course)} />
     </div>)}
   </div>;

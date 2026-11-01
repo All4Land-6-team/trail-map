@@ -15,6 +15,7 @@ export type CourseCardProps = {
   peakElevation: string;
   detailsAvailable?: boolean;
   actionsAvailable?: boolean;
+  scheduleAvailable?: boolean;
   saved?: boolean;
   scheduled?: boolean;
   onSavedChange?: (selected: boolean) => void;
@@ -25,7 +26,7 @@ export type CourseCardProps = {
 
 export function CourseCard({
   title, route, difficulty, controlStatus, distance, duration,
-  elevationGain, peakElevation, detailsAvailable = true, actionsAvailable = true, saved, scheduled,
+  elevationGain, peakElevation, detailsAvailable = true, actionsAvailable = true, scheduleAvailable = actionsAvailable, saved, scheduled,
   onSavedChange, onScheduledChange, onOpen, className,
 }: CourseCardProps) {
   const metrics = [
@@ -39,7 +40,7 @@ export function CourseCard({
       <h3 className="af-course-card__title">{title}</h3>
       <div className="af-course-card__actions">
         <IconToggle icon="save" disabled={!actionsAvailable} aria-label={`${title} 등산 담기${actionsAvailable ? "" : " (연동 예정)"}`} selected={saved} onSelectedChange={onSavedChange} />
-        <IconToggle icon="schedule" disabled={!actionsAvailable} aria-label={`${title} 일정 등록${actionsAvailable ? "" : " (연동 예정)"}`} selected={scheduled} onSelectedChange={onScheduledChange} />
+        <IconToggle icon="schedule" disabled={!scheduleAvailable} aria-label={`${title} 일정 등록${scheduleAvailable ? "" : " (연동 예정)"}`} selected={scheduled} onSelectedChange={onScheduledChange} />
       </div>
     </div>
     <p className="af-course-card__route">{route}</p>

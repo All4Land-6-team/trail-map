@@ -11,6 +11,7 @@ const server = await createServer({ server: { middlewareMode: true, watch: null,
 after(() => server.close());
 const api = await server.ssrLoadModule('/src/api/courseRoutes.ts');
 const { CourseCarousel } = await server.ssrLoadModule('/src/pages/CourseListPage/components/CourseCarousel.tsx');
+const { CourseBasicInfo } = await server.ssrLoadModule('/src/pages/CourseDetailPage/components/CourseBasicInfo.tsx');
 const nativeFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = nativeFetch; });
 const signal = () => new AbortController().signal;
@@ -25,6 +26,21 @@ const route = (overrides = {}) => ({
 });
 const envelope = data => ({ success: true, data });
 const json = value => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
+
+test('공식 안내를 필터와 기본 상세에 연결하고 경로 길이와 안내 거리를 구분한다', () => {
+  const guide = { officialCourseId: '121500V001', routeLabel: '탐방지원센터~백운대', difficultyGrade: '중', checkedOn: '2026-11-01',
+    sourceUrl: 'https://www.knps.or.kr/front/portal/visit/visitCourseSubMain.do?menuNo=8000275&parkId=121500&parkNavGb=guide&vcursId=121500V001' };
+  const course = api.parseCourseRoute(route({ guide, durationSeconds: 9600, difficulty: 'INTERMEDIATE' }), 'bukhansan');
+  assert.equal(course.durationMinutes, 160);
+  assert.equal(selectCourses([course], { ...DEFAULT_COURSE_FILTERS, difficulty: 'intermediate' }, 'difficulty').length, 1);
+  assert.equal(selectCourses([course], { ...DEFAULT_COURSE_FILTERS, difficulty: 'advanced' }, 'difficulty').length, 0);
+  const html = renderToStaticMarkup(createElement(CourseBasicInfo, { course }));
+  for (const label of ['중급', '공식 등급 중', '2시간 40분', '3.73 km', '3.4 km', '국립공원공단', '왕복 시간이 아니에요']) assert.ok(html.includes(label));
+  assert.equal(course.elevationGainMeters, null);
+  for (const malformed of [{ ...guide, sourceUrl: 'javascript:alert(1)' }, { ...guide, difficultyGrade: '상' }]) {
+    assert.throws(() => api.parseCourseRoute(route({ guide: malformed, durationSeconds: 9600, difficulty: 'INTERMEDIATE' }), 'bukhansan'));
+  }
+});
 
 test('실제 DB 식별자·LineString·출처를 보존하고 미계산 시간과 난이도를 만들지 않는다', () => {
   const value = route(), course = api.parseCourseRoute(value, 'bukhansan', 101);
@@ -130,8 +146,54 @@ test('목록·상세의 경로 안내 UI는 제거하고 카드와 출처 데이
   const html = renderToStaticMarkup(createElement(CourseCarousel, { courses: [course], selectedId: course.id,
     savedIds: [], scheduledIds: [], onSelect() {}, onSave() {}, onSchedule() {}, onOpen() {} }));
   assert.match(html, /난이도 정보 없음/); assert.match(html, /정보 없음/);
-  assert.match(html, /<button[^>]*disabled=""[^>]*aria-label="북한산성코스 등산 담기 \(연동 예정\)"/);
+  const saveButton = html.match(/<button[^>]*aria-label="북한산성코스 등산 담기"[^>]*>/)?.[0];
+  assert.ok(saveButton);
+  assert.doesNotMatch(saveButton, /disabled/);
+  assert.match(html, /<button[^>]*disabled=""[^>]*aria-label="북한산성코스 일정 등록 \(연동 예정\)"/);
   assert.match(html, /코스 상세 보기/);
+});
+
+test('실제 코스 담기 → 장바구니 변환 → 해제는 DB 식별자와 결측을 보존한다', async () => {
+  const store = await server.ssrLoadModule('/src/store/courseSelectionStore.ts');
+  const catalog = await server.ssrLoadModule('/src/pages/CartPage/catalog.ts');
+  const { formatCourseDuration } = await server.ssrLoadModule('/src/pages/CartPage/data.ts');
+  const course = api.parseCourseRoute(route({ courseName: '대남문 코스' }), 'bukhansan');
+  try {
+    store.setCourseSaved(course.id, true, course);
+    store.setCourseSaved(course.id, true, course);
+    store.setCourseSaved('daenammun', true);
+    const saved = catalog.getSavedCartCourses(store.getSavedCourseIds());
+    assert.equal(saved.length, 2);
+    const actual = saved.find(item => item.id === course.id);
+    assert.equal(actual.mountainId, 'bukhansan');
+    assert.deepEqual(actual.analysisReference, { courseId: 101, mountainId: 11, development: false });
+    assert.deepEqual(actual.routeCoordinates, course.routeCoordinates);
+    assert.equal(actual.durationMinutes, null);
+    assert.equal(formatCourseDuration(actual.durationMinutes), '정보 없음');
+    assert.deepEqual(actual.elevationProfile, []);
+    assert.equal(actual.averageSlopePercent, undefined);
+    assert.equal(actual.scheduleAvailable, false);
+    const { CourseSelectionScreen } = await server.ssrLoadModule('/src/pages/CartPage/components/CourseSelectionScreen.tsx');
+    const html = renderToStaticMarkup(createElement(CourseSelectionScreen, {
+      courses: [actual], selectedCourseIds: new Set([actual.id]),
+      onBack() {}, onCompare() {}, onCourseDetail() {}, onNavigate() {}, onToggleCourse() {},
+    }));
+    assert.match(html, /3\.73/);
+    assert.match(html, /정보 없음/);
+    assert.match(html, /대남문 코스 상세 보기/);
+    assert.throws(() => store.setCourseSaved('db-999', true, course), /ID/);
+    assert.equal(store.getSavedCourseIds().includes('db-999'), false);
+    const previousIds = store.getSavedCourseIds();
+    store.setCourseSaved(course.id, true, { ...course, durationMinutes: 180 });
+    assert.notEqual(store.getSavedCourseIds(), previousIds);
+    assert.equal(catalog.getSavedCartCourses(store.getSavedCourseIds()).find(item => item.id === course.id).durationMinutes, 180);
+    store.setCourseSaved(course.id, false);
+    assert.equal(store.getSavedCourse(course.id), undefined);
+    assert.deepEqual(catalog.getSavedCartCourses(store.getSavedCourseIds()).map(item => item.id), ['daenammun']);
+  } finally {
+    store.setCourseSaved(course.id, false);
+    store.setCourseSaved('daenammun', false);
+  }
 });
 
 test('DEM 지원 산 목록은 개선된 지도와 시트 미리보기 생명주기를 함께 연결한다', () => {

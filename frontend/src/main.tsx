@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './assets/css/global.css'
+import './assets/css/app-frame.css'
 import App from './App.tsx'
 import { registerServiceWorker } from './offline/registerServiceWorker'
 

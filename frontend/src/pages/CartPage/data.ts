@@ -90,7 +90,8 @@ export const savedCourses: readonly CartCourse[] = [
   },
 ] as const;
 
-export function formatCourseDuration(durationMinutes: number) {
+export function formatCourseDuration(durationMinutes: number | null) {
+  if (durationMinutes === null) return "정보 없음";
   const hours = Math.floor(durationMinutes / 60);
   const minutes = durationMinutes % 60;
 

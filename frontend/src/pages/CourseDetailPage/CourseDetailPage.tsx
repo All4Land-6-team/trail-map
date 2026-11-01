@@ -112,8 +112,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
     else setVisibility(next);
   }
   function save() {
-    if (data?.course.routeSource) return;
-    setCourseSaved(courseId, !saved);
+    if (!data) return;
+    setCourseSaved(courseId, !saved, data.course);
     notify(saved ? "장바구니에서 뺐어요." : "장바구니에 담았어요.");
   }
   function schedule() {
@@ -169,7 +169,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
             shelters={shelters.state} onRetryShelters={shelters.retry}
             onCategory={category => changeView({ tab: "spots", category })} onOpen={openSpot} />}
         footer={<div className="course-detail-actions">
-          <Button variant="secondary" disabled={!!data.course.routeSource} aria-pressed={saved} onClick={save}
+          <Button variant="secondary" aria-pressed={saved} onClick={save}
             leadingIcon={saved ? <img src={savedBagAsset} alt="" /> : <Icon name="Bag" size={17} color="currentColor" />}>{saved ? "장바구니 담김" : "장바구니 담기"}</Button>
           <Button disabled={!!data.course.routeSource} onClick={schedule}>{hasSchedule ? "일정 변경 →" : "일정 등록 →"}</Button>
         </div>} />

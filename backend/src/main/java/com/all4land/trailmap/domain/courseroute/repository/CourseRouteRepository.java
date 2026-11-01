@@ -28,10 +28,16 @@ public class CourseRouteRepository {
                    COALESCE(r.route_label, c.course_name) AS route_label,
                    COALESCE(r.validation_status, 'UNKNOWN') AS validation_status,
                    COALESCE(r.check_note, '') AS check_note,
-                   s.source_name, s.provider_name, s.source_url, s.source_version, c.source_record_id
+                   s.source_name, s.provider_name, s.source_url, s.source_version, c.source_record_id,
+                   g.official_course_id, g.route_label AS guide_route_label, g.difficulty_grade,
+                   g.source_url AS guide_source_url, g.checked_on
             FROM course c JOIN mountain m ON m.mountain_id = c.mountain_id
             JOIN data_source s ON s.source_id = c.source_id
             LEFT JOIN course_route_metadata r ON r.course_id = c.course_id
+            LEFT JOIN course_guide_metadata g ON g.course_id = c.course_id AND g.course_version = c.course_version
+                AND g.route_source_hash = c.source_hash AND g.distance_meters = c.official_distance_meters
+                AND g.duration_seconds = c.official_duration_seconds
+                AND c.course_difficulty = CASE g.difficulty_grade WHEN '하' THEN 'BEGINNER' WHEN '중' THEN 'INTERMEDIATE' WHEN '상' THEN 'EXPERT' END
             """;
 
     public List<CourseRouteResponse> findCatalog(String mountainKey) {
@@ -54,7 +60,10 @@ public class CourseRouteRepository {
                     new CourseRouteResponse.Geometry("LineString", List.copyOf(coordinates)),
                     new CourseRouteResponse.Source(rs.getString("source_name"), rs.getString("provider_name"),
                             rs.getString("source_url"), rs.getString("source_version"), rs.getString("source_record_id"),
-                            rs.getString("validation_status"), rs.getString("check_note")));
+                            rs.getString("validation_status"), rs.getString("check_note")),
+                    rs.getString("official_course_id") == null ? null : new CourseRouteResponse.Guide(
+                            rs.getString("official_course_id"), rs.getString("guide_route_label"), rs.getString("difficulty_grade"),
+                            rs.getString("guide_source_url"), rs.getString("checked_on")));
         } catch (JsonProcessingException exception) { throw new SQLException("Invalid stored route geometry", exception); }
     }
 
@@ -112,8 +121,13 @@ public class CourseRouteRepository {
         return Boolean.TRUE.equals(jdbc.queryForObject("""
                 SELECT EXISTS (SELECT 1 FROM course c JOIN course_route_metadata r ON r.course_id = c.course_id
                 WHERE c.source_id = ? AND c.source_record_id = ? AND c.source_hash = ? AND c.mountain_id = ?
-                  AND c.course_version = 1 AND c.course_name = ? AND c.course_difficulty IS NULL
-                  AND c.official_duration_seconds IS NULL AND c.official_distance_meters IS NOT DISTINCT FROM ?
+                  AND c.course_version = 1 AND c.course_name = ?
+                  AND ((c.course_difficulty IS NULL AND c.official_duration_seconds IS NULL) OR EXISTS (
+                      SELECT 1 FROM course_guide_metadata g WHERE g.course_id = c.course_id
+                      AND g.course_version = c.course_version AND g.route_source_hash = c.source_hash
+                      AND g.distance_meters = c.official_distance_meters AND g.duration_seconds = c.official_duration_seconds
+                      AND c.course_difficulty = CASE g.difficulty_grade WHEN '하' THEN 'BEGINNER' WHEN '중' THEN 'INTERMEDIATE' WHEN '상' THEN 'EXPERT' END))
+                  AND c.official_distance_meters IS NOT DISTINCT FROM ?
                   AND ST_AsEWKB(c.course_geometry) = ST_AsEWKB(ST_SetSRID(ST_GeomFromGeoJSON(?), 4326))
                   AND r.source_record_id = ? AND r.mountain_key = ? AND r.route_order = ?
                   AND r.route_label = ? AND r.validation_status = ? AND r.check_note = ?)
