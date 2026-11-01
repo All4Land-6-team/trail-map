@@ -27,6 +27,10 @@
 .community-map__pin .af-spot-marker::before { position:absolute; inset:7px; border:1px solid currentColor; border-radius:50%; background:#fff; content:""; }
 .community-map__pin .af-spot-marker>.af-icon { position:relative; z-index:1; }
 .community-map__pin .af-spot-marker__label { position:absolute; top:calc(50% + 19px); left:50%; width:max-content; max-width:116px; overflow:hidden; transform:translateX(-50%); padding:3px 6px; border-radius:6px; color:var(--af-ink); background:#fff; font-size:10px; line-height:15px; text-overflow:ellipsis; white-space:nowrap; box-shadow:0 1px 5px rgb(23 71 54 / 8%); }
+.community-picker .community-map__pin--selected { z-index:4; }
+.community-picker .community-map__pin--selected .af-spot-marker::before { border:2px solid var(--af-green); box-shadow:0 0 0 3px #fff,0 2px 8px rgb(23 113 83 / 28%); }
+.community-picker .community-map__pin--selected .af-spot-marker::after { position:absolute; z-index:2; top:1px; right:1px; display:grid; width:16px; height:16px; place-items:center; border:2px solid #fff; border-radius:50%; color:#fff; background:var(--af-green); content:"\2713"; font-size:10px; font-weight:900; line-height:1; }
+.community-picker .community-map__pin--selected .af-spot-marker__label { color:#fff; background:var(--af-green); box-shadow:0 2px 8px rgb(23 113 83 / 24%); font-weight:700; }
 .community-page__map--main .community-map__pin .af-spot-marker__label { display:none; }
 .community-page__map--main[data-marker-mode="overview"] .af-mountain-marker--point { width:44px; height:44px; justify-content:center; }
 .community-page__map--main[data-marker-mode="overview"] .af-mountain-marker__label { display:none; }
@@ -37,7 +41,7 @@
 .community-map__cluster span { display:grid; width:30px; height:30px; place-items:center; border:2px solid #fff; border-radius:50%; color:#fff; background:var(--af-green); box-shadow:0 2px 8px rgb(23 71 54 / 20%); font:700 12px/1 "Noto Sans KR",sans-serif; }
 .community-map .maplibregl-marker:has(.community-map__pin--cluster-choice) { z-index:10; }
 .community-map__pin--cluster-choice { z-index:6; }
-.community-map__cluster-choices { position:absolute; z-index:5; top:50%; left:calc(50% + 19px); display:flex; width:164px; max-height:min(32dvh,210px); transform:translateY(-50%); flex-direction:column; gap:4px; overflow-y:auto; padding:10px; border:1px solid var(--af-line); border-radius:12px; background:#fff; box-shadow:0 4px 14px #173d3229; }
+.community-map__cluster-choices { position:absolute; z-index:5; top:50%; left:calc(50% + 19px); display:flex; width:164px; max-height:min(32dvh,210px); transform:translateY(-50%); flex-direction:column; gap:4px; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; padding:10px; border:1px solid var(--af-line); border-radius:12px; background:#fff; box-shadow:0 4px 14px #173d3229; }
 .community-map__cluster-choices--left { right:calc(50% + 19px); left:auto; }
 .community-map__cluster-choices>strong { padding:2px 36px 4px 4px; font-size:13px; line-height:20px; }
 .community-map__cluster-choices>button:not(.community-map__cluster-close) { min-height:44px; padding:6px 8px; border:0; border-radius:7px; color:var(--af-ink); background:var(--community-surface); font-size:12px; line-height:18px; text-align:left; }
@@ -47,7 +51,7 @@
 .community-map__fallback button { flex:none; min-height:44px; padding:5px 9px; border:0; border-radius:8px; color:#fff; background:var(--af-green); }
 .community-map__custom-marker { display:flex; min-width:44px; min-height:44px; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:3px; border:0; color:var(--community-course-color,var(--af-green)); background:transparent; }
 .community-map__custom-symbol { display:grid; min-width:30px; height:30px; padding:4px; place-items:center; border:1px solid var(--community-course-color,var(--af-green)); border-radius:50%; color:var(--community-course-color,var(--af-green)); background:#fff; font-size:11px; font-weight:700; }
-.community-map__custom-marker--point .community-map__custom-symbol { color:#fff; background:var(--af-green); }
+.community-map__custom-marker--point .community-map__custom-symbol { min-width:24px; width:24px; height:24px; padding:2px; color:#fff; background:var(--af-green); font-size:13px; font-weight:900; line-height:1; }
 .community-map__custom-label { max-width:100px; overflow:hidden; padding:3px 7px; border-radius:10px; color:var(--af-green-dark); background:#fff; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
 .community-map-filters { position:absolute; z-index:11; top:82px; left:12px; display:flex; width:calc(100% - 12px); gap:7px; overflow-x:auto; scrollbar-width:none; }
 .community-map-filters::-webkit-scrollbar { display:none; }
@@ -196,6 +200,7 @@
 .community-quote__photo img { display:block; width:100%; height:100%; object-fit:cover; }
 .community-quote__photo:focus-visible { outline:2px solid var(--af-green); outline-offset:2px; }
 .community-photo-lightbox.af-modal-layer { z-index:10; display:grid; place-items:center; padding:20px; background:rgb(0 0 0 / 85%); }
+.community-registration-error.af-modal-layer { display:grid; place-items:center; padding:20px; }
 .community-photo-lightbox__dialog { position:relative; display:grid; width:100%; max-height:calc(100dvh - 88px); place-items:center; }
 .community-photo-lightbox__dialog img { display:block; max-width:100%; max-height:calc(100dvh - 88px); border-radius:8px; object-fit:contain; }
 .community-photo-lightbox__close { position:absolute; top:-48px; right:0; display:grid; width:44px; height:44px; place-items:center; padding:0; border:0; border-radius:50%; color:#fff; background:transparent; }
@@ -281,6 +286,7 @@
 .community-register__location button { flex:none; min-height:32px; padding:5px 8px; border:1px solid var(--af-green); border-radius:8px; color:var(--af-green-dark); background:#fff; font:700 10px/14px "Noto Sans KR",sans-serif; }
 .community-register__location button:disabled { opacity:.55; }
 .community-register__map { height:min(29dvh,220px); min-height:170px; overflow:hidden; border:1px solid var(--af-line); border-radius:14px; }
+.community-page__map--select .maplibregl-cooperative-gesture-screen { display:none; }
 .community-register__courses { margin-bottom:12px; }
 .community-register__courses .community-course-option { min-height:58px; }
 .community-register .community-field-label { margin:17px 0 8px; }

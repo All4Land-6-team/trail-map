@@ -4,6 +4,7 @@ import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotType;
 import com.all4land.trailmap.domain.community.repository.result.CommunitySpotDuplicateQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.CommunityVoteTargetQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CreatedUserSpotQueryResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
@@ -78,7 +80,7 @@ public class CommunitySpotCommandRepository {
 
     private static final String INSERT_SQL = """
             INSERT INTO user_spot (
-                user_id, mountain_id, hike_record_id, spot_type, spot_location, spot_name, spot_status
+                user_id, mountain_id, hike_record_id, spot_type, spot_location, spot_name, spot_status, client_request_id
             ) VALUES (
                 :userId,
                 :mountainId,
@@ -86,10 +88,24 @@ public class CommunitySpotCommandRepository {
                 :spotType,
                 ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
                 :name,
-                'PENDING'
+                'PENDING',
+                :clientRequestId
             )
+            ON CONFLICT (user_id, client_request_id) WHERE client_request_id IS NOT NULL DO NOTHING
             RETURNING spot_id
             """;
+
+    private static final RowMapper<CreatedUserSpotQueryResult> CREATED_SPOT_ROW_MAPPER = (resultSet, rowNumber) ->
+            new CreatedUserSpotQueryResult(
+                    resultSet.getLong("spot_id"),
+                    resultSet.getLong("mountain_id"),
+                    resultSet.getLong("hike_record_id"),
+                    CommunitySpotType.valueOf(resultSet.getString("spot_type")),
+                    resultSet.getString("spot_name"),
+                    resultSet.getDouble("longitude"),
+                    resultSet.getDouble("latitude"),
+                    resultSet.getString("spot_status")
+            );
 
     private static final RowMapper<CommunitySpotDuplicateQueryResult> DUPLICATE_ROW_MAPPER =
             (resultSet, rowNumber) -> new CommunitySpotDuplicateQueryResult(
@@ -168,20 +184,42 @@ public class CommunitySpotCommandRepository {
         return jdbcTemplate.query(DUPLICATE_SQL, parameters, DUPLICATE_ROW_MAPPER);
     }
 
-    public Long insert(
+    public Optional<Long> insert(
             Long userId,
             Long mountainId,
             Long hikeRecordId,
             CommunitySpotType type,
             String name,
             double longitude,
-            double latitude
+            double latitude,
+            UUID clientRequestId
     ) {
         var parameters = spotParameters(mountainId, type, longitude, latitude)
                 .addValue("userId", userId)
                 .addValue("hikeRecordId", hikeRecordId)
-                .addValue("name", name);
-        return jdbcTemplate.queryForObject(INSERT_SQL, parameters, Long.class);
+                .addValue("name", name)
+                .addValue("clientRequestId", clientRequestId);
+        return jdbcTemplate.query(INSERT_SQL, parameters, (resultSet, rowNumber) -> resultSet.getLong("spot_id"))
+                .stream().findFirst();
+    }
+
+    public Optional<CreatedUserSpotQueryResult> findByClientRequestId(Long userId, UUID clientRequestId) {
+        return jdbcTemplate.query("""
+                SELECT spot_id,
+                       mountain_id,
+                       hike_record_id,
+                       spot_type,
+                       spot_name,
+                       ST_X(spot_location) AS longitude,
+                       ST_Y(spot_location) AS latitude,
+                       spot_status
+                FROM user_spot
+                WHERE user_id = :userId
+                  AND client_request_id = :clientRequestId
+                  AND deleted_at IS NULL
+                """, new MapSqlParameterSource()
+                .addValue("userId", userId)
+                .addValue("clientRequestId", clientRequestId), CREATED_SPOT_ROW_MAPPER).stream().findFirst();
     }
 
     private static MapSqlParameterSource spotParameters(

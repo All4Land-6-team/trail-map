@@ -38,6 +38,24 @@ public class CommunityReviewQueryRepository {
             ORDER BY record.ended_at DESC, record.hike_record_id DESC
             """;
 
+    private static final String SPOT_ELIGIBLE_HIKE_SQL = """
+            SELECT record.hike_record_id,
+                   record.course_id,
+                   course.course_name,
+                   course.mountain_id,
+                   COALESCE(record.ended_at, record.started_at) AS ended_at
+            FROM hike_record record
+            JOIN course ON course.course_id = record.course_id
+            WHERE record.user_id = :userId
+              AND record.hike_record_id = :hikeRecordId
+              AND course.mountain_id = :mountainId
+              AND record.deleted_at IS NULL
+              AND (
+                    record.hike_status IN ('IN_PROGRESS', 'DESCENDING')
+                    OR (record.hike_status = 'COMPLETED' AND record.ended_at BETWEEN :windowStart AND :windowEnd)
+                  )
+            """;
+
     private static final String REVIEW_SELECT = """
             SELECT review.review_id,
                    review.target_id,
@@ -171,6 +189,23 @@ public class CommunityReviewQueryRepository {
                 .addValue("windowStart", windowStart)
                 .addValue("windowEnd", windowEnd);
         return jdbcTemplate.query(ELIGIBLE_HIKE_SQL, parameters, ELIGIBLE_HIKE_ROW_MAPPER);
+    }
+
+    public Optional<EligibleHikeQueryResult> findSpotEligibleHike(
+            Long userId,
+            Long mountainId,
+            Long hikeRecordId,
+            OffsetDateTime windowStart,
+            OffsetDateTime windowEnd
+    ) {
+        var parameters = new MapSqlParameterSource()
+                .addValue("userId", userId)
+                .addValue("mountainId", mountainId)
+                .addValue("hikeRecordId", hikeRecordId)
+                .addValue("windowStart", windowStart)
+                .addValue("windowEnd", windowEnd);
+        return jdbcTemplate.query(SPOT_ELIGIBLE_HIKE_SQL, parameters, ELIGIBLE_HIKE_ROW_MAPPER)
+                .stream().findFirst();
     }
 
     public List<CommunityReviewQueryResult> findMountainReviews(Long mountainId, int limit, int offset) {

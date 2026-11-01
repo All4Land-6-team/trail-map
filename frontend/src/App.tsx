@@ -7,7 +7,7 @@ import { hikePaths, navigateTab as navigateFromBottom } from './pages/hikeRoutes
 import { internalReturnPath } from './routes/communityRoutes'
 import { saveSchedule, useHikeSchedules } from './store/hikeScheduleStore'
 import { courseFixtures } from './api/courseMock'
-import { useCompletedHikes } from './store/hikeSessionStore'
+import { useCompletedHikes, useHikeSession } from './store/hikeSessionStore'
 import { navigate, routePath, useHashRoute } from './hooks/useHashRoute'
 import { HikeActivePage } from './pages/HikeActivePage/HikeActivePage'
 import { HikeCalendarPage } from './pages/HikeCalendarPage/HikeCalendarPage'
@@ -44,6 +44,7 @@ function App() {
   const plannedHikes: PlannedHike[] = schedules.map(schedule => ({ date: schedule.date, time: schedule.startTime,
     courseId: schedule.courseId, mountain: schedule.mountainName, courseName: schedule.courseName }))
   const completedHikes = useCompletedHikes()
+  const hikeSession = useHikeSession()
 
   function planHike(plannedHike: PlannedHike) {
     // 등산 담기 시트에서 같은 날짜 대체 확인을 이미 거쳤으므로 대체 등록으로 보낸다.
@@ -74,6 +75,10 @@ function App() {
         initialSpotId={query.get('spot') ?? undefined}
         initialCourseId={query.get('course') ?? undefined}
         spotRegistrationMode={query.get('mode') === 'active' ? 'active' : 'postHike'}
+        activeHike={query.get('mode') === 'active' && hikeSession && hikeSession.phase !== 'complete' ? {
+          hikeRecordId: hikeSession.hikeRecordId, courseId: hikeSession.schedule.courseId,
+          currentPosition: hikeSession.currentPosition, startedAt: hikeSession.startedAt,
+        } : undefined}
         onSpotRegistered={(entry === 'newSpot' || (entry === 'spotPicker' && query.get('mode') === 'active')) && returnTo.startsWith('hikes/') ? () => { window.location.hash = returnTo } : undefined}
         onExit={() => { window.location.hash = returnTo }} onNavigateOutside={navigateFromBottom} />
     </Suspense>

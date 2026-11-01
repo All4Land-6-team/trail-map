@@ -2,6 +2,7 @@ package com.all4land.trailmap.domain.community.service;
 
 import com.all4land.trailmap.domain.community.dto.request.CommunityReviewPageRequest;
 import com.all4land.trailmap.domain.community.dto.request.CommunitySpotMapRequest;
+import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityCoordinateResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityCourseResponse;
@@ -40,9 +41,12 @@ import java.time.ZoneOffset;
 @Transactional(readOnly = true)
 public class CommunityQueryService {
 
+    private static final CommunityReviewPageRequest THREE_REVIEWS = new CommunityReviewPageRequest(3, 0);
+
     private final CommunityMapQueryRepository mapQueryRepository;
     private final CommunityReviewQueryRepository reviewQueryRepository;
     private final CommunitySpotQueryRepository spotQueryRepository;
+    private final CommunityPhotoService photoService;
     private final R2PhotoStorage r2PhotoStorage;
     private final ObjectMapper objectMapper;
 
@@ -139,9 +143,18 @@ public class CommunityQueryService {
     ) {
         validateUser(userId);
         validateMountain(mountainId);
-        return spotQueryRepository.findSpot(userId, mountainId, targetType, targetId)
-                .map(this::toSpotDetailResponse)
+        CommunitySpotQueryResult spot = spotQueryRepository.findSpot(userId, mountainId, targetType, targetId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.SPOT_NOT_FOUND));
+        return toSpotDetailResponse(
+                spot,
+                toReviewResponses(
+                        reviewQueryRepository.findSpotReviews(
+                                targetType, targetId, THREE_REVIEWS.resolvedLimit(), THREE_REVIEWS.resolvedOffset()
+                        ),
+                        CommunityReviewKind.SPOT
+                ),
+                photoService.getSpotPhotos(userId, mountainId, targetType, targetId, 11, 0)
+        );
     }
 
     public List<CommunityReviewResponse> getMountainReviews(
@@ -227,7 +240,11 @@ public class CommunityQueryService {
         );
     }
 
-    private CommunitySpotDetailResponse toSpotDetailResponse(CommunitySpotQueryResult spot) {
+    private CommunitySpotDetailResponse toSpotDetailResponse(
+            CommunitySpotQueryResult spot,
+            List<CommunityReviewResponse> reviews,
+            List<CommunityPhotoResponse> photos
+    ) {
         return new CommunitySpotDetailResponse(
                 spot.targetType(),
                 spot.targetId(),
@@ -244,7 +261,9 @@ public class CommunityQueryService {
                 spot.viewerVote(),
                 spot.reviewCount(),
                 spot.photoCount(),
-                toReadUrl(spot.representativePhotoKey())
+                toReadUrl(spot.representativePhotoKey()),
+                reviews,
+                photos
         );
     }
 

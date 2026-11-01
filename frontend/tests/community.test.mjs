@@ -84,7 +84,10 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.match(cssSource, /community-map__cluster span \{[^}]*width:30px;[^}]*height:30px/);
   assert.match(cssSource, /community-map__pin \.af-spot-marker \{[^}]*width:44px;[^}]*height:44px/);
   assert.match(cssSource, /community-map__pin \.af-spot-marker::before \{[^}]*inset:7px/);
+  assert.match(cssSource, /community-picker \.community-map__pin--selected \.af-spot-marker::before \{[^}]*border:2px solid var\(--af-green\)/);
+  assert.match(cssSource, /community-picker \.community-map__pin--selected \.af-spot-marker::after \{[^}]*content:"\\2713"/);
   assert.match(cssSource, /community-map__cluster-choices \{[^}]*left:calc\(50% \+ 19px\);[^}]*width:164px;[^}]*padding:10px/);
+  assert.match(cssSource, /community-map__cluster-choices \{[^}]*overflow-y:auto;[^}]*overscroll-behavior:contain;[^}]*touch-action:pan-y/);
   assert.match(cssSource, /community-map__cluster-choices--left \{[^}]*right:calc\(50% \+ 19px\)/);
   assert.match(cssSource, /community-map-filters \{[^}]*z-index:11/);
   assert.match(mapSource, /clusterIdentity\(group\)/);
@@ -166,6 +169,7 @@ test('커뮤니티 스팟과 클러스터는 3D 지형 뒤에서 흐리게 표�
   assert.doesNotMatch(source, /map\.on\('move', update\)/);
   assert.match(source, /document\.addEventListener\('pointerdown', closeOnOutsidePress\)/);
   assert.match(source, /clusterChoicesRef\.current\?\.contains\(target\)/);
+  assert.match(source, /onPointerDown=\{event => event\.stopPropagation\(\)\} onWheel=\{event => event\.stopPropagation\(\)\} onTouchMove=\{event => event\.stopPropagation\(\)\}/);
   assert.match(css, /\.maplibregl-marker:has\(\.community-map__pin--cluster-choice\) \{ z-index:10; \}/);
 });
 
@@ -212,13 +216,16 @@ test('커뮤니티 목데이터 없이 API와 R2 업로드 절차를 사용한�
 
 test('등산 완료 화면에서 바로 연 산 후기 폼에 서버의 완료 산행을 연결한다', () => {
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
-  assert.match(source, /setDraft\(current => current\.kind === 'mountain'[\s\S]*completedHikeId: eligibleHikes\[0\]\.id/);
+  assert.match(source, /initialScreen === 'review' \? communityApi\.mountainEligibility/);
+  assert.match(source, /if \(initialScreen === 'review'\) setReviewEligibleCourses\(initialReviewHikes\)/);
+  assert.match(source, /setDraft\(current => current\.kind === 'mountain'[\s\S]*completedHikeId: initialReviewHikes\[0\]\.id/);
 });
 
 test('산행 후 스팟 등록은 가장 최근에 완료한 코스를 기본 경로로 사용한다', () => {
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(source, /\[\.\.\.eligibility\.hikes\][\s\S]*Date\.parse\(b\.endedAt\) - Date\.parse\(a\.endedAt\)/);
-  assert.match(source, /completedCourse = initialScreen === 'newSpot'[\s\S]*eligibleHikes\[0\]\?\.courseId/);
+  assert.match(source, /screen !== 'newSpot' \|\| spotRegistrationMode === 'active'[\s\S]*communityApi\.eligibleHikes\(mountainId, controller\.signal\)/);
+  assert.match(source, /completedCourse = courses\.find\(course => course\.id === eligibleHikes\[0\]\?\.courseId\)/);
 });
 
 test('커뮤니티의 스팟 등록 지도는 선택한 산의 최근 완료 코스들을 표시하고 현재 위치를 요청하지 않는다', () => {
@@ -227,20 +234,38 @@ test('커뮤니티의 스팟 등록 지도는 선택한 산의 최근 완료 코
   assert.match(page, /spotRegistrationCourses = useMemo[\s\S]*eligibleCourses\.flatMap/);
   assert.match(registration, /mode === 'postHike'[\s\S]*최근에 다녀온 코스/);
   assert.match(registration, /highlightedRoutes=\{mode === 'postHike' \? recentRoutes : undefined\}/);
-  assert.match(registration, /if \(mode !== 'active'\) return[\s\S]*requestAnimationFrame\(locate\)/);
+  assert.doesNotMatch(registration, /requestAnimationFrame\(locate\)/);
 });
 
 test('스팟 등록 지도는 등산 중 현재 위치를 우선하고 실패하면 전달받은 코스 전체를 표시한다', () => {
   const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   const activePage = readFileSync(new URL('../src/pages/HikeActivePage/HikeActivePage.tsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   const registration = readFileSync(new URL('../src/pages/CommunityPage/components/SpotRegistration.tsx', import.meta.url), 'utf8');
   const map = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
+  const cssSource = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
   assert.match(activePage, /mode: "active"[\s\S]*course: session\.schedule\.courseId/);
   assert.match(app, /spotRegistrationMode=\{query\.get\('mode'\) === 'active' \? 'active' : 'postHike'\}/);
-  assert.match(registration, /mode !== 'active'\) return[\s\S]*requestAnimationFrame\(locate\)/);
+  assert.match(app, /currentPosition: hikeSession\.currentPosition/);
+  assert.match(page, /DEV_COURSE_IDS\[courseId\][\s\S]*course\.id === String\(dbCourseId\)/);
+  assert.match(registration, /initialCoordinate \? \{ coordinate: initialCoordinate/);
+  assert.doesNotMatch(registration, /requestAnimationFrame\(locate\)/);
+  assert.match(registration, /className="community-page__map--select" cooperativeGestures/);
+  assert.match(map, /if \(cooperativeGestures\) map\.cooperativeGestures\.enable\(\)/);
+  assert.match(cssSource, /community-page__map--select \.maplibregl-cooperative-gesture-screen \{ display:none; \}/);
   assert.match(registration, /center=\{mountainCenter\}[\s\S]*fitHighlightedRoute=\{!locationFocus\}/);
+  assert.match(page, /activePickerPosition[\s\S]*name: '현재 위치'[\s\S]*focusTarget=\{spotPickerFocus \?\? undefined\}[\s\S]*fitHighlightedRoute=\{spotRegistrationMode === 'active' && !spotPickerFocus\}/);
   assert.doesNotMatch(registration, /mountainSpots\[0\]\?\.coordinate \?\? mountainCenter/);
   assert.match(map, /fitHighlightedRoute[\s\S]*map\.fitBounds/);
+});
+
+test('새 스팟은 사진 없이 임시 보관하고 후기 제출 때 첫 후기와 함께 등록한다', () => {
+  const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const registration = readFileSync(new URL('../src/pages/CommunityPage/components/SpotRegistration.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(registration, /PhotoField/);
+  assert.match(page, /setPendingSpot\(\{ name: spot\.name[\s\S]*clientRequestId: crypto\.randomUUID\(\)/);
+  assert.match(page, /draft\.kind === 'spot' && pendingSpot[\s\S]*communityApi\.createSpot/);
+  assert.match(page, /title: '사진을 올리지 못했어요'[\s\S]*void upload\(\)/);
 });
 
 test('등산 중 스팟 공유는 기존 스팟 선택부터 시작하고 새 스팟 등록을 선택 화면에서 제공한다', () => {
@@ -332,14 +357,22 @@ test('커뮤니티 메인과 산·스팟 후기 상세 지도에 선택한 산�
   assert.match(source, /highlightedRoute=\{screen === 'courseDetail' \? selectedCourse\.coordinates : undefined\}/);
 });
 
-test('커뮤니티 전체 화면은 코스 목록의 집계와 대표 사진을 재사용하고 상세 진입 시에만 미리보기를 조회한다', () => {
+test('커뮤니티 상세는 대상별 필요한 데이터를 중복 호출 없이 조회한다', () => {
   const apiSource = readFileSync(new URL('../src/api/community.ts', import.meta.url), 'utf8');
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(apiSource, /CommunityCourseDto[\s\S]*representativePhotoUrl: string \| null/);
   assert.doesNotMatch(pageSource, /courseResult\.map\(course => communityApi\.courseReviews/);
-  assert.match(pageSource, /activePhotoKind === 'course' \? communityApi\.coursePreview\(selectedCourse\.id/);
+  assert.match(pageSource, /communityApi\.coursePreview\(selectedCourse\.id/);
+  assert.doesNotMatch(apiSource, /spotPreview/);
+  assert.match(pageSource, /communityApi\.spotDetail\([\s\S]*result\.reviews[\s\S]*result\.photos/);
   assert.match(pageSource, /코스 후기 \(\{visibleCourseTargets\.length\}개\)/);
   assert.match(pageSource, /course\.representativePhotoUrl/);
+});
+
+test('완료 산행 목록은 산행 후 새 스팟 등록 화면에서만 조회한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /if \(screen !== 'newSpot' \|\| spotRegistrationMode === 'active' \|\| !mountainId \|\| courses\.length === 0\) return[\s\S]*communityApi\.eligibleHikes/);
+  assert.doesNotMatch(source, /Promise\.all\(\[[\s\S]{0,500}communityApi\.eligibleHikes/);
 });
 
 test('북한산 코스 경로는 이름별 고정 색상을 사용한다', () => {
@@ -409,4 +442,17 @@ test('일반 코스 상세는 사진 없이 최신 후기 2개만 요청한다',
   const source = readFileSync(new URL('../src/pages/CourseDetailPage/CourseDetailPage.tsx', import.meta.url), 'utf8');
   assert.match(source, /communityApi\.courseReviews\(String\(course\.courseId\), controller\.signal, 2\)/);
   assert.doesNotMatch(source, /communityApi\.coursePhotos/);
+});
+
+test('이미 작성한 스팟 후기와 새 스팟 등록 지도 클릭을 구분한다', () => {
+  const apiSource = readFileSync(new URL('../src/api/community.ts', import.meta.url), 'utf8');
+  const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const registrationSource = readFileSync(new URL('../src/pages/CommunityPage/components/SpotRegistration.tsx', import.meta.url), 'utf8');
+  const cssSource = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
+  assert.match(pageSource, /오늘 산행에서 해당 스팟 후기를 이미 작성했어요\./);
+  assert.match(pageSource, /error instanceof CommunityApiError && error\.status === 409/);
+  assert.match(apiSource, /review-eligibility\$\{hikeRecordId \? `\?hikeRecordId=\$\{hikeRecordId\}` : ''\}/);
+  assert.match(cssSource, /community-registration-error\.af-modal-layer \{[^}]*display:grid;[^}]*place-items:center/);
+  assert.doesNotMatch(registrationSource, /onMarkerSelect=\{marker => \{ const found = spots\.find/);
+  assert.match(registrationSource, /label="기존 스팟에 추가" onClick=\{\(\) => onUseExisting\(spot\)\}/);
 });

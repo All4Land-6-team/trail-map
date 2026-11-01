@@ -63,6 +63,7 @@ export type CommunityReviewDto = {
 export type CommunityMountainReviewSummaryDto = { reviewCount: number; averageRating: number | null; photoCount: number }
 export type CommunityReviewPreviewDto = { reviews: CommunityReviewDto[]; photos: CommunityPhotoDto[] }
 export type CommunityMountainPreviewDto = CommunityReviewPreviewDto & { summary: CommunityMountainReviewSummaryDto }
+export type CommunitySpotDetailDto = CommunitySpotDto & CommunityReviewPreviewDto
 
 export type EligibleHikeDto = {
   hikeRecordId: number
@@ -94,6 +95,7 @@ export type CreatedSpotDto = {
   longitude: number
   latitude: number
   status: string
+  review: CommunityReviewDto
 }
 
 export type SpotVoteDto = {
@@ -148,15 +150,13 @@ export const communityApi = {
     return request<CommunitySpotPageDto>(`/mountains/${mountainId}/spots/list?${query}`, { signal })
   },
   spotDetail: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal) =>
-    request<CommunitySpotDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}`, { signal }),
+    request<CommunitySpotDetailDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}`, { signal }),
   mountainReviews: (mountainId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
     request<CommunityReviewDto[]>(`/mountains/${mountainId}/reviews?limit=${limit}&offset=${offset}`, { signal }),
   mountainPreview: (mountainId: string, signal?: AbortSignal) =>
     request<CommunityMountainPreviewDto>(`/mountains/${mountainId}/preview`, { signal }),
   coursePreview: (courseId: string, signal?: AbortSignal) =>
     request<CommunityReviewPreviewDto>(`/courses/${courseId}/preview`, { signal }),
-  spotPreview: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal) =>
-    request<CommunityReviewPreviewDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/preview`, { signal }),
   courseReviews: (courseId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
     request<CommunityReviewDto[]>(`/courses/${courseId}/reviews?limit=${limit}&offset=${offset}`, { signal }),
   spotReviews: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
@@ -173,8 +173,8 @@ export const communityApi = {
     request<CommunityEligibilityDto>(`/mountains/${mountainId}/eligible-hikes`, { signal }),
   courseEligibility: (courseId: string, signal?: AbortSignal) =>
     request<CommunityEligibilityDto>(`/courses/${courseId}/review-eligibility`, { signal }),
-  spotEligibility: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal) =>
-    request<CommunityEligibilityDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/review-eligibility`, { signal }),
+  spotEligibility: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal, hikeRecordId?: number) =>
+    request<CommunityEligibilityDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/review-eligibility${hikeRecordId ? `?hikeRecordId=${hikeRecordId}` : ''}`, { signal }),
   createReview: (kind: ReviewKind, mountainId: string, targetId: string, targetType: CommunitySpotDto['targetType'] | undefined,
     body: { hikeRecordId: number; content: string; rating?: number }) => {
     const path = kind === 'mountain' ? `/mountains/${mountainId}/reviews`
@@ -182,16 +182,18 @@ export const communityApi = {
         : `/mountains/${mountainId}/spots/${targetType}/${targetId}/reviews`
     return request<CommunityReviewDto>(path, { method: 'POST', body: JSON.stringify(body) })
   },
-  createSpot: (mountainId: string, body: { hikeRecordId: number; type: SpotType; name: string; coordinate: Coordinate; confirmDistinct: boolean }) =>
+  createSpot: (mountainId: string, body: { clientRequestId: string; hikeRecordId: number; type: SpotType; name: string; coordinate: Coordinate; confirmDistinct: boolean; reviewContent: string }) =>
     request<CreatedSpotDto>(`/mountains/${mountainId}/spots`, {
       method: 'POST',
       body: JSON.stringify({
+        clientRequestId: body.clientRequestId,
         hikeRecordId: body.hikeRecordId,
         type: toSpotType(body.type),
         name: body.name,
         longitude: body.coordinate[0],
         latitude: body.coordinate[1],
         confirmDistinct: body.confirmDistinct,
+        reviewContent: body.reviewContent,
       }),
     }),
   vote: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, vote: 'yes' | 'no') =>

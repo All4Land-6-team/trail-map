@@ -236,30 +236,6 @@ class HikeRecordApiIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void 일정_종료_API는_진행_중_기록을_종료한다() throws Exception {
-        long recordId = startedRecord(userId);
-        long scheduleId = jdbcTemplate.queryForObject(
-                "SELECT schedule_id FROM hike_record WHERE hike_record_id = ?", Long.class, recordId
-        );
-        sendPositions(userId, recordId,
-                position(126.9700, 37.6500, "06:00:00", 5),
-                position(126.9700, 37.6510, "06:05:00", 5));
-
-        mockMvc.perform(asUser(userId, post("/v1/hike-schedules/" + scheduleId + "/complete")))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.hikeRecordId").value(recordId))
-                .andExpect(jsonPath("$.data.endedAt").isNotEmpty());
-
-        mockMvc.perform(asUser(userId, get("/v1/hike-records/" + recordId)))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.data.actualDurationSeconds").isNumber())
-                .andExpect(jsonPath("$.data.traveledDistanceMeters").value(closeTo(111.0, 1.0)));
-        assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM hike_record WHERE schedule_id = ?", Integer.class, scheduleId
-        )).isEqualTo(1);
-    }
-
     private long startedRecord(long requestUserId) throws Exception {
         return start(requestUserId, createSchedule(requestUserId, TODAY))
                 .andExpect(status().isCreated())

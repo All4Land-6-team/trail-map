@@ -83,23 +83,22 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 - `POST /api/v1/hike-records/{hikeRecordId}/descend`: 하산을 시작합니다.
 - `POST /api/v1/hike-records/{hikeRecordId}/finish`: 등산을 종료하고 종료 시각, 소요 시간(종료-시작 경과 초), 최종 이동 거리를 저장합니다. 이미 종료된 기록이면 그 기록을 그대로 반환합니다. 종료 후 위치 전송·하산 요청은 `HIKE_409_5`입니다.
 
-이동 거리는 경로 길이를 구면 거리(`geography`)로 계산하며, 위치를 한 번도 받지 않았으면 `null`입니다. 아래 커뮤니티의 `POST /api/v1/hike-schedules/{scheduleId}/complete`는 그 일정으로 시작한 진행 중 기록이 있으면 그 기록을 종료합니다.
+이동 거리는 경로 길이를 구면 거리(`geography`)로 계산하며, 위치를 한 번도 받지 않았으면 `null`입니다. 등산 종료는 진행 중 기록의 `hikeRecordId`로 `POST /api/v1/hike-records/{hikeRecordId}/finish`를 호출합니다.
 
 ## 커뮤니티 API
 
 모든 커뮤니티 조회 요청은 임시 사용자 식별 헤더 `X-User-Id`가 필요합니다.
 
-등산 종료 시 `POST /api/v1/hike-schedules/{scheduleId}/complete`를 호출하면 해당 일정의 코스 경로를 보존한 `COMPLETED` 산행 기록을 한 번만 생성합니다. 이 기록이 아래 후기 작성 자격에 사용됩니다.
+등산 종료 시 `POST /api/v1/hike-records/{hikeRecordId}/finish`를 호출해 진행 중 기록을 `COMPLETED`로 변경합니다. 이 기록이 아래 후기 작성 자격에 사용됩니다.
 
 - `GET /api/v1/community/mountains`: 커뮤니티에서 선택할 산과 지도 표시 좌표를 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/courses`: 산에 속한 코스, 거리, 경로 좌표와 후기 수를 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots`: 지도 영역의 공식 시설과 사용자 스팟을 함께 조회합니다. `west`, `south`, `east`, `north`가 필수이며 `type`으로 종류를 선택할 수 있습니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots/map`: 지도 이동 시 현재 화면 영역·유형 조건으로 마커 표시 필드만 조회합니다. 후기·사진 집계는 포함하지 않습니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots/list`: 선택한 산 전체의 공식 시설·사용자 스팟을 `size`(기본 20, 최대 20)개씩 조회합니다. `type` 필터와 응답의 `nextCursor`를 다음 요청의 `cursor`에 전달합니다. 커서는 산·필터에 묶여 있어 다른 조건에 재사용할 수 없습니다.
-- `GET /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}`: 스팟 상세와 투표·후기·사진 집계를 조회합니다.
+- `GET /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}`: 스팟 상세·투표·후기·사진 집계와 최신 후기 3개·사진 첫 11개를 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/preview`: 산 후기 요약, 최신 후기 3개, 사진 첫 11개를 한 번에 조회합니다.
 - `GET /api/v1/community/courses/{courseId}/preview`: 코스 최신 후기 3개와 사진 첫 11개를 한 번에 조회합니다.
-- `GET /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}/preview`: 스팟 최신 후기 3개와 사진 첫 11개를 한 번에 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/reviews`: 산 후기를 조회합니다.
 - `GET /api/v1/community/courses/{courseId}/reviews`: 코스 후기를 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}/reviews`: 스팟 후기를 조회합니다.
@@ -111,9 +110,9 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 - `GET /api/v1/community/mountains/{mountainId}/eligible-hikes`: 후기 대상과 무관하게 사용자 스팟 등록 등에 사용할 수 있는 최근 완료 산행을 조회합니다.
 - `POST /api/v1/community/mountains/{mountainId}/reviews`: 산 후기와 1~5점 평점을 등록합니다.
 - `POST /api/v1/community/courses/{courseId}/reviews`: 코스 후기를 등록합니다.
-- `POST /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}/reviews`: 공식 시설 또는 사용자 스팟 후기를 등록합니다.
+- `POST /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}/reviews`: 공식 시설 또는 사용자 스팟 후기를 등록합니다. 완료 후 24시간 이내 산행뿐 아니라 본인의 진행 중·하산 중 산행 기록도 사용할 수 있습니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots/duplicates`: 좌표 기준 50m 이내 같은 유형의 공식 시설·사용자 스팟을 조회합니다.
-- `POST /api/v1/community/mountains/{mountainId}/spots`: 사용자 스팟을 등록합니다.
+- `POST /api/v1/community/mountains/{mountainId}/spots`: 사용자 스팟과 첫 후기를 한 트랜잭션으로 등록합니다. 재시도 중복 방지를 위한 `clientRequestId`와 후기 내용이 필요하며, 완료 후 24시간 이내 또는 본인의 진행 중·하산 중 산행 기록을 사용할 수 있습니다.
 - `PUT /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}/vote`: `YES` 또는 `NO` 평가를 등록하거나 변경합니다.
 - `DELETE /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}/vote`: 현재 사용자의 평가를 취소합니다.
 - `POST /api/v1/community/photos/upload-url`: 본인이 작성한 후기 또는 사용자 스팟에 사진을 올릴 R2 presigned PUT URL을 발급합니다.

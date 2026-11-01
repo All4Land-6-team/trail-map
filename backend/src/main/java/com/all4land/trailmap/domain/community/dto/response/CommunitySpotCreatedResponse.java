@@ -9,6 +9,7 @@ public record CommunitySpotCreatedResponse(
         CommunitySpotType type,
         double longitude,
         double latitude,
-        String status
+        String status,
+        CommunityReviewResponse review
 ) {
 }
