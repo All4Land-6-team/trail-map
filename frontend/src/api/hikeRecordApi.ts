@@ -19,6 +19,10 @@ export type HikeRecord = {
   /** 종료한 기록만 있다 */
   actualDurationSeconds: number | null;
   traveledPath: LngLat[];
+  /** 기록 시작 시 저장한 코스 경로의 길이 */
+  courseDistanceMeters: number | null;
+  /** 기록 시작 시 저장한 코스 경로 (시작점 → 정상). 남은 거리를 계산하고 지도에 그린다. */
+  coursePath: LngLat[];
 };
 
 /** 서버로 보낼 GPS 위치 한 건 */
@@ -84,8 +88,14 @@ function post<T>(path: string, body?: unknown) {
   return request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
 }
 
-function toRecord(record: Omit<HikeRecord, "traveledPath"> & { traveledPath: number[][] | null }): HikeRecord {
-  return { ...record, traveledPath: (record.traveledPath ?? []).map(([longitude, latitude]) => [longitude, latitude]) };
+type HikeRecordBody = Omit<HikeRecord, "traveledPath" | "coursePath" | "courseDistanceMeters">
+  & { traveledPath: number[][] | null; coursePath?: number[][] | null; courseDistanceMeters?: number | null };
+
+const toPath = (path: number[][] | null | undefined): LngLat[] => (path ?? []).map(([longitude, latitude]) => [longitude, latitude]);
+
+function toRecord(record: HikeRecordBody): HikeRecord {
+  return { ...record, traveledPath: toPath(record.traveledPath), coursePath: toPath(record.coursePath),
+    courseDistanceMeters: record.courseDistanceMeters ?? null };
 }
 
 export async function startHikeRecord(scheduleId: number) {

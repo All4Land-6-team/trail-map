@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { HikeRecord } from "../api/hikeRecordApi";
 import type { HikeSchedule, LngLat } from "../types/hike";
+import { courseProgress, distanceMeters, type CourseProgress } from "../utils/hikeTracking.ts";
 
 export type HikeSession = {
   schedule: HikeSchedule;
@@ -18,6 +19,13 @@ export type HikeSession = {
   traveledMeters?: number;
   /** 서버가 종료 시 계산한 소요 시간 */
   durationSeconds?: number;
+  /** 기록 시작 시 서버에 저장한 코스 경로 (시작점 → 정상). 예시 데이터 모드에서는 없다. */
+  coursePath?: LngLat[];
+  courseDistanceMeters?: number;
+  /** 현재 위치를 진행 방향 코스 경로에 옮겨 계산한 남은 거리·코스 이탈 거리 */
+  courseProgress?: CourseProgress;
+  /** 하산을 시작한 지점의 traveledPath 순번. 하산 중 지도에는 여기부터의 이동 경로만 그린다. */
+  descentPathStart?: number;
 };
 
 export type CompletedHike = {
@@ -53,22 +61,76 @@ export function fromRecord(record: HikeRecord) {
     currentPosition: record.traveledPath.at(-1),
     traveledMeters: record.traveledDistanceMeters ?? undefined,
     durationSeconds: record.actualDurationSeconds ?? undefined,
+    coursePath: record.coursePath.length ? record.coursePath : undefined,
+    courseDistanceMeters: record.courseDistanceMeters ?? undefined,
   };
+}
+
+// 서버는 하산 시작 지점을 따로 저장하지 않아 새로고침 후에도 쓰도록 기록별로 브라우저에 둔다.
+const descentStartKey = (hikeRecordId: number) => `trail-map.hike-descent-start.${hikeRecordId}`;
+function saveDescentStart(hikeRecordId: number | undefined, index: number | undefined) {
+  if (hikeRecordId === undefined || typeof window === "undefined") return;
+  try {
+    if (index === undefined) window.localStorage.removeItem(descentStartKey(hikeRecordId));
+    else window.localStorage.setItem(descentStartKey(hikeRecordId), String(index));
+  } catch { /* 저장하지 못하면 새로고침 후 정상에 가장 가까운 지점부터 그린다. */ }
+}
+function loadDescentStart(hikeRecordId: number) {
+  try {
+    const value = typeof window === "undefined" ? null : window.localStorage.getItem(descentStartKey(hikeRecordId));
+    return value === null ? undefined : Number(value);
+  } catch {
+    return undefined;
+  }
+}
+
+/** 새로고침 후 하산 중인 기록: 저장해 둔 순번, 없으면 이동 경로에서 정상(코스 끝)에 가장 가까운 지점 */
+function restoredDescentStart(next: HikeSession) {
+  if (next.phase !== "downhill" || next.hikeRecordId === undefined) return undefined;
+  const saved = loadDescentStart(next.hikeRecordId);
+  if (saved !== undefined && Number.isInteger(saved) && saved >= 0 && saved < next.traveledPath.length) return saved;
+  const peak = next.coursePath?.at(-1);
+  if (!peak || !next.traveledPath.length) return undefined;
+  let nearest = 0;
+  next.traveledPath.forEach((point, index) => {
+    if (distanceMeters(point, peak) < distanceMeters(next.traveledPath[nearest], peak)) nearest = index;
+  });
+  return nearest;
+}
+
+/** 진행 방향의 코스 경로. 하산 중에는 정상에서 시작점 방향이다. */
+export function directedCoursePath(coursePath: LngLat[], phase: HikeSession["phase"]) {
+  return phase === "downhill" ? [...coursePath].reverse() : coursePath;
+}
+
+/** 현재 위치로 남은 거리를 다시 계산한다. previousAlongMeters는 같은 방향에서 직전에 계산한 진행 거리다. */
+function withCourseProgress(next: HikeSession, previousAlongMeters?: number): HikeSession {
+  const progress = next.coursePath && next.currentPosition
+    ? courseProgress(directedCoursePath(next.coursePath, next.phase), next.currentPosition, previousAlongMeters) ?? undefined
+    : undefined;
+  return { ...next, courseProgress: progress };
 }
 
 export function startHikeSession(schedule: HikeSchedule, mountainId: string, alertsOn: boolean, record?: HikeRecord) {
   if (session && session.phase !== "complete") return;
-  update({ schedule: { ...schedule }, mountainId, alertsOn, phase: "active", startedAt: new Date().toISOString(),
-    traveledPath: [], ...(record && fromRecord(record)) });
+  const next: HikeSession = { schedule: { ...schedule }, mountainId, alertsOn, phase: "active", startedAt: new Date().toISOString(),
+    traveledPath: [], ...(record && fromRecord(record)) };
+  update(withCourseProgress({ ...next, descentPathStart: restoredDescentStart(next) }));
 }
 export function setHikeAlerts(alertsOn: boolean) { if (session && session.alertsOn !== alertsOn) update({ ...session, alertsOn }); }
-export function startHikeDescent() { if (session?.phase === "active") update({ ...session, phase: "downhill" }); }
+/** 하산을 시작하면 지금 위치(이동 경로의 마지막 점)부터 하산 경로를 새로 그린다. */
+export function startHikeDescent() {
+  if (session?.phase !== "active") return;
+  const descentPathStart = Math.max(0, session.traveledPath.length - 1);
+  saveDescentStart(session.hikeRecordId, descentPathStart);
+  update(withCourseProgress({ ...session, phase: "downhill", descentPathStart }));
+}
 
 /** GPS 위치를 받을 때마다 현재 위치를 옮긴다. addToPath가 false면 경로에는 넣지 않는다(정확도가 낮은 위치 등). */
 export function recordHikePosition(position: LngLat, addToPath: boolean) {
   if (!session || session.phase === "complete") return;
-  update({ ...session, currentPosition: position,
-    traveledPath: addToPath ? [...session.traveledPath, position] : session.traveledPath });
+  update(withCourseProgress({ ...session, currentPosition: position,
+    traveledPath: addToPath ? [...session.traveledPath, position] : session.traveledPath }, session.courseProgress?.alongMeters));
 }
 export function setHikeTraveledMeters(hikeRecordId: number, meters: number | null) {
   if (session?.hikeRecordId !== hikeRecordId || meters === null || session.traveledMeters === meters) return;
@@ -78,6 +140,7 @@ export function setHikeTraveledMeters(hikeRecordId: number, meters: number | nul
 /** 기록 API로 종료했으면 서버가 계산한 이동 거리·소요 시간을 함께 남긴다. */
 export function finishHikeSession(record?: HikeRecord) {
   if (!session || session.phase === "complete") return;
+  saveDescentStart(session.hikeRecordId, undefined);
   const finished = record ? { ...session, ...fromRecord(record), traveledPath: record.traveledPath.length ? record.traveledPath : session.traveledPath }
     : { ...session, phase: "complete" as const, finishedAt: new Date().toISOString() };
   const finishedAt = finished.finishedAt ?? new Date().toISOString();
@@ -90,7 +153,7 @@ export function finishHikeSession(record?: HikeRecord) {
 /** 새로고침 후 서버의 진행 중 기록으로 다시 만든 상태 (hikeSessionRestore). 이미 진행 중인 상태가 있으면 그대로 둔다. */
 export function restoreHikeSession(restored: HikeSession) {
   if (session && session.phase !== "complete") return;
-  update(restored);
+  update(withCourseProgress({ ...restored, descentPathStart: restoredDescentStart(restored) }));
 }
 
 function subscribe(listener: () => void) {
