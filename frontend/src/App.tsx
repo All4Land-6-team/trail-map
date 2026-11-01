@@ -73,6 +73,8 @@ function App() {
     return <Suspense fallback={<main className="app-route-loading" aria-busy="true">커뮤니티 화면을 불러오는 중이에요</main>}>
       <CommunityPage key={route} initialScreen={initialScreen} initialMountainId={query.get('mountain') ?? (fromHikeComplete ? completedHikes[0]?.mountainId : undefined)}
         initialSpotId={query.get('spot') ?? undefined}
+        initialSpotTargetType={query.get('targetType') === 'USER_SPOT' ? 'USER_SPOT'
+          : query.get('targetType') === 'FACILITY' ? 'FACILITY' : undefined}
         initialCourseId={query.get('course') ?? undefined}
         spotRegistrationMode={query.get('mode') === 'active' ? 'active' : 'postHike'}
         activeHike={query.get('mode') === 'active' && hikeSession && hikeSession.phase !== 'complete' ? {

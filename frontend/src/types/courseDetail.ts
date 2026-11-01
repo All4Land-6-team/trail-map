@@ -17,6 +17,10 @@ export type CourseSpot = {
   facilityId?: number;
   distanceMeters?: number;
   sourceDate?: string | null;
+  communityTarget?: { mountainId: string; targetType: 'USER_SPOT'; targetId: string };
+  photoCount?: number;
+  reviewCount?: number;
+  example?: boolean;
 };
 export type CourseFacilitiesState =
   | { status: "unavailable" | "loading" }
@@ -31,6 +35,7 @@ export type CourseSpotRequest = {
   spotId: string;
   category: SpotCategory;
   returnPath: string;
+  targetType?: 'FACILITY' | 'USER_SPOT';
 };
 export type CourseDetailData = {
   course: Course;

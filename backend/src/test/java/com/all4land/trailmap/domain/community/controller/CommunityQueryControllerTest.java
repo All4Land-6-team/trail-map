@@ -31,6 +31,17 @@ class CommunityQueryControllerTest {
     CommunityQueryService queryService;
 
     @Test
+    void 코스별_사진_스팟_조회와_ID_검증을_지원한다() throws Exception {
+        given(queryService.getCoursePhotoSpots(7L, 3L)).willReturn(List.of());
+        mockMvc.perform(get("/v1/community/courses/3/photo-spots").header("X-User-Id", "7"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+        mockMvc.perform(get("/v1/community/courses/0/photo-spots").header("X-User-Id", "7"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/v1/community/courses/3/photo-spots"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void 지도_스팟_조회_파라미터와_사용자를_서비스에_전달한다() throws Exception {
         given(queryService.getSpots(eq(7L), eq(3L), any())).willReturn(List.of(
                 new CommunitySpotResponse(

@@ -10,6 +10,7 @@ export function internalReturnPath(value: string | null, fallback = "") {
 export function spotReviewPath(request: CourseSpotRequest) {
   const query = new URLSearchParams({ screen: "spotDetail", mountain: request.mountainId,
     spot: request.spotId, returnTo: request.returnPath });
+  if (request.targetType) query.set("targetType", request.targetType);
   return `community?${query}`;
 }
 

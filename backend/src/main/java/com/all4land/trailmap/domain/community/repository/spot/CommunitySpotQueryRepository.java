@@ -181,6 +181,19 @@ public class CommunitySpotQueryRepository {
               AND spot.target_id = :targetId
             """;
 
+    private static final String COURSE_PHOTO_SPOTS_SQL = SPOT_CTE + SPOT_SELECT + """
+            WHERE spot.target_type = 'USER_SPOT'
+              AND spot.spot_type = 'PHOTO_SPOT'
+              AND EXISTS (
+                  SELECT 1
+                  FROM user_spot registered_spot
+                  JOIN hike_record record ON record.hike_record_id = registered_spot.hike_record_id
+                  WHERE registered_spot.spot_id = spot.target_id
+                    AND record.course_id = :courseId
+              )
+            ORDER BY spot.target_id ASC
+            """;
+
     private static final RowMapper<CommunitySpotQueryResult> SPOT_ROW_MAPPER = (resultSet, rowNumber) ->
             new CommunitySpotQueryResult(
                     CommunitySpotTargetType.valueOf(resultSet.getString("target_type")),
@@ -203,6 +216,11 @@ public class CommunitySpotQueryRepository {
             );
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+
+    public List<CommunitySpotQueryResult> findCoursePhotoSpots(Long userId, Long mountainId, Long courseId) {
+        return jdbcTemplate.query(COURSE_PHOTO_SPOTS_SQL,
+                spotParameters(userId, mountainId).addValue("courseId", courseId), SPOT_ROW_MAPPER);
+    }
 
     public List<CommunitySpotQueryResult> findSpots(
             Long userId,

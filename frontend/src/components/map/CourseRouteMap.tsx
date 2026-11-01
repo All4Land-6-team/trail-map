@@ -194,7 +194,7 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
     </span>}
     {spotPoints.map(({ spot, x, y }) => <SpotMarker key={spot.id} kind={spot.kind} compact
       className="course-map__spot" style={{ left: x, top: y }} data-spot-id={spot.id}
-      aria-label={`${spot.name} 지도에서 선택`} aria-pressed={spot.id === selectedSpotId}
+      aria-label={`${spot.name} ${spot.communityTarget && spot.id === selectedSpotId ? '커뮤니티 상세 보기' : '지도에서 선택'}`} aria-pressed={spot.id === selectedSpotId}
       label={showSpotLabels ? spot.name : undefined} onClick={() => onSpotSelect?.(spot.id)} />)}
     <div className="course-map__actions">
       <MapAction dimensionMode={dimension === "2D" ? "3D" : "2D"} aria-label={`${dimension === "2D" ? "3D" : "2D"} 지도 보기`}

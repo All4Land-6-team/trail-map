@@ -36,6 +36,7 @@ type RegistrationError = { title: string; body: string; retry?: () => void }
 export type CommunityPageProps = {
   initialScreen?: CommunityScreen
   initialMountainId?: string
+  initialSpotTargetType?: CommunitySpotTargetType
   initialSpotId?: string
   initialCourseId?: string
   spotRegistrationMode?: 'active' | 'postHike'
@@ -208,7 +209,7 @@ function ReviewEligibilityInfo() {
   </span>
 }
 
-export function CommunityPage({ initialScreen = 'mountainSelect', initialMountainId, initialSpotId, initialCourseId,
+export function CommunityPage({ initialScreen = 'mountainSelect', initialMountainId, initialSpotId, initialSpotTargetType, initialCourseId,
   spotRegistrationMode = 'postHike', activeHike, onSpotRegistered, readOnly = false, onExit, onNavigateOutside }: CommunityPageProps) {
   const [screens, setScreens] = useState<CommunityScreen[]>([initialScreen])
   const screen = screens.at(-1)!
@@ -234,6 +235,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const reviewListEnd = useRef<HTMLDivElement>(null)
   const [photoPage, setPhotoPage] = useState<{ key: string; items: CommunityGalleryPhoto[]; hasNext: boolean; loading: boolean; error: boolean }>({ key: '', items: [], hasNext: false, loading: false, error: false })
   const [photoPageRetry, setPhotoPageRetry] = useState(0)
+  const [spotDetailRetry, setSpotDetailRetry] = useState(0)
+  const [spotDetailFailure, setSpotDetailFailure] = useState('')
   const photoPageBusy = useRef(false)
   const photoAlbumEnd = useRef<HTMLDivElement>(null)
   const photoStripEnd = useRef<HTMLButtonElement>(null)
@@ -259,7 +262,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const [reviewKindPickerOpen, setReviewKindPickerOpen] = useState(false)
   const mapScrollTop = useRef(0)
   const reviewPickerRef = useRef<HTMLElement>(null)
-  const [detailSpotId, setDetailSpotId] = useState(initialSpotId ?? '')
+  const [detailSpotId, setDetailSpotId] = useState(initialSpotTargetType && initialSpotId ? `${initialSpotTargetType}:${initialSpotId}` : initialSpotId ?? '')
   const [detailCourseId, setDetailCourseId] = useState(initialCourseId ?? '')
   const [galleryPhotoId, setGalleryPhotoId] = useState<string | null>(null)
   const [galleryKind, setGalleryKind] = useState<ReviewKind>('spot')
@@ -545,6 +548,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     const match = /^(FACILITY|USER_SPOT):([1-9]\d*)$/.exec(detailSpotId)
     if (!match) return
     const controller = new AbortController()
+    setSpotDetailFailure('')
     void communityApi.spotDetail(mountainId, match[1] as CommunitySpotDto['targetType'], match[2], controller.signal).then(result => {
       if (controller.signal.aborted) return
       const spot = toSpot(result)
@@ -569,10 +573,10 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         error: false,
       })
     }).catch(error => {
-      if (!controller.signal.aborted) notify(error instanceof Error ? error.message : '스팟 상세를 불러오지 못했습니다.')
+      if (!controller.signal.aborted) setSpotDetailFailure(error instanceof Error ? error.message : '스팟 상세를 불러오지 못했습니다.')
     })
     return () => controller.abort()
-  }, [detailSpotId, mountainId, notify, screen])
+  }, [detailSpotId, mountainId, screen, spotDetailRetry])
 
   useLayoutEffect(() => {
     if (screen !== 'map') return
@@ -1142,7 +1146,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         handleProps={handleProps} bodyHidden={sheetPeek}
         title={screen === 'mountainDetail' ? mountain.name : screen === 'spotDetail' ? selectedSpot?.name ?? '스팟' : selectedCourse.name}
         headerAction={screen === 'mountainDetail' && mountainRating !== null ? mountainHeaderScore : undefined}
-        content={screen === 'mountainDetail' ? mountainReviewContent : screen === 'spotDetail' ? selectedSpot && (isSpotHidden(votes[selectedSpot.id]) ?
+        content={screen === 'mountainDetail' ? mountainReviewContent : screen === 'spotDetail' ? spotDetailFailure
+          ? <div role="alert">{spotDetailFailure}<Button onClick={() => setSpotDetailRetry(value => value + 1)}>다시 조회</Button></div>
+          : !selectedSpot ? <p role="status">스팟 상세를 불러오는 중이에요.</p> : (isSpotHidden(votes[selectedSpot.id]) ?
           <><EmptyState showIcon={false} title="이 스팟은 현재 숨겨져 있어요." description="부정 평가가 기준에 도달해 지도와 목록에 표시되지 않습니다. 내 평가를 취소하거나 변경하면 다시 표시될 수 있어요." />
             {votes[selectedSpot.id]?.viewer && <section className="community-vote"><h3>내 평가 변경</h3><div><button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'yes'} onClick={() => castVote('yes')}>맞는 정보예요 <span>{votes[selectedSpot.id]?.yes ?? 0}</span></button><button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'no'} onClick={() => castVote('no')}>맞지 않아요 <span>{votes[selectedSpot.id]?.no ?? 0}</span></button></div></section>}</> : <>
             <p className="community-detail-meta">사진 {Math.max(selectedSpot.baselinePhotos, spotGalleryPhotos.length)}장 · 후기 {Math.max(selectedSpot.baselineReviews, selectedSpotReviews.length)}</p>
@@ -1169,7 +1175,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
           </div>
           <ReviewQuotes reviews={courseReviews} limit={3} />
         </>}
-        showFooter={!readOnly && !(screen === 'spotDetail' && selectedSpot && isSpotHidden(votes[selectedSpot.id]))}
+        showFooter={!readOnly && !(screen === 'spotDetail' && (!selectedSpot || !!spotDetailFailure || isSpotHidden(votes[selectedSpot.id])))}
         footer={<Button fullWidth label="후기 등록" onClick={() => registerReview(() => {
           if (screen === 'mountainDetail') beginReview('mountain', mountainId)
           else if (screen === 'spotDetail' && selectedSpot) beginReview('spot', selectedSpot.id)

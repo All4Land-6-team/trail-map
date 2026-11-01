@@ -3,6 +3,7 @@ import test, { after } from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createServer } from 'vite';
+import { coursePhotoSpotDisplay } from '../src/utils/coursePhotoSpotDisplay.ts';
 
 // 브라우저 조작과 별개로 실제 컴포넌트의 상태별 안내·목록 출력을 검증한다.
 const server = await createServer({ server: { middlewareMode: true, watch: null }, appType: 'custom' });
@@ -16,6 +17,7 @@ function render(overrides = {}) {
   return renderToStaticMarkup(createElement(CourseSpots, {
     spots: [], category: 'water', restrooms: { status: 'success', spots: [] },
     shelters: { status: 'success', spots: [] }, onRetryShelters() {},
+    photos: { status: 'success', spots: [] }, onRetryPhotos() {},
     water: { status: 'success', spots: [] }, onRetryRestrooms() {}, onRetryWater() {}, onCategory() {}, onOpen() {},
     ...overrides,
   }));
@@ -27,6 +29,38 @@ test('음수대 빈 결과는 0곳과 범위 안내를 표시한다', () => {
   assert.match(html, /조회된 음수대가 없어요/);
   assert.match(html, /음용 적합 여부는 확인되지 않았어요/);
   assert.doesNotMatch(html, /음수대 1|course-spot-card/);
+});
+
+test('사진 스팟은 조회 상태와 실제 이름·사진 수를 표시한다', () => {
+  for (const [photos, text] of [
+    [{ status: 'loading' }, /사진 스팟을 불러오는 중/],
+    [{ status: 'error', message: '연결 실패' }, /사진 스팟 다시 조회/],
+    [{ status: 'unavailable' }, /사진 스팟 조회를 준비 중/],
+  ]) {
+    const html = render({ category: 'photo', photos });
+    assert.match(html, text);
+    assert.doesNotMatch(html, /사진 스팟 · 0곳|아직 등록된 스팟/);
+  }
+  const spot = { id: 'USER_SPOT:7', name: '전망 바위', kind: 'photo', photoCount: 3, reviewCount: 2 };
+  const html = render({ category: 'photo', spots: [spot], photos: { status: 'success', spots: [spot] } });
+  assert.match(html, /사진 스팟 · 1곳/);
+  assert.match(html, /전망 바위/);
+  assert.match(html, /사진 3장 · 후기 2개/);
+  assert.doesNotMatch(html, /화면 예시/);
+});
+
+test('예시가 있어도 실제 빈 결과는 0곳이며 오류 화면에 예시 목록이 섞이지 않는다', () => {
+  const examples = [{ id: 'example', name: '사진 스팟 1', kind: 'photo', example: true }];
+  for (const actual of [{ status: 'success', spots: [] }, { status: 'error', message: '조회 실패' }]) {
+    const photos = coursePhotoSpotDisplay(actual, examples, false);
+    const html = render({ category: 'photo', photos, spots: photos.status === 'success' ? photos.spots : [] });
+    assert.doesNotMatch(html, /사진 스팟 1|course-spot-card/);
+    assert.match(html, actual.status === 'success' ? /사진 스팟 · 0곳/ : /사진 스팟 다시 조회/);
+  }
+  const photos = coursePhotoSpotDisplay({ status: 'loading' }, examples, true);
+  const html = render({ category: 'photo', photos, spots: photos.spots });
+  assert.match(html, /사진 스팟 1/);
+  assert.match(html, /지도 표시 위치는 화면 예시입니다/);
 });
 
 test('음수대 로딩·오류·미연결은 0건으로 단정하지 않고 각각 안내한다', () => {
