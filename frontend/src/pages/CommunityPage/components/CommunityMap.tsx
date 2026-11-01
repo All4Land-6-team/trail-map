@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import type { MapLibreMap } from 'maplibre-gl'
+import { createPortal } from 'react-dom'
+import { Marker, MercatorCoordinate, type LngLatBoundsLike, type MapLibreMap } from 'maplibre-gl'
 import BaseMap, { type MapRoute } from '../../../components/map/BaseMap'
 import { MapAction, MountainMarker, SpotMarker, supportsTerrain, type MapDimension, type TerrainStatus } from '../../../components/map'
 import mountainFlag from '../../../assets/icons/mountain-flag.svg'
 import { Icon } from '../../../components/common/Icon'
 import type { CommunitySpotTargetType, Coordinate, SpotType } from '../../../types/community'
-import { groupCommunityMapPoints, spreadCommunityMapPoints } from './communityMapClusters'
+import { groupCommunityMapPoints } from './communityMapClusters'
 import { communityMarkerMode } from './communityMapZoom'
 
 export type CommunityMapBounds = { west: number; south: number; east: number; north: number }
@@ -35,7 +36,7 @@ type Props = {
   overviewMarker?: CommunityMapMarker
   mountainId?: string
   center?: Coordinate
-  focusTarget?: { coordinate: Coordinate; request: number; zoom?: number; resetZoom?: boolean }
+  focusTarget?: { coordinate: Coordinate; request: number; zoom?: number; resetZoom?: boolean; resetOrientation?: boolean; verticalOffset?: number }
   zoom?: number
   showRoute?: boolean
   showMountainFlag?: boolean
@@ -54,33 +55,26 @@ type Props = {
 
 const EMPTY_ROUTES: readonly MapRoute[] = []
 const DEFAULT_CENTER: Coordinate = [126.977, 37.659]
+const MAIN_MAP_3D_PITCH = 50
 const MARKER_CLUSTER_DISTANCE = 45
-const INDIVIDUAL_OVERLAP_DISTANCE = 30
-const OVERLAP_SPREAD_ZOOM = 16
-const CLUSTER_CHOICE_ZOOM = OVERLAP_SPREAD_ZOOM - 0.5
-const CLUSTER_CHOICE_MIN_ZOOM = 15
-const OVERLAP_MARKER_SPACING = 46
+const INDIVIDUAL_OVERLAP_DISTANCE = 20
+const OVERLAP_RELEASE_ZOOM = 16
+const CLUSTER_CHOICE_ZOOM = OVERLAP_RELEASE_ZOOM - 0.5
+const CLUSTER_CHOICE_MIN_ZOOM = 13
 
-type ProjectedMarker = { marker: CommunityMapMarker; x: number; y: number }
+type ProjectedMarker = { marker: CommunityMapMarker; x: number; y: number; mapX: number; mapY: number }
 type ClusterChoiceState = { key: string; markers: CommunityMapMarker[]; align: 'left' | 'right' }
+type MarkerPlacement = { key: string; group: ProjectedMarker[]; coordinate: Coordinate; offset: [number, number]; element: HTMLDivElement }
 
 const markerIdentity = (marker: CommunityMapMarker) => `${marker.kind}:${marker.id}`
 const clusterIdentity = (group: readonly ProjectedMarker[]) => group.map(item => markerIdentity(item.marker)).sort().join('|')
 
-function groupNearbyMarkers(markers: readonly ProjectedMarker[], distance: number) {
+function groupNearbyMarkers(markers: readonly ProjectedMarker[], distance: number, useMapDistance = false) {
   return groupCommunityMapPoints([...markers]
     .filter(({ marker }) => marker.kind !== 'mountain')
     .sort((left, right) => markerIdentity(left.marker).localeCompare(markerIdentity(right.marker)))
-    .map(item => ({ value: item, x: item.x, y: item.y })), distance)
+    .map(item => ({ value: item, x: useMapDistance ? item.mapX : item.x, y: useMapDistance ? item.mapY : item.y })), distance)
     .map(group => group.map(point => point.value))
-}
-
-function spreadOverlappingMarkers(markers: readonly ProjectedMarker[]) {
-  return spreadCommunityMapPoints([...markers]
-    .filter(({ marker }) => marker.kind !== 'mountain')
-    .sort((left, right) => markerIdentity(left.marker).localeCompare(markerIdentity(right.marker)))
-    .map(item => ({ value: item, x: item.x, y: item.y })), INDIVIDUAL_OVERLAP_DISTANCE, OVERLAP_MARKER_SPACING)
-    .map(point => [{ ...point.value, x: point.x, y: point.y }])
 }
 
 function visibleMapArea(map: MapLibreMap) {
@@ -105,6 +99,8 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   const [mapRetry, setMapRetry] = useState(0)
   const [dimension, setDimension] = useState<MapDimension>('2D')
   const [terrainStatus, setTerrainStatus] = useState<TerrainStatus>('idle')
+  const mapLibreMarkers = useRef<Map<string, Marker>>(new Map())
+  const [markerElements] = useState(() => new Map<string, HTMLDivElement>())
   const isMainMap = className?.includes('community-page__map--main') ?? false
   const wasMainMap = useRef(isMainMap)
   const mainMapViewport = useRef<{ center: Coordinate; zoom: number; bearing: number; pitch: number } | null>(null)
@@ -135,17 +131,19 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       const visibleMarkers = isMainMap && mode === 'overview'
         ? overviewSnapshot ? [overviewSnapshot] : markerSnapshot.filter(marker => marker.kind === 'mountain')
         : markerSnapshot
+      const worldSize = 512 * 2 ** map.getZoom()
       setProjected(visibleMarkers.map(marker => {
         const point = map.project(marker.coordinate)
-        return { marker, x: point.x, y: point.y }
+        const mapPoint = MercatorCoordinate.fromLngLat(marker.coordinate)
+        return { marker, x: point.x, y: point.y, mapX: mapPoint.x * worldSize, mapY: mapPoint.y * worldSize }
       }))
     }
     const observer = new ResizeObserver(() => { map.resize(); update() })
     observer.observe(map.getContainer())
-    map.on('move', update)
+    map.on('moveend', update)
     map.on('resize', update)
     update()
-    return () => { observer.disconnect(); map.off('move', update); map.off('resize', update) }
+    return () => { observer.disconnect(); map.off('moveend', update); map.off('resize', update) }
   }, [map, markerSnapshot, overviewSnapshot, isMainMap])
 
   useEffect(() => {
@@ -164,7 +162,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
 
   useEffect(() => {
     if (!map || terrainEnabled) return
-    const pitch = isMainMap && dimension === '3D' ? 50 : 0
+    const pitch = isMainMap && dimension === '3D' ? MAIN_MAP_3D_PITCH : 0
     if (map.getPitch() === pitch) return
     map.easeTo({ pitch, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350 })
   }, [map, isMainMap, dimension, terrainEnabled])
@@ -182,6 +180,9 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     })
   }, [map, fitHighlightedRoute, highlightedRoute, highlightedRoutes])
 
+  const courseDetailDimension = className?.includes('community-page__map--detail-course') ? dimension : null
+  const spotDetail3D = className?.includes('community-page__map--detail-spot') && dimension === '3D'
+  const spotDetailTerrainReady = spotDetail3D && terrainStatus === 'ready'
   useEffect(() => {
     if (!map || !focusTarget || !(className?.includes('community-page__map--select') || className?.includes('community-page__map--main') || className?.includes('community-page__map--detail-mountain') || className?.includes('community-page__map--detail-spot') || className?.includes('community-page__map--detail-course'))) return
     const leavingMainMap = !isMainMap && wasMainMap.current
@@ -200,23 +201,60 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     if (className.includes('community-page__map--detail-course') && highlightedRoute && highlightedRoute.length > 1) {
       const longitudes = highlightedRoute.map(([longitude]) => longitude)
       const latitudes = highlightedRoute.map(([, latitude]) => latitude)
-      map.fitBounds([[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]], {
-        padding: { top: visibleTop + 24, right: 24, bottom: Math.max(24, mapHeight - visibleBottom + 24), left: 24 },
+      const bounds: LngLatBoundsLike = [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]]
+      const padding = { top: visibleTop + 24, right: 24, bottom: Math.max(24, mapHeight - visibleBottom + 24), left: 24 }
+      const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550
+      if (courseDetailDimension === '3D') {
+        const camera = map.cameraForBounds(bounds, { padding, offset: [0, -72], maxZoom: 16 })
+        if (camera) {
+          map.easeTo({ ...camera, zoom: Math.min((camera.zoom ?? map.getZoom()) + 0.7, 16), duration })
+          return
+        }
+      }
+      map.fitBounds(bounds, {
+        padding,
         maxZoom: 16,
-        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550,
+        duration,
       })
       return
     }
     const focusY = className.includes('community-page__map--detail-mountain')
       ? window.matchMedia('(max-height: 720px)').matches ? 154 : 160
       : className.includes('community-page__map--mountain-focus')
-        ? Math.max(visibleTop + 44, Math.min(visibleCenter - 28, visibleTop + 48)) : visibleCenter
+        ? Math.max(visibleTop + 44, Math.min(visibleCenter - 28, visibleTop + 48))
+        : visibleCenter + (focusTarget.verticalOffset ?? 0)
+    const targetZoom = focusTarget.zoom === undefined ? map.getZoom() : focusTarget.resetZoom
+      ? focusTarget.zoom : Math.max(map.getZoom(), focusTarget.zoom)
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (spotDetail3D && terrainStatus !== 'ready' && terrainStatus !== 'error') return
+    if (spotDetailTerrainReady) {
+      // 목표 줌의 지형 투영을 동기 계산한 뒤 원래 카메라에서 한 번만 이동한다.
+      const initialCamera = {
+        center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch(),
+      }
+      map.easeTo({ center: focusTarget.coordinate, offset: [0, focusY - mapHeight / 2], zoom: targetZoom, duration: 0 })
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const point = map.project(focusTarget.coordinate)
+        const offset: [number, number] = [point.x - map.getContainer().clientWidth / 2, point.y - focusY]
+        if (Math.abs(offset[0]) < 1 && Math.abs(offset[1]) < 1) break
+        map.panBy([offset[0] * 0.75, offset[1] * 0.75], { duration: 0 })
+      }
+      const camera = {
+        center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch(),
+      }
+      map.jumpTo(initialCamera)
+      map.easeTo({ ...camera,
+        duration: reducedMotion ? 0 : 550,
+        easing: progress => 1 - (1 - progress) ** 3 })
+      return
+    }
     map.easeTo({ center: focusTarget.coordinate, offset: [0, focusY - mapHeight / 2],
-      zoom: focusTarget.zoom === undefined ? map.getZoom() : focusTarget.resetZoom
-        ? focusTarget.zoom : Math.max(map.getZoom(), focusTarget.zoom),
-      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550,
+      zoom: targetZoom,
+      bearing: focusTarget.resetOrientation ? 0 : undefined,
+      pitch: focusTarget.resetOrientation ? dimension === '3D' ? MAIN_MAP_3D_PITCH : 0 : undefined,
+      duration: reducedMotion ? 0 : 550,
       easing: progress => 1 - (1 - progress) ** 3 })
-  }, [map, focusTarget, className, highlightedRoute, isMainMap])
+  }, [map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetail3D, spotDetailTerrainReady, terrainStatus, dimension])
 
   useEffect(() => {
     if (!map || !onMapSelect) return
@@ -227,7 +265,15 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
 
   useEffect(() => {
     if (!map || !onViewportChange) return
+    let lastReportedCamera: { longitude: number; latitude: number; zoom: number } | null = null
     const report = () => {
+      const center = map.getCenter()
+      const zoom = map.getZoom()
+      if (lastReportedCamera
+        && Math.abs(lastReportedCamera.longitude - center.lng) < 0.000001
+        && Math.abs(lastReportedCamera.latitude - center.lat) < 0.000001
+        && Math.abs(lastReportedCamera.zoom - zoom) < 0.001) return
+      lastReportedCamera = { longitude: center.lng, latitude: center.lat, zoom }
       const bounds = map.getBounds()
       onViewportChange({ west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() })
     }
@@ -241,14 +287,69 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     if (clusterChoice) clusterChoicesRef.current?.querySelector<HTMLButtonElement>('.community-map__cluster-choice')?.focus()
   }, [clusterChoice])
 
+  useEffect(() => {
+    if (!clusterChoice) return
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)
+        || clusterChoicesRef.current?.contains(target)
+        || markerElements.get(clusterChoice.key)?.contains(target)) return
+      setClusterChoice(null)
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePress)
+  }, [clusterChoice, markerElements])
+
   const currentZoom = map?.getZoom() ?? zoom
   const markerGroups = isMainMap && markerMode !== 'overview'
-    ? markerMode === 'individual' && currentZoom >= OVERLAP_SPREAD_ZOOM
-      ? spreadOverlappingMarkers(projected)
-      : groupNearbyMarkers(projected, markerMode === 'cluster' ? MARKER_CLUSTER_DISTANCE : INDIVIDUAL_OVERLAP_DISTANCE)
+    ? markerMode === 'individual' && currentZoom >= OVERLAP_RELEASE_ZOOM
+      ? projected.filter(({ marker }) => marker.kind !== 'mountain').map(item => [item])
+      : groupNearbyMarkers(projected, markerMode === 'cluster' ? MARKER_CLUSTER_DISTANCE : INDIVIDUAL_OVERLAP_DISTANCE, markerMode === 'cluster')
     : projected.filter(({ marker }) => marker.kind !== 'mountain').map(item => [item])
   const mountainMarkers = projected.filter(({ marker }) => marker.kind === 'mountain')
   const displayedGroups = [...mountainMarkers.map(item => [item]), ...markerGroups]
+  displayedGroups.forEach(group => {
+    const key = clusterIdentity(group)
+    if (!markerElements.has(key)) markerElements.set(key, document.createElement('div'))
+  })
+  const markerPlacements = displayedGroups.map<MarkerPlacement>(group => {
+    const key = clusterIdentity(group)
+    const x = group.reduce((total, item) => total + item.x, 0) / group.length
+    const y = group.reduce((total, item) => total + item.y, 0) / group.length
+    const coordinate: Coordinate = group.length === 1 ? group[0].marker.coordinate : [
+      group.reduce((total, item) => total + item.marker.coordinate[0], 0) / group.length,
+      group.reduce((total, item) => total + item.marker.coordinate[1], 0) / group.length,
+    ]
+    const naturalPoint = map?.project(coordinate)
+    return { key, group, coordinate, offset: group.length > 1 && naturalPoint ? [x - naturalPoint.x, y - naturalPoint.y] : [0, 0], element: markerElements.get(key)! }
+  })
+
+  useEffect(() => {
+    if (!map) return
+    const liveKeys = new Set(markerPlacements.map(placement => placement.key))
+    markerPlacements.forEach(({ key, coordinate, offset, element }) => {
+      let marker = mapLibreMarkers.current.get(key)
+      if (!marker || marker.getElement() !== element) {
+        marker?.remove()
+        marker = new Marker({ element, anchor: 'center', opacityWhenCovered: 0.2, subpixelPositioning: true })
+          .setLngLat(coordinate).setOffset(offset).addTo(map)
+        mapLibreMarkers.current.set(key, marker)
+        return
+      }
+      const lngLat = marker.getLngLat()
+      if (lngLat.lng !== coordinate[0] || lngLat.lat !== coordinate[1]) marker.setLngLat(coordinate)
+      const currentOffset = marker.getOffset()
+      if (Math.abs(currentOffset.x - offset[0]) > 0.1 || Math.abs(currentOffset.y - offset[1]) > 0.1) marker.setOffset(offset)
+    })
+    mapLibreMarkers.current.forEach((marker, key) => {
+      if (!liveKeys.has(key)) { marker.remove(); mapLibreMarkers.current.delete(key); markerElements.delete(key) }
+    })
+  }, [map, markerElements, markerPlacements])
+
+  useEffect(() => {
+    const markersOnMap = mapLibreMarkers.current
+    return () => { markersOnMap.forEach(marker => marker.remove()); markersOnMap.clear() }
+  }, [map])
 
   const expandCluster = (group: readonly ProjectedMarker[]) => {
     if (!map) return
@@ -285,14 +386,11 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       aria-busy={terrainEnabled && terrainStatus === 'loading'}
       disabled={!map || mapUnavailable || (terrainEnabled && terrainStatus !== 'ready')}
       onDimensionModeChange={() => setDimension(current => current === '2D' ? '3D' : '2D')} />}
-    <div className="community-map__markers" aria-label="지도 항목">
-      {displayedGroups.map(group => {
-        const groupKey = clusterIdentity(group)
-        const choiceOpen = clusterChoice?.key === groupKey
-        return group.length > 1 ? <div key={groupKey}
-          className={`community-map__pin community-map__pin--cluster${choiceOpen ? ' community-map__pin--cluster-choice' : ''}`}
-          style={{ left: group.reduce((total, item) => total + item.x, 0) / group.length,
-            top: group.reduce((total, item) => total + item.y, 0) / group.length } as CSSProperties}>
+    {markerPlacements.map(({ key: groupKey, group, element }) => {
+      const choiceOpen = clusterChoice?.key === groupKey
+      return createPortal(<div
+        className={`community-map__pin ${group.length > 1 ? 'community-map__pin--cluster' : `community-map__pin--${group[0].marker.kind}`}${choiceOpen ? ' community-map__pin--cluster-choice' : ''}${group.length === 1 && group[0].marker.selected ? ' community-map__pin--selected' : ''}`}>
+        {group.length > 1 ? <>
           <button type="button" className="community-map__cluster"
             aria-label={`겹친 지도 항목 ${group.length}개 ${markerMode === 'individual' ? '목록 보기' : '확대 또는 목록 보기'}`} onClick={() => expandCluster(group)}><span>{group.length}</span></button>
           {choiceOpen && <div ref={clusterChoicesRef} className={`community-map__cluster-choices community-map__cluster-choices--${clusterChoice.align}`}
@@ -300,8 +398,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
             <button type="button" className="community-map__cluster-close" onClick={() => setClusterChoice(null)} aria-label="목록 닫기">×</button>
             <strong>이 위치의 항목</strong>{clusterChoice.markers.map(marker => <button type="button" className="community-map__cluster-choice" key={markerIdentity(marker)} onClick={() => { onMarkerSelect?.(marker); setClusterChoice(null) }}>{marker.name}</button>)}
           </div>}
-        </div> : group.map(({ marker, x, y }) => <div key={markerIdentity(marker)} className={`community-map__pin community-map__pin--${marker.kind}${marker.selected ? ' community-map__pin--selected' : ''}`}
-        style={{ left: x, top: y } as CSSProperties}>
+        </> : group.map(({ marker }) => <span key={markerIdentity(marker)}>
         {marker.kind === 'mountain'
           ? <span className={`community-map__mountain-marker${showMountainLabel ? '' : ' community-map__mountain-marker--label-hidden'}`}>{showMountainFlag && <img src={mountainFlag} alt="" aria-hidden="true" className="community-map__mountain-flag" />}
               <MountainMarker name={marker.name} variant="point" selected={marker.selected} aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker)} />
@@ -315,9 +412,9 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
                 <span className="community-map__custom-symbol">{marker.shortLabel ?? <Icon name="Pin" size={18} />}</span>
                 {marker.kind !== 'point' && marker.kind !== 'course' && <span className="community-map__custom-label">{marker.label ?? marker.name}</span>}
               </button>}
-      </div>)
-      })}
-    </div>
+      </span>)}
+      </div>, element, groupKey)
+    })}
     {children}
   </div>
 }

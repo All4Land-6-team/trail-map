@@ -4,7 +4,7 @@ import test from 'node:test';
 import { communityApi } from '../src/api/community.ts';
 import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SPOT_HIDE_NEGATIVE_VOTES, canWriteCourseReview, canWriteReview, castSpotVote, distanceMeters, eligibleCourseCompletions, isSpotHidden, nearbySpotCandidates } from '../src/utils/community.ts';
 import { communityMarkerMode } from '../src/pages/CommunityPage/components/communityMapZoom.ts';
-import { groupCommunityMapPoints, spreadCommunityMapPoints } from '../src/pages/CommunityPage/components/communityMapClusters.ts';
+import { groupCommunityMapPoints } from '../src/pages/CommunityPage/components/communityMapClusters.ts';
 import { bufferMapBounds, coversMapBounds, nearestCoordinate } from '../src/pages/CommunityPage/components/communityMapBounds.ts';
 import { communityCourseColor } from '../src/constants/community.ts';
 
@@ -12,8 +12,8 @@ test('커뮤니티 지도 줌 단계는 기본점, 숫자 클러스터, 개별 �
   assert.equal(communityMarkerMode(9.5), 'overview');
   assert.equal(communityMarkerMode(11.99), 'overview');
   assert.equal(communityMarkerMode(12), 'cluster');
-  assert.equal(communityMarkerMode(13.49), 'cluster');
-  assert.equal(communityMarkerMode(13.5), 'individual');
+  assert.equal(communityMarkerMode(12.99), 'cluster');
+  assert.equal(communityMarkerMode(13), 'individual');
   assert.equal(communityMarkerMode(14), 'individual');
   assert.equal(communityMarkerMode(14.5), 'individual');
   assert.equal(communityMarkerMode(18), 'individual');
@@ -32,23 +32,13 @@ test('지도 클러스터는 입력 순서와 관계없이 가까운 그룹을 �
   assert.deepEqual(reversed.map(group => group.join(',')).sort(), grouped.map(group => group.join(',')).sort());
 });
 
-test('개별 마커 단계에서는 실제로 겹치는 마커만 묶을 수 있다', () => {
+test('개별 마커 해제 전에는 가까운 마커를 묶는다', () => {
   const groups = groupCommunityMapPoints([
     { value: 'same-a', x: 10, y: 10 },
     { value: 'same-b', x: 10, y: 10 },
     { value: 'separate', x: 41, y: 10 },
   ], 30);
   assert.deepEqual(groups.map(group => group.map(point => point.value)), [['same-a', 'same-b'], ['separate']]);
-});
-
-test('충분히 확대하면 겹친 마커를 원래 중심 주변으로 벌린다', () => {
-  const spread = spreadCommunityMapPoints([
-    { value: 'a', x: 100, y: 100 },
-    { value: 'b', x: 100, y: 100 },
-  ], 30, 46);
-  assert.equal(Math.round(Math.hypot(spread[0].x - spread[1].x, spread[0].y - spread[1].y)), 46);
-  assert.equal((spread[0].x + spread[1].x) / 2, 100);
-  assert.equal((spread[0].y + spread[1].y) / 2, 100);
 });
 
 test('지도 스팟 조회 영역은 화면 밖까지 포함하고 영역을 벗어날 때만 다시 조회한다', () => {
@@ -70,6 +60,11 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   const cssSource = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
   assert.match(source, /all: 12\.5, mountain: MAIN_MAP_ZOOM, spot: 14\.5, course: 11\.99/);
   assert.match(source, /mapFocusCategory === 'spot' \? spotFocusCenter \?\? mountainCenter/);
+  assert.match(source, /mapFocusCategory === 'all' \|\| mapFocusCategory === 'course' \? -20 : undefined/);
+  assert.match(source, /resetZoom: true, resetOrientation: true/);
+  assert.match(mapSource, /visibleCenter \+ \(focusTarget\.verticalOffset \?\? 0\)/);
+  assert.match(mapSource, /bearing: focusTarget\.resetOrientation \? 0 : undefined/);
+  assert.match(mapSource, /pitch: focusTarget\.resetOrientation \? dimension === '3D' \? MAIN_MAP_3D_PITCH : 0 : undefined/);
   assert.doesNotMatch(source, /courseMapCenter/);
   assert.match(source, /setSpotFocusCenter\(nearestCoordinate\(visibleListedSpots\.map/);
   assert.match(source, /setMapFocusCategory\(category\)/);
@@ -78,11 +73,12 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.match(source, /const MOUNTAIN_DETAIL_ZOOM = CATEGORY_MAP_ZOOM\.mountain/);
   assert.match(mapSource, /community-page__map--detail-mountain'[\s\S]*max-height: 720px\)'[\s\S]*154 : 160/);
   assert.match(mapSource, /MARKER_CLUSTER_DISTANCE = 45/);
-  assert.match(mapSource, /INDIVIDUAL_OVERLAP_DISTANCE = 30/);
-  assert.match(mapSource, /OVERLAP_SPREAD_ZOOM = 16/);
-  assert.match(mapSource, /CLUSTER_CHOICE_ZOOM = OVERLAP_SPREAD_ZOOM - 0\.5/);
-  assert.match(mapSource, /CLUSTER_CHOICE_MIN_ZOOM = 15/);
-  assert.match(mapSource, /currentZoom >= OVERLAP_SPREAD_ZOOM/);
+  assert.match(mapSource, /INDIVIDUAL_OVERLAP_DISTANCE = 20/);
+  assert.match(mapSource, /OVERLAP_RELEASE_ZOOM = 16/);
+  assert.match(mapSource, /CLUSTER_CHOICE_ZOOM = OVERLAP_RELEASE_ZOOM - 0\.5/);
+  assert.match(mapSource, /CLUSTER_CHOICE_MIN_ZOOM = 13/);
+  assert.doesNotMatch(mapSource, /spreadOverlappingMarkers/);
+  assert.match(mapSource, /currentZoom >= OVERLAP_RELEASE_ZOOM[\s\S]*map\(item => \[item\]\)/);
   assert.match(mapSource, /targetZoom = Math\.min\(CLUSTER_CHOICE_ZOOM, map\.getMaxZoom\(\)\)/);
   assert.match(mapSource, /map\.getZoom\(\) < CLUSTER_CHOICE_MIN_ZOOM/);
   assert.match(cssSource, /community-map__cluster span \{[^}]*width:30px;[^}]*height:30px/);
@@ -90,12 +86,22 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.match(cssSource, /community-map__pin \.af-spot-marker::before \{[^}]*inset:7px/);
   assert.match(cssSource, /community-map__cluster-choices \{[^}]*left:calc\(50% \+ 19px\);[^}]*width:164px;[^}]*padding:10px/);
   assert.match(cssSource, /community-map__cluster-choices--left \{[^}]*right:calc\(50% \+ 19px\)/);
+  assert.match(cssSource, /community-map-filters \{[^}]*z-index:11/);
   assert.match(mapSource, /clusterIdentity\(group\)/);
   assert.match(mapSource, /rightSpace >= 183 \|\| rightSpace >= leftSpace/);
   assert.match(mapSource, /returningToMainMap && mainMapViewport\.current/);
+  assert.match(mapSource, /map\.easeTo\(\{ \.\.\.mainMapViewport\.current/);
+  assert.match(mapSource, /offset: group\.length > 1 && naturalPoint \? \[x - naturalPoint\.x, y - naturalPoint\.y\] : \[0, 0\]/);
   assert.doesNotMatch(mapSource, /map\.on\('zoomend'/);
   assert.match(cssSource, /community-map__mountain-marker \{[^}]*width:44px;[^}]*height:44px/);
   assert.match(cssSource, /community-map__mountain-marker \.af-mountain-marker__label \{[^}]*position:absolute/);
+});
+
+test('산 선택 직후에도 전체 필터와 같은 지도 위치를 사용한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /const scheduleMapFocus = \(category: MapCategory, delay: number\) => \{[\s\S]*window\.clearTimeout\(categoryFocusTimer\.current\)[\s\S]*setMapFocusCategory\(category\)[\s\S]*setCategoryFocusRequest\(current => current \+ 1\)/);
+  assert.match(source, /const confirmMountainSelection = \(\) => \{[\s\S]*setMapCategory\('all'\)[\s\S]*move\('map'\)[\s\S]*scheduleMapFocus\('all', 240\)/);
+  assert.match(source, /const changeMapCategory = \(category: MapCategory\) => \{[\s\S]*setMapCategory\(category\)[\s\S]*scheduleMapFocus\(category, sheetPeek \? 240 : 0\)/);
 });
 
 test('산 필터만 라벨을 표시하고 다른 화면에는 라벨 없는 깃발 산 기본점을 표시한다', () => {
@@ -146,6 +152,36 @@ test('북한산 커뮤니티 지도들은 공용 Terrain-RGB 상태와 연결한
   assert.match(page, /community-page__map--detail[\s\S]*mountainId=\{terrainMountainId\}/);
   assert.match(page, /community-picker__map[\s\S]*mountainId=\{terrainMountainId\}/);
   assert.match(registration, /<CommunityMap[\s\S]*mountainId=\{terrainMountainId\}/);
+});
+
+test('커뮤니티 스팟과 클러스터는 3D 지형 뒤에서 흐리게 표시하고 이동 중 재배치하지 않는다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
+  assert.match(source, /import \{ createPortal \} from 'react-dom'/);
+  assert.match(source, /new Marker\(\{ element, anchor: 'center', opacityWhenCovered: 0\.2, subpixelPositioning: true \}\)/);
+  assert.match(source, /\[markerElements\] = useState\(\(\) => new Map<string, HTMLDivElement>\(\)\)/);
+  assert.match(source, /if \(!markerElements\.has\(key\)\) markerElements\.set\(key, document\.createElement\('div'\)\)/);
+  assert.match(source, /createPortal\(<div/);
+  assert.match(source, /map\.on\('moveend', update\)/);
+  assert.doesNotMatch(source, /map\.on\('move', update\)/);
+  assert.match(source, /document\.addEventListener\('pointerdown', closeOnOutsidePress\)/);
+  assert.match(source, /clusterChoicesRef\.current\?\.contains\(target\)/);
+  assert.match(css, /\.maplibregl-marker:has\(\.community-map__pin--cluster-choice\) \{ z-index:10; \}/);
+});
+
+test('스팟 상세 지도 조회는 메인 지도의 마커 목록을 덮어쓰지 않는다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /const cacheKey = `\$\{screen\}:\$\{mountainId\}:\$\{type \?\? 'all'\}`/);
+  assert.match(source, /if \(screen === 'map'\) setMapSpots\(loaded\)/);
+  assert.match(source, /if \(screen === 'map' && shownMapSpotKey\.current !== cacheKey\)/);
+});
+
+test('클러스터는 3D 화면 투영이 아니라 줌 단계의 평면 지도 거리로 계산한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
+  assert.match(source, /MercatorCoordinate\.fromLngLat\(marker\.coordinate\)/);
+  assert.match(source, /useMapDistance \? item\.mapX : item\.x/);
+  assert.match(source, /markerMode === 'cluster'\)/);
+  assert.match(source, /lastReportedCamera\.zoom - zoom/);
 });
 
 test('커뮤니티 목데이터 없이 API와 R2 업로드 절차를 사용한다', async () => {
@@ -318,6 +354,14 @@ test('코스 상세 지도는 고정 확대 대신 전체 경로 경계에 맞�
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(mapSource, /community-page__map--detail-course[\s\S]*map\.fitBounds/);
   assert.match(mapSource, /bottom: Math\.max\(24, mapHeight - visibleBottom \+ 24\)[\s\S]*maxZoom: 16/);
+  assert.match(mapSource, /courseDetailDimension === '3D'[\s\S]*map\.cameraForBounds\(bounds, \{ padding, offset: \[0, -72\], maxZoom: 16 \}\)/);
+  assert.match(mapSource, /camera\.zoom \?\? map\.getZoom\(\)\) \+ 0\.7, 16/);
+  assert.match(pageSource, /communityApi\.spotDetail\([\s\S]*setDetailSpotFocus\(current => current[\s\S]*coordinate: spot\.coordinate/);
+  assert.match(mapSource, /spotDetail3D = className\?\.includes\('community-page__map--detail-spot'\) && dimension === '3D'/);
+  assert.match(mapSource, /if \(spotDetail3D && terrainStatus !== 'ready' && terrainStatus !== 'error'\) return/);
+  assert.match(mapSource, /spotDetailTerrainReady = spotDetail3D && terrainStatus === 'ready'/);
+  assert.match(mapSource, /if \(spotDetailTerrainReady\) \{[\s\S]*map\.easeTo\(\{ center: focusTarget\.coordinate,[\s\S]*duration: 0 \}\)[\s\S]*map\.panBy\([\s\S]*duration: 0[\s\S]*map\.jumpTo\(initialCamera\)[\s\S]*map\.easeTo\(\{ \.\.\.camera,[\s\S]*duration: reducedMotion \? 0 : 550/);
+  assert.match(mapSource, /\}, \[map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetail3D, spotDetailTerrainReady, terrainStatus, dimension\]\)/);
   assert.doesNotMatch(pageSource, /courseDetailFocus[\s\S]{0,120}zoom: 16/);
 });
 

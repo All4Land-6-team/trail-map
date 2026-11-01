@@ -383,17 +383,17 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     const controller = new AbortController()
     const type = screen === 'map' && mapCategory === 'spot' && spotTypeFilter !== 'all'
       ? toSpotType(spotTypeFilter) : undefined
-    const cacheKey = `${mountainId}:${type ?? 'all'}`
+    const cacheKey = `${screen}:${mountainId}:${type ?? 'all'}`
     const cached = mapSpotCache.current.get(cacheKey)
     if (cached && Date.now() - cached.fetchedAt < MAP_SPOT_CACHE_MS && coversMapBounds(cached.bounds, mapBounds)) {
-      if (shownMapSpotKey.current !== cacheKey) {
+      if (screen === 'map' && shownMapSpotKey.current !== cacheKey) {
         setMapSpots(cached.spots.map(toMapSpot))
         setVotes(current => ({ ...Object.fromEntries(cached.spots.map(spot => [`${spot.targetType}:${spot.targetId}`, toVote(spot)])), ...current }))
         shownMapSpotKey.current = cacheKey
       }
       return
     }
-    if (shownMapSpotKey.current !== cacheKey) {
+    if (screen === 'map' && shownMapSpotKey.current !== cacheKey) {
       setMapSpots([])
       shownMapSpotKey.current = cacheKey
     }
@@ -402,7 +402,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       if (controller.signal.aborted) return
       mapSpotCache.current.set(cacheKey, { bounds: queryBounds, spots: result, fetchedAt: Date.now() })
       const loaded = result.map(toMapSpot)
-      setMapSpots(loaded)
+      if (screen === 'map') setMapSpots(loaded)
       setSpots(current => {
         const merged = new Map(current.map(spot => [spot.id, spot]))
         loaded.forEach(spot => { if (!merged.has(spot.id)) merged.set(spot.id, spot) })
@@ -508,6 +508,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         merged.set(spot.id, spot)
         return [...merged.values()]
       })
+      setDetailSpotFocus(current => current
+        && current.coordinate[0] === spot.coordinate[0] && current.coordinate[1] === spot.coordinate[1]
+        ? current : { coordinate: spot.coordinate, request: (current?.request ?? 0) + 1, zoom: 16 })
       setVotes(current => ({ ...current, [spot.id]: toVote(result) }))
     }).catch(error => {
       if (!controller.signal.aborted) notify(error instanceof Error ? error.message : '스팟 상세를 불러오지 못했습니다.')
@@ -562,7 +565,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const mapFocus = useMemo(() => {
     const mountainCenter = mountain.position as Coordinate
     const coordinate = mapFocusCategory === 'spot' ? spotFocusCenter ?? mountainCenter : mountainCenter
-    return { coordinate, request: categoryFocusRequest, zoom: CATEGORY_MAP_ZOOM[mapFocusCategory], resetZoom: true }
+    const verticalOffset = mapFocusCategory === 'all' || mapFocusCategory === 'course' ? -20 : undefined
+    return { coordinate, request: categoryFocusRequest, zoom: CATEGORY_MAP_ZOOM[mapFocusCategory], resetZoom: true, resetOrientation: true, verticalOffset }
   }, [mountain.position, mapFocusCategory, categoryFocusRequest, spotFocusCenter])
   const selectedSpot = spots.find(spot => spot.id === detailSpotId)
   const selectedCourse = useMemo(() => courses.find(course => course.id === detailCourseId && course.mountainId === mountainId)
@@ -681,6 +685,18 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     return () => { observer.disconnect(); controller.abort() }
   }, [activePhotoKey, activePhotoKind, mapCategory, mountainId, notify, photoPage.error, photoPage.hasNext, photoPage.items.length, photoPage.key, screen, selectedCourse.id, selectedGalleryIndex, selectedSpot?.targetId, selectedSpot?.targetType])
   const move = (next: CommunityScreen) => { setErrors({}); setReviewKindPickerOpen(false); resetSheet(); setScreens(current => [...current, next]) }
+  const scheduleMapFocus = (category: MapCategory, delay: number) => {
+    if (categoryFocusFrame.current !== null) window.cancelAnimationFrame(categoryFocusFrame.current)
+    if (categoryFocusTimer.current !== null) window.clearTimeout(categoryFocusTimer.current)
+    categoryFocusTimer.current = window.setTimeout(() => {
+      categoryFocusFrame.current = window.requestAnimationFrame(() => {
+        setMapFocusCategory(category)
+        setCategoryFocusRequest(current => current + 1)
+        categoryFocusFrame.current = null
+      })
+      categoryFocusTimer.current = null
+    }, delay)
+  }
   const confirmMountainSelection = () => {
     if (!mountainId) return
     mapScrollTop.current = 0
@@ -688,6 +704,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     setMapFocusCategory('all')
     setSpotTypeFilter('all')
     move('map')
+    scheduleMapFocus('all', 240)
   }
   const back = () => {
     setErrors({})
@@ -710,16 +727,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       setSpotFocusCenter(nearestCoordinate(visibleListedSpots.map(spot => spot.coordinate), mountain.position as Coordinate))
     }
     setMapCategory(category)
-    if (categoryFocusFrame.current !== null) window.cancelAnimationFrame(categoryFocusFrame.current)
-    if (categoryFocusTimer.current !== null) window.clearTimeout(categoryFocusTimer.current)
-    categoryFocusTimer.current = window.setTimeout(() => {
-      categoryFocusFrame.current = window.requestAnimationFrame(() => {
-        setMapFocusCategory(category)
-        setCategoryFocusRequest(current => current + 1)
-        categoryFocusFrame.current = null
-      })
-      categoryFocusTimer.current = null
-    }, sheetPeek ? 240 : 0)
+    scheduleMapFocus(category, sheetPeek ? 240 : 0)
     const content = rootRef.current?.querySelector<HTMLElement>('.community-page__sheet--map .af-bottom-sheet__content')
     if (content) content.scrollTop = 0
   }
