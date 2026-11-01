@@ -32,6 +32,7 @@ export function installTerrainLayers(
       id: HILLSHADE_LAYER_ID,
       type: "hillshade",
       source: HILLSHADE_SOURCE_ID,
+      minzoom: source.minzoom,
       paint: {
         "hillshade-exaggeration": 0.35,
         "hillshade-shadow-color": "#294d3f",
@@ -51,7 +52,8 @@ export function removeTerrainLayers(map: TerrainLayerMap & Pick<MapLibreMap, "re
 }
 
 export function supportsTerrain(mountainId?: string) {
-  return mountainId === TERRAIN_MOUNTAIN_ID;
+  // The existing bukhansan DEM tiles also cover the Dobongsan course catalog.
+  return mountainId === TERRAIN_MOUNTAIN_ID || mountainId === "dobongsan";
 }
 
 export function isTerrainSourceError(event: unknown) {
@@ -60,12 +62,12 @@ export function isTerrainSourceError(event: unknown) {
   return sourceId === TERRAIN_SOURCE_ID || sourceId === HILLSHADE_SOURCE_ID;
 }
 
-export function applyTerrainMode(map: TerrainModeMap, mode: MapDimension) {
+export function applyTerrainMode(map: TerrainModeMap, mode: MapDimension, options?: { cameraManaged?: boolean }) {
   if (!map.getSource(TERRAIN_SOURCE_ID)) return false;
   map.setTerrain(mode === "3D"
     ? { source: TERRAIN_SOURCE_ID, exaggeration: 1 }
     : null);
-  map.easeTo({ pitch: mode === "3D" ? 50 : 0, duration: 350 });
+  if (!options?.cameraManaged) map.easeTo({ pitch: mode === "3D" ? 50 : 0, duration: 350 });
   return true;
 }
 

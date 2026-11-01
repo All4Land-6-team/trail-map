@@ -52,6 +52,12 @@ docker exec -i <PostGIS 컨테이너> psql -U postgres -d trail_map < docs/dev-s
 
 DB 스키마, PostGIS, Flyway migration 작업 시 `docs/migration.md`를 확인합니다.
 
+## 코스 LineString 경로 (#95)
+
+후보 GeoJSON 13개 적재 CLI, 산별 경로 목록 및 단일 코스 조회 API는
+[코스 경로 문서](docs/course-routes.md)를 참고합니다. 후보 검증 상태를 보존하며,
+고도·경사 분석 및 기존 코스 데이터는 변경하지 않습니다.
+
 ## Terrain-RGB 타일 API
 
 북한산 Terrain-RGB 산출물은 프로젝트 루트의

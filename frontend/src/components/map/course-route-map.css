@@ -1,4 +1,14 @@
 .course-map { position: absolute; inset: 0; overflow: hidden; }
+.course-map__preview button { border: 1px solid #d0e2da; border-radius: 10px; background: #fff; color: #155c4c; padding: 7px 8px; font: inherit; font-size: 10px; cursor: pointer; }
+.course-map__overview { padding: 0; font-size: 10px; white-space: nowrap; }
+.course-map__overview:disabled, .course-map__preview button:disabled { opacity: .5; cursor: default; }
+.course-route-endpoint { width: 18px; height: 18px; pointer-events: none; }
+.course-route-endpoint__symbol { display: block; width: 14px; height: 14px; border: 3px solid #087f72; border-radius: 50%; background: #fff; }
+.course-route-endpoint--finish .course-route-endpoint__symbol { width: 21px; height: 24px; border: 0; border-radius: 0; background: transparent; font-size: 26px; line-height: 20px; color: #087f72; text-shadow: 1px 1px #fff, -1px -1px #fff; }
+.course-route-endpoint__label { position: absolute; left: 22px; top: -1px; padding: 1px 4px; color: #225548; background: rgb(255 255 255 / 90%); border-radius: 4px; font-size: 10px; white-space: nowrap; }
+.course-route-preview-point { width: 11px; height: 11px; border: 2px solid #fff; border-radius: 50%; background: #087f72; box-shadow: 0 0 0 2px #087f72; pointer-events: none; }
+.course-map__preview { position: absolute; top: calc(82px + env(safe-area-inset-top)); left: 12px; z-index: 3; display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
+.course-map__preview-note { flex-basis: 100%; color: #225548; background: rgb(255 255 255 / 90%); font-size: 10px; border-radius: 4px; padding: 2px 5px; }
 .course-map__base, .course-map__base .base-map { width: 100%; height: 100%; }
 .course-map__actions { position: absolute; z-index: 2; top: calc(93px + env(safe-area-inset-top)); right: 20px; display: flex; flex-direction: column; gap: 9px; }
 .course-map__actions .af-map-action { width: 45px; height: 45px; border-color: transparent; border-radius: 14px; box-shadow: 0 5px 7px rgb(23 71 54 / 6%); }

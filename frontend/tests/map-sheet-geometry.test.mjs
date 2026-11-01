@@ -40,3 +40,22 @@ test("범위를 벗어난 드래그와 화면 축소 후 높이를 현재 범위
   assert.equal(clampSheetHeight(900, layout.minimum, layout.maximum), layout.maximum);
   assert.equal(clampSheetHeight(220, layout.minimum, layout.maximum), 220);
 });
+
+test("개선 코스 화면만 480px 높이에서 지도 240px와 시트 최소 160px를 확보한다", () => {
+  assert.deepEqual(getMapSheetLayout("courses", 480, 72, 240), { minimum: 160, maximum: 168, initial: 168 });
+  assert.equal(getMapSheetLayout("courses", 844, 72, 240).initial, 296);
+  assert.equal(getMapSheetLayout("courses", 480, 72).initial, 296);
+});
+
+test("최소 지도 높이를 요청해도 좁은 화면과 안전 영역에서 시트 높이 순서를 지킨다", () => {
+  for (const height of [0, 120, 240, 320, 480, 568, 844]) {
+    for (const navigation of [72, 106]) {
+      const layout = getMapSheetLayout("courses", height, navigation, 240);
+      assert.ok(layout.minimum >= 0);
+      assert.ok(layout.minimum <= layout.initial && layout.initial <= layout.maximum);
+      assert.ok(layout.maximum <= Math.max(0, height - navigation));
+      if (height - navigation >= 260) assert.equal(layout.minimum, 160);
+      if (height - navigation >= 400) assert.ok(height - navigation - layout.maximum >= 240);
+    }
+  }
+});

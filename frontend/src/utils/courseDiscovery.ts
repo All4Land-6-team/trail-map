@@ -23,8 +23,9 @@ export function hasCourseFilters(filters: CourseFilters): boolean {
 export function selectCourses(courses: readonly Course[], filters: CourseFilters, sort: CourseSort): Course[] {
   return courses.filter(course => {
     if (filters.difficulty !== "all" && course.difficulty !== filters.difficulty) return false;
-    if (filters.duration === "under2" && course.durationMinutes > 120) return false;
-    if (filters.duration === "2to4" && (course.durationMinutes < 120 || course.durationMinutes > 240)) return false;
+    if (filters.duration !== "all" && course.durationMinutes === null) return false;
+    if (filters.duration === "under2" && course.durationMinutes! > 120) return false;
+    if (filters.duration === "2to4" && (course.durationMinutes! < 120 || course.durationMinutes! > 240)) return false;
     // 0~10km는 거리 조건이 없는 초기 상태이므로 10km 초과 코스도 숨기지 않는다.
     if ((filters.minDistanceKm !== 0 || filters.maxDistanceKm !== 10)
       && (course.distanceKm < filters.minDistanceKm || course.distanceKm > filters.maxDistanceKm)) return false;
@@ -47,7 +48,8 @@ export function changeCourseDistance(filters: DetailedCourseFilters, handle: "mi
     : { ...filters, maxDistanceKm: Math.max(stepped, filters.minDistanceKm + 0.5) };
 }
 
-export function formatCourseDuration(minutes: number): string {
+export function formatCourseDuration(minutes: number | null): string {
+  if (minutes === null) return "정보 없음";
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   return hours ? `${hours}시간${remainder ? ` ${remainder}분` : ""}` : `${remainder}분`;

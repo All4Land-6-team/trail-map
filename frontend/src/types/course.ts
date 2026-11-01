@@ -14,7 +14,18 @@ export type Course = {
   routeLabel: string;
   difficulty: CourseDifficulty | null;
   distanceKm: number;
-  durationMinutes: number;
+  durationMinutes: number | null;
+  courseVersion?: number;
+  routeSource?: {
+    name: string;
+    provider: string | null;
+    url: string | null;
+    version: string | null;
+    recordId: string | null;
+    validationStatus: string;
+    checkNote: string | null;
+  };
+  officialDistanceMeters?: number | null;
   elevationGainMeters: number | null;
   peakElevationMeters: number | null;
   steepRatioPercent: number | null;

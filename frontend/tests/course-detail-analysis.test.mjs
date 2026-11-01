@@ -1,11 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { courseAnalysisUrl, loadCourseAnalysis, parseCourseAnalysisProfile } from '../src/api/courseAnalysis.ts';
-import { detailAnalysisView, courseProfileAxes, formatProfileValue } from '../src/utils/courseDetailAnalysis.ts';
+import { detailAnalysisView, detailRouteLabel, courseProfileAxes, formatProfileValue } from '../src/utils/courseDetailAnalysis.ts';
 import { developmentAnalysisReference } from '../src/utils/courseComparison.ts';
 import { analysis, noAnalysis, profile, envelope, fullCoverageAnalysis, fullCoverageProfile } from './fixtures/course-analysis.mjs';
 
 const reference = { courseId: 1, mountainId: 1, development: true };
+test('실제 경로의 지도 안내 라벨을 숨기고 기존 분석 라벨은 유지한다', () => {
+  const readyView = { samples: [{}], development: true };
+  assert.equal(detailRouteLabel({ routeSource: {} }, { status: 'loading' }, readyView), null);
+  assert.equal(detailRouteLabel({}, { status: 'loading' }, { samples: [], development: true }), '분석 경로 조회 중');
+  assert.equal(detailRouteLabel({}, { status: 'error' }, { samples: [], development: true }), '분석 경로 없음');
+  assert.equal(detailRouteLabel({}, { status: 'success' }, readyView), '개발용 예시 경로');
+  assert.equal(detailRouteLabel({}, { status: 'success' }, { ...readyView, development: false }), null);
+});
 const course = { id: 'bukhansan-baegundae', analysisReference: reference, backendCourseId: 2,
   distanceKm: 99, peakElevationMeters: 9999, routeCoordinates: [[0, 0], [1, 1]] };
 const originalFetch = globalThis.fetch;

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Chip } from "../../components/common/Chip";
 import { Select } from "../../components/common/Select";
 import { Icon } from "../../components/common/Icon";
@@ -16,6 +16,8 @@ import { CourseCarousel } from "./components/CourseCarousel";
 import { useHikeSchedules } from "../../store/hikeScheduleStore";
 import { CourseFilterSheet } from "./components/CourseFilterSheet";
 import { CourseMap } from "./components/CourseMap";
+import { supportsTerrain } from "../../components/map/terrain";
+import { hasRouteCatalog } from "../../api/courseRoutes";
 import { useCourseDiscovery } from "./hooks/useCourseDiscovery";
 import "./course-list.css";
 
@@ -29,7 +31,9 @@ export type CourseListPageProps = {
 
 export function CourseListPage({ mountainId, initialCourseId, onBack = () => navigateFromHome(homePaths.home), onCourseOpen, onScheduleOpen }: CourseListPageProps) {
   const schedules = useHikeSchedules();
-  const { rootRef, mapBottomInset, handleProps } = useResizableMapSheet({ kind: "courses", navigationSelector: ".course-page__nav", label: "코스 목록 시트 높이 조절" });
+  const enhancedMap = supportsTerrain(mountainId);
+  const { rootRef, mapBottomInset, handleProps, previewControls } = useResizableMapSheet({ kind: "courses", navigationSelector: ".course-page__nav", label: "코스 목록 시트 높이 조절", trackSettledInset: enhancedMap, minimumMapHeight: enhancedMap ? 240 : undefined });
+  const [selectionRevision, setSelectionRevision] = useState(0);
   const discovery = useCourseDiscovery(mountainId, initialCourseId);
   const savedIds = useSavedCourseIds();
   const filterOpener = useRef<HTMLButtonElement | null>(null);
@@ -37,6 +41,11 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     if (!discovery.filterOpen) filterOpener.current?.focus();
   }, [discovery.filterOpen]);
   const { state, courses, selectedCourse, filters, sort, notify } = discovery;
+
+  function selectExplicitly(id: string) {
+    setSelectionRevision(revision => revision + 1);
+    discovery.setSelectedId(id);
+  }
 
   function applyFilters(next: CourseFilters) {
     discovery.setFilters(next);
@@ -47,6 +56,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     discovery.closeFilter();
   }
   function saveCourse(id: string, saved: boolean) {
+    if (courses.find(course => course.id === id)?.routeSource) return;
     setCourseSaved(id, saved);
     notify(saved ? "장바구니에 담았어요." : "장바구니에서 뺐어요.");
   }
@@ -59,6 +69,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     }
   }
   function openSchedule(course: Course) {
+    if (course.routeSource) return;
     const request = { mountainId, courseId: course.id };
     if (onScheduleOpen) onScheduleOpen(request);
     else {
@@ -90,8 +101,12 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     <div className="course-page__base" inert={discovery.filterOpen}>
       <div className="course-page__map-area">
         <CourseMap courses={courses} selected={selectedCourse} mountainId={mountainId} center={mountain.position}
+          dataLabel={hasRouteCatalog(mountainId) ? null : undefined}
+          summitLabel={selectedCourse?.routeSource ? "도착" : "정상"}
           mapBottomInset={mapBottomInset}
-          onSelect={discovery.setSelectedId} onNotify={notify} />
+          enhanced={enhancedMap}
+          onPreviewStart={previewControls.begin} onPreviewEnd={previewControls.end}
+          onSelect={selectExplicitly} onNotify={notify} />
         <TopBar title={mountain.name} onBack={onBack} showAction={false} className="course-page__top" />
       </div>
       <BottomSheet title={`${mountain.name} 코스 ${courses.length}개`} showClose={false} showDescription={false}
@@ -114,9 +129,10 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
           </div>
           {selectedCourse ? <>
             <CourseCarousel key={courses.map(course => course.id).join(",")} courses={courses} selectedId={selectedCourse.id}
+              selectionRevision={selectionRevision}
               savedIds={savedIds} scheduledIds={schedules.map(item => item.courseId)} onSelect={discovery.setSelectedId} onSave={saveCourse} onSchedule={openSchedule} onOpen={openCourse} />
             <PageIndicator count={courses.length} activeIndex={activeIndex} className="course-list-sheet__pages"
-              onPageChange={index => discovery.setSelectedId(courses[index].id)} />
+              onPageChange={index => selectExplicitly(courses[index].id)} />
           </> : <EmptyState title={allCourses.length ? "조건에 맞는 코스가 없어요." : "아직 등록된 코스가 없어요."}
             showIcon={false} description="" className="course-list-sheet__empty" />}
         </>} />

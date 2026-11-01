@@ -65,7 +65,17 @@ test("Terrain과 Hillshade는 별도 raster-dem source를 사용하고 코스 �
   assert.deepEqual(sources.get(TERRAIN_SOURCE_ID), source);
   assert.deepEqual(sources.get(HILLSHADE_SOURCE_ID), source);
   assert.equal(layers.get(HILLSHADE_LAYER_ID).source, HILLSHADE_SOURCE_ID);
+  assert.equal(layers.get(HILLSHADE_LAYER_ID).minzoom, source.minzoom);
   assert.deepEqual(beforeIds, ["course-route-a"]);
+});
+
+test("Hillshade 표시 시작 줌은 고정값이 아니라 DEM source의 최소 줌을 따른다", () => {
+  let layer;
+  installTerrainLayers({
+    getSource: () => undefined, addSource() {}, getLayer: () => undefined,
+    addLayer(value) { layer = value; },
+  }, { ...source, minzoom: 12 });
+  assert.equal(layer.minzoom, 12);
 });
 
 test("CourseRouteMap의 전용 경로 레이어 아래에도 Hillshade를 배치한다", () => {
@@ -101,7 +111,9 @@ test("Terrain 레이어를 해제할 때 Terrain, Hillshade, source 순서로 �
     ["source", TERRAIN_SOURCE_ID],
   ]);
   assert.equal(supportsTerrain("bukhansan"), true);
+  assert.equal(supportsTerrain("dobongsan"), true);
   assert.equal(supportsTerrain("seoraksan"), false);
+  assert.equal(supportsTerrain(undefined), false);
 });
 
 test("Terrain source는 화면 이동 동안 재사용하고 명시적 재시도 때 갱신한다", async () => {

@@ -30,6 +30,23 @@ test('코스 상세의 후기 전체보기는 같은 코스와 이전 코스 상
   assert.equal(params.get('course'), 'bukhansan-baegundae');
   assert.equal(internalReturnPath(params.get('returnTo')), returnPath);
 });
+test('실제 경로의 후기 링크는 db 접두사를 제거해 같은 DB 코스를 찾고 복귀 주소는 그대로 둔다', () => {
+  const returnPath = 'mountains/bukhansan/courses/db-101?returnTo=cart%2Fmetrics%3Fmountain%3Dbukhansan';
+  const url = courseReviewPath({ mountainId: 'bukhansan', courseId: 'db-101', returnPath });
+  const params = new URLSearchParams(url.split('?')[1]);
+  assert.equal(params.get('screen'), 'courseReviewList');
+  assert.equal(params.get('mountain'), 'bukhansan');
+  assert.equal(params.get('course'), '101');
+  assert.equal(internalReturnPath(params.get('returnTo')), returnPath);
+  // CommunityPage의 숫자 ID/externalId 조회가 첫 코스 fallback에 빠지지 않는다.
+  const loadedCourses = [{ id: '1', externalId: 'another' }, { id: '101', externalId: 'BUKHAN_01' }];
+  const selected = loadedCourses.find(course => course.id === params.get('course') || course.externalId === params.get('course'));
+  assert.equal(selected?.id, '101');
+  for (const courseId of ['101', 'bukhansan-baegundae']) {
+    const legacy = new URLSearchParams(courseReviewPath({ mountainId: 'bukhansan', courseId, returnPath }).split('?')[1]);
+    assert.equal(legacy.get('course'), courseId);
+  }
+});
 test('일정에서 코스 상세 탭을 바꿔도 원래 일정으로 돌아간다', () => {
   const request = { mountainId: 'bukhansan', courseId: 'bukhansan-baegundae' };
   const returnTo = 'hikes/detail?date=2026-10-18';

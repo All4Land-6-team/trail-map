@@ -2,7 +2,7 @@ import type { Course } from '../types/course.ts';
 import type { CourseAnalysisState } from '../types/courseAnalysis.ts';
 import type { CourseProfileSample } from '../types/courseDetail.ts';
 
-/** API에 없는 값은 기본 정보의 예시 수치나 좌표로 보충하지 않는다. */
+/** 실제 경로 API의 선은 분석과 독립적으로 유지한다. 예시 좌표로 보충하지 않는다. */
 export function detailAnalysisView(course: Course | null, state: CourseAnalysisState) {
   const loaded = state.status === 'success' ? state.data : null;
   const samples: CourseProfileSample[] = loaded?.profile?.samples.map(point => ({
@@ -11,7 +11,7 @@ export function detailAnalysisView(course: Course | null, state: CourseAnalysisS
   })) ?? [];
   return {
     analysis: loaded?.analysis ?? null, samples,
-    routeCoordinates: samples.map(point => point.coordinate),
+    routeCoordinates: course?.routeSource ? course.routeCoordinates : samples.map(point => point.coordinate),
     development: course?.analysisReference?.development === true || loaded?.analysis.sourceKind === 'development',
   };
 }
@@ -19,6 +19,13 @@ export function detailAnalysisView(course: Course | null, state: CourseAnalysisS
 export function formatProfileValue(value: number | null | undefined, unit: string, digits = 1) {
   return value == null || !Number.isFinite(value) ? '—'
     : value.toLocaleString('ko-KR', { minimumFractionDigits: digits, maximumFractionDigits: digits }) + (unit === '%' ? '' : ' ') + unit;
+}
+
+export function detailRouteLabel(course: Course, state: CourseAnalysisState, view: ReturnType<typeof detailAnalysisView>) {
+  if (course.routeSource) return null;
+  if (state.status === 'loading') return '분석 경로 조회 중';
+  if (!view.samples.length) return '분석 경로 없음';
+  return view.development ? '개발용 예시 경로' : null;
 }
 
 /** 100,000개 샘플도 spread 없이 처리하며, 결측값은 축 계산에서만 제외한다. */
