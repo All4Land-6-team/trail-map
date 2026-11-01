@@ -13,7 +13,7 @@ export function selectCourseSpots(spots: readonly CourseSpot[], category: SpotCa
 }
 
 export function courseSpotAction(spot: CourseSpot, focusedSpotId?: string): "focus" | "open" | "unavailable" {
-  if (spot.facilityId !== undefined || focusedSpotId !== spot.id) return "focus";
+  if (focusedSpotId !== spot.id || (spot.facilityId !== undefined && !spot.communityTarget)) return "focus";
   return spot.communityTarget ? "open" : "unavailable";
 }
 

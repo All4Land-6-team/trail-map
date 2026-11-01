@@ -136,6 +136,52 @@ class FacilityPostgisIntegrationTest {
     }
 
     @Test
+    void countsOnlyActiveFacilityPhotosAndReviews() throws Exception {
+        var seed = importer.importFile(document(List.of()));
+        long mountainId = mountain(seed.sourceId());
+        long courseId = jdbc.queryForObject("""
+                INSERT INTO course (mountain_id, course_name, course_geometry, source_id, source_hash, imported_at)
+                VALUES (?, 'counts', ST_GeomFromText('LINESTRING(10 10,10.02 10)',4326), ?, ?, now())
+                RETURNING course_id
+                """, Long.class, mountainId, seed.sourceId(), "e".repeat(64));
+        importer.importFile(document(List.of(assigned(point("counts-near", 10.01, 10.0005, FacilityType.RESTROOM), mountainId))));
+        long facilityId = jdbc.queryForObject("SELECT facility_id FROM facility WHERE source_record_id = 'counts-near' AND source_id = ?",
+                Long.class, seed.sourceId());
+        long userId = jdbc.queryForObject("INSERT INTO app_user DEFAULT VALUES RETURNING user_id", Long.class);
+        long activeReview = jdbc.queryForObject("""
+                INSERT INTO spot_review (user_id, facility_id, review_content)
+                VALUES (?, ?, 'active') RETURNING review_id
+                """, Long.class, userId, facilityId);
+        long deletedReview = jdbc.queryForObject("""
+                INSERT INTO spot_review (user_id, facility_id, review_content, deleted_at)
+                VALUES (?, ?, 'deleted', now()) RETURNING review_id
+                """, Long.class, userId, facilityId);
+        jdbc.update("""
+                INSERT INTO photo (user_id, facility_id, object_key, original_file_name, media_type, file_size_bytes)
+                VALUES (?, ?, ?, 'direct.jpg', 'image/jpeg', 1)
+                """, userId, facilityId, UUID.randomUUID().toString());
+        jdbc.update("""
+                INSERT INTO photo (user_id, spot_review_id, object_key, original_file_name, media_type, file_size_bytes)
+                VALUES (?, ?, ?, 'review.jpg', 'image/jpeg', 1)
+                """, userId, activeReview, UUID.randomUUID().toString());
+        jdbc.update("""
+                INSERT INTO photo (user_id, spot_review_id, object_key, original_file_name, media_type, file_size_bytes)
+                VALUES (?, ?, ?, 'deleted-review.jpg', 'image/jpeg', 1)
+                """, userId, deletedReview, UUID.randomUUID().toString());
+        jdbc.update("""
+                INSERT INTO photo (user_id, facility_id, object_key, original_file_name, media_type, file_size_bytes, deleted_at)
+                VALUES (?, ?, ?, 'deleted-photo.jpg', 'image/jpeg', 1, now())
+                """, userId, facilityId, UUID.randomUUID().toString());
+
+        mvc.perform(get("/v1/courses/" + courseId + "/facilities").param("type", "RESTROOM"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].facilityId").value(facilityId))
+                .andExpect(jsonPath("$.data[0].photoCount").value(2))
+                .andExpect(jsonPath("$.data[0].reviewCount").value(1));
+    }
+
+    @Test
     void keepsExistingMembershipAndPreservesLegacyHashIdsAndReports() throws Exception {
         var original = point("legacy", 10, 10, FacilityType.RESTROOM);
         var first = importer.importFile(document(List.of(original)));

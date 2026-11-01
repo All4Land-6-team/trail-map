@@ -12,6 +12,8 @@ export function toCourseFacilitySpots(facilities: readonly CourseFacility[], cou
     name: facility.name?.trim() || `${facility.type === 'DRINKING_WATER' ? '음수대' : facility.type === 'SHELTER' ? '쉼터' : '화장실'} ${facility.facilityId}`,
     coordinate: [facility.longitude, facility.latitude], facilityId: facility.facilityId,
     distanceMeters: facility.distanceMeters, sourceDate: facility.sourceDate,
+    photoCount: facility.photoCount, reviewCount: facility.reviewCount,
+    communityTarget: { mountainId: String(facility.mountainId), targetType: 'FACILITY', targetId: String(facility.facilityId) },
   }));
 }
 

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { courseFacilitiesUrl, loadCourseFacilities, parseCourseFacilities } from '../src/api/courseFacilities.ts';
 import { toCourseFacilitySpots, withCourseFacilities } from '../src/utils/courseFacilities.ts';
+import { courseSpotAction } from '../src/utils/courseProfile.ts';
+import { spotReviewPath } from '../src/routes/communityRoutes.ts';
 
 test('음수대 필터와 실제 좌표를 사용하고 mock 음수대는 오류·빈 결과에도 제외한다', async (t) => {
   const water = { ...facility(80, 120), type: 'DRINKING_WATER', name: '시험 샘터', sourceDate: '2024-05-22' };
@@ -28,8 +30,8 @@ test('음수대 필터와 실제 좌표를 사용하고 mock 음수대는 오류
 });
 
 const facility = (facilityId = 52, distanceMeters = 69.6) => ({
-  facilityId, name: '간이화장실', type: 'RESTROOM', longitude: 126.9846, latitude: 37.6599,
-  distanceMeters, sourceDate: '2014-12-19',
+  facilityId, mountainId: 2, name: '간이화장실', type: 'RESTROOM', longitude: 126.9846, latitude: 37.6599,
+  distanceMeters, sourceDate: '2014-12-19', photoCount: 3, reviewCount: 2,
 });
 const response = (data = [facility()]) => ({ success: true, data });
 
@@ -64,7 +66,8 @@ test('코스 주변 API 계약: 빈 결과·좌표 중복을 보존하고 거리
   for (const value of [{ success: false, data: [] }, { type: 'FeatureCollection', features: [] }, { success: true, data: null }]) {
     assert.throws(() => parseCourseFacilities(value));
   }
-  for (const change of [{ latitude: 127 }, { longitude: NaN }, { distanceMeters: null },
+  for (const change of [{ latitude: 127 }, { longitude: NaN }, { distanceMeters: null }, { mountainId: null },
+    { photoCount: undefined }, { reviewCount: -1 }, { photoCount: 1.5 },
     { distanceMeters: -1 }, { distanceMeters: 251 }, { type: 'SHELTER' }, { facilityId: 0 }, { sourceDate: 'yesterday' }]) {
     assert.throws(() => parseCourseFacilities(response([{ ...facility(), ...change }])));
   }
@@ -75,11 +78,32 @@ test('시설 ID와 실제 좌표로 스팟을 만들고, 합성 화장실은 빈
   assert.equal(spots[0].id, 'facility-52');
   assert.deepEqual(spots[0].coordinate, [126.9846, 37.6599]);
   assert.equal(spots[0].distanceMeters, 69.6);
+  assert.equal(spots[0].photoCount, 3);
+  assert.equal(spots[0].reviewCount, 2);
+  assert.deepEqual(spots[0].communityTarget, { mountainId: '2', targetType: 'FACILITY', targetId: '52' });
   assert.equal(spots[1].name, '화장실 51');
   const mock = [{ id: 'mock-toilet', kind: 'restroom' }, { id: 'photo', kind: 'photo' }];
   assert.deepEqual(withCourseFacilities(mock, spots).map(item => item.id), ['photo', 'facility-52', 'facility-51']);
   assert.deepEqual(withCourseFacilities(mock, []).map(item => item.id), ['photo']);
   assert.equal(mock.length, 2);
+});
+
+test('화장실·음수대·쉼터는 첫 선택에 초점을 맞추고 재선택 시 실제 시설 상세로 이동한다', () => {
+  const returnPath = 'mountains/bukhansan/courses/db-121?tab=spots&category=water&spot=facility-52';
+  for (const type of ['RESTROOM', 'DRINKING_WATER', 'SHELTER']) {
+    const [spot] = toCourseFacilitySpots(parseCourseFacilities(response([{ ...facility(), type }]), 250, type), 'db-121');
+    assert.equal(courseSpotAction(spot), 'focus');
+    assert.equal(courseSpotAction(spot, spot.id), 'open');
+    assert.deepEqual(spot.communityTarget, { mountainId: '2', targetType: 'FACILITY', targetId: '52' });
+    const path = spotReviewPath({ courseId: 'db-121', spotId: spot.communityTarget.targetId,
+      mountainId: spot.communityTarget.mountainId, targetType: spot.communityTarget.targetType,
+      category: spot.kind, returnPath });
+    const query = new URLSearchParams(path.split('?')[1]);
+    assert.equal(query.get('mountain'), '2');
+    assert.equal(query.get('targetType'), 'FACILITY');
+    assert.equal(query.get('spot'), '52');
+    assert.equal(query.get('returnTo'), returnPath);
+  }
 });
 
 test('코스 ID·유형·250m 조건으로 요청하고 잘못된 ID와 거리 요청은 차단한다', () => {

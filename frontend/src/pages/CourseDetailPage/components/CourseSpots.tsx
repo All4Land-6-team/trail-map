@@ -81,10 +81,10 @@ export function CourseSpots({ spots, category, selectedId, restrooms, onRetryRes
           <span><strong>{category === "all" ? `${spotCategoryLabel(spot.kind)} · ${spot.name}` : spot.name}</strong>
             {spot.facilityId !== undefined ? <>
               <span>경로까지 약 {Math.round(spot.distanceMeters ?? 0)}m</span>
-              <span>{spot.sourceDate ? `자료 기준 ${spot.sourceDate}` : "자료 기준일 미상"} · 현장 상태는 다를 수 있어요</span>
+              <span>사진 {spot.photoCount}장 · 후기 {spot.reviewCount}개</span>
             </> : spot.example ? <span>지도 표시 위치는 화면 예시입니다</span>
               : <span>사진 {spot.photoCount ?? 0}장 · 후기 {spot.reviewCount ?? 0}개</span>}
-          </span><Icon name={spot.facilityId !== undefined ? "Locate" : "ChevronRight"} size={16} color="currentColor" />
+          </span><Icon name={spot.communityTarget ? "ChevronRight" : "Locate"} size={16} color="currentColor" />
         </button>)}
       </div> : (category === 'all' || category === 'photo') && countReady && <EmptyState title="아직 등록된 스팟이 없어요." description="" showIcon={false} className="course-detail-empty" />}
       {facilityGroups.some(group => group.state.status === "success" && group.state.spots.length > 0) && <p className="course-spots__distance-note">

@@ -12,6 +12,8 @@ const { CourseSpots } = await server.ssrLoadModule('/src/pages/CourseDetailPage/
 const waterSpot = {
   id: 'facility-100', courseId: 'test-course', kind: 'water', name: '시험 샘터',
   coordinate: [127.02, 37.7], facilityId: 100, distanceMeters: 123.4, sourceDate: '2024-05-22',
+  photoCount: 3, reviewCount: 2,
+  communityTarget: { mountainId: '2', targetType: 'FACILITY', targetId: '100' },
 };
 function render(overrides = {}) {
   return renderToStaticMarkup(createElement(CourseSpots, {
@@ -75,13 +77,14 @@ test('음수대 로딩·오류·미연결은 0건으로 단정하지 않고 각�
   }
 });
 
-test('실제 음수대는 원본 이름·기준일·거리와 지도 선택 ID를 표시한다', () => {
+test('실제 음수대는 이름·거리와 선택 상태만 표시한다', () => {
   const html = render({ spots: [waterSpot], water: { status: 'success', spots: [waterSpot] }, selectedId: waterSpot.id });
-  assert.match(html, /시험 샘터 지도에서 보기/);
+  assert.match(html, /시험 샘터 커뮤니티 상세 보기/);
   assert.match(html, /data-spot-id="facility-100"/);
   assert.match(html, /aria-pressed="true"/);
   assert.match(html, /경로까지 약 123m/);
-  assert.match(html, /자료 기준 2024-05-22/);
+  assert.match(html, /사진 3장 · 후기 2개/);
+  assert.doesNotMatch(html, /자료 기준|현장 상태는 다를 수 있어요/);
 });
 
 test('전체 탭에서 화장실 오류가 발생해도 성공한 음수대 목록을 유지한다', () => {
@@ -106,7 +109,7 @@ test('쉼터도 로딩·실패·미연결·빈 결과를 구분하며 실제 좌
   const shelter = { ...waterSpot, id: 'facility-101', facilityId: 101, kind: 'shelter', name: '시험 파고라' };
   const html = render({ category: 'shelter', spots: [shelter], selectedId: shelter.id,
     shelters: { status: 'success', spots: [shelter] } });
-  assert.match(html, /시험 파고라 지도에서 보기/);
+  assert.match(html, /시험 파고라 커뮤니티 상세 보기/);
   assert.match(html, /aria-pressed="true"/);
   assert.match(html, /data-spot-id="facility-101"/);
 });

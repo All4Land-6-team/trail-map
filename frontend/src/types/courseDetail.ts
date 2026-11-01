@@ -17,7 +17,7 @@ export type CourseSpot = {
   facilityId?: number;
   distanceMeters?: number;
   sourceDate?: string | null;
-  communityTarget?: { mountainId: string; targetType: 'USER_SPOT'; targetId: string };
+  communityTarget?: { mountainId: string; targetType: 'FACILITY' | 'USER_SPOT'; targetId: string };
   photoCount?: number;
   reviewCount?: number;
   example?: boolean;
