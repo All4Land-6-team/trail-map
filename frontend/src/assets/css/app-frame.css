@@ -12,7 +12,7 @@
 
 /* Only app screens use the phone frame; development previews keep their layout. */
 #root > :is(.home-page, .course-page, .course-detail-page, .community-page,
-  .cart-screen, .hike-page, .hike-screen, .app-route-loading) {
+  .cart-screen, .hike-page, .hike-screen, .auth-page, .app-route-loading) {
   width: min(100%, 390px);
   height: var(--app-viewport-height);
   margin: var(--app-frame-gap) auto;

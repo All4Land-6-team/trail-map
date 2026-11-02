@@ -7,9 +7,12 @@ import {
 } from "../../../api/profile";
 import { Button } from "../../../components/common/Button";
 import { Field } from "../../../components/common/Field";
+import { logout } from "../../../api/auth";
+import { useAuthSession } from "../../../store/authStore";
 
 /** HIKE-01 닉네임: 산 · 코스 · 스팟 후기 작성자 이름. 기본값은 익명{userId}이고 중복은 검사하지 않는다. */
 export function NicknameCard() {
+  const session = useAuthSession();
   const [nickname, setNickname] = useState(DEFAULT_NICKNAME);
   const [draft, setDraft] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,11 +48,14 @@ export function NicknameCard() {
     <div className="hike-nickname-card__copy">
       <span className="hike-nickname-card__label">닉네임</span>
       <strong className="hike-nickname-card__name">{loading ? "불러오는 중..." : nickname}</strong>
+      {session?.user.email && <span className="hike-nickname-card__email">{session.user.email}</span>}
       {error && <span className="hike-nickname-card__error" role="alert">{error}</span>}
     </div>
-    <Button variant="secondary" size="compact" label="이름 바꾸기"
-      disabled={loading}
-      onClick={() => setDraft(nickname === DEFAULT_NICKNAME ? "" : nickname)} />
+    <div className="hike-nickname-card__account-actions">
+      <Button variant="secondary" size="compact" label="이름 바꾸기" disabled={loading}
+        onClick={() => setDraft(nickname === DEFAULT_NICKNAME ? "" : nickname)} />
+      <button type="button" className="hike-nickname-card__logout" onClick={() => void logout()}>로그아웃</button>
+    </div>
   </section>;
 
   return <form className="hike-nickname-card hike-nickname-card--editing" aria-label="닉네임 수정" onSubmit={submit}

@@ -83,7 +83,7 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 ## 등산 기록 API
 
-임시 사용자 식별 헤더 `X-User-Id`가 필요합니다. 상태는 `IN_PROGRESS`(등산 중) → `DESCENDING`(하산 중) → `COMPLETED`(완료) 순서로만 바뀝니다.
+로그인으로 발급한 `Authorization: Bearer {accessToken}` 헤더가 필요합니다. 상태는 `IN_PROGRESS`(등산 중) → `DESCENDING`(하산 중) → `COMPLETED`(완료) 순서로만 바뀝니다.
 
 - `POST /api/v1/hike-records`: `{"scheduleId"}`로 오늘 일정의 등산을 시작합니다. 시작 시각과 그 시점의 코스 번호·버전·경로를 저장합니다. 오늘이 아닌 일정(`HIKE_409_2`), 이미 기록이 있는 일정(`HIKE_409_3`), 진행 중인 등산이 있을 때(`HIKE_409_4`)는 시작할 수 없습니다.
 - `GET /api/v1/hike-records/active`: 진행 중인 기록을 조회합니다. 없으면 `data`가 `null`입니다.
@@ -98,7 +98,7 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 ### 코스별 사진 스팟 (#99)
 
-`GET /api/v1/community/courses/{courseId}/photo-spots`는 `X-User-Id`와 양의 정수 코스 ID를 받습니다.
+`GET /api/v1/community/courses/{courseId}/photo-spots`는 로그인 세션과 양의 정수 코스 ID를 받습니다.
 `user_spot.hike_record_id → hike_record.course_id`가 요청 코스와 일치하고 코스의 소속 산과 일치하는
 `PHOTO_SPOT` 사용자 스팟만 반환합니다. 응답은 기존 스팟 목록 형식이며 API 유형은 `PHOTO_SPOT`, 대상 종류는
 `USER_SPOT`입니다. 스팟 ID 오름차순으로 반환하고 삭제·숨김·등록 산행 미연결 스팟은 제외합니다.
@@ -110,7 +110,7 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 `CoursePhotoSpotServiceTest`, `CommunityQueryControllerTest`, `CommunityQueryApiIntegrationTest`에서
 검증합니다. PostGIS 통합 테스트는 Docker가 있을 때만 실행합니다.
 
-모든 커뮤니티 조회 요청은 임시 사용자 식별 헤더 `X-User-Id`가 필요합니다.
+모든 커뮤니티 요청은 로그인으로 발급한 Bearer 세션 토큰이 필요합니다.
 
 등산 종료 시 `POST /api/v1/hike-records/{hikeRecordId}/finish`를 호출해 진행 중 기록을 `COMPLETED`로 변경합니다. 이 기록이 아래 후기 작성 자격에 사용됩니다.
 
@@ -152,9 +152,16 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 스팟 평가는 사용자와 대상별로 한 건만 유지됩니다. 사용자 스팟은 `NO` 평가가 3건 이상이면 `HIDDEN`으로 변경되어 지도와 중복 후보에서 제외되고, 평가 변경·취소로 3건 미만이 되면 `RECONFIRMATION_REQUIRED`로 다시 노출됩니다. 공식 시설은 평가 수만 집계하며 자동으로 숨기지 않습니다.
 
-## 사용자 프로필 API
+## 인증·사용자 프로필 API
 
-요청 헤더 `X-User-Id`에 지정한 사용자 ID를 기준으로 닉네임을 조회하고 변경합니다.
+- `POST /api/v1/auth/signup`: 닉네임(최대 12자), 이메일, 비밀번호(8~72자)로 가입하고 세션을 발급합니다.
+- `POST /api/v1/auth/login`: 이메일과 비밀번호로 로그인하고 세션을 발급합니다.
+- `GET /api/v1/auth/me`: 현재 로그인 사용자를 조회합니다.
+- `POST /api/v1/auth/logout`: 현재 세션을 폐기합니다.
+
+이메일은 공백 제거·소문자 정규화 후 중복을 막고, 비밀번호는 BCrypt 단방향 해시만 저장합니다. 세션 원문 토큰도 DB에 저장하지 않고 SHA-256 해시로 조회합니다.
+
+요청의 Bearer 세션 사용자를 기준으로 닉네임을 조회하고 변경합니다.
 
 - `GET /api/v1/users/me`: 현재 사용자의 닉네임을 조회합니다.
 - `PATCH /api/v1/users/me`: `nickname`을 변경합니다. 최대 12자이며 빈 문자열은 DB에 `NULL`로 저장하고 `익명{userId}`로 응답합니다.

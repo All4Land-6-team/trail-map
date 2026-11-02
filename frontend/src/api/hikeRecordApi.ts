@@ -1,4 +1,5 @@
-import { apiBaseUrl, userId } from "./hikeScheduleApi.ts";
+import { apiBaseUrl } from "./hikeScheduleApi.ts";
+import { authHeaders } from "../store/authStore.ts";
 import type { LngLat } from "../types/hike";
 
 // 등산 기록 API (/api/v1/hike-records, 이슈 #76·#78). 시작 → 위치 기록 → 하산 → 종료.
@@ -71,7 +72,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     response = await fetch(`${apiBaseUrl()}/api/v1/hike-records${path}`, {
       ...init,
       signal: controller.signal,
-      headers: { "Content-Type": "application/json", "X-User-Id": userId(), ...init.headers },
+      headers: authHeaders({ "Content-Type": "application/json", ...init.headers }),
     });
   } catch {
     throw new HikeRecordApiError(0, "NETWORK", "서버에 연결하지 못했어요.");

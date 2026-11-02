@@ -22,8 +22,9 @@ DB 스키마 변경은 Flyway migration SQL 파일로만 수행합니다.
 - `V6__add_community_spot_request_id.sql`: 사용자 스팟 등록 요청 ID와 사용자별 부분 유일 인덱스를 추가해 재시도 중복을 방지합니다.
 - `V7__add_course_route_catalog.sql`: 후보 경로 데이터셋의 SHA-256·산 매핑과 코스별 경유지·검증 상태를 추가합니다. 기존 코스 및 분석 결과는 변경하지 않습니다.
 - `V8__add_course_guide_metadata.sql`: 공식 안내의 구간·시간·난이도·URL·확인일과 적용한 코스 버전·경로 지문을 보존합니다. 데이터는 별도 검증 CLI로 적재합니다.
+- `V9__add_email_authentication.sql`: 기존 익명 사용자 행을 보존하면서 이메일·비밀번호 해시를 추가하고, 만료·폐기를 지원하는 로그인 세션 테이블을 생성합니다.
 
-`app_user`는 로그인·회원가입 없이 사용하는 익명 사용자를 나타냅니다. 닉네임은 NULL과 중복을 허용하며, NULL이면 애플리케이션에서 `익명{user_id}` 형식으로 표시합니다.
+기존 `app_user` 행은 `email`과 `password_hash`가 모두 NULL인 레거시 사용자로 보존됩니다. 신규 가입자는 정규화한 고유 이메일과 BCrypt 비밀번호 해시를 함께 저장합니다. 닉네임은 중복을 허용합니다.
 
 기본 실행 환경에서는 `classpath:db/migration`의 migration을 검증한 뒤 적용합니다. H2는 PostGIS 타입과 함수를 지원하지 않으므로 `test` 프로필에서는 Flyway를 끕니다. migration 자체는 Testcontainers의 PostgreSQL + PostGIS 환경에서 V1부터 실제로 적용하고 스키마 구성을 검증합니다.
 

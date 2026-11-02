@@ -9,6 +9,7 @@ export type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
   showHelper?: boolean;
   showIcon?: boolean;
   icon?: ReactNode;
+  trailingControl?: ReactNode;
   state?: "empty" | "value" | "error";
   containerClassName?: string;
 };
@@ -16,7 +17,7 @@ export type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
 export function Field({
   label = "등산할 날짜", helper = "등산할 날짜를 선택해 주세요.",
   placeholder = "연도-월-일", showHelper = false, showIcon = true, icon,
-  state, containerClassName, className, id, value, defaultValue, type,
+  trailingControl, state, containerClassName, className, id, value, defaultValue, type,
   "aria-describedby": ariaDescribedBy, ...rest
 }: FieldProps) {
   const generatedId = useId();
@@ -53,6 +54,7 @@ export function Field({
         : <span className="af-field__icon" aria-hidden="true">
           {icon ?? <Icon name="Calendar" size={20} color="#83978a" />}
         </span>)}
+      {trailingControl && <span className="af-field__trailing">{trailingControl}</span>}
     </div>
     {helperVisible && <Typography as="span" id={helperId} variant="descriptionSmall" className="af-field__helper">{helper}</Typography>}
   </div>;

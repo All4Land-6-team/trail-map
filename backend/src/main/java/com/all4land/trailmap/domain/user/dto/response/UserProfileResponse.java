@@ -4,7 +4,8 @@ import com.all4land.trailmap.domain.user.entity.AppUser;
 
 public record UserProfileResponse(
         Long userId,
-        String nickname
+        String nickname,
+        String email
 ) {
 
     private static final String DEFAULT_NICKNAME_PREFIX = "익명";
@@ -12,7 +13,8 @@ public record UserProfileResponse(
     public static UserProfileResponse from(AppUser user) {
         return new UserProfileResponse(
                 user.getUserId(),
-                user.getNickname() == null ? DEFAULT_NICKNAME_PREFIX + user.getUserId() : user.getNickname()
+                user.getNickname() == null ? DEFAULT_NICKNAME_PREFIX + user.getUserId() : user.getNickname(),
+                user.getEmail()
         );
     }
 }
