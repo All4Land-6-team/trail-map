@@ -8,6 +8,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -19,7 +20,10 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Value("${app.cors.allowed-origins:http://localhost:5173}")
     void setAllowedOrigins(String allowedOrigins) {
-        this.allowedOrigins = allowedOrigins.split(",");
+        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toArray(String[]::new);
     }
 
     @Override

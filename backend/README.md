@@ -19,6 +19,11 @@ Java 21, Spring Boot, PostgreSQL/PostGIS 기반 백엔드입니다.
 .\gradlew.bat bootJar
 ```
 
+로컬 DB 대신 Supabase 공용 개발 DB를 사용할 때는
+[Supabase 공용 개발 DB](docs/supabase-database.md)의 Session pooler 설정과
+검증 절차를 따릅니다. `application-secret.properties.example`에는 안전한
+자리표시자만 있으며 실제 비밀번호는 커밋하지 않습니다.
+
 ## 개발용 시드 데이터
 
 등산 일정 API를 화면과 함께 확인하려면 빈 개발 DB에 `docs/dev-seed-hike-courses.sql`을 실행합니다. 프론트 임시 코스 데이터와 같은 산 5개·코스 11개와 임시 사용자(1번)를 넣습니다. Flyway 마이그레이션이 아니므로 운영 DB에는 실행하지 않습니다.

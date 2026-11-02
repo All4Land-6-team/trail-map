@@ -52,3 +52,14 @@ tasks.named('test') {
     useJUnitPlatform()
     systemProperty 'app.auth.legacy-user-header-enabled', 'true'
 }
+
+// 로컬 비밀 설정은 bootRun에서는 사용할 수 있지만 JAR에는 포함하지 않는다.
+tasks.withType(Jar).configureEach {
+    exclude '**/application-secret.properties'
+    exclude '**/application-*-secret.properties'
+    exclude '**/application-secret.yml'
+    exclude '**/application-secret.yaml'
+    exclude '**/application-local.properties'
+    exclude '**/application-local.yml'
+    exclude '**/application-local.yaml'
+}

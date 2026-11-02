@@ -21,7 +21,7 @@ npm run dev
 
 `npm run dev` 실행 후 `http://localhost:5173/?preview=facilities&sourceId=4`에서 적재된 화장실 후보 전체를 확인합니다. `sourceId`에는 백엔드 적재 로그의 출처 ID를 지정합니다. 현재 시범 적재는 4번 출처의 95건입니다. 이 화면은 `import.meta.env.DEV`에서만 연결되며 프로덕션 번들에 포함되지 않습니다.
 
-백엔드는 `--facility.review.enabled=true`로 실행해야 합니다. `src/api/facilities.ts`는 `VITE_API_BASE_URL`(기본 `http://localhost:8080`)의 `/api/v1/facilities/review?sourceId=...&type=RESTROOM`을 GET으로 조회합니다. DB 비밀번호는 프론트에 설정하지 않습니다. 백엔드 기본 CORS 허용 주소는 `http://localhost:5173`입니다.
+백엔드는 `--facility.review.enabled=true`로 실행해야 합니다. `src/api/facilities.ts`는 `VITE_API_BASE_URL`(기본 `http://localhost:8080`)의 `/api/v1/facilities/review?sourceId=...&type=RESTROOM`을 GET으로 조회합니다. DB 비밀번호는 프론트에 설정하지 않습니다. 백엔드는 개발 서버용 `localhost`와 `127.0.0.1`의 5173~5175 포트를 기본 CORS 허용 주소로 사용하며, 배포 환경에서는 `FRONTEND_ORIGIN`으로 덮어씁니다.
 
 지도·목록·상세 선택, 이름·OBJECTID 검색, 전체 보기, 재조회, OBJECTID 복사를 제공합니다. 같은 좌표의 시설은 지도에서 숫자로 표시하고 마커를 반복 선택하면 해당 위치의 시설을 순서대로 선택합니다. 목록에서는 각 시설을 직접 선택할 수 있습니다. 코스 거리와 산 경계 필터를 적용하지 않은 후보 화면이며, 자료 당시의 `USE_YN`을 현재 운영 상태로 해석하지 않습니다. C·U·D 없이 조회만 수행합니다.
 
