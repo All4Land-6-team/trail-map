@@ -15,7 +15,7 @@ import { courseFixtures } from "../../api/courseMock";
 import { startHikeSession, useHikeSession } from "../../store/hikeSessionStore";
 import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
 import { hikePaths, navigateTab } from "../hikeRoutes";
-import { useTodayCourse } from "./useTodayCourse";
+import { useScheduleCourse } from "../../hooks/useScheduleCourse";
 import "../hikePages.css";
 import "./HikeTodayPage.css";
 
@@ -23,7 +23,7 @@ import "./HikeTodayPage.css";
 export function HikeTodayPage() {
   const [today] = useState(() => toDateKey(new Date()));
   const schedule = useHikeSchedules().find(item => item.date === today);
-  const course = useTodayCourse(schedule);
+  const course = useScheduleCourse(schedule);
   const [filter, setFilter] = useState<SpotFilter>("all");
   const [dimension, setDimension] = useState<"2D" | "3D">("2D");
   const [recenterKey, setRecenterKey] = useState(0);
@@ -76,7 +76,7 @@ export function HikeTodayPage() {
         <div className="hike-map-page__map">
           {course.route.length ? <HikeRouteMap route={course.route} spots={course.spots} filter={filter} dimension={dimension}
             recenterKey={recenterKey} label={`${course.mountainName} ${course.courseName} 오늘 코스 지도`} />
-            : <p className="hike-today-page__route-status" role="status">
+            : <p className="hike-map-page__route-status" role="status">
               {course.routeLoading ? "코스 경로를 불러오는 중이에요." : "코스 경로를 불러오지 못했어요. 등산은 시작할 수 있어요."}</p>}
           <div className="hike-map-page__top">
             <TopBar title="오늘의 등산" showAction={false} onBack={() => navigate("")} />
