@@ -13,6 +13,39 @@ __pycache__/
 # 로컬 Gradle 캐시
 /.gradle-user-home/
 
-# 로컬 DB 비밀번호 및 시설 전처리 가상환경
-/.env
+# 로컬 환경 변수·비밀 설정
+.env
+.env.*
+!.env.example
+!.env.*.example
+.envrc
+.direnv/
+
+# 로컬 애플리케이션 설정
+**/application-secret.properties
+**/application-*-secret.properties
+**/application-secret.yml
+**/application-secret.yaml
+**/application-local.properties
+**/application-local.yml
+**/application-local.yaml
+
+# 클라우드·DB 자격 증명
+**/.aws/
+**/.pgpass
+**/pgpass.conf
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# 로컬 DB·백업 산출물
+*.dump
+*.backup
+*.sqlite
+*.sqlite3
+
+# 시설 전처리 가상환경
 /data-pipeline/.venv-facility/
