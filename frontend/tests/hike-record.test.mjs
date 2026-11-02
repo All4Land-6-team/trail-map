@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { HIKE_RECORD_ERROR, hikeStartErrorMessage, startOrResumeHikeRecord } from "../src/api/hikeRecordApi.ts";
 import { flushHikePositions } from "../src/hooks/useHikeTracking.ts";
+import { deleteHikeSchedule } from "../src/api/hikeScheduleApi.ts";
 import {
   finishHikeSession, getCompletedHikes, getHikeSession, recordHikePosition, restoreHikeSession, setHikeTraveledMeters,
   startHikeDescent, startHikeSession,
@@ -213,4 +214,13 @@ test("새로고침 후 하산 중이면 보관한 순번을 쓰고, 없으면 �
   finishHikeSession();
   restoreHikeSession(restored(42, path));
   assert.equal(getHikeSession().descentPathStart, 2);
+});
+
+test("진행 중인 등산이 있는 일정을 지우려 하면 대체 확인 없이 안내 문구를 준다", async () => {
+  reset(fail(409, "HIKE_409_6"));
+  const error = await deleteHikeSchedule(6).catch(caught => caught);
+  assert.equal(error.kind, "activeHike");
+  assert.equal(error.message, "진행 중인 등산이 있는 일정은 바꾸거나 지울 수 없어요.");
+  reset(fail(409, "HIKE_409_1"));
+  assert.equal((await deleteHikeSchedule(6).catch(caught => caught)).kind, "conflict");
 });
