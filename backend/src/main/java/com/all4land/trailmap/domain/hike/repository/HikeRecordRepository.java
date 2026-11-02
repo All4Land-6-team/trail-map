@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -70,6 +71,21 @@ public class HikeRecordRepository {
                 new MapSqlParameterSource("scheduleId", scheduleId),
                 Boolean.class
         );
+        return Boolean.TRUE.equals(exists);
+    }
+
+    /** 진행 중(등산 중·하산 중) 기록이 있는 일정이 하나라도 있는지 */
+    public boolean existsActiveBySchedules(Collection<Long> scheduleIds) {
+        if (scheduleIds.isEmpty()) {
+            return false;
+        }
+        Boolean exists = jdbcTemplate.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1 FROM hike_record
+                    WHERE schedule_id IN (:scheduleIds) AND deleted_at IS NULL
+                      AND hike_status IN ('IN_PROGRESS', 'DESCENDING')
+                )
+                """, new MapSqlParameterSource("scheduleIds", scheduleIds), Boolean.class);
         return Boolean.TRUE.equals(exists);
     }
 
