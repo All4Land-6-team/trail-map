@@ -200,6 +200,40 @@ m로 환산합니다. 경도·위도 단위의 DEM이나 좌표계가 없는 DEM
 확인한 수직 기준을 기록합니다. 미지정·`unknown`·`unverified`는 미확정으로
 처리하며, 테스트용 임의 기준을 실제 DEM에 적용하지 않습니다.
 
+### 단위를 확인할 수 없는 DEM (#119)
+
+밴드 단위가 없고 제공자도 확인할 수 없을 때만 `--assume-elevation-unit m`
+또는 `ft`로 개발·시연용 분석을 생성할 수 있습니다. 이 옵션은
+`--elevation-unit`과 함께 사용할 수 없고, 밴드 단위가 이미 있는 DEM에도 사용할 수
+없습니다. 기본 `auto`의 미확인 단위 처리는 그대로 유지합니다.
+
+```powershell
+$env:PYTHONPATH = "src"
+& ".\.venv\Scripts\python.exe" -m trail_map_data.cli course analyze `
+  "C:\trail-map\data\processed\dem\bukhansan\analysis\bukhansan_dem.tif" `
+  "C:\trail-map\data\interim\courses\course-<DB코스ID>.geojson" `
+  --sample-interval-meters 10 --sampling-method bilinear `
+  --assume-elevation-unit m `
+  --output "C:\trail-map\data\processed\course-analysis\course-<DB코스ID>-assumed-m.json"
+```
+
+결과에는 `settings.elevation_unit_source=assumed`와
+`quality_reasons`의 `ASSUMED_ELEVATION_UNIT`을 기록합니다. 계산된 고도는 m,
+경사는 %로 반환하되 검증 전 수치입니다. `ft`를 가정하면 국제 피트당 0.3048m로
+환산합니다. 수직 기준을 모르면 지정하지 않으며 `UNVERIFIED_VERTICAL_REFERENCE`도
+보존합니다. 유효 DEM 샘플이 있으면 `PARTIAL`, 하나도 없으면 `NO_DATA`이고,
+수직 기준을 지정해도 단위를 가정한 동안은 `AVAILABLE`이 되지 않습니다.
+
+원본 TIFF의 단위·좌표계·값을 수정하지 않습니다. 코스의 `source_kind`도 바꾸지
+않으므로 실제 후보 경로를 합성 예시 경로로 표시하지 않습니다. 위 명령의 경로와
+ID는 현재 DB에서 내보낸 코스에 맞추고, 확인되지 않은 출처를 `official`로 바꾸지
+않습니다. 샘플 추출 성공이나 단위 가정이 경로의 공식 검증 완료를 뜻하지는 않습니다.
+
+분석 수식·`schema_version=1`·`course-dem-v1`은 유지합니다. 백엔드는 단위의 출처도
+DEM 해석 버전에 포함하므로, 나중에 확인된 단위 선언으로 재분석하면 별도 버전으로
+적재하고 가정 결과를 보존합니다. 이번 기능을 반영한 백엔드에서 가정 문서를
+검증·적재해야 합니다.
+
 결과의 주요 항목은 다음과 같습니다.
 
 - `schema_version`, `algorithm_version`, `source_type`, `calculated_at`
@@ -215,8 +249,8 @@ m로 환산합니다. 경도·위도 단위의 DEM이나 좌표계가 없는 DEM
 노이즈 필터·평활화는 적용하지 않고 `elevation_processing=unsmoothed`로 기록합니다.
 분석 간격·평활화 정책이 달라지면 상승량과 경사가 달라질 수 있습니다.
 
-- `AVAILABLE`: 모든 샘플과 m 단위·수직 기준이 제공된 경우
-- `PARTIAL`: 일부 샘플이 없거나 고도 단위·수직 기준이 미확정인 경우
+- `AVAILABLE`: 모든 샘플이 유효하고 고도 단위·수직 기준이 확인된 경우
+- `PARTIAL`: 일부 샘플이 없거나 고도 단위를 가정했거나 단위·수직 기준이 미확정인 경우
 - `NO_DATA`: 유효 DEM 샘플이 하나도 없는 경우
 
 커버리지는 선택한 샘플 기준이며 샘플 사이의 모든 픽셀을 검사했다는 뜻은

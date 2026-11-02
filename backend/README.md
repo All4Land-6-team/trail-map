@@ -199,7 +199,7 @@ community/spot/facility/{facilityId}/{reviewId}/{uuid}.{ext}
 
 화장실·쉼터·음수대의 한 번의 전처리, 출처별 JSON v2 적재, 산 소속 판정 및 실행·검증 방법은 [공통 시설 파이프라인](../docs/facility-pipeline.md)을 따른다. 개별 어댑터의 v1은 후보 검토용이며 직접 DB에 적재하지 않는다.
 
-## 코스 분석 결과 적재·조회 (#84, #116)
+## 코스 분석 결과 적재·조회 (#84, #116, #119)
 
 #80 Python 파이프라인이 만든 `schema_version=1` JSON을 검증하고, 기존
 `course_analysis` 테이블에 요약과 분석 문서를 저장합니다. 차트용 샘플 테이블은
@@ -213,7 +213,10 @@ community/spot/facility/{facilityId}/{reviewId}/{uuid}.{ext}
 먼저 대상 DB의 현재 코스 ID·산 ID·버전·방향을 포함한 경로를 내보내고, DEM으로
 분석 JSON을 생성합니다. 아래 `<DB코스ID>`는 실제 분석한 ID로 바꿉니다. 과거 로컬
 시드용 `course-1-dev-assumed-m.json`을 공용 DB의 같은 번호 코스에 적재하지 않습니다.
-단위를 m로 **가정한 개발용** 결과와 수직 기준 미확인 사유는 그대로 보존하며
+단위를 가정할 때는 Python의 `--assume-elevation-unit m`을 사용합니다. 기존
+`--elevation-unit m`은 확인한 단위를 호출자가 선언하는 옵션으로, 가정 표시를
+대신하지 않습니다. 가정 결과의 `settings.elevation_unit_source=assumed`와
+`ASSUMED_ELEVATION_UNIT` 및 수직 기준 미확인 사유는 그대로 보존하며
 `AVAILABLE`로 승격하지 않습니다. 제공기관·URL을 모를 때도 DEM 파일과 보조
 파일의 SHA-256 및 메타데이터로 출처 버전을 기록할 수 있습니다.
 
@@ -237,13 +240,18 @@ java -jar ".\build\libs\trail-map-backend-0.0.1-SNAPSHOT.jar" `
 종료합니다. 공개 쓰기 API는 제공하지 않습니다. `dem-provider`는 선택 항목이며
 확인되지 않은 기관명을 추측해서 기록하지 않습니다.
 
+- 단위 가정은 밴드 단위가 없는 DEM의 `m` 또는 `ft`에만 허용합니다. 미확인 단위를
+  임의로 확정하거나 품질 사유를 제거한 문서는 거절합니다. 가정 결과는 유효 샘플이
+  있으면 `PARTIAL`, 전부 결측이면 `NO_DATA`이며 요약·프로필·비교 조회에 같은 설정과
+  사유를 반환합니다. 이후 코스가 바뀌어 `OUTDATED`가 되어도 가정 기록은 유지합니다.
 - 코스·산·버전·경로와 선택적 코스 출처 ID가 현재 DB와 일치해야 합니다.
 - 경로 비교는 PostGIS GeoJSON 기본 소수 9자리 정밀도에서 방향·꼭짓점 순서를
   포함합니다. 동일 버전에서 경로가 바뀐 경우도 감지합니다.
 - DEM 출처는 코스 출처와 별도로 `data_source`에 등록합니다. `source_format`은
   `GEOTIFF`, `source_version`은 DEM 내용·보조 파일 지문·메타데이터와 고도 단위·수직
-  기준 해석의 해시입니다. 나중에 단위나 수직 기준이 확인되면 새 출처 버전으로
-  보존하므로 미확인 결과를 덮어쓸 필요가 없습니다.
+  기준 해석의 해시입니다. 단위 출처 `assumed`도 구분하므로 나중에 같은 m 단위를
+  확인하고 `caller_declaration`으로 재분석해도 새 출처 버전으로 보존합니다.
+  미확인 결과를 덮어쓸 필요가 없습니다.
 - `(course_id, course_version, dem_source_id, algorithm_version)`이 같은 결과는
   반복 적재해도 중복되지 않습니다. 실행 시각과 로컬 입력 경로만 달라진 경우도
   기존 결과를 재사용합니다. 설정·입력 지문·프로필·품질 등이 다르면 덮어쓰지

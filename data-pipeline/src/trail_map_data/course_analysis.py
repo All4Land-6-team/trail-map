@@ -56,6 +56,7 @@ class AnalysisConfig:
     elevation_unit: str = "auto"
     vertical_reference: str | None = None
     max_samples: int = 100_000
+    assume_elevation_unit: str | None = None
 
     def __post_init__(self) -> None:
         if (not _finite_number(self.sample_interval_meters)
@@ -65,6 +66,11 @@ class AnalysisConfig:
             raise CourseAnalysisError("샘플링 방식은 nearest 또는 bilinear여야 합니다")
         if not isinstance(self.elevation_unit, str) or self.elevation_unit not in {"auto", "m", "ft", "unknown"}:
             raise CourseAnalysisError("고도 단위는 auto, m, ft, unknown 중 하나여야 합니다")
+        if self.assume_elevation_unit is not None:
+            if not isinstance(self.assume_elevation_unit, str) or self.assume_elevation_unit not in {"m", "ft"}:
+                raise CourseAnalysisError("가정할 고도 단위는 m 또는 ft여야 합니다")
+            if self.elevation_unit != "auto":
+                raise CourseAnalysisError("고도 단위 가정과 단위 선언은 함께 사용할 수 없습니다")
         if (isinstance(self.max_samples, bool) or not isinstance(self.max_samples, int)
                 or self.max_samples < 2):
             raise CourseAnalysisError("최대 샘플 수는 2 이상의 정수여야 합니다")
@@ -194,9 +200,13 @@ def _sample(dataset, x: float, y: float, method: str) -> tuple[float | None, str
     return (result, "VALID") if math.isfinite(result) else (None, "NON_FINITE")
 
 
-def _elevation_unit(dataset, requested: str) -> tuple[str, str]:
+def _elevation_unit(dataset, requested: str, assumed: str | None) -> tuple[str, str]:
     label = dataset.units[0]
     declared = _UNIT_NAMES.get(label.strip().lower()) if label else None
+    if assumed is not None:
+        if label:
+            raise CourseAnalysisError("고도 단위 가정은 밴드 단위가 없는 DEM에만 사용할 수 있습니다")
+        return assumed, "assumed"
     if requested == "unknown":
         return "unknown", "unverified"
     if requested == "auto":
@@ -250,7 +260,7 @@ def analyze_course(
         lons, lats = transform(dataset.crs, "EPSG:4326", xy[:, 0], xy[:, 1])
         if not np.isfinite(np.column_stack([lons, lats])).all():
             raise CourseAnalysisError("샘플 좌표를 경도·위도로 변환할 수 없습니다")
-        unit, unit_source = _elevation_unit(dataset, config.elevation_unit)
+        unit, unit_source = _elevation_unit(dataset, config.elevation_unit, config.assume_elevation_unit)
         height_factor = _UNIT_FACTORS.get(unit)
         samples = []
         for index, (distance, (x, y), lon, lat) in enumerate(zip(distances, xy, lons, lats)):
@@ -269,7 +279,7 @@ def analyze_course(
             "band_unit": dataset.units[0], "band_scale": dataset.scales[0],
             "band_offset": dataset.offsets[0],
         }
-    summary, status, reasons = _summarize(samples, unit, config.vertical_reference)
+    summary, status, reasons = _summarize(samples, unit, unit_source, config.vertical_reference)
     return {
         "schema_version": SCHEMA_VERSION, "algorithm_version": ALGORITHM_VERSION,
         "source_type": "SERVICE_CALCULATED",
@@ -300,7 +310,7 @@ def analyze_course(
     }
 
 
-def _summarize(samples, unit, vertical_reference):
+def _summarize(samples, unit, unit_source, vertical_reference):
     heights = [p["elevation_meters"] for p in samples if p["elevation_meters"] is not None]
     raw_valid = sum(p["sample_status"] == "VALID" for p in samples)
     covered = 0.0
@@ -326,6 +336,8 @@ def _summarize(samples, unit, vertical_reference):
         reasons.append("MISSING_DEM_SAMPLES")
     if unit == "unknown":
         reasons.append("UNVERIFIED_ELEVATION_UNIT")
+    if unit_source == "assumed":
+        reasons.append("ASSUMED_ELEVATION_UNIT")
     if vertical_reference is None:
         reasons.append("UNVERIFIED_VERTICAL_REFERENCE")
     if analyzed_segments == 0:

@@ -176,6 +176,54 @@ class CourseAnalysisDatabasePostgisIntegrationTest {
     }
 
     @Test
+    void assumedAnalysisSurvivesDbReadsAndLaterConfirmationWithoutOverwritingTheOriginal() {
+        rollback(fixture -> {
+            var root = fixture.document();
+            section(root, "course").put("source_kind", "unknown");
+            section(section(root, "inputs"), "dem").putNull("band_unit");
+            section(root, "settings").put("elevation_unit_source", "assumed").putNull("vertical_reference");
+            root.put("quality_status", "PARTIAL");
+            root.withArray("quality_reasons").add("ASSUMED_ELEVATION_UNIT").add("UNVERIFIED_VERTICAL_REFERENCE");
+            var file = write(inputDirectory, mapper, root);
+            var assumed = importer.importFile(file, fixture.name(), null);
+            String original = payload(assumed.analysisId());
+            var again = importer.importFile(file, fixture.name(), null);
+            assertThat(again.analysisId()).isEqualTo(assumed.analysisId());
+            assertThat(again.inserted()).isFalse();
+            long otherCourse = insertCourse(fixture.mountainId(), fixture.sourceId());
+            mvc.perform(get("/v1/courses/" + fixture.courseId() + "/analysis"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.qualityStatus").value("PARTIAL"))
+                    .andExpect(jsonPath("$.data.settings.elevationUnitSource").value("assumed"))
+                    .andExpect(jsonPath("$.data.qualityReasons[0]").value("ASSUMED_ELEVATION_UNIT"))
+                    .andExpect(jsonPath("$.data.sourceKind").value("unknown"));
+            mvc.perform(get("/v1/course-comparisons").param("courseIds", fixture.courseId() + "," + otherCourse))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.courses[0].analysis.settings.elevationUnitSource").value("assumed"))
+                    .andExpect(jsonPath("$.data.courses[0].analysis.metrics.elevationGainMeters").value(10));
+
+            section(root, "settings").put("elevation_unit_source", "caller_declaration");
+            root.withArray("quality_reasons").removeAll().add("UNVERIFIED_VERTICAL_REFERENCE");
+            root.put("calculated_at", "2026-11-03T00:00:00Z");
+            var confirmed = importer.importFile(write(inputDirectory, mapper, root), fixture.name(), null);
+            assertThat(confirmed.analysisId()).isNotEqualTo(assumed.analysisId());
+            assertThat(confirmed.demSourceId()).isNotEqualTo(assumed.demSourceId());
+            assertThat(payload(assumed.analysisId())).isEqualTo(original);
+            mvc.perform(get("/v1/courses/" + fixture.courseId() + "/analysis"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.analysisId").value(confirmed.analysisId()))
+                    .andExpect(jsonPath("$.data.settings.elevationUnitSource").value("caller_declaration"));
+            mvc.perform(get("/v1/course-analyses/" + assumed.analysisId() + "/profile"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.analysis.settings.elevationUnitSource").value("assumed"))
+                    .andExpect(jsonPath("$.data.analysis.qualityReasons[0]").value("ASSUMED_ELEVATION_UNIT"))
+                    .andExpect(jsonPath("$.data.samples[2].slopePercent").value(-50));
+            jdbc.update("UPDATE course SET course_version=2 WHERE course_id=?", fixture.courseId());
+            mvc.perform(get("/v1/course-analyses/" + assumed.analysisId() + "/profile"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.analysis.qualityStatus").value("OUTDATED"))
+                    .andExpect(jsonPath("$.data.analysis.recordedQualityStatus").value("PARTIAL"))
+                    .andExpect(jsonPath("$.data.analysis.settings.elevationUnitSource").value("assumed"));
+        });
+    }
+
+    @Test
     void missingAndTamperedDbDocumentsReturnTheExistingUnavailableResponse() {
         rollback(fixture -> {
             var result = importer.importFile(fixture.file(), fixture.name(), null);

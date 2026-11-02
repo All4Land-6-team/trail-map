@@ -257,6 +257,23 @@ npm run build
 
 검증: `node --experimental-strip-types --test tests/*.mjs tests/*.cjs`, `npm run lint`, `npm run build`. 브라우저에서는 2D/3D 전환, 카드·점 선택, 시트 높이 변경, 미리보기 재생·정지·종료·지도 조작 시 정지, 작은 화면의 컨트롤 가림을 확인합니다.
 
+## DEM 고도 단위 가정 표시 (#119)
+
+분석 설정의 `elevationUnitSource=assumed`는 확인된 단위 선언과 구분합니다.
+단일 상세와 비교 지도·비교표는 접힌 분석 상태 바깥에 원본 단위 가정과 검증 전
+수치 안내를 표시합니다. 비교에서는 같은 단위 가정의 코스명을 묶어 표시하며 ft 가정은
+m로 환산한 값임을 안내합니다. 기존 자동 판별·호출자 단위 선언·저장된 분석이 없는
+코스에는 가정 안내를 붙이지 않습니다.
+
+`ASSUMED_ELEVATION_UNIT` 품질 사유, 수직 기준 미확인 및 `PARTIAL`·`NO_DATA`·
+`OUTDATED`를 유지합니다. 고도 단위 가정 때문에 실제 후보 경로를 개발용 합성 경로로
+바꾸지 않으며, 코스 원본 출처·검증 상태 안내는 기존 경로 API를 기준으로 유지합니다.
+미계산 지표는 계속 `—`로 표시합니다. 추가 환경 변수나 DB 마이그레이션은 없습니다.
+
+`npm run test:comparison`, `npm run test:course-detail`, `npm run lint`, `npm run build`로
+응답 보존·가정 안내·기존 상세/비교 동작을 확인합니다. 실제 데이터 검증은 공용 DB의
+현재 코스 경로를 가정 모드로 재분석·적재한 뒤 같은 분석 ID의 프로필과 화면을 확인합니다.
+
 ## 코스별 사진 스팟 조회 (#99)
 
 `홈 → 산 → 코스 → 스팟·통제정보 → 사진 스팟`에서 실제 경로(`db-{courseId}`)를 선택하면 해당 코스 ID로 `GET /api/v1/community/courses/{courseId}/photo-spots`를 호출하고 경로 응답의 산 ID와 일치하는지 확인합니다. 기존 문자열 ID는 커뮤니티 산·코스의 외부 ID로 확인합니다.

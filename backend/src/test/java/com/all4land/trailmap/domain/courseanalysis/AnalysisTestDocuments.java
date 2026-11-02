@@ -59,6 +59,16 @@ public final class AnalysisTestDocuments {
         }
     }
 
+    public static ObjectNode assumedDocument(ObjectMapper mapper) {
+        var root = document(mapper);
+        section(root, "course").put("source_kind", "unknown");
+        section(section(root, "inputs"), "dem").putNull("band_unit");
+        section(root, "settings").put("elevation_unit_source", "assumed").putNull("vertical_reference");
+        root.put("quality_status", "PARTIAL");
+        root.withArray("quality_reasons").add("ASSUMED_ELEVATION_UNIT").add("UNVERIFIED_VERTICAL_REFERENCE");
+        return root;
+    }
+
     public static ObjectNode section(ObjectNode node, String name) { return (ObjectNode) node.get(name); }
     public static ObjectNode sample(ObjectNode node, int index) { return (ObjectNode) node.get("profile").get(index); }
 

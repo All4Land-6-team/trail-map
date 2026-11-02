@@ -1,5 +1,5 @@
 import type { CourseComparisonState } from '../../../types/courseAnalysis';
-import { analysisQualityLabel, analysisQualityReasons, type ComparisonCourseView } from '../../../utils/courseComparison';
+import { analysisQualityLabel, analysisQualityReasons, analysisUnitAssumptionNotice, type ComparisonCourseView } from '../../../utils/courseComparison';
 
 export function ComparisonAnalysisStatus({ state, courses, onRetry }: {
   state: CourseComparisonState; courses: readonly ComparisonCourseView[]; onRetry: () => void;
@@ -9,8 +9,16 @@ export function ComparisonAnalysisStatus({ state, courses, onRetry }: {
     <p>{state.message}</p>
     {state.status === 'error' && <button type="button" onClick={onRetry}>다시 불러오기</button>}
   </div>;
+  const assumptionNotices = new Map<string, string[]>();
+  for (const course of courses) {
+    const notice = analysisUnitAssumptionNotice(course.analysis);
+    if (notice) assumptionNotices.set(notice, [...(assumptionNotices.get(notice) ?? []), course.name]);
+  }
   return <div className="cart-analysis-status">
     {courses.some(course => course.development) && <p className="cart-analysis-origin">개발용 예시 경로예요. 실제 등산로 정보가 아니에요.</p>}
+    {[...assumptionNotices].map(([notice, names]) => <p key={notice} className="cart-analysis-assumption">
+      <strong>{names.join(' · ')}</strong> · {notice}
+    </p>)}
     {courses.some(course => course.profileError) && <p role="alert" className="cart-analysis-message">일부 고도 프로필을 불러오지 못했어요. <button type="button" onClick={onRetry}>다시 불러오기</button></p>}
     <details className="cart-analysis-details">
     <summary>{courses.map(course => `${course.shortName} · ${analysisQualityLabel(course.analysis)}`).join(' / ')}</summary>

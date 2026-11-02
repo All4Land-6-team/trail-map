@@ -1,10 +1,30 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { courseComparisonUrl, loadCourseComparison, parseCourseAnalysis, parseCourseAnalysisProfile, parseCourseComparison } from '../src/api/courseAnalysis.ts';
-import { analysisQualityReasons, comparisonCourseViews, comparisonRequest, developmentAnalysisReference,
+import { analysisQualityReasons, analysisUnitAssumptionNotice, comparisonCourseViews, comparisonRequest, developmentAnalysisReference,
   elevationAxisBounds, formatAnalysisDistance, formatAnalysisDuration, withComparisonColors } from '../src/utils/courseComparison.ts';
 import { formatElevationTooltip, positionElevationTooltip } from '../src/utils/elevationTooltip.ts';
 import { analysis, noAnalysis, comparison, profile, fullCoverageAnalysis, fullCoverageProfile } from './fixtures/course-analysis.mjs';
+
+test('단위 가정은 요약·프로필·비교 응답에서 보존되고 확인된 단위와 안내를 구분한다', () => {
+  const assumed = analysis(1, { sourceKind: 'unknown', qualityReasons: ['ASSUMED_ELEVATION_UNIT', 'UNVERIFIED_VERTICAL_REFERENCE'] });
+  assumed.settings.elevationUnitSource = 'assumed';
+  const summary = parseCourseAnalysis(assumed);
+  const stored = parseCourseAnalysisProfile(profile(assumed), summary);
+  const compared = parseCourseComparison(comparison([assumed, noAnalysis(2)]), [1, 2]);
+  assert.equal(stored.analysis.settings.elevationUnitSource, 'assumed');
+  assert.equal(compared.courses[0].analysis.sourceKind, 'unknown');
+  assert.match(analysisUnitAssumptionNotice(summary), /m로 가정.*검증 전/);
+  assert.ok(analysisQualityReasons(summary).some(message => message.includes('가정한 분석')));
+  assumed.settings.elevationUnit = 'ft';
+  assert.match(analysisUnitAssumptionNotice(assumed), /ft로 가정해 m로 환산/);
+  for (const source of ['raster_metadata', 'caller_declaration', 'unverified']) {
+    assumed.settings.elevationUnitSource = source;
+    assert.equal(analysisUnitAssumptionNotice(assumed), null);
+  }
+  assert.equal(analysisUnitAssumptionNotice(null), null);
+  assert.equal(analysisUnitAssumptionNotice(noAnalysis()), null);
+});
 
 test('툴팁은 거리 km 2자리·고도 m 1자리로 표시하고 결측과 0을 구분한다', () => {
   const distance = 1.23456789012345, elevation = 812.2509972910377;
