@@ -60,10 +60,20 @@ public class CourseAnalysisDocumentReader {
 
     public Stored readStored(Path path) {
         try {
-            Stored stored = mapper.readValue(bytes(path), Stored.class);
+            return readStored(bytes(path));
+        } catch (IOException exception) {
+            throw invalid("저장 JSON을 읽을 수 없습니다");
+        }
+    }
+
+    /** 파일과 DB 저장소에서 동일한 문서·지문 검증을 적용한다. */
+    public Stored readStored(byte[] bytes) {
+        require(bytes != null && bytes.length <= MAX_BYTES, "저장 문서 크기");
+        try {
+            Stored stored = mapper.readValue(bytes, Stored.class);
             require(stored != null && stored.analysisId() > 0 && stored.demSourceId() > 0, "저장 식별자");
             validate(stored.document());
-            require(hash(mapper.writeValueAsBytes(stored.document())).equals(stored.documentHash()), "저장 파일 지문");
+            require(hash(mapper.writeValueAsBytes(stored.document())).equals(stored.documentHash()), "저장 문서 지문");
             return stored;
         } catch (IOException | IllegalArgumentException exception) {
             throw invalid("저장 JSON을 읽을 수 없습니다");
@@ -73,7 +83,7 @@ public class CourseAnalysisDocumentReader {
     public byte[] encode(Stored stored) {
         try {
             byte[] bytes = mapper.writeValueAsBytes(stored);
-            require(bytes.length <= MAX_BYTES, "저장 파일 크기");
+            require(bytes.length <= MAX_BYTES, "저장 문서 크기");
             return bytes;
         } catch (IOException exception) {
             throw invalid("JSON 직렬화");

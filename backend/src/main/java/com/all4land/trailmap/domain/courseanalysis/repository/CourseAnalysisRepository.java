@@ -30,7 +30,12 @@ public class CourseAnalysisRepository {
                               Metrics metrics, boolean versionCurrent, boolean geometryCurrent, String snapshotGeometry) {}
 
     private static final String ANALYSIS_COLUMNS_AND_JOIN = """
-            a.*, c.mountain_id, c.course_version AS current_course_version,
+            a.analysis_id, a.course_id, a.course_version, a.dem_source_id, a.algorithm_version,
+                   a.source_type, a.quality_status, a.calculated_at,
+                   a.distance_meters, a.estimated_duration_seconds, a.min_elevation_meters,
+                   a.max_elevation_meters, a.elevation_gain_meters, a.elevation_loss_meters,
+                   a.steep_section_ratio_percent,
+                   c.mountain_id, c.course_version AS current_course_version,
                    c.source_id AS current_source_id,
                    a.course_version = c.course_version AS version_current,
                    ST_AsGeoJSON(a.analyzed_course_geometry, 9)::jsonb =

@@ -37,7 +37,7 @@ class FlywayPostgisMigrationTest {
         var result = flyway.migrate();
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("9");
+        assertThat(result.targetSchemaVersion).isEqualTo("10");
 
         try (var connection = DriverManager.getConnection(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()

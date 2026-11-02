@@ -18,7 +18,7 @@ public enum CourseAnalysisErrorCode implements BaseResponseCode {
     COURSE_CHANGED("ANALYSIS_409_1", CONFLICT, "현재 코스와 분석 입력의 산·버전·경로·출처가 다릅니다."),
     RESULT_CONFLICT("ANALYSIS_409_2", CONFLICT, "동일한 분석 식별자에 다른 결과가 있습니다. 기존 결과는 변경하지 않습니다."),
     SOURCE_CONFLICT("ANALYSIS_409_3", CONFLICT, "DEM 출처 정보가 중복되거나 기존 정보와 다릅니다."),
-    DATA_UNAVAILABLE("ANALYSIS_503_1", 503, "분석 파일을 사용할 수 없거나 DB 요약과 일치하지 않습니다.");
+    DATA_UNAVAILABLE("ANALYSIS_503_1", 503, "분석 문서를 사용할 수 없거나 DB 요약과 일치하지 않습니다.");
 
     private final String code;
     private final int httpStatus;

@@ -7,6 +7,7 @@ import com.all4land.trailmap.domain.courseanalysis.service.CourseAnalysisDocumen
 import com.all4land.trailmap.global.config.CourseAnalysisProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -22,7 +23,8 @@ import java.nio.file.StandardOpenOption;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class CourseAnalysisFileStore {
+@ConditionalOnProperty(name = "course-analysis.storage", havingValue = "file")
+public class CourseAnalysisFileStore implements CourseAnalysisStore {
     private final CourseAnalysisProperties properties;
     private final CourseAnalysisDocumentReader reader;
 

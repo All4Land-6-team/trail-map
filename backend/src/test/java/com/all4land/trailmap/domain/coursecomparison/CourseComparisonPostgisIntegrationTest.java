@@ -33,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** 명시적으로 지정한 개발 DB에 합성 코스만 넣고 행·프로필 파일을 모두 롤백한다. */
 @SpringBootTest(properties = {
+        "course-analysis.storage=file",
         "spring.datasource.url=${ANALYSIS_TEST_JDBC_URL}",
         "spring.datasource.username=${ANALYSIS_TEST_DB_USERNAME:postgres}",
         "spring.datasource.password=${ANALYSIS_TEST_DB_PASSWORD:${DB_PASSWORD:}}"

@@ -4,7 +4,7 @@ import com.all4land.trailmap.domain.courseanalysis.error.CourseAnalysisErrorCode
 import com.all4land.trailmap.domain.courseanalysis.exception.CourseAnalysisException;
 import com.all4land.trailmap.domain.courseanalysis.repository.CourseAnalysisRepository;
 import com.all4land.trailmap.domain.courseanalysis.service.CourseAnalysisDocumentReader.Stored;
-import com.all4land.trailmap.domain.courseanalysis.storage.CourseAnalysisFileStore;
+import com.all4land.trailmap.domain.courseanalysis.storage.CourseAnalysisStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +16,7 @@ import java.nio.file.Path;
 public class CourseAnalysisImportService {
     private final CourseAnalysisRepository repository;
     private final CourseAnalysisDocumentReader reader;
-    private final CourseAnalysisFileStore store;
+    private final CourseAnalysisStore store;
     private final CourseAnalysisService queries;
 
     public record ImportResult(long analysisId, long demSourceId, boolean inserted) {}
