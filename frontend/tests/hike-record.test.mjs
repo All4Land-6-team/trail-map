@@ -254,3 +254,11 @@ test("새로고침 후 하산 중이면 보관한 순번을 쓰고, 없으면 �
   restoreHikeSession(restored(42, path));
   assert.equal(getHikeSession().descentPathStart, 2);
 });
+
+test("일정 저장용 코스 번호: 예시 코스는 개발 매핑, 실제 경로 코스(db-번호)는 그 번호", async () => {
+  const { toBackendCourseId } = await import("../src/api/hikeScheduleApi.ts");
+  assert.equal(toBackendCourseId("daenammun"), 2);
+  assert.equal(toBackendCourseId("db-15"), 15);
+  assert.throws(() => toBackendCourseId("db-0"), { message: "이 코스는 아직 일정 등록을 지원하지 않아요." });
+  assert.throws(() => toBackendCourseId("unknown-course"));
+});
