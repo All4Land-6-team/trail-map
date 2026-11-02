@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ComponentType } from 'react'
+import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
 import type { PlannedHike } from './types/hiking'
 import { HomePage } from './pages/HomePage/HomePage'
 import { CourseFlow } from './pages/CourseDetailPage/CourseFlow'
@@ -15,6 +15,9 @@ import { HikeCompletePage } from './pages/HikeCompletePage/HikeCompletePage'
 import { HikeDescentPage } from './pages/HikeDescentPage/HikeDescentPage'
 import { HikeDetailPage } from './pages/HikeDetailPage/HikeDetailPage'
 import { HikeTodayPage } from './pages/HikeTodayPage/HikeTodayPage'
+import { AuthPage } from './pages/AuthPage/AuthPage'
+import { fetchCurrentUser } from './api/auth'
+import { updateAuthUser, useAuthSession } from './store/authStore'
 
 const CartPage = lazy(() => import('./pages/CartPage/CartPage').then(({ CartPage: Page }) => ({ default: Page })))
 const CommunityPage = lazy(() => import('./pages/CommunityPage/CommunityPage').then(({ CommunityPage: Page }) => ({ default: Page })))
@@ -38,8 +41,7 @@ const hikeRoutes: Record<string, ComponentType> = {
   'hikes/downhill': HikeDescentPage,
 }
 
-function App() {
-  const route = useHashRoute()
+function AuthenticatedApp({ route }: { route: string }) {
   const schedules = useHikeSchedules()
   const plannedHikes: PlannedHike[] = schedules.map(schedule => ({ date: schedule.date, time: schedule.startTime,
     courseId: schedule.courseId, mountain: schedule.mountainName, courseName: schedule.courseName }))
@@ -56,15 +58,8 @@ function App() {
       .catch(() => navigate(hikePaths.calendar(plannedHike.date)))
   }
 
-  if (HikeStatusPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'hike-status') {
-    return <Suspense fallback={null}><HikeStatusPreviewPage /></Suspense>
-  }
-
-  if (FacilityPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'facilities') {
-    return <Suspense fallback={<main className="app-route-loading" aria-busy="true">시설 검토 화면을 불러오는 중이에요</main>}><FacilityPreviewPage /></Suspense>
-  }
-
-  if (routePath(route) === 'community') {
+  const path = routePath(route)
+  if (path === 'community') {
     const query = new URLSearchParams(route.split('?')[1] ?? '')
     const fromHikeComplete = query.get('from') === 'hikes/complete'
     const returnTo = internalReturnPath(query.get('returnTo'), fromHikeComplete ? 'hikes/complete' : '')
@@ -86,7 +81,7 @@ function App() {
     </Suspense>
   }
 
-  if (routePath(route) === 'cart' || routePath(route).startsWith('cart/')) {
+  if (path === 'cart' || path.startsWith('cart/')) {
     return <Suspense fallback={<main className="app-route-loading" aria-busy="true">화면을 불러오는 중이에요</main>}>
       <CartPage
         route={`#${route}`}
@@ -97,8 +92,8 @@ function App() {
     </Suspense>
   }
 
-  if (routePath(route) === 'myHikes') return <HikeCalendarPage />
-  if (routePath(route).startsWith('hike/')) {
+  if (path === 'myHikes') return <HikeCalendarPage />
+  if (path.startsWith('hike/')) {
     return <Suspense fallback={<main className="app-route-loading" aria-busy="true">등산 화면을 불러오는 중이에요</main>}>
       <HikingStatusPage
         key={route}
@@ -110,10 +105,10 @@ function App() {
       />
     </Suspense>
   }
-  if (routePath(route) === 'hikes/complete') return <HikeCompletePage onWriteReview={() => {
+  if (path === 'hikes/complete') return <HikeCompletePage onWriteReview={() => {
     window.location.hash = 'community?from=hikes/complete'
   }} />
-  const HikeRoutePage = hikeRoutes[routePath(route)]
+  const HikeRoutePage = hikeRoutes[path]
   // 주소의 ?값이 바뀌어도 화면을 새로 그리도록 전체 주소를 key로 쓴다.
   if (HikeRoutePage) return <HikeRoutePage key={route} />
   const courseRoute = readCourseRoute(route)
@@ -121,6 +116,39 @@ function App() {
   const preview = import.meta.env.DEV ? new URLSearchParams(window.location.search) : null
   const schedule = preview?.get('preview') === 'home' ? preview.get('schedule') : null
   return <HomePage previewSchedule={schedule === 'none' || schedule === 'active' ? schedule : undefined} />
+}
+
+function App() {
+  const route = useHashRoute()
+  const session = useAuthSession()
+  const accessToken = session?.accessToken
+  const [verifiedAccessToken, setVerifiedAccessToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!accessToken) return
+    let cancelled = false
+    fetchCurrentUser()
+      .then(user => { if (!cancelled) updateAuthUser(user) })
+      .catch(() => undefined)
+      .finally(() => { if (!cancelled) setVerifiedAccessToken(accessToken) })
+    return () => { cancelled = true }
+  }, [accessToken])
+
+  if (HikeStatusPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'hike-status') {
+    return <Suspense fallback={null}><HikeStatusPreviewPage /></Suspense>
+  }
+
+  if (FacilityPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'facilities') {
+    return <Suspense fallback={<main className="app-route-loading" aria-busy="true">시설 검토 화면을 불러오는 중이에요</main>}><FacilityPreviewPage /></Suspense>
+  }
+
+  const path = routePath(route)
+  if (session && verifiedAccessToken !== session.accessToken) {
+    return <main className="app-route-loading" aria-busy="true">로그인 정보를 확인하는 중이에요</main>
+  }
+  if (!session) return <AuthPage key={path} mode={path === 'signup' ? 'signup' : 'login'} />
+  if (path === 'login' || path === 'signup') return <HomePage />
+  return <AuthenticatedApp route={route} />
 }
 
 export default App

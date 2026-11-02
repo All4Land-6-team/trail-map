@@ -7,8 +7,12 @@
 .hike-nickname-card__copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .hike-nickname-card__label { color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-nickname-card__name { overflow: hidden; color: var(--af-ink); font: 700 15px/22px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.hike-nickname-card__email { overflow: hidden; color: #71857a; font: 400 10px/15px "Noto Sans KR", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
 .hike-nickname-card__error { margin: 0; color: #b42318; font: 400 11px/16px "Noto Sans KR", sans-serif; }
 .hike-nickname-card > .af-button { flex: none; }
+.hike-nickname-card__account-actions { display: flex; flex: none; align-items: center; flex-direction: column; gap: 4px; }
+.hike-nickname-card__logout { padding: 2px 4px; border: 0; color: #71857a; background: transparent; font: 500 10px/15px "Noto Sans KR", sans-serif; text-decoration: underline; cursor: pointer; }
+.hike-nickname-card__logout:focus-visible { border-radius: 4px; outline: 2px solid var(--af-green); outline-offset: 2px; }
 .hike-nickname-card__actions { display: flex; justify-content: flex-end; gap: 8px; }
 .hike-calendar-page__day { display: flex; flex-direction: column; gap: 14px; margin-top: 23px; }
 .hike-calendar-page__date { margin: 0; color: var(--af-ink); font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }

@@ -25,6 +25,20 @@ public class AppUser extends BaseEntity {
     @Column(name = "nickname", length = 100)
     private String nickname;
 
+    @Column(name = "email", length = 254)
+    private String email;
+
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
+
+    public static AppUser registered(String nickname, String email, String passwordHash) {
+        AppUser user = new AppUser();
+        user.nickname = nickname;
+        user.email = email;
+        user.passwordHash = passwordHash;
+        return user;
+    }
+
     public void changeNickname(String nickname) {
         this.nickname = nickname;
     }

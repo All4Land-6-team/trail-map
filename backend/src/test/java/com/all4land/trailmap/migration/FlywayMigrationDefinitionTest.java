@@ -16,7 +16,7 @@ class FlywayMigrationDefinitionTest {
                 .getResources("classpath*:db/migration/V*__*.sql");
         assertThat(migrations)
                 .extracting(resource -> resource.getFilename().split("__", 2)[0])
-                .containsExactlyInAnyOrder("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8");
+                .containsExactlyInAnyOrder("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9");
     }
 
     private static final String[] CORE_TABLES = {
@@ -64,6 +64,20 @@ class FlywayMigrationDefinitionTest {
         assertThat(appUserDefinition)
                 .contains("nickname VARCHAR(100)")
                 .doesNotContain("display_name", "auth_provider", "auth_subject", "deleted_at", "UNIQUE (nickname)");
+    }
+
+    @Test
+    void 아홉_번째_마이그레이션은_레거시_사용자를_보존하며_이메일_인증과_세션을_추가한다() throws IOException {
+        String migration = readMigration("db/migration/V9__add_email_authentication.sql");
+
+        assertThat(migration)
+                .contains("ADD COLUMN email VARCHAR(254)")
+                .contains("ADD COLUMN password_hash VARCHAR(100)")
+                .contains("CREATE UNIQUE INDEX uq_app_user_email_normalized")
+                .containsPattern("(?im)^CREATE TABLE\\s+user_session\\s*\\(")
+                .contains("token_hash VARCHAR(64) NOT NULL")
+                .contains("ON DELETE CASCADE")
+                .doesNotContain("DELETE FROM app_user", "UPDATE app_user");
     }
 
     @Test

@@ -1,8 +1,8 @@
-const DEFAULT_API_BASE_URL = "http://localhost:8080";
-const DEFAULT_USER_ID = "1";
-const USER_ID = import.meta.env?.VITE_HIKE_USER_ID || DEFAULT_USER_ID;
+import { authHeaders } from "../store/authStore.ts";
 
-export const DEFAULT_NICKNAME = `익명${USER_ID}`;
+const DEFAULT_API_BASE_URL = "http://localhost:8080";
+
+export const DEFAULT_NICKNAME = "닉네임";
 export const NICKNAME_MAX_LENGTH = 12;
 
 type Envelope<T> = { success: boolean; message: string; data: T };
@@ -11,6 +11,7 @@ type ErrorEnvelope = { message?: string };
 export type UserProfile = {
   userId: number;
   nickname: string;
+  email: string | null;
 };
 
 function apiBaseUrl() {
@@ -22,11 +23,10 @@ async function request(init?: RequestInit) {
   try {
     response = await fetch(`${apiBaseUrl()}/api/v1/users/me`, {
       ...init,
-      headers: {
-        "X-User-Id": USER_ID,
+      headers: authHeaders({
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
         ...init?.headers,
-      },
+      }),
     });
   } catch {
     throw new Error("서버에 연결하지 못했어요.");

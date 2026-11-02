@@ -20,6 +20,8 @@ export {
   CloseIcon,
   CommunityIcon,
   FilterIcon,
+  EyeIcon,
+  EyeOffIcon,
   HomeIcon,
   LocateIcon,
   MoreIcon,

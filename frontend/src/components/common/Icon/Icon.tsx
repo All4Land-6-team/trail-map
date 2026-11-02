@@ -15,6 +15,16 @@ type IconDefinition = {
 const green = "#19765B";
 
 const iconDefinitions = {
+  Eye: {
+    asset: new URL("../../../assets/icons/eye.svg", import.meta.url).href,
+    defaultColor: green,
+    layers: [],
+  },
+  EyeOff: {
+    asset: new URL("../../../assets/icons/eye-off.svg", import.meta.url).href,
+    defaultColor: green,
+    layers: [],
+  },
   BellOff: {
     asset: new URL("../../../assets/icons/bell-off.svg", import.meta.url).href,
     defaultColor: "#ABC4A9",

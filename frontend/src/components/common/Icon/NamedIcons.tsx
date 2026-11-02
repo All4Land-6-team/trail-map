@@ -1,5 +1,13 @@
 import { Icon, type NamedIconProps } from './Icon'
 
+export function EyeIcon(props: NamedIconProps) {
+  return <Icon {...props} name="Eye" />
+}
+
+export function EyeOffIcon(props: NamedIconProps) {
+  return <Icon {...props} name="EyeOff" />
+}
+
 export function HomeIcon(props: NamedIconProps) {
   return <Icon {...props} name="Home" />
 }

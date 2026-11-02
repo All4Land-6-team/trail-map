@@ -1,11 +1,9 @@
 import { DEV_COURSE_IDS } from "../constants/hikeCourseIds.ts";
 import type { HikeSchedule } from "../types/hike";
+import { authHeaders } from "../store/authStore.ts";
 
 // 등산 일정 API (/api/v1/hike-schedules, 이슈 #56·#61).
-// 로그인이 정해지기 전까지 사용자는 X-User-Id 헤더로 구분한다 (백엔드 CurrentUserIdArgumentResolver).
-
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
-const DEFAULT_USER_ID = "1";
 const TIMEOUT_MS = 8_000;
 
 type ScheduleResponse = {
@@ -38,10 +36,6 @@ export function apiBaseUrl() {
   return (import.meta.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
 }
 
-export function userId() {
-  return import.meta.env?.VITE_HIKE_USER_ID || DEFAULT_USER_ID;
-}
-
 const backendCourseIds = new Map(Object.entries(DEV_COURSE_IDS).map(([screenId, dbId]) => [dbId, screenId]));
 
 /** 화면 코스 ID → DB 코스 번호. 매핑에 없는 코스는 아직 일정 API로 저장할 수 없다. */
@@ -71,7 +65,7 @@ async function request<T>(path: string, init: RequestInit = {}, timeoutMs = TIME
     response = await fetch(`${apiBaseUrl()}/api/v1/hike-schedules${path}`, {
       ...init,
       signal: controller.signal,
-      headers: { "Content-Type": "application/json", "X-User-Id": userId(), ...init.headers },
+      headers: authHeaders({ "Content-Type": "application/json", ...init.headers }),
     });
   } catch {
     throw new HikeScheduleApiError("network", "서버에 연결하지 못했어요.");

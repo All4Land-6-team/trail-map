@@ -7,8 +7,8 @@ import {
   updateUserNickname,
 } from "../src/api/profile.ts";
 
-test("닉네임 기본값은 사용자 번호가 붙은 익명이다", () => {
-  assert.equal(DEFAULT_NICKNAME, "익명1");
+test("닉네임 입력 기본값과 최대 길이를 제공한다", () => {
+  assert.equal(DEFAULT_NICKNAME, "닉네임");
   assert.equal(NICKNAME_MAX_LENGTH, 12);
 });
 
@@ -24,7 +24,7 @@ test("사용자 API로 닉네임을 조회하고 변경한다", async (t) => {
   assert.equal((await fetchUserProfile()).nickname, "산다람쥐");
   assert.equal((await updateUserNickname("새이름")).nickname, "산다람쥐");
   assert.equal(calls[0].url, "http://localhost:8080/api/v1/users/me");
-  assert.equal(calls[0].init.headers["X-User-Id"], "1");
+  assert.equal("X-User-Id" in calls[0].init.headers, false);
   assert.equal(calls[1].init.method, "PATCH");
   assert.equal(calls[1].init.body, JSON.stringify({ nickname: "새이름" }));
 });

@@ -1,7 +1,7 @@
 import type { CommunitySpotTargetType, Coordinate, PendingPhoto, ReviewKind, SpotType } from '../types/community'
+import { authHeaders } from '../store/authStore.ts'
 
 const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
-const USER_ID = import.meta.env?.VITE_HIKE_USER_ID || '1'
 
 type SuccessResponse<T> = { data: T }
 type ApiErrorResponse = { message?: string }
@@ -119,11 +119,10 @@ export class CommunityApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}/api/v1/community${path}`, {
     ...init,
-    headers: {
-      'X-User-Id': USER_ID,
+    headers: authHeaders({
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
-    },
+    }),
   })
   if (!response.ok) {
     const error = await response.json().catch(() => ({})) as ApiErrorResponse

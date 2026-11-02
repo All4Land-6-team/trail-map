@@ -61,7 +61,7 @@ class HikeScheduleControllerTest {
     void X_User_Id_헤더가_없거나_올바르지_않으면_401을_반환한다() throws Exception {
         mockMvc.perform(get("/v1/hike-schedules").param("from", "2026-11-01").param("to", "2026-11-30"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("GLOBAL_401"));
+                .andExpect(jsonPath("$.code").value("AUTH_401_2"));
 
         mockMvc.perform(get("/v1/hike-schedules/1").header("X-User-Id", "abc"))
                 .andExpect(status().isUnauthorized());

@@ -208,7 +208,7 @@ test('커뮤니티 목데이터 없이 API와 R2 업로드 절차를 사용한�
       ['PUT', 'https://r2.test/upload'],
       ['POST', 'http://localhost:8080/api/v1/community/photos'],
     ]);
-    assert.equal(calls[0].init.headers['X-User-Id'], '1');
+    assert.equal('X-User-Id' in calls[0].init.headers, false);
   } finally {
     globalThis.fetch = originalFetch;
   }

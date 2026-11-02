@@ -1,6 +1,8 @@
 import type { IconName } from './Icon'
 
 export const iconNames: readonly IconName[] = [
+  'Eye',
+  'EyeOff',
   'Home',
   'Community',
   'Back',
