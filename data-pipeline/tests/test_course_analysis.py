@@ -422,30 +422,45 @@ def test_cli_writes_valid_json_and_requires_explicit_overwrite(files, tmp_path, 
     main([*args, "--overwrite"])
 
 
-def test_cli_unverified_height_does_not_fabricate_meter_values(files, tmp_path):
-    dem, course = files(unit=None)
+@pytest.mark.parametrize("unit", [None, "m"])
+@pytest.mark.parametrize("explicit_auto", [False, True])
+def test_cli_auto_uses_only_band_units_and_keeps_default_when_omitted(files, tmp_path, unit, explicit_auto):
+    dem, course = files(unit=unit)
     output = tmp_path / "analysis.json"
-    main(["course", "analyze", str(dem), str(course), "--sample-interval-meters", "10",
-          "--output", str(output)])
+    args = ["course", "analyze", str(dem), str(course), "--sample-interval-meters", "10",
+            "--output", str(output)]
+    main([*args, "--elevation-unit", "auto"] if explicit_auto else args)
     result = json.loads(output.read_text(encoding="utf-8"))
     assert result["quality_status"] == "PARTIAL"
-    assert result["summary"]["max_elevation_meters"] is None
+    assert result["settings"]["elevation_unit"] == (unit or "unknown")
+    assert result["settings"]["elevation_unit_source"] == ("raster_metadata" if unit else "unverified")
+    if unit:
+        assert result["summary"]["max_elevation_meters"] == pytest.approx(142.5, abs=1e-6)
+    else:
+        assert result["summary"]["max_elevation_meters"] is None
 
 
-def test_cli_assumption_is_explicit_and_rejects_a_simultaneous_unit_declaration(files, tmp_path, capsys):
+@pytest.mark.parametrize("assumed_unit,factor", [("m", 1), ("ft", 0.3048)])
+@pytest.mark.parametrize("declared_unit", ["auto", "m", "ft", "unknown"])
+@pytest.mark.parametrize("declaration_first", [False, True])
+def test_cli_assumption_is_explicit_and_rejects_a_simultaneous_unit_declaration(
+    files, tmp_path, capsys, assumed_unit, factor, declared_unit, declaration_first,
+):
     dem, course = files(unit=None)
     output = tmp_path / "assumed-analysis.json"
     args = ["course", "analyze", str(dem), str(course), "--sample-interval-meters", "10",
-            "--assume-elevation-unit", "m", "--output", str(output)]
+            "--assume-elevation-unit", assumed_unit, "--output", str(output)]
     main(args)
     original = output.read_bytes()
     result = json.loads(original)
     assert result["settings"]["elevation_unit_source"] == "assumed"
-    assert result["summary"]["max_elevation_meters"] == pytest.approx(142.5, abs=1e-6)
+    assert result["summary"]["max_elevation_meters"] == pytest.approx(142.5 * factor, abs=1e-6)
     assert result["quality_reasons"] == ["ASSUMED_ELEVATION_UNIT", "UNVERIFIED_VERTICAL_REFERENCE"]
     assert "quality_status=PARTIAL" in capsys.readouterr().out
+    declaration = ["--elevation-unit", declared_unit]
+    invalid_args = [*args[:2], *declaration, *args[2:]] if declaration_first else [*args, *declaration]
     with pytest.raises(SystemExit) as exc:
-        main([*args, "--elevation-unit", "auto", "--overwrite"])
+        main([*invalid_args, "--overwrite"])
     assert exc.value.code == 2
     assert "not allowed with argument" in capsys.readouterr().err
     assert output.read_bytes() == original

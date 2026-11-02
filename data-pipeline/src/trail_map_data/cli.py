@@ -131,8 +131,10 @@ def _build_parser() -> argparse.ArgumentParser:
                                 help="최대 샘플 간격(m), 원본 굴곡점도 보존")
     analyze_parser.add_argument("--sampling-method", choices=("nearest", "bilinear"), default="bilinear")
     elevation_options = analyze_parser.add_mutually_exclusive_group()
-    elevation_options.add_argument("--elevation-unit", choices=("auto", "m", "ft", "unknown"), default="auto",
-                                   help="auto는 밴드 단위를 사용하며, 없으면 m 단위 지표를 비워 둡니다")
+    # 일부 argparse 버전은 기본값과 같은 명시 입력을 상호 배타 검사에서 제외한다.
+    # 파싱 중에는 미지정을 None으로 두고, 검증 후에만 기본 auto를 적용한다.
+    elevation_options.add_argument("--elevation-unit", choices=("auto", "m", "ft", "unknown"),
+                                   help="기본 auto는 밴드 단위를 사용하며, 없으면 m 단위 지표를 비워 둡니다")
     elevation_options.add_argument("--assume-elevation-unit", choices=("m", "ft"),
                                    help="밴드 단위가 없는 DEM의 단위를 가정합니다. 결과는 검증 전 PARTIAL로 남습니다")
     analyze_parser.add_argument("--vertical-reference", help="출처에서 확인한 고도의 수직 기준")
@@ -153,7 +155,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 config=AnalysisConfig(
                     sample_interval_meters=args.sample_interval_meters,
                     sampling_method=args.sampling_method,
-                    elevation_unit=args.elevation_unit,
+                    elevation_unit=args.elevation_unit or "auto",
                     vertical_reference=args.vertical_reference,
                     max_samples=args.max_samples,
                     assume_elevation_unit=args.assume_elevation_unit,
