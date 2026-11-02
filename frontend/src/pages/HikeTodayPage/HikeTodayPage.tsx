@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { findCourse, toDateKey } from "../../api/hikeMock";
+import { toDateKey } from "../../api/hikeMock";
 import { hikeStartErrorMessage, startOrResumeHikeRecord } from "../../api/hikeRecordApi";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
@@ -15,6 +15,7 @@ import { courseFixtures } from "../../api/courseMock";
 import { startHikeSession, useHikeSession } from "../../store/hikeSessionStore";
 import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
 import { hikePaths, navigateTab } from "../hikeRoutes";
+import { useTodayCourse } from "./useTodayCourse";
 import "../hikePages.css";
 import "./HikeTodayPage.css";
 
@@ -22,7 +23,7 @@ import "./HikeTodayPage.css";
 export function HikeTodayPage() {
   const [today] = useState(() => toDateKey(new Date()));
   const schedule = useHikeSchedules().find(item => item.date === today);
-  const course = schedule ? findCourse(schedule.courseId) : undefined;
+  const course = useTodayCourse(schedule);
   const [filter, setFilter] = useState<SpotFilter>("all");
   const [dimension, setDimension] = useState<"2D" | "3D">("2D");
   const [recenterKey, setRecenterKey] = useState(0);
@@ -37,8 +38,10 @@ export function HikeTodayPage() {
   // 일정 API로 저장한 일정이면 등산 기록을 만든 뒤 넘어간다. 예시 일정은 화면 메모리로만 진행한다.
   const continueHike = async (alertsOn: boolean) => {
     if (!schedule || starting) return;
-    const mountainId = courseFixtures.find(item => item.id === schedule.courseId)?.mountainId;
-    if (!mountainId) return;
+    // 예시 일정은 예시 코스의 산 ID가 있어야 한다. 일정 API 일정은 일정의 서버 산·코스 번호를 쓴다.
+    const exampleMountainId = schedule.serverMountainId === undefined
+      ? courseFixtures.find(item => item.id === schedule.courseId)?.mountainId : undefined;
+    if (schedule.serverMountainId === undefined && !exampleMountainId) return;
     setAskingAlerts(false);
     let record;
     if (schedule.scheduleId !== undefined) {
@@ -52,7 +55,7 @@ export function HikeTodayPage() {
         setStarting(false);
       }
     }
-    startHikeSession(schedule, mountainId, alertsOn, record);
+    startHikeSession(schedule, exampleMountainId, alertsOn, record);
     navigate(hikePaths.active(alertsOn));
   };
 
@@ -71,8 +74,10 @@ export function HikeTodayPage() {
     <main className="hike-page__body hike-map-page__body">
       {schedule && course ? <>
         <div className="hike-map-page__map">
-          <HikeRouteMap route={course.route} spots={course.spots} filter={filter} dimension={dimension}
+          {course.route.length ? <HikeRouteMap route={course.route} spots={course.spots} filter={filter} dimension={dimension}
             recenterKey={recenterKey} label={`${course.mountainName} ${course.courseName} 오늘 코스 지도`} />
+            : <p className="hike-today-page__route-status" role="status">
+              {course.routeLoading ? "코스 경로를 불러오는 중이에요." : "코스 경로를 불러오지 못했어요. 등산은 시작할 수 있어요."}</p>}
           <div className="hike-map-page__top">
             <TopBar title="오늘의 등산" showAction={false} onBack={() => navigate("")} />
             <SpotFilterChips value={filter} onChange={setFilter} />

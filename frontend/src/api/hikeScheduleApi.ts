@@ -51,6 +51,8 @@ function toSchedule(response: ScheduleResponse): HikeSchedule {
     date: response.date,
     startTime: response.startTime,
     courseId: backendCourseIds.get(response.courseId) ?? `db-${response.courseId}`,
+    serverCourseId: response.courseId,
+    serverMountainId: response.mountainId,
     mountainName: response.mountainName,
     courseName: response.courseName,
     distanceKm: response.distanceMeters == null ? 0 : Math.round(response.distanceMeters / 100) / 10,

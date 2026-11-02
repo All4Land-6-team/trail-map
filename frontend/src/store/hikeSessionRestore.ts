@@ -1,12 +1,11 @@
 import { useSyncExternalStore } from "react";
-import { courseFixtures } from "../api/courseMock";
 import { fetchActiveHikeRecord } from "../api/hikeRecordApi";
 import { readHashParams } from "../hooks/useHashRoute";
 import { findScheduleById, whenScheduleModeReady } from "./hikeScheduleStore";
 import { fromRecord, getHikeSession, restoreHikeSession } from "./hikeSessionStore";
 
 // 새로고침·재접속 후 서버의 진행 중 기록으로 등산 상태를 다시 만든다. 앱이 켜진 뒤 한 번만 시도한다.
-// 일정 API에 연결되지 않았거나 화면 코스에 없는 코스면 이어 가지 않는다.
+// 일정 API에 연결되지 않았거나 일정을 찾지 못하면 이어 가지 않는다. 산·코스 ID는 일정의 서버 번호를 쓴다.
 
 let started = false;
 let restoring = false;
@@ -17,9 +16,8 @@ async function restore() {
   const record = await fetchActiveHikeRecord().catch(() => null);
   if (!record || getHikeSession()) return;
   const schedule = findScheduleById(record.scheduleId);
-  const mountainId = schedule && courseFixtures.find(course => course.id === schedule.courseId)?.mountainId;
-  if (!schedule || !mountainId) return;
-  restoreHikeSession({ schedule: { ...schedule }, mountainId, alertsOn: readHashParams().get("alerts") !== "off", ...fromRecord(record) });
+  if (!schedule) return;
+  restoreHikeSession({ schedule: { ...schedule }, alertsOn: readHashParams().get("alerts") !== "off", ...fromRecord(record) });
 }
 
 function start() {
