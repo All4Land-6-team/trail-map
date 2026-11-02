@@ -99,6 +99,8 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 이동 거리는 경로 길이를 구면 거리(`geography`)로 계산하며, 위치를 한 번도 받지 않았으면 `null`입니다. 등산 종료는 진행 중 기록의 `hikeRecordId`로 `POST /api/v1/hike-records/{hikeRecordId}/finish`를 호출합니다.
 
+진행 중·하산 중 기록이 있는 일정은 수정(`PATCH /api/v1/hike-schedules/{scheduleId}`)·삭제(`DELETE`)할 수 없고, 같은 날짜 대체 등록(`replaceExisting=true`)으로도 지울 수 없습니다(`HIKE_409_6`). 기록과 일정의 코스가 달라지지 않게 하기 위해서이며, 종료한 기록만 있는 일정은 기존처럼 바꿀 수 있습니다.
+
 ## 커뮤니티 API
 
 ### 코스별 사진 스팟 (#99)
