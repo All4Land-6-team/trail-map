@@ -4,7 +4,7 @@ import { Button } from "../../components/common/Button";
 import { Toast } from "../../components/feedback";
 import { useHikeSession } from "../../store/hikeSessionStore";
 import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
-import { initialHikeProgress } from "../../utils/activeHike";
+import { activeHikeFor } from "../../utils/activeHike";
 import { HikeRouteMap } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
@@ -21,7 +21,8 @@ export function HikeDescentPage() {
   const session = useHikeSession();
   const restoring = useRestoreActiveHike();
   const course = session ? findCourse(session.schedule.courseId) : undefined;
-  const hike = useMemo(() => course ? initialHikeProgress(course, session?.phase === "downhill") : null, [course, session?.phase]);
+  const hike = useMemo(() => activeHikeFor(course, session?.schedule, session?.coursePath, session?.phase === "downhill"),
+    [course, session?.schedule, session?.coursePath, session?.phase]);
   const alertsParam = readHashParams().get("alerts");
   const controls = useHikeControls(session, hike);
   if (!session && restoring) return <main className="hike-page__empty-state"><p>진행 중인 등산을 불러오는 중이에요.</p></main>;

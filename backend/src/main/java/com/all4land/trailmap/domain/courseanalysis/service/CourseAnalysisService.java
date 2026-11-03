@@ -10,7 +10,7 @@ import com.all4land.trailmap.domain.courseanalysis.repository.CourseAnalysisRepo
 import com.all4land.trailmap.domain.courseanalysis.repository.CourseAnalysisRepository.AnalysisRow;
 import com.all4land.trailmap.domain.courseanalysis.repository.CourseAnalysisRepository.CourseRow;
 import com.all4land.trailmap.domain.courseanalysis.service.CourseAnalysisDocumentReader.Stored;
-import com.all4land.trailmap.domain.courseanalysis.storage.CourseAnalysisFileStore;
+import com.all4land.trailmap.domain.courseanalysis.storage.CourseAnalysisStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +30,7 @@ import static java.util.stream.Collectors.toMap;
 @Transactional(readOnly = true)
 public class CourseAnalysisService {
     private final CourseAnalysisRepository repository;
-    private final CourseAnalysisFileStore store;
+    private final CourseAnalysisStore store;
     private final CourseAnalysisDocumentReader reader;
 
     public CourseAnalysisResponse getSummary(long courseId) {
@@ -78,7 +78,7 @@ public class CourseAnalysisService {
         return new CourseAnalysisProfileResponse(response(row, stored), samples);
     }
 
-    /** 요약 행과 파일이 다른 경우 값을 혼합해 반환하지 않는다. */
+    /** 요약 행과 저장 문서가 다른 경우 값을 혼합해 반환하지 않는다. */
     public Stored loadVerified(AnalysisRow row) {
         var stored = store.load(row.analysisId());
         var document = stored.document();

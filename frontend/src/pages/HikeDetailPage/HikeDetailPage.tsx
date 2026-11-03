@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { findCourse } from "../../api/hikeMock";
 import { courseFixtures } from "../../api/courseMock";
 import { coursePaths } from "../../routes/courseRoutes";
 import { Button } from "../../components/common/Button";
@@ -7,6 +6,7 @@ import { Toast } from "../../components/feedback";
 import { ConfirmOverlay, HikeRouteMap, ScheduleSheet, SheetHandle, useDraggableSheet } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
+import { useScheduleCourse } from "../../hooks/useScheduleCourse";
 import { useToastMessage } from "../../hooks/useToastMessage";
 import { HikeScheduleApiError } from "../../api/hikeScheduleApi";
 import { deleteSchedule, useHikeSchedules } from "../../store/hikeScheduleStore";
@@ -21,7 +21,7 @@ const MAP_PADDING = { top: 110, bottom: 50, left: 50, right: 50 };
 export function HikeDetailPage() {
   const [date] = useState(() => readHashParams().get("date") ?? "");
   const schedule = useHikeSchedules().find(item => item.date === date);
-  const course = schedule ? findCourse(schedule.courseId) : undefined;
+  const course = useScheduleCourse(schedule);
   const [overlay, setOverlay] = useState<"edit" | "cancel" | null>(null);
   const { sheetRef, bodyRef, collapsed: sheetCollapsed, sheetClassName, sheetStyle, handleProps: sheetHandleProps } = useDraggableSheet();
   const toast = useToastMessage();
@@ -31,8 +31,10 @@ export function HikeDetailPage() {
     <main className="hike-page__body hike-map-page__body">
       {schedule && course ? <>
         <div className="hike-map-page__map">
-          <HikeRouteMap route={course.route} padding={MAP_PADDING}
+          {course.route.length ? <HikeRouteMap route={course.route} padding={MAP_PADDING}
             label={`${course.mountainName} ${course.courseName} 코스 경로 지도`} />
+            : <p className="hike-map-page__route-status" role="status">
+              {course.routeLoading ? "코스 경로를 불러오는 중이에요." : "코스 경로를 불러오지 못했어요."}</p>}
           <div className="hike-map-page__top">
             <TopBar title="일정 상세" showAction={false} onBack={backToCalendar} />
           </div>
@@ -46,15 +48,17 @@ export function HikeDetailPage() {
             <dl className="hike-detail-page__info">
               <div><dt>출발</dt><dd>{formatKoreanTime(schedule.startTime)}</dd></div>
               <div><dt>거리</dt><dd>{schedule.distanceKm.toFixed(1)} km</dd></div>
-              <div><dt>예상 시간</dt><dd>{formatDuration(course.durationMinutes)}</dd></div>
+              <div><dt>예상 시간</dt><dd>{course.durationMinutes == null ? "—" : formatDuration(course.durationMinutes)}</dd></div>
               <div><dt>최대 고도</dt><dd>{course.maxAltitudeM == null ? "—" : `${course.maxAltitudeM} m`}</dd></div>
               <div><dt>평균 경사도</dt><dd>{course.averageSlopePercent == null ? "—" : `약 ${course.averageSlopePercent}% (시안)`}</dd></div>
             </dl>
             <div className="hike-detail-page__actions">
               <Button variant="secondary" fullWidth label="코스 보기"
                 onClick={() => {
-                  const selected = courseFixtures.find(item => item.id === schedule.courseId);
-                  if (selected) navigate(`${coursePaths.detail({ mountainId: selected.mountainId, courseId: selected.id })}?returnTo=${encodeURIComponent(hikePaths.detail(date))}`);
+                  // 예시 코스는 예시 산·코스 ID, 서버 코스는 코스 경로 API의 산 키와 `db-{번호}`로 코스 화면을 연다.
+                  const fixture = courseFixtures.find(item => item.id === schedule.courseId);
+                  const link = fixture ? { mountainId: fixture.mountainId, courseId: fixture.id } : course.courseLink;
+                  if (link) navigate(`${coursePaths.detail(link)}?returnTo=${encodeURIComponent(hikePaths.detail(date))}`);
                 }} />
               <Button variant="secondary" fullWidth label="일정 수정" onClick={() => setOverlay("edit")} />
             </div>
@@ -64,7 +68,6 @@ export function HikeDetailPage() {
       </> : <div className="hike-page__empty-state">
         <TopBar title="일정 상세" showAction={false} onBack={backToCalendar} />
         <p>일정을 찾을 수 없어요. 삭제되었거나 날짜가 바뀌었을 수 있어요.</p>
-        <Button label="내 등산 캘린더로" onClick={backToCalendar} />
       </div>}
       {toast.message && <Toast className="hike-page__toast hike-detail-page__toast" message={toast.message} />}
     </main>

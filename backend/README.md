@@ -201,30 +201,36 @@ community/spot/facility/{facilityId}/{reviewId}/{uuid}.{ext}
 
 화장실·쉼터·음수대의 한 번의 전처리, 출처별 JSON v2 적재, 산 소속 판정 및 실행·검증 방법은 [공통 시설 파이프라인](../docs/facility-pipeline.md)을 따른다. 개별 어댑터의 v1은 후보 검토용이며 직접 DB에 적재하지 않는다.
 
-## 코스 분석 결과 적재·조회 (#84)
+## 코스 분석 결과 적재·조회 (#84, #116)
 
 #80 Python 파이프라인이 만든 `schema_version=1` JSON을 검증하고, 기존
-`course_analysis` 테이블에 요약을 저장합니다. 차트용 샘플 테이블은 추가하지
-않습니다. 원본 분석 JSON은 그대로 두고, 상세 프로필·입력 지문·분석 설정은
-별도 파일 저장소에 보관합니다. Python 실행 코드나 프론트 화면은 변경하지 않습니다.
+`course_analysis` 테이블에 요약과 분석 문서를 저장합니다. 차트용 샘플 테이블은
+추가하지 않습니다. 기본 `database` 모드는 V10의 `analysis_document JSONB`에
+상세 프로필·입력 지문·분석 설정·품질 사유까지 보관하므로, 같은 공용 DB를 쓰는
+다른 백엔드에서도 로컬 프로필 파일 없이 조회할 수 있습니다. Python 입력 JSON은
+수정하지 않으며 요약·프로필·비교 API의 주소와 응답 필드도 유지합니다.
 
-### 로컬 적재
+### 분석 결과 적재
 
-먼저 PostGIS와 코스 데이터를 준비하고 분석 JSON을 생성합니다. 예시 경로는
-`../data/processed/course-analysis/course-1-dev-assumed-m.json`입니다.
-고도 단위를 m로 **가정한 개발용** 결과와 수직 기준 미확인 사유를 그대로
-보존하며 `AVAILABLE`로 승격하지 않습니다. 제공기관·URL을 모를 때도 DEM 파일과
-보조 파일의 SHA-256 및 메타데이터로 출처 버전을 기록할 수 있습니다.
+먼저 대상 DB의 현재 코스 ID·산 ID·버전·방향을 포함한 경로를 내보내고, DEM으로
+분석 JSON을 생성합니다. 아래 `<DB코스ID>`는 실제 분석한 ID로 바꿉니다. 과거 로컬
+시드용 `course-1-dev-assumed-m.json`을 공용 DB의 같은 번호 코스에 적재하지 않습니다.
+단위를 m로 **가정한 개발용** 결과와 수직 기준 미확인 사유는 그대로 보존하며
+`AVAILABLE`로 승격하지 않습니다. 제공기관·URL을 모를 때도 DEM 파일과 보조
+파일의 SHA-256 및 메타데이터로 출처 버전을 기록할 수 있습니다.
 
 다음 명령은 백엔드 디렉터리에서 실행합니다. DB 비밀 설정은 기존
-`application-secret.properties`를 사용합니다.
+`application-secret.properties`를 사용합니다. 이 비밀 설정은 JAR에 포함되지 않으므로
+CLI에는 외부 설정 파일을 명시합니다. `bootRun`에서는 기존 방식으로 읽습니다.
 
 ```powershell
 .\gradlew.bat test bootJar
 java -jar ".\build\libs\trail-map-backend-0.0.1-SNAPSHOT.jar" `
+  "--spring.config.additional-location=file:C:/trail-map/backend/src/main/resources/application-secret.properties" `
   "--spring.main.web-application-type=none" `
+  "--course-analysis.storage=database" `
   "--course-analysis.import.enabled=true" `
-  "--course-analysis.import.file=C:\trail-map\data\processed\course-analysis\course-1-dev-assumed-m.json" `
+  "--course-analysis.import.file=C:\trail-map\data\processed\course-analysis\course-<DB코스ID>.json" `
   "--course-analysis.import.dem-source-name=북한산 DEM" `
   "--course-analysis.import.dem-provider=회사 제공(팀원 전달)"
 ```
@@ -248,14 +254,36 @@ java -jar ".\build\libs\trail-map-backend-0.0.1-SNAPSHOT.jar" `
   지원하지 않는 필드·스키마, 문자열/소수 ID, 비정상 수치, 요약과 프로필이
   불일치하는 결과는 거절합니다. 경사·상승량은 결측 구간을 연결하지 않습니다.
 
-파일 저장소 기본 경로는 `../data/processed/course-analysis-store`입니다.
-필요하면 `COURSE_ANALYSIS_ROOT_PATH` 또는 `course-analysis.root-path`를
-지정합니다. 일반 경로와 `file:///C:/...` URI를 모두 지원합니다.
-내부 파일명은 `{analysisId}.json`이며 원본 입력 경로는 API에 노출하지 않습니다.
-NTFS/Linux의 하드 링크로 완성 파일을 게시하므로 저장소는 하드 링크를 지원하는
-로컬 파일 시스템에 둡니다. 파일 게시에 실패하면 DB 적재도 롤백하며 기존 파일은
-덮어쓰지 않습니다. DB 롤백 시 새 파일을 제거합니다. 강제 종료 등으로 남은
-고아 파일은 자동으로 덮어쓰지 않으며 DB와 파일 저장소를 함께 백업·복구합니다.
+### 문서 저장 모드
+
+| 설정 | 사용 범위 |
+| --- | --- |
+| `course-analysis.storage=database` (기본값) | 공용 DB 및 신규 적재. 요약 행과 문서를 같은 트랜잭션에 저장·롤백 |
+| `course-analysis.storage=file` | 기존 로컬 DB와 해당 DB의 `{analysisId}.json` 파일을 함께 사용할 때 |
+
+환경 변수는 `COURSE_ANALYSIS_STORAGE`입니다. 잘못된 모드명은 시작할 때 거절합니다.
+공용 DB를 쓰는 서버와 CLI는 모두 `database` 모드로 맞춥니다. 별도 Storage 버킷,
+업로드 키, 프로필 디렉터리 설정은 필요하지 않습니다. DB 문서가 없거나 손상돼도
+같은 번호의 로컬 파일로 대체하지 않습니다.
+
+JSONB에는 `formatVersion`, 분석·DEM ID, 문서 SHA-256 및 직렬화 원문 `payload`를
+저장합니다. 원문은 JSON 문자열로 보존해 JSONB의 수치 정규화가 `-0.0` 등의 표현과
+기존 문서 지문을 바꾸지 않게 합니다. 조회 시 원문의 해시·샘플·요약과 DB 행을
+다시 검증하며 입력 파일 경로는 API에 노출하지 않습니다. 기존 문서는 덮어쓰지 않습니다.
+
+V10은 기존 행에 NULL 허용 컬럼을 추가하며, 로컬 파일을 자동 이전하거나 실제
+코스를 자동 분석·적재하지 않습니다. 기존 로컬 분석은 **원래 DB + `file` 모드**로
+조회합니다. 설정만 `database`로 바꾸면 기존 파일 기반 행은 문서 부재로 503이
+됩니다. 공용 DB 전환에는 해당 DB의 현재 코스 경로를 기준으로 분석·검증한 결과가
+필요하며 로컬 분석 ID를 그대로 복사하지 않습니다.
+
+`file` 모드의 기본 경로는 `../data/processed/course-analysis-store`입니다.
+`COURSE_ANALYSIS_ROOT_PATH` 또는 `course-analysis.root-path`로 일반 경로와
+`file:///C:/...` URI를 지정합니다. 이 경로는 `database` 모드에서 사용하지 않습니다.
+NTFS/Linux 하드 링크로 완성된 `{analysisId}.json`을 게시하므로 하드 링크를
+지원하는 로컬 파일 시스템을 사용합니다. 게시 실패 시 DB 적재도 롤백하고 기존
+파일은 덮어쓰지 않습니다. DB 롤백 시 새 파일을 제거합니다. 강제 종료로 남은
+고아 파일은 자동으로 덮어쓰지 않으며 DB와 파일을 함께 백업·복구합니다.
 
 ### 조회 API
 
@@ -278,7 +306,7 @@ camelCase이며 각 샘플은 `sampleIndex`, `distanceMeters`,
 분석 ID가 없으면 `404`, 잘못된 ID는 `400`입니다. 버전·경로·소속 산·기록된
 코스 출처가 달라지면 `OUTDATED`와 변경 사유를 반환하고 `recordedQualityStatus`에
 원래 품질을 유지합니다. 현재 버전·경로와 맞는 결과를 우선하며 그 안에서는
-계산 시각, 분석 ID 순으로 최신 결과를 선택합니다. 저장 파일이 없거나 손상됐거나
+계산 시각, 분석 ID 순으로 최신 결과를 선택합니다. 저장 문서가 없거나 손상됐거나
 DB와 일치하지 않으면 다른 값으로 대체하지 않고 `503 ANALYSIS_503_1`입니다.
 
 ```powershell
@@ -289,22 +317,26 @@ Invoke-RestMethod ("http://localhost:8080" + $analysis.profileUrl)
 
 ### 테스트
 
-기본 `test`는 문서 검증·파일 저장·서비스·Controller 테스트를 실행합니다.
-실제 PostGIS 통합 테스트는 명시적으로 개발 DB를 지정한 경우에만 실행하며
-테스트 행과 파일은 롤백합니다. 기본 비밀번호는 로컬 `DB_PASSWORD` 설정을 쓰고,
+기본 `test`는 문서 검증·저장 모드 선택·DB 저장소 오류·파일 저장·Service·Controller를
+검증합니다. PostGIS 통합 테스트는 명시적으로 **별도 로컬 개발 DB**를 지정한
+경우에만 실행합니다. 공용 Supabase DB를 테스트 대상으로 설정하지 않습니다.
+합성 행·파일은 롤백하며 커밋 후 다른 DataSource로 읽는 테스트는 개별 ID로 정리합니다.
+기본 비밀번호는 로컬 `DB_PASSWORD` 설정을 쓰고,
 별도 테스트 DB를 쓰면 `ANALYSIS_TEST_DB_USERNAME`, `ANALYSIS_TEST_DB_PASSWORD`를 지정합니다.
 
 ```powershell
 $env:ANALYSIS_TEST_JDBC_URL = "jdbc:postgresql://127.0.0.1:5433/trail_map"
-.\gradlew.bat test --tests "*CourseAnalysisPostgisIntegrationTest" --rerun-tasks
+.\gradlew.bat test --tests "*CourseAnalysis*PostgisIntegrationTest" --rerun-tasks
 Remove-Item Env:ANALYSIS_TEST_JDBC_URL
 ```
 
 실제 Python 산출물의 입력 검증만 추가로 실행하려면 `ANALYSIS_SAMPLE_JSON`을
 해당 JSON의 절대 경로로 설정하고 `*CourseAnalysisDocumentReaderTest`를 실행합니다.
-프론트 연결 시 현재 임시 타입의 고도·경사가 항상 숫자라는 가정을 제거하고
-API의 null·품질 상태를 처리해야 합니다. 코스 비교 API는 아래 #86을 참고하며,
-화면 연동은 후속 작업입니다.
+DB 모드에서는 별도 DataSource·조회 인스턴스의 문서 조회, JSONB 지문 보존,
+적재 멱등성·충돌, 요약·문서·DEM 출처의 원자적 롤백, 품질 상태와 문서 손상을
+검증합니다. 기존 파일 모드의 통합 테스트도 함께 유지합니다. 코스 비교 API는
+아래 #86을 참고합니다. 실제 13개 코스의 DEM 재분석·적재와 미계산 지표 정책은
+#116의 저장 방식 전환과 별도로 검증합니다.
 
 ## 동일 산 코스 비교 API (#86)
 
@@ -346,7 +378,7 @@ API의 null·품질 상태를 처리해야 합니다. 코스 비교 API는 아�
 
 Service의 읽기 전용 `REPEATABLE_READ` 트랜잭션에서 기본 정보와 최신 분석을
 배치 조회하므로 요청 도중 코스가 갱신되어도 DB 버전이 섞이지 않습니다.
-각 분석 파일에는 기존의 DB·프로필 일치 검증을 동일하게 적용합니다.
+각 분석 문서에는 저장 모드에 관계없이 기존의 DB·프로필 일치 검증을 적용합니다.
 
 ### 오류
 
@@ -356,7 +388,7 @@ Service의 읽기 전용 `REPEATABLE_READ` 트랜잭션에서 기본 정보와 �
 | 400 | `COMPARISON_400_2` | 코스들이 서로 다른 산에 소속됨 |
 | 400 | `GLOBAL_400_3` | 숫자가 아니거나 Long 정수 범위를 넘는 ID |
 | 404 | `COMPARISON_404_1` | 선택한 코스 중 존재하지 않는 코스가 있음 |
-| 503 | `ANALYSIS_503_1` | 저장된 분석 파일의 부재·손상 또는 DB 요약과 불일치 |
+| 503 | `ANALYSIS_503_1` | 저장된 분석 문서의 부재·손상 또는 DB 요약과 불일치 |
 
 ### 로컬 검증
 
