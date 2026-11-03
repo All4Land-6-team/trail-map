@@ -74,7 +74,7 @@ export function HikeTodayPage() {
     <main className="hike-page__body hike-map-page__body">
       {schedule && course ? <>
         <div className="hike-map-page__map">
-          {course.route.length ? <HikeRouteMap route={course.route} spots={course.spots} filter={filter} dimension={dimension}
+          {course.route.length ? <HikeRouteMap route={course.route} mountainName={course.mountainName} spots={course.spots} filter={filter} dimension={dimension}
             recenterKey={recenterKey} label={`${course.mountainName} ${course.courseName} 오늘 코스 지도`} />
             : <p className="hike-map-page__route-status" role="status">
               {course.routeLoading ? "코스 경로를 불러오는 중이에요." : "코스 경로를 불러오지 못했어요. 등산은 시작할 수 있어요."}</p>}

@@ -36,7 +36,7 @@ export function HikeActivePage() {
   return <div className="hike-page hike-map-page hike-active-page">
     <main className="hike-page__body hike-map-page__body">
       <div className="hike-map-page__map">
-        <HikeRouteMap route={controls.route} peak={controls.peak} traveledKm={controls.traveledKm ?? hike.traveledKm}
+        <HikeRouteMap route={controls.route} peak={controls.peak} mountainName={hike.mountainName} traveledKm={controls.traveledKm ?? hike.traveledKm}
           {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
           spots={hike.spots} filter={filter} dimension={dimension} recenterKey={recenterKey}
           label={`${hike.courseName} 등산 경로 지도`} />
