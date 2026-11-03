@@ -28,3 +28,5 @@
 .hike-draggable-sheet--dragging .hike-sheet-handle { cursor: grabbing; }
 .hike-page__empty-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px 20px; color: #617b6c; font: 400 13px/20px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: center; }
 .hike-page__empty-state p { margin: 0; }
+/* 서버 코스 경로를 받기 전·실패 시 지도 자리에 안내만 둔다 (오늘의 등산 · 일정 상세) */
+.hike-map-page__route-status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0 24px; background: #eaf0e5; color: var(--af-muted); font: 400 13px/19px "Noto Sans KR", sans-serif; text-align: center; }
