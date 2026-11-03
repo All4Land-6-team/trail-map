@@ -16,6 +16,7 @@ import { startHikeSession, useHikeSession } from "../../store/hikeSessionStore";
 import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
 import { hikePaths, navigateTab } from "../hikeRoutes";
 import { useScheduleCourse } from "../../hooks/useScheduleCourse";
+import { formatCourseDistance, hikeStartDistance, START_COURSE_METERS } from "../../utils/hikeTracking";
 import "../hikePages.css";
 import "./HikeTodayPage.css";
 
@@ -66,7 +67,17 @@ export function HikeTodayPage() {
       return;
     }
     const result = await location.check();
-    if (result?.status === "granted") setAskingAlerts(true);
+    if (result?.status === "granted") {
+      // 코스 근처에 오기 전에는 시작하지 않는다. 개발 중에는 VITE_HIKE_START_ANYWHERE=true로 건너뛸 수 있다.
+      const { longitude, latitude } = result.position.coords;
+      const { allowed, distanceMeters } = hikeStartDistance(course?.route ?? [], [longitude, latitude]);
+      const skipCheck = import.meta.env.DEV && import.meta.env.VITE_HIKE_START_ANYWHERE === "true";
+      if (!allowed && distanceMeters !== null && !skipCheck) {
+        toast.show(`코스에서 ${formatCourseDistance(distanceMeters)} 떨어져 있어요. 코스 ${START_COURSE_METERS}m 안에서 시작할 수 있어요.`);
+        return;
+      }
+      setAskingAlerts(true);
+    }
     else if (result?.status === "unavailable") toast.show("현재 위치를 받지 못했어요. 잠시 후 다시 시도해 주세요.");
   };
 
