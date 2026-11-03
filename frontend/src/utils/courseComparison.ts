@@ -90,6 +90,7 @@ export function analysisQualityLabel(analysis: CourseAnalysis | null) {
   return analysis ? QUALITY_LABELS[analysis.qualityStatus] : '조회 전';
 }
 const REASONS: Readonly<Record<string, string>> = {
+  ASSUMED_ELEVATION_UNIT: '원본 고도 단위를 가정한 분석으로, 계산된 고도·경사·상승량은 검증 전 수치예요.',
   UNVERIFIED_VERTICAL_REFERENCE: '고도의 수직 기준을 확인하지 못했어요.',
   UNKNOWN_ELEVATION_UNIT: '고도 단위가 확인되지 않았어요.',
   UNVERIFIED_ELEVATION_UNIT: '고도 단위가 확인되지 않았어요.',
@@ -103,6 +104,14 @@ const REASONS: Readonly<Record<string, string>> = {
   DEM_OUT_OF_BOUNDS: '일부 경로가 고도 데이터 범위를 벗어나요.',
   DEM_NODATA: '일부 구간의 고도 데이터가 없어요.',
 };
+export function analysisUnitAssumptionNotice(analysis: CourseAnalysis | null): string | null {
+  if (analysis?.settings?.elevationUnitSource !== 'assumed') return null;
+  const unit = analysis.settings.elevationUnit;
+  const interpretation = unit === 'm' ? '원본 고도 단위를 m로 가정한 분석이에요.'
+    : unit === 'ft' ? '원본 고도 단위를 ft로 가정해 m로 환산한 분석이에요.'
+      : '원본 고도 단위를 가정한 분석이에요.';
+  return `${interpretation} 계산된 고도·경사·상승량은 검증 전 수치예요.`;
+}
 export function analysisQualityReasons(analysis: CourseAnalysis): string[] {
   const messages = analysis.qualityReasons.map(reason => REASONS[reason] ?? '일부 분석 조건이나 데이터에 추가 확인이 필요해요.');
   if (analysis.qualityStatus === 'OUTDATED') messages.unshift('코스가 변경되어 현재 경로와 다른 분석일 수 있어요.');

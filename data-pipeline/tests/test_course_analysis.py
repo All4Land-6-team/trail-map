@@ -199,6 +199,54 @@ def test_explicit_unit_for_untagged_dem_records_caller_declaration(files):
     assert result["settings"]["elevation_unit_source"] == "caller_declaration"
 
 
+@pytest.mark.parametrize("unit,factor", [("m", 1), ("ft", 0.3048)])
+@pytest.mark.parametrize("reference", [None, "synthetic-local-datum"])
+def test_assumed_unit_calculates_provisional_metrics_without_changing_inputs(files, unit, factor, reference):
+    dem, course = files(unit=None, scale=2, offset=10)
+    feature = json.loads(course.read_text(encoding="utf-8"))
+    feature["properties"]["source_kind"] = "unknown"
+    course.write_text(json.dumps(feature), encoding="utf-8")
+    original_dem, original_course = dem.read_bytes(), course.read_bytes()
+    result = analyze_course(dem, course, config=config(assume_elevation_unit=unit, vertical_reference=reference))
+    assert result["quality_status"] == "PARTIAL"
+    assert result["settings"]["elevation_unit"] == unit
+    assert result["settings"]["elevation_unit_source"] == "assumed"
+    assert result["settings"]["vertical_reference"] == reference
+    assert result["quality_reasons"] == ["ASSUMED_ELEVATION_UNIT"] + (
+        ["UNVERIFIED_VERTICAL_REFERENCE"] if reference is None else [])
+    assert result["profile"][0]["elevation_source_value"] == pytest.approx(255, abs=1e-6)
+    assert result["profile"][0]["elevation_meters"] == pytest.approx(255 * factor, abs=1e-6)
+    assert result["profile"][1]["slope_percent"] == pytest.approx(400 * factor, abs=1e-4)
+    assert result["summary"]["elevation_gain_meters"] == pytest.approx(40 * factor, abs=1e-6)
+    assert result["summary"]["distance_meters"] == pytest.approx(10, abs=1e-6)
+    assert result["course"]["source_kind"] == "unknown"
+    assert result["inputs"]["dem"]["band_unit"] is None
+    assert result["inputs"]["dem"]["sha256"] == hashlib.sha256(original_dem).hexdigest()
+    assert dem.read_bytes() == original_dem and course.read_bytes() == original_course
+    with rasterio.open(dem) as dataset:
+        assert dataset.units == (None,)
+
+
+@pytest.mark.parametrize("kind", ["nodata", "outside"])
+def test_assumed_unit_does_not_turn_missing_dem_data_into_partial_metrics(files, kind):
+    points = [(-10.5, 4.5), (-5.5, 4.5)] if kind == "outside" else None
+    values = np.full((40, 40), -9999, dtype="float32") if kind == "nodata" else None
+    dem, course = files(points, unit=None, values=values)
+    result = analyze_course(dem, course, config=config(assume_elevation_unit="m", vertical_reference=None))
+    assert result["quality_status"] == "NO_DATA"
+    assert result["quality_reasons"] == ["MISSING_DEM_SAMPLES", "ASSUMED_ELEVATION_UNIT",
+                                        "UNVERIFIED_VERTICAL_REFERENCE", "NO_CONTIGUOUS_METRIC_HEIGHT_SEGMENTS"]
+    assert result["summary"]["elevation_gain_meters"] is None
+    assert all(p["elevation_meters"] is None and p["slope_percent"] is None for p in result["profile"])
+
+
+@pytest.mark.parametrize("band_unit", ["m", "ft", "unsupported-unit"])
+def test_assumption_cannot_replace_existing_band_metadata(files, band_unit):
+    dem, course = files(unit=band_unit)
+    with pytest.raises(CourseAnalysisError, match="밴드 단위가 없는 DEM"):
+        analyze_course(dem, course, config=config(assume_elevation_unit="m"))
+
+
 def test_unknown_vertical_reference_is_partial_even_when_units_are_known(files):
     dem, course = files()
     result = analyze_course(dem, course, config=config(vertical_reference="unknown"))
@@ -300,6 +348,9 @@ def test_missing_or_geographic_dem_crs_is_rejected(files, crs):
     {"sample_interval_meters": True}, {"sample_interval_meters": 10 ** 400},
     {"max_samples": 1}, {"max_samples": True}, {"sampling_method": "cubic"},
     {"elevation_unit": "degrees"}, {"vertical_reference": " "},
+    {"assume_elevation_unit": "unknown"}, {"assume_elevation_unit": []},
+    {"assume_elevation_unit": True}, {"assume_elevation_unit": "m", "elevation_unit": "m"},
+    {"assume_elevation_unit": "ft", "elevation_unit": "unknown"},
 ])
 def test_invalid_analysis_settings_are_rejected(settings):
     with pytest.raises(CourseAnalysisError):
@@ -371,14 +422,48 @@ def test_cli_writes_valid_json_and_requires_explicit_overwrite(files, tmp_path, 
     main([*args, "--overwrite"])
 
 
-def test_cli_unverified_height_does_not_fabricate_meter_values(files, tmp_path):
-    dem, course = files(unit=None)
+@pytest.mark.parametrize("unit", [None, "m"])
+@pytest.mark.parametrize("explicit_auto", [False, True])
+def test_cli_auto_uses_only_band_units_and_keeps_default_when_omitted(files, tmp_path, unit, explicit_auto):
+    dem, course = files(unit=unit)
     output = tmp_path / "analysis.json"
-    main(["course", "analyze", str(dem), str(course), "--sample-interval-meters", "10",
-          "--output", str(output)])
+    args = ["course", "analyze", str(dem), str(course), "--sample-interval-meters", "10",
+            "--output", str(output)]
+    main([*args, "--elevation-unit", "auto"] if explicit_auto else args)
     result = json.loads(output.read_text(encoding="utf-8"))
     assert result["quality_status"] == "PARTIAL"
-    assert result["summary"]["max_elevation_meters"] is None
+    assert result["settings"]["elevation_unit"] == (unit or "unknown")
+    assert result["settings"]["elevation_unit_source"] == ("raster_metadata" if unit else "unverified")
+    if unit:
+        assert result["summary"]["max_elevation_meters"] == pytest.approx(142.5, abs=1e-6)
+    else:
+        assert result["summary"]["max_elevation_meters"] is None
+
+
+@pytest.mark.parametrize("assumed_unit,factor", [("m", 1), ("ft", 0.3048)])
+@pytest.mark.parametrize("declared_unit", ["auto", "m", "ft", "unknown"])
+@pytest.mark.parametrize("declaration_first", [False, True])
+def test_cli_assumption_is_explicit_and_rejects_a_simultaneous_unit_declaration(
+    files, tmp_path, capsys, assumed_unit, factor, declared_unit, declaration_first,
+):
+    dem, course = files(unit=None)
+    output = tmp_path / "assumed-analysis.json"
+    args = ["course", "analyze", str(dem), str(course), "--sample-interval-meters", "10",
+            "--assume-elevation-unit", assumed_unit, "--output", str(output)]
+    main(args)
+    original = output.read_bytes()
+    result = json.loads(original)
+    assert result["settings"]["elevation_unit_source"] == "assumed"
+    assert result["summary"]["max_elevation_meters"] == pytest.approx(142.5 * factor, abs=1e-6)
+    assert result["quality_reasons"] == ["ASSUMED_ELEVATION_UNIT", "UNVERIFIED_VERTICAL_REFERENCE"]
+    assert "quality_status=PARTIAL" in capsys.readouterr().out
+    declaration = ["--elevation-unit", declared_unit]
+    invalid_args = [*args[:2], *declaration, *args[2:]] if declaration_first else [*args, *declaration]
+    with pytest.raises(SystemExit) as exc:
+        main([*invalid_args, "--overwrite"])
+    assert exc.value.code == 2
+    assert "not allowed with argument" in capsys.readouterr().err
+    assert output.read_bytes() == original
 
 
 def test_cli_invalid_interval_is_actionable_and_keeps_old_result(files, tmp_path, capsys):

@@ -67,9 +67,10 @@ class CourseAnalysisDocumentReaderTest {
         invalid(root);
     }
 
-    @Test
-    void recognizesNoDataWithoutSubstitutingZeroHeights() throws Exception {
-        ObjectNode root = document(mapper);
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void recognizesNoDataWithoutSubstitutingZeroHeights(boolean assumed) throws Exception {
+        ObjectNode root = assumed ? assumedDocument(mapper) : document(mapper);
         for (int i = 0; i < 3; i++) sample(root, i).put("sample_status", "NODATA")
                 .putNull("elevation_source_value").putNull("elevation_meters").putNull("slope_percent");
         section(root, "diagnostics").set("sample_status_counts", mapper.createObjectNode().put("NODATA", 3));
@@ -94,17 +95,64 @@ class CourseAnalysisDocumentReaderTest {
         assertThat(reader.read(write(temporary, mapper, root)).document().summary().elevationGainMeters()).isZero();
     }
 
-    @Test
-    void verifiesInternationalFeetConversion() throws Exception {
-        ObjectNode root = document(mapper);
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void verifiesInternationalFeetConversion(boolean assumed) throws Exception {
+        ObjectNode root = assumed ? assumedDocument(mapper) : document(mapper);
         section(root, "settings").put("elevation_unit", "ft");
-        section(section(root, "inputs"), "dem").put("band_unit", "ft");
+        if (!assumed) section(section(root, "inputs"), "dem").put("band_unit", "ft");
         sample(root, 0).put("elevation_meters", 30.48);
         sample(root, 1).put("elevation_meters", 33.528).put("slope_percent", 30.48);
         sample(root, 2).put("elevation_meters", 32.004).put("slope_percent", -15.24);
         section(root, "summary").put("min_elevation_meters", 30.48).put("max_elevation_meters", 33.528)
                 .put("elevation_gain_meters", 3.048).put("elevation_loss_meters", 1.524);
         assertThat(reader.read(write(temporary, mapper, root)).document().summary().maxElevationMeters()).isEqualTo(33.528);
+    }
+
+    @Test
+    void assumedMetersKeepProvisionalMetricsAndTheUnverifiedVerticalReference() throws Exception {
+        var result = reader.read(write(temporary, mapper, assumedDocument(mapper))).document();
+        assertThat(result.settings().elevationUnitSource()).isEqualTo("assumed");
+        assertThat(result.qualityStatus()).isEqualTo(AnalysisQualityStatus.PARTIAL);
+        assertThat(result.qualityReasons()).containsExactly("ASSUMED_ELEVATION_UNIT", "UNVERIFIED_VERTICAL_REFERENCE");
+        assertThat(result.summary().elevationGainMeters()).isEqualTo(10);
+        assertThat(result.course().sourceKind()).isEqualTo("unknown");
+        assertThat(result.inputs().dem().bandUnit()).isNull();
+    }
+
+    @Test
+    void assumedUnitsCannotBePassedOffAsAvailableOrLoseTheirQualityReason() throws Exception {
+        var root = assumedDocument(mapper);
+        section(root, "settings").put("vertical_reference", "synthetic-test-only");
+        root.withArray("quality_reasons").removeAll().add("ASSUMED_ELEVATION_UNIT");
+        assertThat(reader.read(write(temporary, mapper, root)).document().qualityStatus()).isEqualTo(AnalysisQualityStatus.PARTIAL);
+        root.put("quality_status", "AVAILABLE");
+        invalid(root);
+        root.withArray("quality_reasons").removeAll();
+        invalid(root);
+        root.put("quality_status", "PARTIAL");
+        invalid(root);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"m", "ft", "unsupported-unit"})
+    void assumedUnitsCannotReplaceExistingBandMetadata(String bandUnit) throws Exception {
+        var root = assumedDocument(mapper);
+        section(section(root, "inputs"), "dem").put("band_unit", bandUnit);
+        invalid(root);
+    }
+
+    @Test
+    void assumedInterpretationHasADifferentVersionFromALaterConfirmedDeclaration() throws Exception {
+        var root = assumedDocument(mapper);
+        var assumed = reader.read(write(temporary, mapper, root)).document();
+        section(root, "settings").put("elevation_unit_source", "caller_declaration");
+        root.withArray("quality_reasons").removeAll().add("UNVERIFIED_VERTICAL_REFERENCE");
+        var confirmed = reader.read(write(temporary, mapper, root)).document();
+        assertThat(reader.demVersion(assumed.inputs().dem(), assumed.settings()))
+                .isNotEqualTo(reader.demVersion(confirmed.inputs().dem(), confirmed.settings()));
+        assertThat(reader.sameResult(assumed, confirmed)).isFalse();
+        assertThat(assumed.summary()).isEqualTo(confirmed.summary());
     }
 
     @ParameterizedTest

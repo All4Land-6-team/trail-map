@@ -9,6 +9,8 @@ import { detailAnalysisView } from '../src/utils/courseDetailAnalysis.ts';
 const server = await createServer({ server: { middlewareMode: true, watch: null }, appType: 'custom' });
 after(() => server.close());
 const { CourseAnalysis } = await server.ssrLoadModule('/src/pages/CourseDetailPage/components/CourseAnalysis.tsx');
+const { CourseAnalysisStatus } = await server.ssrLoadModule('/src/pages/CourseDetailPage/components/CourseAnalysisStatus.tsx');
+const { ComparisonAnalysisStatus } = await server.ssrLoadModule('/src/pages/CartPage/components/ComparisonAnalysisStatus.tsx');
 const { courseFixtures } = await server.ssrLoadModule('/src/api/courseMock.ts');
 const { cartCatalog } = await server.ssrLoadModule('/src/pages/CartPage/catalog.ts');
 const { loadCourseDetailData } = await server.ssrLoadModule('/src/api/courseDetailMock.ts');
@@ -75,4 +77,51 @@ test('이전 분석과 프로필 조회 실패를 현재 분석으로 오인하�
   const html = render({ status: 'success', data: { analysis: value, profile: null, profileError: '조회 실패' } });
   assert.match(html, /이전 분석/); assert.match(html, /현재 코스 v2/); assert.match(html, /분석 코스 v1/);
   assert.match(html, /프로필을 불러오지 못/); assert.match(html, /분석 다시 불러오기/);
+});
+
+test('실제 후보 경로의 단위 가정은 접힌 상세 상태 바깥에 표시하고 예시 경로로 바꾸지 않는다', () => {
+  for (const qualityStatus of ['PARTIAL', 'OUTDATED', 'NO_DATA']) {
+    const value = analysis(1, { sourceKind: 'unknown', qualityStatus, qualityReasons: ['ASSUMED_ELEVATION_UNIT'] });
+    value.settings.elevationUnitSource = 'assumed';
+    const html = renderToStaticMarkup(createElement(CourseAnalysisStatus, {
+      state: { status: 'success', data: { analysis: value, profile: null, profileError: null } },
+      development: false, onRetry() {},
+    }));
+    const visible = html.slice(0, html.indexOf('<details'));
+    assert.match(visible, /m로 가정한 분석/);
+    assert.match(visible, /검증 전 수치/);
+    assert.doesNotMatch(html, /개발용 예시 경로|실제 등산로 정보가 아니/);
+  }
+});
+
+test('비교 화면은 m·ft 가정을 코스별로 접힌 상태 바깥에 표시하고 확인된 코스는 구분한다', () => {
+  const courses = ['대남문', '비봉', '백운대'].map((name, index) => {
+    const value = analysis(index + 1, { sourceKind: 'unknown' });
+    value.settings.elevationUnitSource = index < 2 ? 'assumed' : 'raster_metadata';
+    value.settings.elevationUnit = index === 1 ? 'ft' : 'm';
+    return { id: String(index), name, shortName: name, analysis: value, development: false, profileError: null };
+  });
+  const html = renderToStaticMarkup(createElement(ComparisonAnalysisStatus, {
+    state: { status: 'success', data: {} }, courses, onRetry() {},
+  }));
+  const visible = html.slice(0, html.indexOf('<details'));
+  assert.match(visible, /대남문<\/strong> · 원본 고도 단위를 m로 가정/);
+  assert.match(visible, /비봉<\/strong> · 원본 고도 단위를 ft로 가정해 m로 환산/);
+  assert.doesNotMatch(visible, /백운대/);
+  assert.equal((visible.match(/검증 전 수치/g) ?? []).length, 2);
+  assert.doesNotMatch(html, /개발용 예시 경로/);
+});
+
+test('비교하는 세 코스의 가정이 같으면 코스명을 묶어 안내를 한 번만 표시한다', () => {
+  const courses = ['대남문', '비봉', '백운대'].map((name, index) => {
+    const value = analysis(index + 1);
+    value.settings.elevationUnitSource = 'assumed';
+    return { id: String(index), name, shortName: name, analysis: value, development: false, profileError: null };
+  });
+  const html = renderToStaticMarkup(createElement(ComparisonAnalysisStatus, {
+    state: { status: 'success', data: {} }, courses, onRetry() {},
+  }));
+  const visible = html.slice(0, html.indexOf('<details'));
+  assert.match(visible, /대남문 · 비봉 · 백운대<\/strong>/);
+  assert.equal((visible.match(/검증 전 수치/g) ?? []).length, 1);
 });

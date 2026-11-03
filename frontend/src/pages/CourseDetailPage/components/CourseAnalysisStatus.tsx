@@ -1,5 +1,5 @@
 import type { CourseAnalysisState } from '../../../types/courseAnalysis';
-import { analysisQualityLabel, analysisQualityReasons } from '../../../utils/courseComparison';
+import { analysisQualityLabel, analysisQualityReasons, analysisUnitAssumptionNotice } from '../../../utils/courseComparison';
 
 export function CourseAnalysisStatus({ state, development, onRetry }: {
   state: CourseAnalysisState; development: boolean; onRetry: () => void;
@@ -10,8 +10,10 @@ export function CourseAnalysisStatus({ state, development, onRetry }: {
     {state.status === 'error' && <button type="button" onClick={onRetry}>분석 다시 불러오기</button>}
   </div>;
   const { analysis, profileError } = state.data;
+  const assumptionNotice = analysisUnitAssumptionNotice(analysis);
   return <div className="course-analysis-status" data-analysis-id={analysis.analysisId ?? ''}>
     {development && <p className="course-analysis-origin">개발용 예시 경로의 분석 결과예요. 실제 등산로 정보가 아니에요.</p>}
+    {assumptionNotice && <p className="course-analysis-assumption">{assumptionNotice}</p>}
     {profileError && <p role="alert">고도·경사 프로필을 불러오지 못했어요. <button type="button" onClick={onRetry}>분석 다시 불러오기</button></p>}
     <details>
       <summary>분석 상태 · {analysisQualityLabel(analysis)}</summary>

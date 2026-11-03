@@ -258,6 +258,7 @@ public class CourseAnalysisDocumentReader {
         List<String> reasons = new ArrayList<>();
         if (rawValid < samples.size()) reasons.add("MISSING_DEM_SAMPLES");
         if (factor == null) reasons.add("UNVERIFIED_ELEVATION_UNIT");
+        if ("assumed".equals(settings.elevationUnitSource())) reasons.add("ASSUMED_ELEVATION_UNIT");
         if (settings.verticalReference() == null) reasons.add("UNVERIFIED_VERTICAL_REFERENCE");
         if (segments == 0) reasons.add("NO_CONTIGUOUS_METRIC_HEIGHT_SEGMENTS");
         AnalysisQualityStatus status = rawValid == 0 ? AnalysisQualityStatus.NO_DATA
@@ -292,10 +293,12 @@ public class CourseAnalysisDocumentReader {
                 && "unsmoothed".equals(settings.elevationProcessing())
                 && "signed_percent_from_previous_sample".equals(settings.slopeConvention()), "분석 방식");
         member(settings.elevationUnit(), Set.of("m", "ft", "unknown"), "elevation_unit");
-        member(settings.elevationUnitSource(), Set.of("raster_metadata", "caller_declaration", "unverified"),
+        member(settings.elevationUnitSource(), Set.of("raster_metadata", "caller_declaration", "unverified", "assumed"),
                 "elevation_unit_source");
         require("unknown".equals(settings.elevationUnit()) == "unverified".equals(settings.elevationUnitSource()),
                 "단위 확인 상태");
+        require(!"assumed".equals(settings.elevationUnitSource()) || dem.bandUnit() == null,
+                "단위 가정은 밴드 단위가 없는 DEM에만 허용");
         if (!"unknown".equals(settings.elevationUnit())
                 && ("raster_metadata".equals(settings.elevationUnitSource()) || dem.bandUnit() != null)) {
             String unit = dem.bandUnit() == null ? "" : dem.bandUnit().strip().toLowerCase(java.util.Locale.ROOT);

@@ -246,6 +246,7 @@
 .cart-metrics-screen .cart-metrics-note { display: block; margin: 12px 0 0; color: #526d60; word-break: keep-all; overflow-wrap: anywhere; }
 .cart-compare-screen, .cart-metrics-screen { min-height: 0; }
 .cart-analysis-status { flex: none; padding-block: 4px; }
+.cart-analysis-assumption { margin: 6px 0; padding: 8px 10px; border: 1px solid #ead4ad; border-radius: 8px; background: #fff8ec; color: #70512c; font-size: 11px; line-height: 17px; overflow-wrap: anywhere; }
 .cart-analysis-origin, .cart-analysis-message, .cart-analysis-details { margin: 4px 0; color: #526d60; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
 .cart-analysis-message p, .cart-analysis-details p { margin: 3px 0; }
 .cart-analysis-message button, .cart-analysis-details button { padding: 3px 7px; border: 1px solid #b8c9bb; border-radius: 6px; color: var(--af-green-dark); background: #fff; font: inherit; cursor: pointer; }
