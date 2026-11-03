@@ -1,5 +1,5 @@
 import { findCourse } from "../../api/hikeMock";
-import { useHikeSession } from "../../store/hikeSessionStore";
+import { hikeTargetIds, useHikeSession } from "../../store/hikeSessionStore";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
 import { BottomNavigation } from "../../components/layout";
@@ -10,14 +10,14 @@ import "../hikePages.css";
 import "./HikeCompletePage.css";
 
 /** HIKE-08 등산 완료 (`#hikes/complete`) */
-export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId: string, finishedAt: string) => void }) {
+export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId: string | undefined, finishedAt: string) => void }) {
   const session = useHikeSession();
   // 나중에 → 오늘 날짜가 선택된 HIKE-01 캘린더
   const backToCalendar = () => navigate(hikePaths.calendar());
   if (!session?.finishedAt) return <main className="hike-page__empty-state"><p>완료된 등산 기록이 없어요.</p>
     <Button label="내 등산 캘린더로" onClick={backToCalendar} /></main>;
   const finishedAt = session.finishedAt;
-  const result = { ...session.schedule, mountainId: session.mountainId,
+  const result = { ...session.schedule, mountainId: hikeTargetIds(session).mountainId,
     // 기록 API로 종료했으면 서버가 계산한 소요 시간을 쓴다.
     durationMinutes: session.durationSeconds !== undefined ? Math.floor(session.durationSeconds / 60)
       : Math.max(0, Math.floor((Date.parse(finishedAt) - Date.parse(session.startedAt)) / 60_000)),
