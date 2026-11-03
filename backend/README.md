@@ -201,7 +201,11 @@ community/spot/facility/{facilityId}/{reviewId}/{uuid}.{ext}
 
 ## 코스 분석 결과 적재·조회 (#84, #116, #119)
 
-#80 Python 파이프라인이 만든 `schema_version=1` JSON을 검증하고, 기존
+급경사 비율의 문서 버전·계산 기준과 공용 DB 반영 순서는
+[급경사 분석 적용 절차](../docs/course-steep-analysis.md)를 참고합니다. v2 적재 전에
+공용 DB를 사용하는 백엔드를 #132 코드로 갱신합니다.
+
+#80·#132 Python 파이프라인이 만든 `schema_version=1·2` JSON을 검증하고, 기존
 `course_analysis` 테이블에 요약과 분석 문서를 저장합니다. 차트용 샘플 테이블은
 추가하지 않습니다. 기본 `database` 모드는 V10의 `analysis_document JSONB`에
 상세 프로필·입력 지문·분석 설정·품질 사유까지 보관하므로, 같은 공용 DB를 쓰는
@@ -305,12 +309,16 @@ NTFS/Linux 하드 링크로 완성된 `{analysisId}.json`을 게시하므로 하
 camelCase이며 각 샘플은 `sampleIndex`, `distanceMeters`,
 `coordinate: [경도, 위도]`, `elevationMeters`, `slopePercent`, `sampleStatus`입니다.
 경사 단위는 %이고 첫 샘플·결측 구간은 `null`입니다. 거리는 m, 시간은 초이며
-아직 계산하지 않은 소요 시간·급경사 비율은 `null`입니다. 평균 경사 공식은 도입하지 않습니다.
+아직 계산하지 않은 소요 시간과 v1 문서의 급경사 비율은 `null`입니다.
+v2 문서의 `metrics.steepSectionRatioPercent`는 검증된 급경사 거리 비율입니다.
+`settings.steepSlopeThresholdPercent`, `steepSlopeMethod`로 기준을 확인하며
+이 필드는 v1 응답에서는 생략합니다. 평균 경사 공식은 도입하지 않습니다.
 
 거리·고도·누적 상승/하강량은 DB 요약과 일치 검증을 통과한 저장 문서의 수치를
 사용합니다. 단일 요약·비교 요약·프로필 메타데이터가 같은 정밀도로 응답하므로
 JDBC 수치 표현의 차이로 동일 분석의 응답이 달라지지 않습니다. 기존 분석을
-다시 계산하거나 적재할 필요는 없습니다.
+다시 계산하거나 적재할 필요는 없습니다. 다만 급경사 지표가 없는 기존 결과에
+지표를 추가하려면 v2 결과를 새로 생성·적재합니다.
 
 코스는 있지만 분석이 없으면 `200`, `qualityStatus=NO_DATA`,
 `qualityReasons=["ANALYSIS_NOT_FOUND"]`와 null 측정값을 반환합니다. 코스 또는
@@ -382,8 +390,8 @@ DB 모드에서는 별도 DataSource·조회 인스턴스의 문서 조회, JSON
 `PARTIAL`과 품질 사유를 유지하며, 코스 변경 시 `OUTDATED`와 분석 당시 버전을
 반환합니다. 오래된 분석의 수치를 현재 코스의 확정 수치로 표시하지 않습니다.
 
-거리는 m, 고도는 m, 시간은 초, 구간 경사는 %입니다. 미계산 소요 시간·급경사
-비율과 결측값을 유지하고 평균 경사 공식은 추가하지 않습니다. 공식 코스 수치가
+거리는 m, 고도는 m, 시간은 초, 구간 경사와 급경사 거리 비율은 %입니다. 미계산
+소요 시간과 기존 v1의 급경사 결측값을 유지하고 평균 경사 공식은 추가하지 않습니다. 공식 코스 수치가
 있어도 서비스 분석의 결측값을 임의로 대체하지 않습니다. `OUTDATED`·`PARTIAL`과
 개발용·단위 가정·수직 기준 미확인 상태는 화면에서도 함께 처리해야 합니다.
 

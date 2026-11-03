@@ -72,6 +72,23 @@ export function formatAnalysisDuration(seconds: number | null | undefined): stri
   return hours === 0 ? `${minutes}분` : `${hours}시간${minutes % 60 ? ` ${minutes % 60}분` : ''}`;
 }
 
+export function formatSteepRatio(value: number | null | undefined): string {
+  return value == null ? '—' : `${value.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
+export function steepSlopeThreshold(analysis: CourseAnalysis | null): number | null {
+  const settings = analysis?.settings;
+  const threshold = settings?.steepSlopeThresholdPercent;
+  return settings?.steepSlopeMethod === 'absolute_slope_gte_distance_weighted'
+    && typeof threshold === 'number' && Number.isFinite(threshold) && threshold > 0 ? threshold : null;
+}
+
+export function analysisSteepNotice(analysis: CourseAnalysis | null): string | null {
+  const threshold = steepSlopeThreshold(analysis);
+  return threshold === null ? null
+    : `급경사 비율은 오르막·내리막 경사 절댓값 ${threshold.toLocaleString('ko-KR', { maximumSignificantDigits: 6 })}% 이상인 구간의 거리 비율이에요. 경사를 계산할 수 없는 구간은 제외해요.`;
+}
+
 /** 결측은 축 범위에서만 제외하고 series에는 남겨 선을 끊는다. 큰 프로필도 spread 없이 처리한다. */
 export function elevationAxisBounds(series: readonly { points: readonly { distanceKm: number; elevationMeters: number | null }[] }[]) {
   let distance = 0, min = Infinity, max = -Infinity;

@@ -139,6 +139,8 @@ def _build_parser() -> argparse.ArgumentParser:
                                    help="밴드 단위가 없는 DEM의 단위를 가정합니다. 결과는 검증 전 PARTIAL로 남습니다")
     analyze_parser.add_argument("--vertical-reference", help="출처에서 확인한 고도의 수직 기준")
     analyze_parser.add_argument("--max-samples", type=int, default=100_000)
+    analyze_parser.add_argument("--steep-slope-threshold-percent", type=float, default=20.0,
+                                help="급경사 기준(%%): 경사 절댓값이 이 값 이상인 오르막·내리막의 거리 비율(기본 20)")
     analyze_parser.add_argument("--overwrite", action="store_true")
 
     return parser
@@ -159,6 +161,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                     vertical_reference=args.vertical_reference,
                     max_samples=args.max_samples,
                     assume_elevation_unit=args.assume_elevation_unit,
+                    steep_slope_threshold_percent=args.steep_slope_threshold_percent,
                 ),
                 overwrite=args.overwrite,
             )

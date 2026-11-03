@@ -11,6 +11,7 @@ after(() => server.close());
 const { CourseAnalysis } = await server.ssrLoadModule('/src/pages/CourseDetailPage/components/CourseAnalysis.tsx');
 const { CourseAnalysisStatus } = await server.ssrLoadModule('/src/pages/CourseDetailPage/components/CourseAnalysisStatus.tsx');
 const { ComparisonAnalysisStatus } = await server.ssrLoadModule('/src/pages/CartPage/components/ComparisonAnalysisStatus.tsx');
+const { ComparisonMetricsScreen } = await server.ssrLoadModule('/src/pages/CartPage/components/ComparisonMetricsScreen.tsx');
 const { courseFixtures } = await server.ssrLoadModule('/src/api/courseMock.ts');
 const { cartCatalog } = await server.ssrLoadModule('/src/pages/CartPage/catalog.ts');
 const { loadCourseDetailData } = await server.ssrLoadModule('/src/api/courseDetailMock.ts');
@@ -27,6 +28,50 @@ function render(state, selectedIndex = 0) {
     reviews: [], reviewTotal: 0, visibility: { elevation: true, slope: true }, selectedIndex, onSelect() {}, onToggle() {},
   }));
 }
+
+test('상세 급경사 비율은 API 값을 반올림하고 서비스 계산 기준을 설명한다', () => {
+  const value = analysis();
+  value.metrics.steepSectionRatioPercent = 12.34567;
+  value.settings.steepSlopeThresholdPercent = 20;
+  value.settings.steepSlopeMethod = 'absolute_slope_gte_distance_weighted';
+  const html = render({ status: 'success', data: { analysis: value, profile: profile(value).data, profileError: null } });
+  assert.match(html, /급경사 12\.3%/);
+  assert.match(html, /오르막·내리막 경사 절댓값 20% 이상/);
+  assert.match(html, /경사를 계산할 수 없는 구간은 제외/);
+  assert.doesNotMatch(html, /12\.34567%/);
+});
+
+function renderMetrics(thresholds) {
+  const courses = cartCatalog.slice(0, 3);
+  const analysisCourses = courses.map((course, index) => {
+    const value = analysis(index + 1);
+    value.settings.steepSlopeThresholdPercent = thresholds[index];
+    value.settings.steepSlopeMethod = 'absolute_slope_gte_distance_weighted';
+    value.metrics.steepSectionRatioPercent = [0, 12.34567, null][index];
+    return { id: course.id, name: course.name, shortName: course.shortName, color: course.color,
+      development: false, analysis: value, profile: null, profileError: null };
+  });
+  return renderToStaticMarkup(createElement(ComparisonMetricsScreen, {
+    courses, analysisCourses, analysisState: { status: 'success', data: { mountainName: '북한산' } },
+    onRetry() {}, onBack() {}, onCourseDetail() {}, onKeepCart() {}, onNavigate() {}, plannedHikes: [], onPlanHike() {},
+  }));
+}
+
+test('비교표는 평균 경사 대신 급경사 비율을 표시하고 미계산 시간과 결측을 유지한다', () => {
+  const html = renderMetrics([20, 20, 20]);
+  assert.match(html, /급경사 비율 비교/);
+  assert.doesNotMatch(html, /평균 경사 비교|12\.34567%/);
+  assert.match(html, /0\.0%/);
+  assert.match(html, /12\.3%/);
+  assert.match(html, /경사 절댓값 20% 이상/);
+  assert.equal((html.match(/class="cart-metric-track"/g) ?? []).length, 5);
+});
+
+test('서로 다른 급경사 기준은 안내하고 비교 막대로 같은 기준처럼 표시하지 않는다', () => {
+  const html = renderMetrics([20, 30, 20]);
+  assert.match(html, /급경사 기준이 다르거나 확인되지 않은/);
+  assert.equal((html.match(/class="cart-metric-track"/g) ?? []).length, 3);
+});
 
 test('연결된 개발용 코스는 상세 진입 가능하고 비교·상세의 분석 연결은 같으며 시설 ID는 별도다', async () => {
   for (const [id, db] of [['bukhansan-baegundae', localAnalysisConfigured ? localAnalysisCourseId : 1], ['daenammun', 2], ['bibong', 3]]) {

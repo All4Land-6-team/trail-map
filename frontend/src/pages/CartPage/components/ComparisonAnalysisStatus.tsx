@@ -1,5 +1,5 @@
 import type { CourseComparisonState } from '../../../types/courseAnalysis';
-import { analysisQualityLabel, analysisQualityReasons, analysisUnitAssumptionNotice, type ComparisonCourseView } from '../../../utils/courseComparison';
+import { analysisQualityLabel, analysisQualityReasons, analysisUnitAssumptionNotice, analysisSteepNotice, type ComparisonCourseView } from '../../../utils/courseComparison';
 
 export function ComparisonAnalysisStatus({ state, courses, onRetry }: {
   state: CourseComparisonState; courses: readonly ComparisonCourseView[]; onRetry: () => void;
@@ -29,6 +29,7 @@ export function ComparisonAnalysisStatus({ state, courses, onRetry }: {
         <p>현재 코스 v{course.analysis.currentCourseVersion}{course.analysis.analyzedCourseVersion !== null
           ? ` · 분석 코스 v${course.analysis.analyzedCourseVersion}` : ''}</p>
         {analysisQualityReasons(course.analysis).map(message => <p key={message}>{message}</p>)}
+        {analysisSteepNotice(course.analysis) && <p>{analysisSteepNotice(course.analysis)}</p>}
         {course.analysis.coverage && <p>고도 확인 범위 {course.analysis.coverage.sampleCoveragePercent.toFixed(1)}%</p>}
         {course.analysis.settings && <p>샘플 간격 {course.analysis.settings.sampleIntervalMeters} m · {course.analysis.settings.elevationProcessing === 'unsmoothed' ? '고도 평활화 미적용' : '고도 보정 적용'}</p>}
         {course.analysis.calculatedAt && <p>분석 시각 {new Date(course.analysis.calculatedAt).toLocaleString('ko-KR')}</p>}

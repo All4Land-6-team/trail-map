@@ -15,7 +15,7 @@ from rasterio.warp import transform
 
 from trail_map_data.cli import main
 from trail_map_data.course_analysis import (
-    AnalysisConfig, CourseAnalysisError, analyze_course, analyze_course_to_file,
+    AnalysisConfig, CourseAnalysisError, analyze_course, analyze_course_to_file, _summarize,
 )
 
 CUSTOM_CRS = "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +datum=WGS84 +units=m +no_defs"
@@ -529,3 +529,76 @@ def test_changed_input_does_not_replace_previous_result(files, tmp_path, monkeyp
     with pytest.raises(CourseAnalysisError, match="입력 파일이 변경"):
         analyze_course_to_file(dem, course, output, config=config(), overwrite=True)
     assert output.read_text(encoding="utf-8") == "previous"
+
+
+def steep_summary(distances, heights, threshold=20):
+    samples = [{"distance_meters": distance, "elevation_meters": height, "slope_percent": None,
+                "sample_status": "VALID" if height is not None else "NODATA"}
+               for distance, height in zip(distances, heights)]
+    return _summarize(samples, "m", "caller_declaration", None, threshold)[0]
+
+
+def test_steep_ratio_weights_distances_instead_of_sample_counts():
+    # 1m만 급경사이고 나머지 9m는 평지: 2개 구간 중 1개여도 50%가 아니다.
+    summary = steep_summary([0, 1, 10], [100, 101, 101])
+    assert summary["steep_distance_meters"] == 1
+    assert summary["slope_analyzed_distance_meters"] == 10
+    assert summary["steep_section_ratio_percent"] == 10
+
+
+@pytest.mark.parametrize("threshold,expected", [(20, 100), (20.00001, 0)])
+def test_steep_ratio_includes_exact_threshold_ascent_and_descent(threshold, expected):
+    summary = steep_summary([0, 10, 20], [0, 2, 0], threshold)
+    assert summary["steep_section_ratio_percent"] == expected
+
+
+def test_steep_ratio_excludes_gaps_from_the_denominator_without_bridging_them():
+    summary = steep_summary([0, 1, 2, 10], [100, 101, None, 200])
+    assert summary["steep_distance_meters"] == 1
+    assert summary["slope_analyzed_distance_meters"] == 1
+    assert summary["steep_section_ratio_percent"] == 100
+
+
+def test_steep_ratio_distinguishes_measured_zero_from_no_valid_segment():
+    assert steep_summary([0, 10, 20], [0, 0, 0])["steep_section_ratio_percent"] == 0
+    missing = steep_summary([0, 10, 20], [0, None, 1])
+    assert missing["steep_section_ratio_percent"] is None
+    assert missing["slope_analyzed_distance_meters"] == missing["steep_distance_meters"] == 0
+
+
+@pytest.mark.parametrize("value", [0, -1, float("nan"), float("inf"), True, "20", None])
+def test_rejects_invalid_steep_thresholds(value):
+    with pytest.raises(CourseAnalysisError, match="급경사"):
+        config(steep_slope_threshold_percent=value)
+
+
+def test_steep_policy_is_recorded_and_threshold_changes_get_a_distinct_version(files):
+    dem, course = files()
+    first = analyze_course(dem, course, config=config(steep_slope_threshold_percent=20))
+    changed = analyze_course(dem, course, config=config(steep_slope_threshold_percent=300))
+    assert first["schema_version"] == 2
+    assert first["algorithm_version"] == "course-dem-v2-steep-20.0"
+    assert first["settings"]["steep_slope_method"] == "absolute_slope_gte_distance_weighted"
+    assert first["settings"]["steep_slope_threshold_percent"] == 20
+    assert first["summary"]["steep_section_ratio_percent"] == 100
+    assert changed["summary"]["steep_section_ratio_percent"] == 0
+    assert changed["algorithm_version"] != first["algorithm_version"]
+    assert changed["profile"] == first["profile"]
+
+
+def test_unknown_units_do_not_produce_a_steep_ratio(files):
+    dem, course = files(unit=None)
+    result = analyze_course(dem, course, config=config())
+    assert result["summary"]["steep_section_ratio_percent"] is None
+    assert result["summary"]["slope_analyzed_distance_meters"] == 0
+    assert "UNVERIFIED_ELEVATION_UNIT" in result["quality_reasons"]
+
+
+def test_cli_accepts_explicit_steep_threshold(files, tmp_path):
+    dem, course = files()
+    output = tmp_path / "steep.json"
+    main(["course", "analyze", str(dem), str(course), "--sample-interval-meters", "4",
+          "--steep-slope-threshold-percent", "300", "--output", str(output)])
+    result = json.loads(output.read_text(encoding="utf-8"))
+    assert result["settings"]["steep_slope_threshold_percent"] == 300
+    assert result["summary"]["steep_section_ratio_percent"] == 0

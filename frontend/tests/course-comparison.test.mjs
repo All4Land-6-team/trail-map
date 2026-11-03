@@ -2,9 +2,48 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { courseComparisonUrl, loadCourseComparison, parseCourseAnalysis, parseCourseAnalysisProfile, parseCourseComparison } from '../src/api/courseAnalysis.ts';
 import { analysisQualityReasons, analysisUnitAssumptionNotice, comparisonCourseViews, comparisonRequest, developmentAnalysisReference,
-  elevationAxisBounds, formatAnalysisDistance, formatAnalysisDuration, withComparisonColors } from '../src/utils/courseComparison.ts';
+  elevationAxisBounds, formatAnalysisDistance, formatAnalysisDuration, withComparisonColors,
+  analysisSteepNotice, formatSteepRatio, steepSlopeThreshold } from '../src/utils/courseComparison.ts';
 import { formatElevationTooltip, positionElevationTooltip } from '../src/utils/elevationTooltip.ts';
 import { analysis, noAnalysis, comparison, profile, fullCoverageAnalysis, fullCoverageProfile } from './fixtures/course-analysis.mjs';
+
+test('급경사 계산 정책을 보존하고 0·결측·소수점 표시를 구분한다', () => {
+  const value = analysis();
+  value.settings.steepSlopeThresholdPercent = 20;
+  value.settings.steepSlopeMethod = 'absolute_slope_gte_distance_weighted';
+  value.metrics.steepSectionRatioPercent = 0;
+  const parsed = parseCourseAnalysis(value);
+  assert.equal(steepSlopeThreshold(parsed), 20);
+  assert.match(analysisSteepNotice(parsed), /오르막·내리막.*20% 이상.*거리 비율/);
+  assert.equal(formatSteepRatio(0), '0.0%');
+  assert.equal(formatSteepRatio(null), '—');
+  assert.equal(formatSteepRatio(12.34567), '12.3%');
+  assert.equal(analysisSteepNotice(analysis()), null);
+  assert.equal(steepSlopeThreshold(null), null);
+  for (const change of [
+    settings => { settings.steepSlopeThresholdPercent = 0; },
+    settings => { settings.steepSlopeThresholdPercent = Infinity; },
+    settings => { settings.steepSlopeMethod = 'sample_count'; },
+    settings => { delete settings.steepSlopeMethod; },
+  ]) {
+    const invalid = structuredClone(value); change(invalid.settings);
+    assert.throws(() => parseCourseAnalysis(invalid));
+  }
+});
+
+test('동일 분석의 급경사 기준이 다르거나 한쪽에만 추가된 프로필은 거절한다', () => {
+  const expected = analysis();
+  const injected = profile(expected);
+  injected.data.analysis.settings.steepSlopeThresholdPercent = 20;
+  injected.data.analysis.settings.steepSlopeMethod = 'absolute_slope_gte_distance_weighted';
+  assert.throws(() => parseCourseAnalysisProfile(injected, expected));
+  expected.settings.steepSlopeThresholdPercent = 20;
+  expected.settings.steepSlopeMethod = 'absolute_slope_gte_distance_weighted';
+  const changed = profile(expected);
+  changed.data.analysis.settings.steepSlopeThresholdPercent = 30;
+  assert.throws(() => parseCourseAnalysisProfile(changed, expected));
+  assert.equal(parseCourseAnalysisProfile(profile(expected), expected).analysis.settings.steepSlopeThresholdPercent, 20);
+});
 
 test('단위 가정은 요약·프로필·비교 응답에서 보존되고 확인된 단위와 안내를 구분한다', () => {
   const assumed = analysis(1, { sourceKind: 'unknown', qualityReasons: ['ASSUMED_ELEVATION_UNIT', 'UNVERIFIED_VERTICAL_REFERENCE'] });

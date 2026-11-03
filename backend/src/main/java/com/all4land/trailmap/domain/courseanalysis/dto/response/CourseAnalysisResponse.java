@@ -1,6 +1,7 @@
 package com.all4land.trailmap.domain.courseanalysis.dto.response;
 
 import com.all4land.trailmap.domain.courseanalysis.entity.AnalysisQualityStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -22,5 +23,7 @@ public record CourseAnalysisResponse(
 
     public record Settings(double sampleIntervalMeters, String samplingMethod, String resamplingMethod,
                            String distanceMethod, String elevationUnit, String elevationUnitSource,
-                           String verticalReference, String elevationProcessing, String slopeConvention) {}
+                           String verticalReference, String elevationProcessing, String slopeConvention,
+                           @JsonInclude(JsonInclude.Include.NON_NULL) Double steepSlopeThresholdPercent,
+                           @JsonInclude(JsonInclude.Include.NON_NULL) String steepSlopeMethod) {}
 }

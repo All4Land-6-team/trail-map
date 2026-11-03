@@ -229,7 +229,8 @@ $env:PYTHONPATH = "src"
 ID는 현재 DB에서 내보낸 코스에 맞추고, 확인되지 않은 출처를 `official`로 바꾸지
 않습니다. 샘플 추출 성공이나 단위 가정이 경로의 공식 검증 완료를 뜻하지는 않습니다.
 
-분석 수식·`schema_version=1`·`course-dem-v1`은 유지합니다. 백엔드는 단위의 출처도
+단위 가정은 기존 고도·경사 계산 수식을 바꾸지 않습니다. 신규 출력은 아래 #132의
+`schema_version=2`를 사용하고, 백엔드는 기존 v1 문서도 읽습니다. 단위의 출처도
 DEM 해석 버전에 포함하므로, 나중에 확인된 단위 선언으로 재분석하면 별도 버전으로
 적재하고 가정 결과를 보존합니다. 이번 기능을 반영한 백엔드에서 가정 문서를
 검증·적재해야 합니다.
@@ -243,6 +244,29 @@ DEM 해석 버전에 포함하므로, 나중에 확인된 단위 선언으로 �
 - `profile`: 샘플 순번·누적 거리·경도/위도·원본 고도값·m 단위 고도·샘플 상태
 - `summary`: 거리·최저/최고 고도·누적 상승/하강량·샘플 및 거리 커버리지
 - `quality_status`, `quality_reasons`, `diagnostics`
+
+### 급경사 비율 (#132)
+
+새 출력은 `schema_version=2`, `algorithm_version=course-dem-v2-steep-20.0`입니다.
+`--steep-slope-threshold-percent`의 기본값은 20이며 유한한 양수(%)만 허용합니다.
+경사 절댓값이 임계값 **이상**인 오르막·내리막을 모두 포함하고, 구간 수가 아닌
+수평 거리로 가중합니다. 공식 난이도 등급이나 각도 20도를 의미하지 않습니다.
+
+- `settings.steep_slope_threshold_percent`: 경사 절댓값 기준(%)
+- `settings.steep_slope_method`: `absolute_slope_gte_distance_weighted`
+- `summary.slope_analyzed_distance_meters`: 고도·경사를 계산할 수 있는 구간 거리 합
+- `summary.steep_distance_meters`: 그중 급경사인 구간 거리 합
+- `summary.steep_section_ratio_percent`: 급경사 거리 / 경사 분석 가능 거리 × 100
+
+첫 샘플·결측·단위 미확인으로 경사를 계산할 수 없는 구간은 분모에도 포함하지
+않습니다. 유효 구간이 없으면 비율은 `null`, 유효 구간에 급경사가 없으면 0입니다.
+평활화 정책과 기존 품질 사유는 유지합니다. 임계값을 바꾸면 알고리즘 식별자도
+바뀌어 이전 결과를 덮어쓰지 않습니다. 새 문서는 #132 백엔드가 필요합니다.
+
+기존 13개 코스와 같은 입력·설정으로 새 결과를 만들고 검증하는 방법은
+[급경사 분석 적용 절차](../docs/course-steep-analysis.md)를 따릅니다. 준비 스크립트는
+공용 API와 로컬 분석 JSON·DEM 지문을 대조하고 기존 프로필·요약의 수치가 유지되는지
+확인하며 DB에는 쓰지 않습니다.
 
 `slope_percent`는 이전 샘플로부터의 `고도 변화 / 수평 거리 × 100`입니다.
 상승은 양수, 하강은 음수이며 첫 샘플과 결측 구간에는 값이 없습니다.

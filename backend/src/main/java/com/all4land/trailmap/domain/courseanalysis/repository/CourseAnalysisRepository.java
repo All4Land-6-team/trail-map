@@ -143,13 +143,13 @@ public class CourseAnalysisRepository {
                 .addValue("distance", summary.distanceMeters()).addValue("minimum", summary.minElevationMeters())
                 .addValue("maximum", summary.maxElevationMeters()).addValue("gain", summary.elevationGainMeters())
                 .addValue("loss", summary.elevationLossMeters()).addValue("quality", document.qualityStatus().name())
-                .addValue("calculated", document.calculatedAt());
+                .addValue("calculated", document.calculatedAt()).addValue("steep", summary.steepSectionRatioPercent());
         return jdbc.queryForObject("""
                 INSERT INTO course_analysis(course_id,course_version,dem_source_id,algorithm_version,
                     analyzed_course_geometry,source_type,distance_meters,min_elevation_meters,max_elevation_meters,
-                    elevation_gain_meters,elevation_loss_meters,quality_status,calculated_at)
+                    elevation_gain_meters,elevation_loss_meters,quality_status,calculated_at,steep_section_ratio_percent)
                 VALUES (:course,:version,:dem,:algorithm,ST_SetSRID(ST_GeomFromGeoJSON(:geometry),4326),
-                    'SERVICE_CALCULATED',:distance,:minimum,:maximum,:gain,:loss,:quality,:calculated)
+                    'SERVICE_CALCULATED',:distance,:minimum,:maximum,:gain,:loss,:quality,:calculated,:steep)
                 RETURNING analysis_id
                 """, params, Long.class);
     }

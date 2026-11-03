@@ -162,7 +162,8 @@ public class CourseAnalysisDocumentReader {
     }
 
     public void validate(CourseAnalysisDocument document) {
-        require(document != null && Integer.valueOf(1).equals(document.schemaVersion()), "schema_version");
+        require(document != null && (Integer.valueOf(1).equals(document.schemaVersion())
+                || Integer.valueOf(2).equals(document.schemaVersion())), "schema_version");
         require(text(document.algorithmVersion(), 100), "algorithm_version");
         require("SERVICE_CALCULATED".equals(document.sourceType()), "source_type");
         require(document.calculatedAt() != null, "calculated_at");
@@ -183,12 +184,29 @@ public class CourseAnalysisDocumentReader {
         validateInputs(document.inputs());
         Settings settings = document.settings();
         validateSettings(settings, document.inputs().dem());
+        boolean steepSupported = document.schemaVersion() == 2;
+        if (steepSupported) {
+            require(finite(settings.steepSlopeThresholdPercent()) && settings.steepSlopeThresholdPercent() > 0
+                    && "absolute_slope_gte_distance_weighted".equals(settings.steepSlopeMethod()), "급경사 계산 정책");
+            String prefix = "course-dem-v2-steep-";
+            try {
+                require(document.algorithmVersion().startsWith(prefix)
+                        && Double.compare(Double.parseDouble(document.algorithmVersion().substring(prefix.length())),
+                        settings.steepSlopeThresholdPercent()) == 0, "급경사 알고리즘 버전과 임계값");
+            } catch (NumberFormatException exception) {
+                throw invalid("급경사 알고리즘 임계값");
+            }
+        } else {
+            require(settings.steepSlopeThresholdPercent() == null && settings.steepSlopeMethod() == null,
+                    "v1 문서의 미지원 급경사 설정");
+        }
         List<Sample> samples = document.profile();
         require(samples != null && samples.size() >= 2 && samples.size() <= settings.maxSamples()
                 && geometry.coordinates().size() <= settings.maxSamples(), "profile 개수");
 
         int rawValid = 0, metricValid = 0, segments = 0;
         double covered = 0, gain = 0, loss = 0;
+        double slopeDistance = 0, steepDistance = 0;
         Double minimum = null, maximum = null;
         Map<String, Integer> counts = new HashMap<>();
         Double factor = switch (settings.elevationUnit()) {
@@ -228,6 +246,10 @@ public class CourseAnalysisDocumentReader {
                     gain += Math.max(delta, 0);
                     loss += Math.max(-delta, 0);
                     segments++;
+                    slopeDistance += distance;
+                    if (steepSupported && Math.abs(grade) >= settings.steepSlopeThresholdPercent()) {
+                        steepDistance += distance;
+                    }
                 }
             }
             same(sample.slopePercent(), grade, "slope_percent 또는 결측 구간 연결");
@@ -250,6 +272,21 @@ public class CourseAnalysisDocumentReader {
         same(summary.sampleCoveragePercent(), 100.0 * rawValid / samples.size(), "샘플 커버리지");
         same(summary.coveredDistanceMeters(), covered, "관측 거리");
         same(summary.distanceCoveragePercent(), 100.0 * covered / total, "거리 커버리지");
+        if (steepSupported) {
+            require(finite(summary.slopeAnalyzedDistanceMeters()) && summary.slopeAnalyzedDistanceMeters() >= 0
+                    && finite(summary.steepDistanceMeters()) && summary.steepDistanceMeters() >= 0
+                    && summary.steepDistanceMeters() <= summary.slopeAnalyzedDistanceMeters()
+                    && (summary.steepSectionRatioPercent() == null || finite(summary.steepSectionRatioPercent())
+                    && summary.steepSectionRatioPercent() >= 0 && summary.steepSectionRatioPercent() <= 100),
+                    "급경사 거리와 비율 범위");
+            same(summary.slopeAnalyzedDistanceMeters(), slopeDistance, "경사 분석 가능 거리");
+            same(summary.steepDistanceMeters(), steepDistance, "급경사 거리");
+            same(summary.steepSectionRatioPercent(), slopeDistance > 0 ? 100.0 * (steepDistance / slopeDistance) : null,
+                    "급경사 비율");
+        } else {
+            require(summary.slopeAnalyzedDistanceMeters() == null && summary.steepDistanceMeters() == null
+                    && summary.steepSectionRatioPercent() == null, "v1 문서의 미지원 급경사 요약");
+        }
         Diagnostics diagnostics = document.diagnostics();
         require(diagnostics != null && diagnostics.removedConsecutiveDuplicateCount() != null
                 && diagnostics.removedConsecutiveDuplicateCount() >= 0
