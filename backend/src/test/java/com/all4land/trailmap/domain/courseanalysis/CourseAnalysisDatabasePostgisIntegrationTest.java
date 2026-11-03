@@ -108,6 +108,41 @@ class CourseAnalysisDatabasePostgisIntegrationTest {
     }
 
     @Test
+    void v2SteepPoliciesArePersistedSeparatelyAndOldProfilesStayReadable() {
+        rollback(fixture -> {
+            var legacy = importer.importFile(fixture.file(), fixture.name(), null);
+            var root = fixture.document();
+            root.put("schema_version", 2).put("algorithm_version", "course-dem-v2-steep-20.0");
+            section(root, "settings").put("steep_slope_threshold_percent", 20)
+                    .put("steep_slope_method", "absolute_slope_gte_distance_weighted");
+            section(root, "summary").put("slope_analyzed_distance_meters", 20)
+                    .put("steep_distance_meters", 20).put("steep_section_ratio_percent", 100);
+            var file = write(inputDirectory, mapper, root);
+            var first = importer.importFile(file, fixture.name(), null);
+            assertThat(first.analysisId()).isNotEqualTo(legacy.analysisId());
+            assertThat(importer.importFile(file, fixture.name(), null).inserted()).isFalse();
+            assertThat(jdbc.queryForObject("SELECT steep_section_ratio_percent FROM course_analysis WHERE analysis_id=?",
+                    Double.class, first.analysisId())).isEqualTo(100);
+            assertThat(store.load(legacy.analysisId()).document().schemaVersion()).isEqualTo(1);
+            mvc.perform(get("/v1/courses/" + fixture.courseId() + "/analysis"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.metrics.steepSectionRatioPercent").value(100))
+                    .andExpect(jsonPath("$.data.settings.steepSlopeThresholdPercent").value(20));
+            root.put("algorithm_version", "course-dem-v2-steep-60.0");
+            section(root, "settings").put("steep_slope_threshold_percent", 60);
+            section(root, "summary").put("steep_distance_meters", 10).put("steep_section_ratio_percent", 50);
+            var second = importer.importFile(write(inputDirectory, mapper, root), fixture.name(), null);
+            assertThat(second.analysisId()).isNotEqualTo(first.analysisId());
+            mvc.perform(get("/v1/course-analyses/" + first.analysisId() + "/profile"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.analysis.metrics.steepSectionRatioPercent").value(100));
+            mvc.perform(get("/v1/course-analyses/" + second.analysisId() + "/profile"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.analysis.metrics.steepSectionRatioPercent").value(50));
+            jdbc.update("UPDATE course_analysis SET steep_section_ratio_percent=0 WHERE analysis_id=?", second.analysisId());
+            mvc.perform(get("/v1/course-analyses/" + second.analysisId() + "/profile"))
+                    .andExpect(status().isServiceUnavailable());
+        });
+    }
+
+    @Test
     void repeatedImportsAreIdempotentAndConflictsCannotOverwriteTheDocument() {
         rollback(fixture -> {
             var first = importer.importFile(fixture.file(), fixture.name(), null);

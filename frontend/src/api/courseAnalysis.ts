@@ -58,6 +58,10 @@ function parseSettings(value: unknown): AnalysisSettings | null {
     || !['samplingMethod', 'resamplingMethod', 'distanceMethod', 'elevationUnit', 'elevationUnitSource',
       'elevationProcessing', 'slopeConvention'].every(key => text(value[key]))
     || !(value.verticalReference === null || text(value.verticalReference))) return fail();
+  const threshold = value.steepSlopeThresholdPercent, method = value.steepSlopeMethod;
+  if (threshold != null || method != null) {
+    if (!number(threshold) || threshold <= 0 || method !== 'absolute_slope_gte_distance_weighted') return fail();
+  }
   return { ...value } as AnalysisSettings;
 }
 
@@ -121,7 +125,8 @@ export function parseCourseAnalysisProfile(value: unknown, expected: CourseAnaly
   }
   if (analysis.analysisId === null || METRICS.some(key => analysis.metrics[key] !== expected.metrics[key])
     || !analysis.settings || !expected.settings
-    || (Object.keys(expected.settings) as (keyof AnalysisSettings)[]).some(key => analysis.settings![key] !== expected.settings![key])) return fail();
+    || [...new Set([...Object.keys(expected.settings), ...Object.keys(analysis.settings)])]
+      .some(key => analysis.settings![key as keyof AnalysisSettings] !== expected.settings![key as keyof AnalysisSettings])) return fail();
   let previousDistance = -1;
   const samples = result.samples.map((item, index) => {
     if (!record(item) || item.sampleIndex !== index || !number(item.distanceMeters) || item.distanceMeters < 0

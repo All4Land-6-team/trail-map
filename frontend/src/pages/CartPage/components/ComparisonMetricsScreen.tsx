@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "../../../components/common/Button";
 import { Typography } from "../../../components/common/Typography";
 import { BottomNavigation, TopBar, type BottomDestination } from "../../../components/layout";
-import { formatAnalysisDistance, formatAnalysisDuration, type ComparisonCourseView } from "../../../utils/courseComparison";
+import { analysisSteepNotice, formatAnalysisDistance, formatAnalysisDuration, formatSteepRatio,
+  steepSlopeThreshold, type ComparisonCourseView } from "../../../utils/courseComparison";
 import type { CourseComparisonState } from "../../../types/courseAnalysis";
 import { ComparisonAnalysisStatus } from "./ComparisonAnalysisStatus";
 import type { CartCourse } from "../types";
@@ -40,9 +41,9 @@ const metrics: readonly Metric[] = [
     formatValue: (course) => formatAnalysisDuration(course.analysis?.metrics.estimatedDurationSeconds),
   },
   {
-    label: "평균 경사 비교",
-    getValue: () => null,
-    formatValue: () => "—",
+    label: "급경사 비율 비교",
+    getValue: (course) => course.analysis?.metrics.steepSectionRatioPercent ?? null,
+    formatValue: (course) => formatSteepRatio(course.analysis?.metrics.steepSectionRatioPercent),
   },
 ];
 
@@ -61,6 +62,10 @@ export function ComparisonMetricsScreen({
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const schedulableCourses = courses.filter(course => course.scheduleAvailable !== false);
   const mountainName = analysisState.status === 'success' ? analysisState.data.mountainName : courses[0]?.mountain ?? '산';
+  const steepThresholds = new Set(analysisCourses.filter(course => course.analysis?.metrics.steepSectionRatioPercent != null)
+    .map(course => steepSlopeThreshold(course.analysis)));
+  const differentSteepPolicies = steepThresholds.has(null) || steepThresholds.size > 1;
+  const steepNotices = [...new Set(analysisCourses.map(course => analysisSteepNotice(course.analysis)).filter(value => value !== null))];
 
   return (
     <main className="cart-screen cart-metrics-screen">
@@ -105,19 +110,26 @@ export function ComparisonMetricsScreen({
                         <Typography variant="buttonLabel" className="cart-metric-value">
                           {metric.formatValue(course)}
                         </Typography>
-                        {value != null && <span className="cart-metric-track" aria-hidden="true">
+                        {value != null && !(metric.label === "급경사 비율 비교" && differentSteepPolicies)
+                          && <span className="cart-metric-track" aria-hidden="true">
                           <span style={{ width: `${(value / maxValue) * 100}%`, backgroundColor: course.color }} />
                         </span>}
                       </li>
                     );
                   })}
                 </ul>
+                {metric.label === "급경사 비율 비교" && <>
+                  {differentSteepPolicies && <Typography as="p" variant="bodySmall" className="cart-metrics-note">
+                    급경사 기준이 다르거나 확인되지 않은 코스가 있어 직접 비교하기 어려워요. 분석 상태에서 각 기준을 확인해 주세요.
+                  </Typography>}
+                  {steepNotices.length === 1 && <Typography as="p" variant="bodySmall" className="cart-metrics-note">{steepNotices[0]}</Typography>}
+                </>}
               </section>
             );
           })}
         </div>
         <Typography as="p" variant="bodySmall" className="cart-metrics-note">
-          미계산 값은 —로 표시해요. 평균 경사는 아직 제공하지 않아요.
+          미계산 값은 —로 표시해요.
         </Typography>
         <ComparisonAnalysisStatus state={analysisState} courses={analysisCourses} onRetry={onRetry} />
         <nav className="cart-course-detail-links" aria-label="선택한 코스 상세">

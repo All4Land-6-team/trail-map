@@ -95,7 +95,8 @@ public class CourseAnalysisService {
                 || !close(summary.minElevationMeters(), metrics.minElevationMeters())
                 || !close(summary.maxElevationMeters(), metrics.maxElevationMeters())
                 || !close(summary.elevationGainMeters(), metrics.elevationGainMeters())
-                || !close(summary.elevationLossMeters(), metrics.elevationLossMeters())) {
+                || !close(summary.elevationLossMeters(), metrics.elevationLossMeters())
+                || document.schemaVersion() == 2 && !close(summary.steepSectionRatioPercent(), metrics.steepSectionRatioPercent())) {
             throw new CourseAnalysisException(CourseAnalysisErrorCode.DATA_UNAVAILABLE);
         }
         return stored;
@@ -117,7 +118,8 @@ public class CourseAnalysisService {
         // JDBC의 부동소수점 전송 표현이 달라도 같은 분석의 수치가 달라지지 않는다.
         var metrics = new Metrics(summary.distanceMeters(), row.metrics().estimatedDurationSeconds(),
                 summary.minElevationMeters(), summary.maxElevationMeters(), summary.elevationGainMeters(),
-                summary.elevationLossMeters(), row.metrics().steepSectionRatioPercent());
+                summary.elevationLossMeters(), document.schemaVersion() == 2
+                        ? summary.steepSectionRatioPercent() : row.metrics().steepSectionRatioPercent());
         return new CourseAnalysisResponse(row.courseId(), row.mountainId(), row.currentCourseVersion(), row.analysisId(),
                 row.courseVersion(), row.demSourceId(), row.algorithmVersion(), row.sourceType(), document.course().sourceKind(),
                 outdated ? AnalysisQualityStatus.OUTDATED : row.qualityStatus(), row.qualityStatus(), List.copyOf(reasons),
@@ -127,7 +129,8 @@ public class CourseAnalysisService {
                         summary.analyzedSegmentCount()),
                 new Settings(settings.sampleIntervalMeters(), settings.samplingMethod(), settings.resamplingMethod(),
                         settings.distanceMethod(), settings.elevationUnit(), settings.elevationUnitSource(),
-                        settings.verticalReference(), settings.elevationProcessing(), settings.slopeConvention()),
+                        settings.verticalReference(), settings.elevationProcessing(), settings.slopeConvention(),
+                        settings.steepSlopeThresholdPercent(), settings.steepSlopeMethod()),
                 "/api/v1/course-analyses/" + row.analysisId() + "/profile");
     }
 

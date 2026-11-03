@@ -24,8 +24,9 @@ from rasterio.windows import Window
 
 from trail_map_data.dem import paths_alias, validate_dem_dataset
 
-ALGORITHM_VERSION = "course-dem-v1"
-SCHEMA_VERSION = 1
+ALGORITHM_VERSION = "course-dem-v2"
+SCHEMA_VERSION = 2
+STEEP_SLOPE_METHOD = "absolute_slope_gte_distance_weighted"
 _DISTANCE_EPSILON = 1e-6
 _UNIT_FACTORS = {"m": 1.0, "ft": 0.3048}
 _UNIT_NAMES = {
@@ -57,11 +58,16 @@ class AnalysisConfig:
     vertical_reference: str | None = None
     max_samples: int = 100_000
     assume_elevation_unit: str | None = None
+    steep_slope_threshold_percent: float = 20.0
 
     def __post_init__(self) -> None:
         if (not _finite_number(self.sample_interval_meters)
                 or self.sample_interval_meters <= 0):
             raise CourseAnalysisError("샘플 간격은 유한한 양수여야 합니다")
+        if (not _finite_number(self.steep_slope_threshold_percent)
+                or self.steep_slope_threshold_percent <= 0):
+            raise CourseAnalysisError("급경사 임계값은 유한한 양수(%)여야 합니다")
+        object.__setattr__(self, "steep_slope_threshold_percent", float(self.steep_slope_threshold_percent))
         if not isinstance(self.sampling_method, str) or self.sampling_method not in {"nearest", "bilinear"}:
             raise CourseAnalysisError("샘플링 방식은 nearest 또는 bilinear여야 합니다")
         if not isinstance(self.elevation_unit, str) or self.elevation_unit not in {"auto", "m", "ft", "unknown"}:
@@ -279,9 +285,12 @@ def analyze_course(
             "band_unit": dataset.units[0], "band_scale": dataset.scales[0],
             "band_offset": dataset.offsets[0],
         }
-    summary, status, reasons = _summarize(samples, unit, unit_source, config.vertical_reference)
+    summary, status, reasons = _summarize(samples, unit, unit_source, config.vertical_reference,
+                                         config.steep_slope_threshold_percent)
     return {
-        "schema_version": SCHEMA_VERSION, "algorithm_version": ALGORITHM_VERSION,
+        "schema_version": SCHEMA_VERSION,
+        # 임계값을 바꾸면 기존 결과와 다른 계산 정책으로 적재한다.
+        "algorithm_version": f"{ALGORITHM_VERSION}-steep-{config.steep_slope_threshold_percent}",
         "source_type": "SERVICE_CALCULATED",
         "calculated_at": datetime.now(timezone.utc).isoformat(),
         "quality_status": status, "quality_reasons": reasons,
@@ -303,6 +312,8 @@ def analyze_course(
             "elevation_processing": "unsmoothed",
             "slope_convention": "signed_percent_from_previous_sample",
             "max_samples": config.max_samples,
+            "steep_slope_threshold_percent": config.steep_slope_threshold_percent,
+            "steep_slope_method": STEEP_SLOPE_METHOD,
         },
         "diagnostics": {"removed_consecutive_duplicate_count": duplicates,
                         "sample_status_counts": dict(Counter(p["sample_status"] for p in samples))},
@@ -310,12 +321,13 @@ def analyze_course(
     }
 
 
-def _summarize(samples, unit, unit_source, vertical_reference):
+def _summarize(samples, unit, unit_source, vertical_reference, steep_threshold):
     heights = [p["elevation_meters"] for p in samples if p["elevation_meters"] is not None]
     raw_valid = sum(p["sample_status"] == "VALID" for p in samples)
     covered = 0.0
     gain = loss = 0.0
     analyzed_segments = 0
+    slope_distance = steep_distance = 0.0
     for before, after in zip(samples, samples[1:]):
         distance = after["distance_meters"] - before["distance_meters"]
         if before["sample_status"] == after["sample_status"] == "VALID":
@@ -329,6 +341,9 @@ def _summarize(samples, unit, unit_source, vertical_reference):
         gain += max(difference, 0)
         loss += max(-difference, 0)
         analyzed_segments += 1
+        slope_distance += distance
+        if abs(after["slope_percent"]) >= steep_threshold:
+            steep_distance += distance
     if not math.isfinite(gain) or not math.isfinite(loss):
         raise CourseAnalysisError("누적 고도 변화량이 유한하지 않습니다")
     reasons = []
@@ -356,6 +371,10 @@ def _summarize(samples, unit, unit_source, vertical_reference):
         "elevation_gain_meters": gain if analyzed_segments else None,
         "elevation_loss_meters": loss if analyzed_segments else None,
         "analyzed_segment_count": analyzed_segments,
+        "slope_analyzed_distance_meters": slope_distance,
+        "steep_distance_meters": steep_distance,
+        "steep_section_ratio_percent": 100.0 * (steep_distance / slope_distance)
+        if slope_distance > 0 else None,
     }, status, reasons
 
 

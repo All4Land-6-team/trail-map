@@ -27,6 +27,8 @@ export type AnalysisSettings = {
   verticalReference: string | null;
   elevationProcessing: string;
   slopeConvention: string;
+  steepSlopeThresholdPercent?: number | null;
+  steepSlopeMethod?: string | null;
 };
 export type CourseAnalysis = {
   courseId: number;
