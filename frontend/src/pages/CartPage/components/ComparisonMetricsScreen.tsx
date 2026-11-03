@@ -24,7 +24,6 @@ type ComparisonMetricsScreenProps = {
 
 type Metric = {
   label: string;
-  compact?: boolean;
   getValue: (course: ComparisonCourseView) => number | null;
   formatValue: (course: ComparisonCourseView) => string;
 };
@@ -42,7 +41,6 @@ const metrics: readonly Metric[] = [
   },
   {
     label: "평균 경사 비교",
-    compact: true,
     getValue: () => null,
     formatValue: () => "—",
   },
@@ -73,63 +71,67 @@ export function ComparisonMetricsScreen({
         className="cart-metrics-topbar"
       />
 
-      <div className="cart-metrics-scroll">
-        <Typography variant="descriptionSmall" className="cart-metrics-eyebrow">
+      <div className="cart-metrics-scroll" role="region" aria-label="코스 비교 내용" tabIndex={0}>
+        <Typography variant="bodySmall" className="cart-metrics-eyebrow">
           {mountainName} · 선택한 {courses.length}개 코스
         </Typography>
-        <div className="cart-metric-course-chips" aria-label="비교 코스">
+        <ul className="cart-metric-course-chips" aria-label="비교 코스">
           {analysisCourses.map((course, index) => (
-            <div className="cart-metric-course-chip" key={course.id}>
-              <span style={{ backgroundColor: course.color }}>{String.fromCharCode(65 + index)}</span>
-              <Typography variant="controlLabel">{course.shortName}</Typography>
-            </div>
+            <li className="cart-metric-course-chip" key={course.id}>
+              <span style={{ backgroundColor: course.color }} aria-hidden="true">{String.fromCharCode(65 + index)}</span>
+              <Typography variant="controlLabel" title={course.name}>{course.shortName}</Typography>
+            </li>
           ))}
-        </div>
+        </ul>
 
         <Typography as="h2" variant="headingCard" className="cart-metrics-heading">코스별 비교</Typography>
         <div className="cart-metric-cards">
           {metrics.map((metric) => {
             const maxValue = Math.max(...analysisCourses.map((course) => metric.getValue(course) ?? 0), 1);
             return (
-              <section className={["cart-metric-card", metric.compact && "cart-metric-card--compact"].filter(Boolean).join(" ")} key={metric.label}>
-                <Typography as="h3" variant={metric.compact ? "dataAuxiliary" : "controlLabel"}>{metric.label}</Typography>
-                {analysisCourses.map((course, index) => {
-                  const value = metric.getValue(course);
-                  const rowVariant = metric.compact ? "dataAuxiliary" : "descriptionSmall";
-                  return (
-                    <div className="cart-metric-row" key={course.id}>
-                      <Typography variant={metric.compact ? "dataAuxiliary" : "badgeLabel"} style={{ color: course.color }}>
-                        {String.fromCharCode(65 + index)}
-                      </Typography>
-                      <Typography variant={rowVariant}>{course.shortName}</Typography>
-                      <span className="cart-metric-track" aria-hidden="true">
-                        {value != null && <span style={{ width: `${(value / maxValue) * 100}%`, backgroundColor: course.color }} />}
-                      </span>
-                      <Typography variant="badgeLabel" className="cart-metric-value">
-                        {metric.formatValue(course)}
-                      </Typography>
-                    </div>
-                  );
-                })}
+              <section className="cart-metric-card" key={metric.label} aria-label={metric.label}>
+                <Typography as="h3" variant="buttonLabel">{metric.label}</Typography>
+                <ul className="cart-metric-rows">
+                  {analysisCourses.map((course, index) => {
+                    const value = metric.getValue(course);
+                    return (
+                      <li className="cart-metric-row" key={course.id}>
+                        <span className="cart-metric-identity">
+                          <Typography variant="controlLabel" className="cart-metric-key" style={{ backgroundColor: course.color }} aria-hidden="true">
+                            {String.fromCharCode(65 + index)}
+                          </Typography>
+                          <Typography variant="bodyMedium" className="cart-metric-course-name" title={course.name}>{course.shortName}</Typography>
+                        </span>
+                        <Typography variant="buttonLabel" className="cart-metric-value">
+                          {metric.formatValue(course)}
+                        </Typography>
+                        {value != null && <span className="cart-metric-track" aria-hidden="true">
+                          <span style={{ width: `${(value / maxValue) * 100}%`, backgroundColor: course.color }} />
+                        </span>}
+                      </li>
+                    );
+                  })}
+                </ul>
               </section>
             );
           })}
         </div>
-        <Typography variant="descriptionSmall" className="cart-metrics-note">
+        <Typography as="p" variant="bodySmall" className="cart-metrics-note">
           미계산 값은 —로 표시해요. 평균 경사는 아직 제공하지 않아요.
         </Typography>
         <ComparisonAnalysisStatus state={analysisState} courses={analysisCourses} onRetry={onRetry} />
-        <div className="cart-course-detail-links">
+        <nav className="cart-course-detail-links" aria-label="선택한 코스 상세">
           {courses.map((course) => (
-            <button type="button" key={course.id} onClick={() => onCourseDetail(course.id)}>
-              {course.shortName} 상세 ›
+            <button type="button" key={course.id} onClick={() => onCourseDetail(course.id)} aria-label={`${course.name} 상세 보기`}>
+              <Typography variant="bodyMedium">{course.shortName}</Typography>
+              <Typography variant="controlLabel">상세 보기 <span aria-hidden="true">›</span></Typography>
             </button>
           ))}
-        </div>
+        </nav>
       </div>
 
       <section className="cart-metrics-actions" aria-label="코스 비교 작업">
-        <Typography variant="descriptionSmall">이 코스들 중 하나를 일정으로 등록할까요?</Typography>
+        <Typography as="p" variant="bodySmall">이 코스들 중 하나를 일정으로 등록할까요?</Typography>
         <div>
           <Button variant="secondary" fullWidth onClick={onKeepCart}>담기 유지</Button>
           <Button fullWidth disabled={!schedulableCourses.length} onClick={() => setScheduleOpen(true)}>
