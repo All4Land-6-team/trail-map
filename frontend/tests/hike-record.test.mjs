@@ -218,6 +218,26 @@ test("위치를 받으면 코스상 남은 거리를 다시 계산하고, 하산
   assert.ok(Math.abs(getHikeSession().courseProgress.remainingMeters - 2_113) < 3);
 });
 
+test("코스 밖에서 시작하면 코스에 들어올 때까지 진행 0·남은 거리 전체, 들어온 뒤에는 코스 기준으로 계산한다", () => {
+  finishHikeSession();
+  startHikeSession(schedule, "bukhansan", true, record({ hikeRecordId: 32, traveledPath: [] }));
+  // 코스 중간에서 동쪽으로 약 880m: 가장 가까운 코스 지점은 중간이지만 진행으로 치지 않는다.
+  recordHikePosition([126.96, 37.64], true);
+  const outside = getHikeSession().courseProgress;
+  assert.equal(outside.alongMeters, 0);
+  assert.equal(outside.remainingMeters, outside.totalMeters);
+  assert.ok(outside.offCourseMeters > 800);
+  assert.equal(getHikeSession().reachedCourse, false);
+
+  // 코스에 들어오면 그때부터 코스 기준
+  recordHikePosition([126.95, 37.635], true);
+  assert.equal(getHikeSession().reachedCourse, true);
+  assert.ok(Math.abs(getHikeSession().courseProgress.alongMeters - 556) < 2);
+  // 한 번 들어온 뒤에는 잠시 벗어나도 진행을 0으로 되돌리지 않는다.
+  recordHikePosition([126.951, 37.64], true);
+  assert.ok(getHikeSession().courseProgress.alongMeters > 1_000);
+});
+
 test("새로고침 후 이어 간 등산은 마지막 위치로 남은 거리를 계산한다", () => {
   finishHikeSession();
   restoreHikeSession({ schedule, mountainId: "bukhansan", alertsOn: true, phase: "active", startedAt: "2026-10-29T02:40:00Z",

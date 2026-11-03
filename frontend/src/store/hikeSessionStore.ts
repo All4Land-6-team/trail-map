@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { HikeRecord } from "../api/hikeRecordApi";
 import type { HikeSchedule, LngLat } from "../types/hike";
-import { courseProgress, distanceMeters, type CourseProgress } from "../utils/hikeTracking.ts";
+import { courseProgress, distanceMeters, gateCourseProgress, hasReachedCourse, OFF_COURSE_METERS, type CourseProgress } from "../utils/hikeTracking.ts";
 
 export type HikeSession = {
   schedule: HikeSchedule;
@@ -28,6 +28,8 @@ export type HikeSession = {
   courseDistanceMeters?: number;
   /** 현재 위치를 진행 방향 코스 경로에 옮겨 계산한 남은 거리·코스 이탈 거리 */
   courseProgress?: CourseProgress;
+  /** 코스 이탈 기준 안으로 한 번이라도 들어왔는지. 들어오기 전에는 진행 거리를 0으로 둔다. */
+  reachedCourse?: boolean;
   /** 하산을 시작한 지점의 traveledPath 순번. 하산 중 지도에는 여기부터의 이동 경로만 그린다. */
   descentPathStart?: number;
 };
@@ -124,7 +126,11 @@ function withCourseProgress(next: HikeSession, previousAlongMeters?: number): Hi
   const progress = next.coursePath && next.currentPosition
     ? courseProgress(directedCoursePath(next.coursePath, next.phase), next.currentPosition, previousAlongMeters) ?? undefined
     : undefined;
-  return { ...next, courseProgress: progress };
+  // 새로고침으로 복원한 기록은 저장된 이동 경로로 코스에 들어온 적이 있는지 다시 판단한다.
+  const reachedCourse = next.reachedCourse
+    ?? (next.coursePath ? hasReachedCourse(next.coursePath, next.traveledPath) : false);
+  const reached = reachedCourse || (progress !== undefined && progress.offCourseMeters <= OFF_COURSE_METERS);
+  return { ...next, reachedCourse: reached, courseProgress: progress && gateCourseProgress(progress, reached) };
 }
 
 /** mountainId는 예시 데이터 모드에서만 넘긴다. 일정 API 일정은 일정의 서버 번호를 쓴다. */

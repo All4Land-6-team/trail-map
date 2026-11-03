@@ -87,3 +87,40 @@ export function courseProgress(route: LngLat[], position: LngLat, previousAlongM
   return { alongMeters: best.alongMeters, remainingMeters: Math.max(0, totalMeters - best.alongMeters),
     totalMeters, offCourseMeters: best.offCourseMeters };
 }
+
+/** 등산을 시작할 수 있는 코스와의 최대 거리. 들머리 주차장·GPS 오차를 감안해 코스 이탈 기준보다 넓게 둔다. */
+export const START_COURSE_METERS = 200;
+
+/** 위치와 코스 선 사이의 가장 가까운 거리(m). 코스 좌표가 2개 미만이면 null */
+export function distanceToCourseMeters(route: LngLat[], position: LngLat): number | null {
+  if (route.length < 2) return null;
+  return route.slice(1).reduce((min, end, index) => Math.min(min, projectOnSegment(route[index], end, position).offCourseMeters), Infinity);
+}
+
+/** 이동 경로 중 한 점이라도 코스 이탈 기준(OFF_COURSE_METERS) 안에 들어온 적이 있는지 */
+export function hasReachedCourse(route: LngLat[], path: LngLat[]) {
+  return path.some(point => (distanceToCourseMeters(route, point) ?? Infinity) <= OFF_COURSE_METERS);
+}
+
+/**
+ * 코스에 아직 들어오지 않았으면 진행 거리를 0(남은 거리 = 코스 전체)으로 둔다.
+ * 코스 밖에서 시작하면 가장 가까운 코스 지점이 중간일 수 있어 진행이 앞서 표시되는 것을 막는다.
+ * 코스 이탈 거리는 그대로 두어 "코스에서 ○m 떨어져 있어요" 안내는 계속 보인다.
+ */
+export function gateCourseProgress(progress: CourseProgress, reachedCourse: boolean): CourseProgress {
+  return reachedCourse ? progress : { ...progress, alongMeters: 0, remainingMeters: progress.totalMeters };
+}
+
+/**
+ * 등산 시작 가능 여부. 코스에서 START_COURSE_METERS보다 멀면 시작하지 않는다.
+ * 코스 경로를 아직 받지 못했으면(경로 없음) 확인할 수 없어 시작을 막지 않는다.
+ */
+export function hikeStartDistance(route: LngLat[], position: LngLat) {
+  const meters = distanceToCourseMeters(route, position);
+  return { allowed: meters === null || meters <= START_COURSE_METERS, distanceMeters: meters };
+}
+
+/** 코스까지 거리 안내 문구용: 1km 미만은 m, 이상은 km(소수 첫째 자리) */
+export function formatCourseDistance(meters: number) {
+  return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
+}

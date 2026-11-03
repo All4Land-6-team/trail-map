@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { courseProgress, distanceMeters, isPathPosition, pathLengthMeters } from "../src/utils/hikeTracking.ts";
+import {
+  courseProgress, distanceMeters, distanceToCourseMeters, formatCourseDistance, gateCourseProgress, hasReachedCourse, hikeStartDistance,
+  isPathPosition, pathLengthMeters,
+} from "../src/utils/hikeTracking.ts";
 
 const start = [126.9783, 37.5666];
 // 위도 0.0001도 ≈ 11m
@@ -73,4 +76,41 @@ test("화면에 바로 보여 줄 이동 거리는 경로 구간 길이의 합�
   assert.equal(pathLengthMeters([]), 0);
   assert.equal(pathLengthMeters([[126.95, 37.63]]), 0);
   near1(pathLengthMeters(course), distanceMeters(course[0], course[1]) + distanceMeters(course[1], course[2]), 0.01);
+});
+
+test("코스까지 거리는 코스 선의 가장 가까운 지점까지의 거리다", () => {
+  // 첫 구간(남북 방향) 서쪽 약 30m
+  near1(distanceToCourseMeters(course, [126.94966, 37.635]), 30, 1.5);
+  assert.equal(distanceToCourseMeters([[126.95, 37.63]], [126.95, 37.63]), null);
+});
+
+test("코스 200m 안에서만 등산을 시작할 수 있고, 코스 경로가 없으면 막지 않는다", () => {
+  // 첫 구간 서쪽 약 150m는 시작 가능, 약 880m는 시작 불가
+  assert.equal(hikeStartDistance(course, [126.9483, 37.635]).allowed, true);
+  const far = hikeStartDistance(course, [126.94, 37.635]);
+  assert.equal(far.allowed, false);
+  near1(far.distanceMeters, 881, 5);
+  assert.deepEqual(hikeStartDistance([], [126.94, 37.635]), { allowed: true, distanceMeters: null });
+});
+
+test("코스까지 거리 안내는 1km 미만은 m, 이상은 km로 표시한다", () => {
+  assert.equal(formatCourseDistance(149.6), "150m");
+  assert.equal(formatCourseDistance(1_234), "1.2km");
+});
+
+test("코스에 들어오기 전에는 진행 거리를 0, 남은 거리를 코스 전체로 둔다", () => {
+  // 코스 밖(동쪽 약 880m)에서 가장 가까운 코스 지점은 중간이지만 진행으로 치지 않는다.
+  const progress = courseProgress(course, [126.96, 37.635]);
+  assert.ok(progress.alongMeters > 0);
+  const gated = gateCourseProgress(progress, false);
+  assert.equal(gated.alongMeters, 0);
+  assert.equal(gated.remainingMeters, progress.totalMeters);
+  assert.equal(gated.offCourseMeters, progress.offCourseMeters);
+  assert.deepEqual(gateCourseProgress(progress, true), progress);
+});
+
+test("이동 경로 중 한 점이라도 코스 50m 안에 들어왔으면 코스에 들어온 것으로 본다", () => {
+  assert.equal(hasReachedCourse(course, [[126.94, 37.635], [126.94966, 37.635]]), true);
+  assert.equal(hasReachedCourse(course, [[126.94, 37.635]]), false);
+  assert.equal(hasReachedCourse(course, []), false);
 });
