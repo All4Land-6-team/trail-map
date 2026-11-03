@@ -28,8 +28,8 @@ export function HikeCalendarPage() {
   const schedule = schedules.find(item => item.date === selectedKey);
 
   return <div className="hike-page hike-calendar-page">
+    <TopBar title="내 등산" showAction={false} onBack={leaveMyHikes} />
     <main className="hike-page__body hike-calendar-page__body">
-      <TopBar title="내 등산" showAction={false} onBack={leaveMyHikes} />
       <NicknameCard />
       <Calendar className="hike-calendar-page__calendar" month={month} selectedDate={selected}
         scheduledDates={schedules.map(item => item.date)} onMonthChange={setMonth} onDateSelect={setSelected} />

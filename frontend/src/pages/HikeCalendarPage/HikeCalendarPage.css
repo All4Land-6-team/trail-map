@@ -1,4 +1,6 @@
-.hike-calendar-page__body { display: flex; flex-direction: column; padding: 16px 16px 24px; }
+/* 상단바는 스크롤 영역 밖에 두어 홈·커뮤니티와 같은 크기·위치(16px 여백, 높이 55px)로 고정한다 */
+.hike-calendar-page > .af-top-bar { flex: none; width: auto; margin: 16px 16px 0; }
+.hike-calendar-page__body { display: flex; flex-direction: column; padding: 0 16px 24px; }
 .hike-calendar-page__calendar { margin-top: 16px; }
 
 /* 닉네임 (후기 작성자 이름) */
