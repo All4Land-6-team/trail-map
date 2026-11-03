@@ -7,7 +7,7 @@ import { BottomSheet } from "../../../components/overlay";
 import { BUKHANSAN_CENTER } from "../data";
 import type { CartCourse, ElevationChartSeries } from "../types";
 import { CourseElevationChart } from "./CourseElevationChart";
-import { useResizableMapSheet } from "../../../hooks/useResizableMapSheet";
+import { useSnappingMapSheet } from "../../../hooks/useSnappingMapSheet";
 import type { CourseComparisonState } from "../../../types/courseAnalysis";
 import { analysisQualityLabel, type ComparisonCourseView } from "../../../utils/courseComparison";
 import { ComparisonAnalysisStatus } from "./ComparisonAnalysisStatus";
@@ -45,9 +45,9 @@ export function CourseCompareScreen({
     color: course.color,
     points: course.profile?.samples.map(sample => ({ distanceKm: sample.distanceMeters / 1000, elevationMeters: sample.elevationMeters })) ?? [],
   })), [analysisCourses]);
-  const { rootRef, mapBottomInset, bodyHidden, handleProps } = useResizableMapSheet({
-    kind: "comparison", navigationSelector: ".cart-bottom-nav", label: "고도 그래프 높이 조절",
-    sheetSelector: ".cart-compare-sheet", controlsSelector: ".cart-map-topbar, .cart-map-actions",
+  const { rootRef, style, mapBottomInset, peek, handleProps } = useSnappingMapSheet({
+    navigationSelector: ".cart-bottom-nav", label: "고도 그래프 바텀시트",
+    sheetSelector: ".cart-compare-sheet", mapPreview: true,
   });
   const terrainEnabled = supportsTerrain(courses[0]?.mountainId);
   useEffect(() => {
@@ -67,7 +67,7 @@ export function CourseCompareScreen({
   const mountainName = analysisState.status === 'success' ? analysisState.data.mountainName : courses[0]?.mountain ?? '산';
 
   return (
-    <main ref={rootRef} className="cart-screen cart-map-screen cart-compare-screen">
+    <main ref={rootRef} className="cart-screen cart-map-screen cart-compare-screen" style={style}>
       <BaseMap
         ariaLabel={`${mountainName} 비교 코스 지도`}
         center={courses[0]?.routeCoordinates[0] ?? BUKHANSAN_CENTER}
@@ -98,8 +98,8 @@ export function CourseCompareScreen({
         title={`코스 ${courses.length}개 비교`}
         showClose={false}
         showDescription={false}
-        className="cart-compare-sheet"
-        bodyHidden={bodyHidden}
+        className={`cart-compare-sheet snapping-map-sheet${peek ? " snapping-map-sheet--peek" : ""}`}
+        bodyHidden={peek}
         handleProps={handleProps}
         headerAction={<button type="button" className="cart-metrics-link" onClick={onViewMetrics}>비교표 ›</button>}
         content={(

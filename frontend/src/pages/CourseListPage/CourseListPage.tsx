@@ -6,7 +6,7 @@ import { Button } from "../../components/common/Button";
 import { BottomNavigation, PageIndicator, TopBar, type BottomDestination } from "../../components/layout";
 import { EmptyState, Toast } from "../../components/feedback";
 import { BottomSheet } from "../../components/overlay";
-import { useResizableMapSheet } from "../../hooks/useResizableMapSheet";
+import { useSnappingMapSheet } from "../../hooks/useSnappingMapSheet";
 import { coursePaths } from "../../routes/courseRoutes";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
@@ -32,8 +32,8 @@ export type CourseListPageProps = {
 export function CourseListPage({ mountainId, initialCourseId, onBack = () => navigateFromHome(homePaths.home), onCourseOpen, onScheduleOpen }: CourseListPageProps) {
   const schedules = useHikeSchedules();
   const enhancedMap = supportsTerrain(mountainId);
-  const { rootRef, mapBottomInset, handleProps, previewControls } = useResizableMapSheet({ kind: "courses", navigationSelector: ".course-page__nav", label: "코스 목록 시트 높이 조절", trackSettledInset: enhancedMap, minimumMapHeight: enhancedMap ? 240 : undefined,
-    sheetSelector: ".course-list-sheet", contentSelector: ".course-list-sheet__contents", controlsSelector: ".course-page__top, .course-map__actions" });
+  const { rootRef, style, peek, mapBottomInset, handleProps, previewControls } = useSnappingMapSheet({ navigationSelector: ".course-page__nav",
+    label: "코스 목록 바텀시트", trackSettledInset: enhancedMap, sheetSelector: ".course-list-sheet" });
   const [selectionRevision, setSelectionRevision] = useState(0);
   const discovery = useCourseDiscovery(mountainId, initialCourseId);
   const savedIds = useSavedCourseIds();
@@ -83,7 +83,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     else navigateFromHome(homePaths[destination]);
   }
 
-  if (state.status !== "success") return <main ref={rootRef} className="course-page course-page--status" aria-label="산별 코스 목록">
+  if (state.status !== "success") return <main ref={rootRef} className="course-page course-page--status" style={style} aria-label="산별 코스 목록">
     <TopBar title="코스 목록" onBack={onBack} showAction={false} />
     <div className="course-page__status" aria-live="polite">
       {state.status === "loading" ? <p role="status">코스 목록을 불러오는 중이에요.</p>
@@ -99,7 +99,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
   const selectedDifficulty = (difficulty: CourseDifficulty | "all") => difficulty === "all"
     ? !hasCourseFilters(filters) : filters.difficulty === difficulty;
 
-  return <main ref={rootRef} className="course-page" aria-label={`${mountain.name} 코스 탐색`}>
+  return <main ref={rootRef} className="course-page" style={style} aria-label={`${mountain.name} 코스 탐색`}>
     <div className="course-page__base" inert={discovery.filterOpen}>
       <div className="course-page__map-area">
         <CourseMap courses={courses} selected={selectedCourse} mountainId={mountainId} center={mountain.position}
@@ -112,15 +112,15 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
         <TopBar title={mountain.name} onBack={onBack} showAction={false} className="course-page__top" />
       </div>
       <BottomSheet title={`${mountain.name} 코스 ${courses.length}개`} showClose={false} showDescription={false}
-        handleProps={handleProps}
-        className="course-list-sheet" headerAction={<div className="course-list-sheet__controls">
+        handleProps={handleProps} bodyHidden={peek}
+        className={`course-list-sheet snapping-map-sheet${peek ? " snapping-map-sheet--peek" : ""}`} headerAction={<div className="course-list-sheet__controls">
           <Select aria-label="코스 정렬" value={sort} onChange={event => discovery.setSort(event.target.value === "name" ? "name" : "difficulty")}
             options={[{ value: "difficulty", label: "난이도별" }, { value: "name", label: "이름순" }]} />
           <Chip label="필터" variant="action" aria-haspopup="dialog" aria-expanded={discovery.filterOpen}
             icon={<Icon name="Filter" size={14} color="currentColor" />}
             onClick={event => { filterOpener.current = event.currentTarget; discovery.openFilter(); }}
             className={hasDetailedCourseFilters(filters) ? "course-list-sheet__filter course-list-sheet__filter--active" : "course-list-sheet__filter"} />
-        </div>} content={<div className="course-list-sheet__contents">
+        </div>} content={<>
           <div className="course-quick-filters" aria-label="코스 필터 조건">
             {(["all", "beginner", "intermediate", "advanced"] as const).map(value => <Chip key={value}
               label={value === "all" ? "전체" : COURSE_DIFFICULTY_LABELS[value]} selected={selectedDifficulty(value)}
@@ -137,7 +137,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
               onPageChange={index => selectExplicitly(courses[index].id)} />
           </> : <EmptyState title={allCourses.length ? "조건에 맞는 코스가 없어요." : "아직 등록된 코스가 없어요."}
             showIcon={false} description="" className="course-list-sheet__empty" />}
-        </div>} />
+        </>} />
       <BottomNavigation active="home" onNavigate={navigateTab} className="course-page__nav" />
     </div>
     {discovery.filterOpen && <CourseFilterSheet courses={allCourses} filters={filters} sort={sort}

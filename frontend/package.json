@@ -22,7 +22,7 @@
     "test:terrain": "node --experimental-strip-types --test tests/map-terrain.test.mjs",
     "test:facilities": "node --experimental-strip-types --test tests/facilities.test.mjs",
     "test:course-facilities": "node --experimental-strip-types --test tests/course-facilities.test.mjs tests/course-facilities-view.test.mjs",
-    "test:sheets": "node --experimental-strip-types --test tests/map-sheet-geometry.test.mjs tests/map-sheet-content.test.mjs tests/map-sheet-preview.test.mjs",
+    "test:sheets": "node --experimental-strip-types --test tests/map-sheet-geometry.test.mjs tests/map-sheet-preview.test.mjs tests/map-sheet-snap.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

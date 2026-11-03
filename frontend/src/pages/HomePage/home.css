@@ -1,5 +1,7 @@
 .home-page {
   --home-nav-height: calc(72px + env(safe-area-inset-bottom));
+  --map-sheet-nav-height: var(--home-nav-height);
+  --map-sheet-side-padding: 18px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -66,6 +68,7 @@
 .home-page__toast { position: absolute; z-index: 10; bottom: calc(var(--home-nav-height) + 10px); left: 50%; max-width: calc(100% - 32px); transform: translateX(-50%); text-align: center; }
 .home-map__base .base-map__notices { z-index: 2; top: calc(160px + env(safe-area-inset-top)); right: 12px; left: 12px; width: auto; max-height: calc(100% - 190px); overflow-y: auto; }
 @media (max-width: 350px) {
+  .home-page { --map-sheet-side-padding: 14px; }
   .home-search__bar { padding-right: 16px; padding-left: 14px; gap: 8px; }
   .home-search__bar .af-top-bar__title { font-size: 16px !important; }
   .home-explore-sheet { padding-right: 14px; padding-left: 14px; }
