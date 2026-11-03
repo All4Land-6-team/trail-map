@@ -113,10 +113,15 @@ public class CourseAnalysisService {
         if (document.course().sourceId() != null && !Objects.equals(document.course().sourceId(), row.currentSourceId())) {
             reasons.add("COURSE_SOURCE_CHANGED"); outdated = true;
         }
+        // 검증한 불변 문서의 정밀도를 사용해 요약·비교·프로필 응답을 일치시킨다.
+        // JDBC의 부동소수점 전송 표현이 달라도 같은 분석의 수치가 달라지지 않는다.
+        var metrics = new Metrics(summary.distanceMeters(), row.metrics().estimatedDurationSeconds(),
+                summary.minElevationMeters(), summary.maxElevationMeters(), summary.elevationGainMeters(),
+                summary.elevationLossMeters(), row.metrics().steepSectionRatioPercent());
         return new CourseAnalysisResponse(row.courseId(), row.mountainId(), row.currentCourseVersion(), row.analysisId(),
                 row.courseVersion(), row.demSourceId(), row.algorithmVersion(), row.sourceType(), document.course().sourceKind(),
                 outdated ? AnalysisQualityStatus.OUTDATED : row.qualityStatus(), row.qualityStatus(), List.copyOf(reasons),
-                row.calculatedAt(), row.metrics(),
+                row.calculatedAt(), metrics,
                 new Coverage(summary.sampleCount(), summary.validDemSampleCount(), summary.validElevationMetersSampleCount(),
                         summary.sampleCoveragePercent(), summary.coveredDistanceMeters(), summary.distanceCoveragePercent(),
                         summary.analyzedSegmentCount()),
