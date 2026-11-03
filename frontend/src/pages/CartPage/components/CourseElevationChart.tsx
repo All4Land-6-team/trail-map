@@ -30,7 +30,7 @@ export function CourseElevationChart({
     const chart = init(chartRef.current, undefined, { renderer: "svg" });
     instance.current = chart;
     const hideTooltip = () => chart.dispatchAction({ type: "hideTip" });
-    const scroller = chartRef.current.closest(".cart-compare-content");
+    const scroller = chartRef.current.closest(".af-bottom-sheet__content") ?? chartRef.current.closest(".cart-compare-content");
     scroller?.addEventListener("scroll", hideTooltip, { passive: true });
     window.addEventListener("resize", hideTooltip);
     const resizeObserver = new ResizeObserver(() => { hideTooltip(); chart.resize(); });

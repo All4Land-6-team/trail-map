@@ -1,6 +1,6 @@
 import { BottomNavigation, type BottomDestination } from "../../components/layout";
 import { Toast } from "../../components/feedback";
-import { useResizableMapSheet } from "../../hooks/useResizableMapSheet";
+import { useSnappingMapSheet } from "../../hooks/useSnappingMapSheet";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import type { TodayHikeSchedule } from "../../types/home";
 import { HomeExploreSheet } from "./components/HomeExploreSheet";
@@ -23,7 +23,8 @@ export function HomePage({
   previewSchedule,
 }: HomePageProps) {
   const home = useHomeDiscovery();
-  const { rootRef, handleProps } = useResizableMapSheet({ kind: "home", navigationSelector: ".home-page__nav", label: "산 탐색 시트 높이 조절" });
+  const { rootRef, handleProps, style, peek } = useSnappingMapSheet({ navigationSelector: ".home-page__nav",
+    sheetSelector: ".home-explore-sheet", label: "산 탐색 바텀시트" });
   const schedule = previewSchedule === "none" ? undefined : home.todaySchedule
     ? { ...home.todaySchedule, phase: previewSchedule === "active" ? "active" as const : home.todaySchedule.phase }
     : undefined;
@@ -45,7 +46,7 @@ export function HomePage({
     }
   }
 
-  return <main ref={rootRef} className="home-page" aria-label="산 탐색">
+  return <main ref={rootRef} className="home-page" style={style} aria-label="산 탐색">
     <div className="home-page__map-area">
       <HomeMap mountains={home.mountains} selectedMountainId={home.selectedMountainId}
         onSelect={selectMountain} onMapClick={home.closeSearch} />
@@ -56,7 +57,7 @@ export function HomePage({
       </div>
     </div>
     <HomeExploreSheet isSearching={home.isSearching} status={home.state.status}
-      handleProps={handleProps}
+      handleProps={handleProps} peek={peek}
       recentMountains={home.recentMountains} recommendedMountains={home.recommendedMountains}
       onSelect={selectMountain} onRetry={home.retry} />
     <BottomNavigation active="home" onNavigate={navigateTab} className="home-page__nav" />

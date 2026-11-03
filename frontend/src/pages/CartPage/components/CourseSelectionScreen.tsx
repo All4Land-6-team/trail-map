@@ -8,7 +8,7 @@ import { BaseMap, MapAction, supportsTerrain, type MapDimension, type MapRoute, 
 import { BottomSheet } from "../../../components/overlay";
 import { BUKHANSAN_CENTER, formatCourseDuration, MAX_COMPARISON_COURSES } from "../data";
 import type { CartCourse } from "../types";
-import { useDraggableCartSheet } from "./useDraggableCartSheet";
+import { useSnappingMapSheet } from "../../../hooks/useSnappingMapSheet";
 
 type CourseSelectionScreenProps = {
   courses: readonly CartCourse[];
@@ -48,13 +48,12 @@ export function CourseSelectionScreen({
   useEffect(() => {
     if (!terrainEnabled) map?.easeTo({ pitch: dimension === "3D" ? 50 : 0, duration: 350 });
   }, [dimension, map, terrainEnabled]);
-  const sheet = useDraggableCartSheet({
-    ariaLabel: "코스 목록 높이 조절",
-    openHeight: 360,
+  const { rootRef, style, peek, handleProps } = useSnappingMapSheet({
+    navigationSelector: ".cart-bottom-nav", sheetSelector: ".cart-selection-sheet", label: "담은 코스 바텀시트",
   });
 
   return (
-    <main className="cart-screen cart-map-screen" style={sheet.sheetStyle}>
+    <main ref={rootRef} className="cart-screen cart-map-screen cart-selection-screen" style={style}>
       <BaseMap
         ariaLabel={`${courses[0]?.mountain ?? "산"} 담은 코스 지도`}
         center={courses[0]?.routeCoordinates[0] ?? BUKHANSAN_CENTER}
@@ -86,14 +85,12 @@ export function CourseSelectionScreen({
         showClose={false}
         showDescription={false}
         showFooter
-        className="cart-selection-sheet"
-        bodyHidden={sheet.bodyHidden}
-        handleProps={sheet.handleProps}
+        className={`cart-selection-sheet snapping-map-sheet${peek ? " snapping-map-sheet--peek" : ""}`}
+        bodyHidden={peek}
+        handleProps={handleProps}
+        headerAction={<Typography variant="descriptionSmall" className="cart-selected-count">{selectedCourses.length}개 선택</Typography>}
         content={(
           <div className="cart-course-list">
-            <Typography variant="descriptionSmall" className="cart-selected-count">
-              {selectedCourses.length}개 선택
-            </Typography>
             {courses.map((course) => {
               const isSelected = selectedCourseIds.has(course.id);
               const selectionDisabled = !isSelected && selectionLimitReached;
