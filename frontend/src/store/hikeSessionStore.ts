@@ -5,7 +5,11 @@ import { courseProgress, distanceMeters, type CourseProgress } from "../utils/hi
 
 export type HikeSession = {
   schedule: HikeSchedule;
-  mountainId: string;
+  /**
+   * 예시 데이터 모드(일정에 서버 번호가 없을 때)의 예시 산 ID.
+   * 일정 API 일정은 schedule.serverMountainId·serverCourseId를 쓰므로 비워 둔다.
+   */
+  mountainId?: string;
   phase: "active" | "downhill" | "complete";
   alertsOn: boolean;
   startedAt: string;
@@ -30,7 +34,8 @@ export type HikeSession = {
 
 export type CompletedHike = {
   id: string;
-  mountainId: string;
+  /** 일정 API 일정은 서버 산 번호 문자열, 예시 데이터 모드는 예시 산 ID */
+  mountainId?: string;
   courseId: string;
   courseName: string;
   distanceKm: number;
@@ -98,6 +103,17 @@ function restoredDescentStart(next: HikeSession) {
   return nearest;
 }
 
+/**
+ * 다른 화면(커뮤니티 스팟·후기)에 넘길 산·코스 ID. 일정에 서버 번호가 있으면 그 번호,
+ * 없으면(예시 데이터 모드) 예시 산 ID와 화면 코스 ID
+ */
+export function hikeTargetIds({ schedule, mountainId }: Pick<HikeSession, "schedule" | "mountainId">) {
+  return {
+    mountainId: schedule.serverMountainId === undefined ? mountainId : String(schedule.serverMountainId),
+    courseId: schedule.serverCourseId === undefined ? schedule.courseId : String(schedule.serverCourseId),
+  };
+}
+
 /** 진행 방향의 코스 경로. 하산 중에는 정상에서 시작점 방향이다. */
 export function directedCoursePath(coursePath: LngLat[], phase: HikeSession["phase"]) {
   return phase === "downhill" ? [...coursePath].reverse() : coursePath;
@@ -111,7 +127,8 @@ function withCourseProgress(next: HikeSession, previousAlongMeters?: number): Hi
   return { ...next, courseProgress: progress };
 }
 
-export function startHikeSession(schedule: HikeSchedule, mountainId: string, alertsOn: boolean, record?: HikeRecord) {
+/** mountainId는 예시 데이터 모드에서만 넘긴다. 일정 API 일정은 일정의 서버 번호를 쓴다. */
+export function startHikeSession(schedule: HikeSchedule, mountainId: string | undefined, alertsOn: boolean, record?: HikeRecord) {
   if (session && session.phase !== "complete") return;
   const next: HikeSession = { schedule: { ...schedule }, mountainId, alertsOn, phase: "active", startedAt: new Date().toISOString(),
     traveledPath: [], ...(record && fromRecord(record)) };
@@ -145,8 +162,8 @@ export function finishHikeSession(record?: HikeRecord) {
     : { ...session, phase: "complete" as const, finishedAt: new Date().toISOString() };
   const finishedAt = finished.finishedAt ?? new Date().toISOString();
   const distanceKm = finished.traveledMeters === undefined ? session.schedule.distanceKm : finished.traveledMeters / 1000;
-  completedHikes = [{ id: record ? String(record.hikeRecordId) : crypto.randomUUID(), mountainId: session.mountainId,
-    courseId: session.schedule.courseId, courseName: session.schedule.courseName, distanceKm, finishedAt }, ...completedHikes];
+  completedHikes = [{ id: record ? String(record.hikeRecordId) : crypto.randomUUID(), ...hikeTargetIds(finished),
+    courseName: session.schedule.courseName, distanceKm, finishedAt }, ...completedHikes];
   update({ ...finished, phase: "complete", finishedAt });
 }
 

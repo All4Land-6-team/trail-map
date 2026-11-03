@@ -1,0 +1,23 @@
+.af-bottom-sheet.snapping-map-sheet {
+  height: var(--map-sheet-height, auto);
+  min-height: 32px;
+  max-height: calc(var(--app-viewport-height) - var(--map-sheet-nav-height) - 170px);
+  overflow: hidden;
+  border-radius: 25px 25px 0 0;
+  transition: var(--map-sheet-transition, none);
+}
+.af-bottom-sheet.snapping-map-sheet.snapping-map-sheet--peek { padding-bottom: 0; }
+.af-bottom-sheet.snapping-map-sheet.snapping-map-sheet--peek .af-bottom-sheet__body { display: none; }
+.af-bottom-sheet.snapping-map-sheet .af-bottom-sheet__handle-row {
+  flex: none;
+  width: auto;
+  height: 22px;
+  margin: -8px calc(-1 * var(--map-sheet-side-padding, 0px)) -10px;
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+}
+.af-bottom-sheet.snapping-map-sheet .af-bottom-sheet__handle-row:focus-visible { outline: 2px solid var(--af-green); outline-offset: -3px; border-radius: 25px 25px 0 0; }
+.af-bottom-sheet.snapping-map-sheet .af-bottom-sheet__body { overflow: hidden; }
+.af-bottom-sheet.snapping-map-sheet .af-bottom-sheet__content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
+@media (prefers-reduced-motion: reduce) { .af-bottom-sheet.snapping-map-sheet { transition: none; } }

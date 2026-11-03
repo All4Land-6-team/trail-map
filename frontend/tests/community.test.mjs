@@ -244,7 +244,9 @@ test('스팟 등록 지도는 등산 중 현재 위치를 우선하고 실패하
   const registration = readFileSync(new URL('../src/pages/CommunityPage/components/SpotRegistration.tsx', import.meta.url), 'utf8');
   const map = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
   const cssSource = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
-  assert.match(activePage, /mode: "active"[\s\S]*course: session\.schedule\.courseId/);
+  // 서버 일정은 실제 산·코스 ID를, 예시 일정은 기존 화면 ID를 전달한다.
+  assert.match(activePage, /const target = hikeTargetIds\(session\);[\s\S]*mode: "active"[\s\S]*course: target\.courseId/);
+  assert.match(activePage, /if \(target\.mountainId\) query\.set\("mountain", target\.mountainId\)/);
   assert.match(app, /spotRegistrationMode=\{query\.get\('mode'\) === 'active' \? 'active' : 'postHike'\}/);
   assert.match(app, /currentPosition: hikeSession\.currentPosition/);
   assert.match(page, /DEV_COURSE_IDS\[courseId\][\s\S]*course\.id === String\(dbCourseId\)/);

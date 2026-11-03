@@ -32,7 +32,11 @@ export type HikeSchedule = {
   date: string;
   /** HH:mm */
   startTime: string;
+  /** 화면 코스 ID. 예시 데이터에 있는 코스는 예시 ID, 없으면 `db-{서버 코스 번호}` */
   courseId: string;
+  /** 일정 API가 준 서버 DB의 코스·산 번호. 임시 데이터 모드에서는 없다. */
+  serverCourseId?: number;
+  serverMountainId?: number;
   mountainName: string;
   courseName: string;
   distanceKm: number;

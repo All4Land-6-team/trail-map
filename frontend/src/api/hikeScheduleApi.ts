@@ -1,4 +1,5 @@
 import { DEV_COURSE_IDS } from "../constants/hikeCourseIds.ts";
+import { databaseCourseId } from "../utils/courseIdentity.ts";
 import type { HikeSchedule } from "../types/hike";
 import { authHeaders } from "../store/authStore.ts";
 
@@ -38,9 +39,9 @@ export function apiBaseUrl() {
 
 const backendCourseIds = new Map(Object.entries(DEV_COURSE_IDS).map(([screenId, dbId]) => [dbId, screenId]));
 
-/** 화면 코스 ID → DB 코스 번호. 매핑에 없는 코스는 아직 일정 API로 저장할 수 없다. */
-function toBackendCourseId(courseId: string) {
-  const id = DEV_COURSE_IDS[courseId];
+/** 화면 코스 ID → DB 코스 번호. 예시 코스는 개발용 매핑, 실제 경로 코스(`db-{번호}`)는 그 번호. 둘 다 아니면 저장할 수 없다. */
+export function toBackendCourseId(courseId: string) {
+  const id = DEV_COURSE_IDS[courseId] ?? databaseCourseId(courseId) ?? undefined;
   if (id === undefined) throw new HikeScheduleApiError("unsupportedCourse", "이 코스는 아직 일정 등록을 지원하지 않아요.");
   return id;
 }
@@ -51,6 +52,8 @@ function toSchedule(response: ScheduleResponse): HikeSchedule {
     date: response.date,
     startTime: response.startTime,
     courseId: backendCourseIds.get(response.courseId) ?? `db-${response.courseId}`,
+    serverCourseId: response.courseId,
+    serverMountainId: response.mountainId,
     mountainName: response.mountainName,
     courseName: response.courseName,
     distanceKm: response.distanceMeters == null ? 0 : Math.round(response.distanceMeters / 100) / 10,

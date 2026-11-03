@@ -1,5 +1,6 @@
 .course-page {
   --course-nav-height: calc(72px + env(safe-area-inset-bottom));
+  --map-sheet-nav-height: var(--course-nav-height);
   position: relative; width: min(100%, 390px); height: 100dvh; margin: 0 auto; overflow: hidden;
   color: var(--af-ink); background: #edf3ea; font-family: "Noto Sans KR", sans-serif;
 }

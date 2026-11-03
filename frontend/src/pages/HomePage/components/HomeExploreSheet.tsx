@@ -13,13 +13,14 @@ type HomeExploreSheetProps = {
   onSelect: (mountainId: string) => void;
   onRetry: () => void;
   handleProps: HTMLAttributes<HTMLDivElement>;
+  peek: boolean;
 };
 
-export function HomeExploreSheet({ isSearching, status, recentMountains, recommendedMountains, onSelect, onRetry, handleProps }: HomeExploreSheetProps) {
+export function HomeExploreSheet({ isSearching, status, recentMountains, recommendedMountains, onSelect, onRetry, handleProps, peek }: HomeExploreSheetProps) {
   const displayedMountains = isSearching || recentMountains.length === 0 ? recommendedMountains : recentMountains;
   return <BottomSheet title="가고 싶은 산을 찾아보세요"
     description="산을 선택하면 코스와 후기를 볼 수 있어요."
-    showClose={false} className="home-explore-sheet" handleProps={handleProps}
+    showClose={false} className={`home-explore-sheet snapping-map-sheet${peek ? " snapping-map-sheet--peek" : ""}`} handleProps={handleProps} bodyHidden={peek}
     content={<div className="home-explore-sheet__body">
       {status === "idle" || status === "loading"
         ? <Typography as="p" variant="bodySmall" role="status">산 정보를 불러오고 있어요.</Typography>

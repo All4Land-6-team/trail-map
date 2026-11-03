@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { findCourse } from "../../api/hikeMock";
 import { Button } from "../../components/common/Button";
 import { Toast } from "../../components/feedback";
-import { setHikeAlerts, useHikeSession } from "../../store/hikeSessionStore";
+import { hikeTargetIds, setHikeAlerts, useHikeSession } from "../../store/hikeSessionStore";
 import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
-import { initialHikeProgress } from "../../utils/activeHike";
+import { activeHikeFor } from "../../utils/activeHike";
 import { HikeEndConfirm, HikeRouteMap, HikeShareSheet, SpotFilterChips, type SpotFilter } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { MapAction } from "../../components/map";
@@ -20,7 +20,8 @@ export function HikeActivePage() {
   const session = useHikeSession();
   const restoring = useRestoreActiveHike();
   const course = session ? findCourse(session.schedule.courseId) : undefined;
-  const hike = useMemo(() => course ? initialHikeProgress(course, session?.phase === "downhill") : null, [course, session?.phase]);
+  const hike = useMemo(() => activeHikeFor(course, session?.schedule, session?.coursePath, session?.phase === "downhill"),
+    [course, session?.schedule, session?.coursePath, session?.phase]);
   const [filter, setFilter] = useState<SpotFilter>("all");
   const [dimension, setDimension] = useState<"2D" | "3D">("2D");
   const [recenterKey, setRecenterKey] = useState(0);
@@ -65,9 +66,10 @@ export function HikeActivePage() {
 
     {overlay === "share" && <HikeShareSheet onClose={() => setOverlay(null)} onShareSpot={() => {
       setOverlay(null);
-      const query = new URLSearchParams({ screen: "spotPicker", mode: "active", mountain: session.mountainId,
-        course: session.schedule.courseId,
+      const target = hikeTargetIds(session);
+      const query = new URLSearchParams({ screen: "spotPicker", mode: "active", course: target.courseId,
         returnTo: session.phase === "downhill" ? hikePaths.downhill(alertsOn) : hikePaths.active(alertsOn) });
+      if (target.mountainId) query.set("mountain", target.mountainId);
       navigate(`community?${query}`);
     }} />}
     {overlay === "end" && <HikeEndConfirm onCancel={() => setOverlay(null)}

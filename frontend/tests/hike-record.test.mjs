@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import { HIKE_RECORD_ERROR, hikeStartErrorMessage, startOrResumeHikeRecord } from "../src/api/hikeRecordApi.ts";
 import { flushHikePositions } from "../src/hooks/useHikeTracking.ts";
 import {
-  finishHikeSession, getCompletedHikes, getHikeSession, recordHikePosition, restoreHikeSession, setHikeTraveledMeters,
+  finishHikeSession, getCompletedHikes, getHikeSession, hikeTargetIds, recordHikePosition, restoreHikeSession, setHikeTraveledMeters,
   startHikeDescent, startHikeSession,
 } from "../src/store/hikeSessionStore.ts";
+import { activeHikeFor, routeFromResponse } from "../src/utils/activeHike.ts";
 
 // 서버 응답을 차례대로 돌려주는 가짜 fetch. 받은 요청은 requests에 남긴다.
 let responses = [];
@@ -38,7 +39,7 @@ const positions = count => Array.from({ length: count }, (_, index) => ({
 }));
 
 const schedule = { scheduleId: 6, date: "2026-10-29", startTime: "11:40", courseId: "daenammun",
-  mountainName: "북한산", courseName: "대남문 코스", distanceKm: 5.6 };
+  serverCourseId: 2, serverMountainId: 1, mountainName: "북한산", courseName: "대남문 코스", distanceKm: 5.6 };
 const record = (overrides = {}) => ({
   hikeRecordId: 10, scheduleId: 6, courseId: 2, courseName: "대남문 코스", mountainId: 1, mountainName: "북한산",
   status: "IN_PROGRESS", startedAt: "2026-10-29T02:40:00Z", endedAt: null,
@@ -109,8 +110,47 @@ test("기록으로 종료하면 서버가 계산한 이동 거리·소요 시간
   assert.equal(session.finishedAt, "2026-10-29T05:10:00Z");
   assert.equal(session.traveledMeters, 4_250);
   assert.equal(session.durationSeconds, 9_000);
-  assert.deepEqual(getCompletedHikes()[0], { id: "10", mountainId: "bukhansan", courseId: "daenammun",
+  // 일정 API 일정은 다른 화면에 일정의 서버 산·코스 번호를 넘긴다.
+  assert.deepEqual(getCompletedHikes()[0], { id: "10", mountainId: "1", courseId: "2",
     courseName: "대남문 코스", distanceKm: 4.25, finishedAt: "2026-10-29T05:10:00Z" });
+});
+
+test("일정 API 일정은 세션에 산 ID를 따로 두지 않고 일정의 서버 번호를 쓴다", () => {
+  const dbSchedule = { ...schedule, courseId: "db-13", serverCourseId: 13, serverMountainId: 7 };
+  startHikeSession(dbSchedule, undefined, true, record({ hikeRecordId: 30, mountainId: 7, courseId: 13, traveledPath: [] }));
+  const session = getHikeSession();
+  assert.equal(session.mountainId, undefined);
+  assert.deepEqual(hikeTargetIds(session), { mountainId: "7", courseId: "13" });
+  finishHikeSession();
+});
+
+test("예시 데이터 모드(일정에 서버 번호 없음)는 예시 산 ID와 화면 코스 ID를 쓴다", () => {
+  const { scheduleId: _scheduleId, serverCourseId: _courseId, serverMountainId: _mountainId, ...example } = schedule;
+  startHikeSession(example, "bukhansan", true);
+  assert.deepEqual(hikeTargetIds(getHikeSession()), { mountainId: "bukhansan", courseId: "daenammun" });
+  finishHikeSession();
+  assert.equal(getCompletedHikes()[0].mountainId, "bukhansan");
+});
+
+test("예시 데이터에 없는 코스는 일정 이름과 기록의 코스 경로로 등산 중 화면 정보를 만든다", () => {
+  const coursePath = [[126.95, 37.63], [126.96, 37.64], [126.97, 37.65]];
+  const db = { ...schedule, courseId: "db-13", serverCourseId: 13, serverMountainId: 1 };
+  const up = activeHikeFor(undefined, db, coursePath, false);
+  assert.equal(up.courseName, "대남문 코스");
+  assert.deepEqual(up.route, coursePath);
+  assert.deepEqual(up.peak, [126.97, 37.65]);
+  assert.deepEqual(up.spots, []);
+  assert.deepEqual(activeHikeFor(undefined, db, coursePath, true).route, [...coursePath].reverse());
+  assert.equal(activeHikeFor(undefined, db, [[126.95, 37.63]], false), null);
+  assert.equal(activeHikeFor(undefined, db, undefined, false), null);
+});
+
+test("코스 경로 API 응답에서 경로 좌표만 꺼낸다", () => {
+  const response = { success: true, data: { geometry: { type: "LineString", coordinates: [[126.95, 37.63], [126.96, 37.64]] } } };
+  assert.deepEqual(routeFromResponse(response), [[126.95, 37.63], [126.96, 37.64]]);
+  assert.deepEqual(routeFromResponse(null), []);
+  assert.deepEqual(routeFromResponse({ data: { geometry: { coordinates: [[126.95, 37.63]] } } }), []);
+  assert.deepEqual(routeFromResponse({ data: { geometry: { coordinates: [["x", 1], [126.95, 37.63]] } } }), []);
 });
 
 test("위치 전송에 실패하면 보관한 위치를 남기고, 다음 전송에서 보낸 뒤 비운다", async () => {
@@ -213,4 +253,12 @@ test("새로고침 후 하산 중이면 보관한 순번을 쓰고, 없으면 �
   finishHikeSession();
   restoreHikeSession(restored(42, path));
   assert.equal(getHikeSession().descentPathStart, 2);
+});
+
+test("일정 저장용 코스 번호: 예시 코스는 개발 매핑, 실제 경로 코스(db-번호)는 그 번호", async () => {
+  const { toBackendCourseId } = await import("../src/api/hikeScheduleApi.ts");
+  assert.equal(toBackendCourseId("daenammun"), 2);
+  assert.equal(toBackendCourseId("db-15"), 15);
+  assert.throws(() => toBackendCourseId("db-0"), { message: "이 코스는 아직 일정 등록을 지원하지 않아요." });
+  assert.throws(() => toBackendCourseId("unknown-course"));
 });
