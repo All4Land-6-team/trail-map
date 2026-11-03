@@ -59,3 +59,24 @@ test("최소 지도 높이를 요청해도 좁은 화면과 안전 영역에서 
     }
   }
 });
+
+test("홈·목록은 화면이 커도 실제 콘텐츠보다 더 확장되지 않는다", () => {
+  assert.deepEqual(getMapSheetLayout("home", 844, 72, 0, 135), { minimum: 100, initial: 135, maximum: 135 });
+  assert.deepEqual(getMapSheetLayout("courses", 844, 72, 240, 296), { minimum: 160, initial: 296, maximum: 296 });
+  assert.equal(getMapSheetLayout("courses", 1419, 72, 240, 296).maximum, 296);
+  assert.equal(getMapSheetLayout("home", 844, 72, 0, 90).minimum, 90);
+  assert.equal(getMapSheetLayout("home", 844, 72, 0, 190.2).maximum, 191);
+});
+
+test("비교는 326px부터 실제 앱 높이까지 확장하되 지도 도구와 안전 영역을 남긴다", () => {
+  assert.deepEqual(getMapSheetLayout("comparison", 820, 72, 181), { minimum: 28, initial: 326, maximum: 567 });
+  assert.equal(getMapSheetLayout("comparison", 820, 106, 181).maximum, 533);
+  assert.deepEqual(getMapSheetLayout("comparison", 480, 72, 181), { minimum: 28, initial: 227, maximum: 227 });
+  for (const kind of ["home", "courses", "comparison"]) {
+    for (const page of [0, 120, 320, 480, 820, 1419]) {
+      const layout = getMapSheetLayout(kind, page, 106, 240, kind === "comparison" ? undefined : 296);
+      assert.ok(0 <= layout.minimum && layout.minimum <= layout.initial && layout.initial <= layout.maximum);
+      assert.ok(layout.maximum <= Math.max(0, page - 106));
+    }
+  }
+});

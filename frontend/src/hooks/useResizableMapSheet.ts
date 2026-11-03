@@ -1,13 +1,16 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { clampSheetHeight, getMapSheetLayout, type MapSheetKind } from "../utils/mapSheetGeometry";
 import { createSheetPreviewSession } from "../utils/sheetPreviewSession";
+import { measureMapSheetContent } from "../utils/mapSheetContent";
 import "../components/overlay/resizable-map-sheet.css";
 
-type Options = { kind: MapSheetKind; navigationSelector: string; label: string; trackSettledInset?: boolean; minimumMapHeight?: number };
+type Options = { kind: MapSheetKind; navigationSelector: string; label: string; trackSettledInset?: boolean;
+  minimumMapHeight?: number; sheetSelector?: string; contentSelector?: string; controlsSelector?: string };
 const KEYBOARD_STEP = 24;
 
 /** 지도 크기는 유지하고 시트 높이만 프레임당 한 번 바꾼다. React 상태는 조절이 끝나면 반영한다. */
-export function useResizableMapSheet({ kind, navigationSelector, label, trackSettledInset = false, minimumMapHeight = 0 }: Options) {
+export function useResizableMapSheet({ kind, navigationSelector, label, trackSettledInset = false, minimumMapHeight = 0,
+  sheetSelector, contentSelector, controlsSelector }: Options) {
   const rootRef = useRef<HTMLElement>(null);
   const [layout, setLayout] = useState(() => getMapSheetLayout(kind, 844, 72, minimumMapHeight));
   const [settledHeight, setSettledHeight] = useState(layout.initial);
@@ -55,14 +58,39 @@ export function useResizableMapSheet({ kind, navigationSelector, label, trackSet
     const root = rootRef.current;
     const session = previewSession.current;
     if (!root) return;
+    let measurementFrame: number | null = null;
+    let viewport = "";
+    const observed = new Set<Element>();
+    const scheduleMeasure = () => {
+      if (measurementFrame !== null) return;
+      measurementFrame = requestAnimationFrame(() => { measurementFrame = null; measure(); });
+    };
+    const observer = new ResizeObserver(scheduleMeasure);
     const measure = () => {
+      const navigation = root.querySelector(navigationSelector);
+      const navigationHeight = navigation?.getBoundingClientRect().height ?? 72;
+      const sheet = sheetSelector ? root.querySelector<HTMLElement>(sheetSelector) : null;
+      const content = contentSelector ? sheet?.querySelector<HTMLElement>(contentSelector) : null;
+      const controls = controlsSelector ? Array.from(root.querySelectorAll<HTMLElement>(controlsSelector)) : [];
+      const rootTop = root.getBoundingClientRect?.().top ?? 0;
+      const clearance = Math.max(minimumMapHeight, ...controls.map(control => control.getBoundingClientRect().bottom - rootTop + 12));
+      const contentHeight = sheet && content ? measureMapSheetContent(sheet, content) : undefined;
+      const next = getMapSheetLayout(kind, root.clientHeight, navigationHeight, clearance, contentHeight);
+      const targets = new Set<Element>([root, ...(navigation ? [navigation] : []), ...controls,
+        ...(content ? [content] : []), ...(sheet ? Array.from(sheet.querySelectorAll<HTMLElement>(".af-bottom-sheet__handle-row, .af-bottom-sheet__title-row, .af-bottom-sheet__description")) : [])]);
+      for (const element of observed) if (!targets.has(element)) { observer.unobserve(element); observed.delete(element); }
+      for (const element of targets) if (!observed.has(element)) { observed.add(element); observer.observe(element); }
+      const previous = limits.current;
+      const nextViewport = `${root.clientWidth}:${root.clientHeight}:${navigationHeight}`;
+      const viewportChanged = viewport !== nextViewport;
+      viewport = nextViewport;
+      const changed = previous.minimum !== next.minimum || previous.maximum !== next.maximum || previous.initial !== next.initial;
+      // Content/observer notifications that do not change the limits must not cancel a gesture.
+      if (!changed && !viewportChanged && height.current !== null) return;
       cancelFrame();
       drag.current = null;
-      const navigationHeight = root.querySelector(navigationSelector)?.getBoundingClientRect().height ?? 72;
-      const next = getMapSheetLayout(kind, root.clientHeight, navigationHeight, minimumMapHeight);
-      const previous = limits.current;
       const wasPreviewing = previewSession.current.active;
-      if (previous.minimum !== next.minimum || previous.maximum !== next.maximum || previous.initial !== next.initial) {
+      if (changed || viewportChanged) {
         previewSession.current.invalidate();
       }
       limits.current = next;
@@ -70,15 +98,18 @@ export function useResizableMapSheet({ kind, navigationSelector, label, trackSet
         && previous.initial === next.initial ? previous : next);
       setSettledHeight(apply((customized.current || wasPreviewing) && height.current !== null ? height.current : next.initial));
     };
-    measure();
-    const observer = new ResizeObserver(measure);
     observer.observe(root);
-    window.addEventListener("resize", measure);
+    observed.add(root);
+    measure();
+    const mutations = typeof MutationObserver === "undefined" ? null : new MutationObserver(scheduleMeasure);
+    if (sheetSelector || controlsSelector) mutations?.observe(root, { childList: true, subtree: true, characterData: true });
+    window.addEventListener("resize", scheduleMeasure);
     return () => {
-      observer.disconnect(); window.removeEventListener("resize", measure);
+      observer.disconnect(); mutations?.disconnect(); window.removeEventListener("resize", scheduleMeasure);
+      if (measurementFrame !== null) cancelAnimationFrame(measurementFrame);
       cancelFrame(); drag.current = null; session.end();
     };
-  }, [kind, navigationSelector, minimumMapHeight, apply, cancelFrame]);
+  }, [kind, navigationSelector, minimumMapHeight, sheetSelector, contentSelector, controlsSelector, apply, cancelFrame]);
 
   function finish(event: PointerEvent<HTMLDivElement>) {
     const start = drag.current;
@@ -112,6 +143,7 @@ export function useResizableMapSheet({ kind, navigationSelector, label, trackSet
     // Opt-in only: a gesture updates camera padding once it settles, never per drag frame.
     mapBottomInset: trackSettledInset ? settledHeight : layout.initial,
     previewControls,
+    bodyHidden: kind === "comparison" && settledHeight <= layout.minimum,
     handleProps: {
       role: "separator", tabIndex: 0, "data-map-sheet-handle": "",
       "aria-label": label, "aria-orientation": "horizontal" as const,

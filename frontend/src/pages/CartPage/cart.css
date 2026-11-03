@@ -124,6 +124,19 @@
 .cart-compare-sheet {
   padding: 8px 18px 10px;
 }
+.cart-compare-screen { --cart-nav-height: calc(72px + env(safe-area-inset-bottom)); }
+.cart-compare-screen .cart-bottom-nav { height: var(--cart-nav-height); padding-bottom: env(safe-area-inset-bottom); }
+.cart-compare-screen .cart-map-topbar { top: calc(16px + env(safe-area-inset-top)); }
+.cart-compare-screen .cart-map-actions { top: calc(89px + env(safe-area-inset-top)); }
+.cart-compare-screen .cart-compare-sheet {
+  bottom: var(--cart-nav-height);
+  height: var(--map-sheet-height, 326px);
+  overflow: hidden;
+  transform: none;
+  will-change: auto;
+}
+.cart-compare-sheet .af-bottom-sheet__handle-row,
+.cart-compare-sheet .af-bottom-sheet__title-row { flex: none; }
 .cart-compare-sheet .af-bottom-sheet__handle-row { height: 12px; }
 .cart-compare-sheet .af-bottom-sheet__title-row { min-height: 42px; }
 .cart-compare-sheet .af-bottom-sheet__title { font-size: 16px; line-height: 24px; }

@@ -7,13 +7,14 @@ import * as geometry from '../src/utils/mapSheetGeometry.ts';
 import * as previewSession from '../src/utils/sheetPreviewSession.ts';
 
 // Small hook adapter executes the actual hook's event handlers without adding a DOM library.
-function mountSheet(trackSettledInset = true, minimumMapHeight = 0) {
+function mountSheet(trackSettledInset = true, minimumMapHeight = 0, kind = 'courses') {
   const slots = [], pendingEffects = [], frames = new Map(), listeners = new Map();
   let index = 0, nextFrame = 0, resize;
   const handle = { setAttribute() {}, focus() {}, setPointerCapture() {}, hasPointerCapture: () => false };
+  const navigation = { getBoundingClientRect: () => ({ height: 72 }) };
   const properties = new Map();
   const root = { clientHeight: 844, style: { setProperty: (key, value) => properties.set(key, value) },
-    querySelector: selector => selector === '[data-map-sheet-handle]' ? handle : { getBoundingClientRect: () => ({ height: 72 }) } };
+    querySelector: selector => selector === '[data-map-sheet-handle]' ? handle : navigation };
   const equal = (a, b) => a && b && a.length === b.length && a.every((item, i) => item === b[i]);
   const react = {
     useRef(initial) { const slot = index++; return slots[slot] ??= { current: initial }; },
@@ -42,21 +43,22 @@ function mountSheet(trackSettledInset = true, minimumMapHeight = 0) {
   vm.runInNewContext(source, {
     exports,
     require: name => name === 'react' ? react : name.endsWith('mapSheetGeometry') ? geometry : name.endsWith('sheetPreviewSession') ? previewSession : {},
-    ResizeObserver: class { constructor(callback) { resize = callback; } observe() {} disconnect() {} },
+    ResizeObserver: class { constructor(callback) { resize = callback; } observe() {} unobserve() {} disconnect() {} },
     window: { addEventListener: (name, callback) => listeners.set(name, callback), removeEventListener: name => listeners.delete(name) },
     requestAnimationFrame: callback => { frames.set(++nextFrame, callback); return nextFrame; },
     cancelAnimationFrame: id => frames.delete(id),
   });
   function render() {
     index = 0;
-    const result = exports.useResizableMapSheet({ kind: 'courses', navigationSelector: '.navigation', label: '시트', trackSettledInset, minimumMapHeight });
+    const result = exports.useResizableMapSheet({ kind, navigationSelector: '.navigation', label: '시트', trackSettledInset, minimumMapHeight });
     result.rootRef.current = root;
     pendingEffects.splice(0).forEach(effect => effect());
     return result;
   }
   render();
   return { render, root, height: () => Number.parseFloat(properties.get('--map-sheet-height')),
-    resize: () => resize(), event: (clientY = 400) => ({ pointerId: 1, isPrimary: true, pointerType: 'touch', clientY, currentTarget: handle }),
+    resize: () => { resize(); const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback()); },
+    event: (clientY = 400) => ({ pointerId: 1, isPrimary: true, pointerType: 'touch', clientY, currentTarget: handle }),
     flushFrame: () => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback()); },
     unmount: () => slots.forEach(slot => slot?.cleanup?.()), frames,
   };
@@ -115,5 +117,36 @@ test('개선 목록의 최소 지도 높이는 작은 화면의 초기·키보�
   result.previewControls.begin(); assert.equal(sheet.height(), 160);
   result.previewControls.end(); result = sheet.render();
   assert.equal(result.mapBottomInset, 168);
+  sheet.unmount();
+});
+
+test('한계가 바뀌지 않은 크기 알림은 진행 중인 드래그를 취소하지 않는다', () => {
+  const sheet = mountSheet();
+  const result = sheet.render();
+  result.handleProps.onPointerDown(sheet.event());
+  sheet.resize();
+  result.handleProps.onPointerMove(sheet.event(300));
+  sheet.flushFrame();
+  assert.equal(sheet.height(), 396);
+  result.handleProps.onPointerCancel(sheet.event(300));
+  assert.equal(sheet.render().mapBottomInset, 396);
+  sheet.unmount();
+});
+
+test('비교 시트는 기본 높이보다 확장하고 접혀도 차트 본문을 언마운트하지 않는다', () => {
+  const sheet = mountSheet(false, 0, 'comparison');
+  const result = sheet.render();
+  assert.equal(sheet.height(), 326);
+  result.handleProps.onKeyDown({ key: 'Home', preventDefault() {} });
+  assert.equal(sheet.height(), 592);
+  assert.equal(sheet.render().mapBottomInset, 326);
+  result.handleProps.onKeyDown({ key: 'End', preventDefault() {} });
+  assert.equal(sheet.height(), 28);
+  assert.equal(sheet.render().bodyHidden, true);
+  sheet.root.clientHeight = 480; sheet.resize();
+  assert.equal(sheet.height(), 28);
+  result.handleProps.onKeyDown({ key: 'Home', preventDefault() {} });
+  assert.equal(sheet.height(), 228);
+  assert.equal(sheet.render().bodyHidden, false);
   sheet.unmount();
 });

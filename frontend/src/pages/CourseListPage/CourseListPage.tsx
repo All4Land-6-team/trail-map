@@ -32,7 +32,8 @@ export type CourseListPageProps = {
 export function CourseListPage({ mountainId, initialCourseId, onBack = () => navigateFromHome(homePaths.home), onCourseOpen, onScheduleOpen }: CourseListPageProps) {
   const schedules = useHikeSchedules();
   const enhancedMap = supportsTerrain(mountainId);
-  const { rootRef, mapBottomInset, handleProps, previewControls } = useResizableMapSheet({ kind: "courses", navigationSelector: ".course-page__nav", label: "코스 목록 시트 높이 조절", trackSettledInset: enhancedMap, minimumMapHeight: enhancedMap ? 240 : undefined });
+  const { rootRef, mapBottomInset, handleProps, previewControls } = useResizableMapSheet({ kind: "courses", navigationSelector: ".course-page__nav", label: "코스 목록 시트 높이 조절", trackSettledInset: enhancedMap, minimumMapHeight: enhancedMap ? 240 : undefined,
+    sheetSelector: ".course-list-sheet", contentSelector: ".course-list-sheet__contents", controlsSelector: ".course-page__top, .course-map__actions" });
   const [selectionRevision, setSelectionRevision] = useState(0);
   const discovery = useCourseDiscovery(mountainId, initialCourseId);
   const savedIds = useSavedCourseIds();
@@ -119,7 +120,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
             icon={<Icon name="Filter" size={14} color="currentColor" />}
             onClick={event => { filterOpener.current = event.currentTarget; discovery.openFilter(); }}
             className={hasDetailedCourseFilters(filters) ? "course-list-sheet__filter course-list-sheet__filter--active" : "course-list-sheet__filter"} />
-        </div>} content={<>
+        </div>} content={<div className="course-list-sheet__contents">
           <div className="course-quick-filters" aria-label="코스 필터 조건">
             {(["all", "beginner", "intermediate", "advanced"] as const).map(value => <Chip key={value}
               label={value === "all" ? "전체" : COURSE_DIFFICULTY_LABELS[value]} selected={selectedDifficulty(value)}
@@ -136,7 +137,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
               onPageChange={index => selectExplicitly(courses[index].id)} />
           </> : <EmptyState title={allCourses.length ? "조건에 맞는 코스가 없어요." : "아직 등록된 코스가 없어요."}
             showIcon={false} description="" className="course-list-sheet__empty" />}
-        </>} />
+        </div>} />
       <BottomNavigation active="home" onNavigate={navigateTab} className="course-page__nav" />
     </div>
     {discovery.filterOpen && <CourseFilterSheet courses={allCourses} filters={filters} sort={sort}

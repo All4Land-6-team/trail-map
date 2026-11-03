@@ -23,7 +23,8 @@ export function HomePage({
   previewSchedule,
 }: HomePageProps) {
   const home = useHomeDiscovery();
-  const { rootRef, handleProps } = useResizableMapSheet({ kind: "home", navigationSelector: ".home-page__nav", label: "산 탐색 시트 높이 조절" });
+  const { rootRef, handleProps } = useResizableMapSheet({ kind: "home", navigationSelector: ".home-page__nav", label: "산 탐색 시트 높이 조절",
+    sheetSelector: ".home-explore-sheet", contentSelector: ".home-explore-sheet__body", controlsSelector: ".home-page__top" });
   const schedule = previewSchedule === "none" ? undefined : home.todaySchedule
     ? { ...home.todaySchedule, phase: previewSchedule === "active" ? "active" as const : home.todaySchedule.phase }
     : undefined;
