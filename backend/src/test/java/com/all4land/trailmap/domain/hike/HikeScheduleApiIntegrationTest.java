@@ -156,6 +156,43 @@ class HikeScheduleApiIntegrationTest {
     }
 
     @Test
+    void 진행_중인_등산_기록이_있는_일정은_수정_삭제_대체할_수_없다() throws Exception {
+        long scheduleId = createSchedule(userId, courseId, "2026-11-11", "07:00", false)
+                .andReturn().getResponse().getContentAsString().transform(this::scheduleId);
+        long recordId = insertRecord(scheduleId, "IN_PROGRESS");
+
+        mockMvc.perform(asUser(userId, patch("/v1/hike-schedules/" + scheduleId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"courseId": %d}
+                                """.formatted(otherCourseId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("HIKE_409_6"));
+        mockMvc.perform(asUser(userId, delete("/v1/hike-schedules/" + scheduleId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("HIKE_409_6"));
+
+        // 하산 중에도 같은 날짜 대체 등록으로 지울 수 없다.
+        jdbcTemplate.update("UPDATE hike_record SET hike_status = 'DESCENDING' WHERE hike_record_id = ?", recordId);
+        createSchedule(userId, otherCourseId, "2026-11-11", "09:00", true)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("HIKE_409_6"));
+
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT course_id = ? AND deleted_at IS NULL FROM hike_schedule WHERE schedule_id = ?
+                """, Boolean.class, courseId, scheduleId)).isTrue();
+
+        // 종료한 기록만 남으면 기존처럼 바꿀 수 있다.
+        jdbcTemplate.update("UPDATE hike_record SET hike_status = 'COMPLETED', ended_at = now() WHERE hike_record_id = ?", recordId);
+        mockMvc.perform(asUser(userId, patch("/v1/hike-schedules/" + scheduleId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"startTime": "08:00"}
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void 다른_사용자의_일정은_조회_수정_삭제할_수_없다() throws Exception {
         long scheduleId = createSchedule(userId, courseId, "2026-11-07", "07:00", false)
                 .andReturn().getResponse().getContentAsString().transform(this::scheduleId);
@@ -206,6 +243,19 @@ class HikeScheduleApiIntegrationTest {
 
     private long insertUser() {
         return jdbcTemplate.queryForObject("INSERT INTO app_user DEFAULT VALUES RETURNING user_id", Long.class);
+    }
+
+    private long insertRecord(long scheduleId, String status) {
+        return jdbcTemplate.queryForObject("""
+                INSERT INTO hike_record
+                    (schedule_id, user_id, course_id, course_version, recorded_course_geometry, started_at, hike_status)
+                SELECT schedule.schedule_id, schedule.user_id, schedule.course_id, course.course_version,
+                       course.course_geometry, now(), ?
+                FROM hike_schedule schedule
+                JOIN course ON course.course_id = schedule.course_id
+                WHERE schedule.schedule_id = ?
+                RETURNING hike_record_id
+                """, Long.class, status, scheduleId);
     }
 
     private long insertCourse(long mountainId, long sourceId, String name, double distanceMeters) {

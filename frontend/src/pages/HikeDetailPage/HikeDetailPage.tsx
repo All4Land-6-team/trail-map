@@ -8,6 +8,7 @@ import { BottomNavigation, TopBar } from "../../components/layout";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
 import { useScheduleCourse } from "../../hooks/useScheduleCourse";
 import { useToastMessage } from "../../hooks/useToastMessage";
+import { HikeScheduleApiError } from "../../api/hikeScheduleApi";
 import { deleteSchedule, useHikeSchedules } from "../../store/hikeScheduleStore";
 import { formatDateTitle, formatDuration, formatKoreanTime, parseDateKey } from "../../utils/hikeFormat";
 import { hikePaths, navigateTab } from "../hikeRoutes";
@@ -87,9 +88,10 @@ export function HikeDetailPage() {
         try {
           await deleteSchedule(schedule.date);
           navigate(hikePaths.calendar(schedule.date));
-        } catch {
+        } catch (error) {
           setOverlay(null);
-          toast.show("일정을 취소하지 못했어요. 잠시 후 다시 시도해 주세요.");
+          toast.show(error instanceof HikeScheduleApiError && error.kind === "activeHike" ? error.message
+            : "일정을 취소하지 못했어요. 잠시 후 다시 시도해 주세요.");
         }
       }} />}
   </div>;

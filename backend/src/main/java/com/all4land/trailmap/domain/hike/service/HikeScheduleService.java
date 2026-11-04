@@ -8,6 +8,7 @@ import com.all4land.trailmap.domain.hike.error.HikeErrorCode;
 import com.all4land.trailmap.domain.hike.exception.HikeException;
 import com.all4land.trailmap.domain.hike.repository.HikeCourseRepository;
 import com.all4land.trailmap.domain.hike.repository.HikeCourseSummary;
+import com.all4land.trailmap.domain.hike.repository.HikeRecordRepository;
 import com.all4land.trailmap.domain.hike.repository.HikeScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -35,6 +36,7 @@ public class HikeScheduleService {
 
     private final HikeScheduleRepository scheduleRepository;
     private final HikeCourseRepository courseRepository;
+    private final HikeRecordRepository recordRepository;
 
     @Transactional
     public HikeScheduleResponse create(Long userId, HikeScheduleCreateRequest request) {
@@ -82,6 +84,7 @@ public class HikeScheduleService {
         }
         validateUser(userId);
         HikeSchedule schedule = getOwnedSchedule(userId, scheduleId);
+        ensureNoActiveRecord(List.of(scheduleId));
 
         ZonedDateTime current = schedule.getScheduledStartsAt().atZoneSameInstant(SCHEDULE_ZONE);
         LocalDate date = Objects.requireNonNullElse(request.date(), current.toLocalDate());
@@ -101,7 +104,9 @@ public class HikeScheduleService {
     @Transactional
     public void delete(Long userId, Long scheduleId) {
         validateUser(userId);
-        getOwnedSchedule(userId, scheduleId).delete(OffsetDateTime.now(SCHEDULE_ZONE));
+        HikeSchedule schedule = getOwnedSchedule(userId, scheduleId);
+        ensureNoActiveRecord(List.of(scheduleId));
+        schedule.delete(OffsetDateTime.now(SCHEDULE_ZONE));
     }
 
     /**
@@ -120,10 +125,18 @@ public class HikeScheduleService {
         if (!replaceExisting) {
             throw new HikeException(HikeErrorCode.SCHEDULE_ALREADY_EXISTS);
         }
+        ensureNoActiveRecord(sameDay.stream().map(HikeSchedule::getScheduleId).toList());
 
         OffsetDateTime deletedAt = OffsetDateTime.now(SCHEDULE_ZONE);
         sameDay.forEach(schedule -> schedule.delete(deletedAt));
         scheduleRepository.flush();
+    }
+
+    /** 진행 중·하산 중 기록이 있는 일정을 바꾸면 기록과 일정의 코스가 달라지므로 막는다. */
+    private void ensureNoActiveRecord(List<Long> scheduleIds) {
+        if (recordRepository.existsActiveBySchedules(scheduleIds)) {
+            throw new HikeException(HikeErrorCode.SCHEDULE_HAS_ACTIVE_RECORD);
+        }
     }
 
     private void validateUser(Long userId) {
