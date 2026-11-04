@@ -109,3 +109,26 @@
 .course-spots__status { flex: none; margin: 0 0 10px; padding: 10px 0; color: #617b6c; font-size: 12px; line-height: 19px; }
 .course-spots__status p { margin: 0 0 8px; }
 .course-spots__status .af-button { min-height: 34px; font-size: 12px; }
+
+/* Official office notices: scroll within the existing sheet. */
+.course-control { min-width: 0; padding-bottom: 16px; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.course-control header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.course-control h3 { margin: 0; font-size: 15px; }
+.course-control__badge { border-radius: 6px; padding: 3px 8px; background: #e5f3e9; color: #235b36; font-weight: 700; }
+.course-control__badge.is-restricted { background: #fff0e9; color: #a33110; }
+.course-control__badge.is-unknown { background: #eee; color: #555; }
+.course-control__times { color: #666; font-size: 11px; margin: 8px 0 12px; }
+.course-control__times p { margin: 0; }
+.course-control__warning { padding: 10px; border-radius: 8px; background: #fff5db; color: #6a4800; }
+.course-control__reason { font-weight: 700; font-size: 16px; margin: 12px 0 6px; }
+.course-control dl { margin: 12px 0; }
+.course-control dt { font-weight: 700; margin-top: 8px; }
+.course-control dd { margin: 2px 0; }
+.course-control__image { margin: 16px 0; }
+.course-control__image img { display: block; width: 100%; height: auto; border: 1px solid #ddd; border-radius: 6px; }
+.course-control__image span { display: block; margin-top: 4px; font-size: 12px; }
+.course-control__text { white-space: pre-wrap; }
+.course-control summary { cursor: pointer; padding: 10px 0; font-weight: 700; }
+.course-control footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
+.course-control a { color: #285b3c; text-underline-offset: 3px; }
+.course-control footer .af-button { min-height: 34px; font-size: 12px; }

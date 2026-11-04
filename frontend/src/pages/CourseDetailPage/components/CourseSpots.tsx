@@ -7,8 +7,10 @@ import { COURSE_FACILITY_RADIUS_METERS } from "../../../api/courseFacilities";
 import type { CourseFacilitiesState, CourseSpot, SpotCategory } from "../../../types/courseDetail";
 import { SPOT_CATEGORIES, spotCategoryLabel } from "../../../utils/courseProfile";
 
-const placeholderAsset = new URL("../../../assets/icons/control-placeholder.svg", import.meta.url).href;
+import { CourseControl } from "./CourseControl";
+import type { ComponentProps } from "react";
 type Props = {
+  control: ComponentProps<typeof CourseControl>;
   spots: readonly CourseSpot[];
   category: SpotCategory;
   selectedId?: string;
@@ -24,7 +26,7 @@ type Props = {
   onOpen: (spot: CourseSpot) => void;
 };
 
-export function CourseSpots({ spots, category, selectedId, restrooms, onRetryRestrooms, water, onRetryWater, shelters, onRetryShelters, photos, onRetryPhotos, onCategory, onOpen }: Props) {
+export function CourseSpots({ control, spots, category, selectedId, restrooms, onRetryRestrooms, water, onRetryWater, shelters, onRetryShelters, photos, onRetryPhotos, onCategory, onOpen }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const facilityGroups = [
     { kind: "shelter", label: "쉼터", state: shelters, retry: onRetryShelters },
@@ -56,7 +58,7 @@ export function CourseSpots({ spots, category, selectedId, restrooms, onRetryRes
       음수대는 샘터·약수터를 포함합니다. 현재 이용 가능 여부와 음용 적합 여부는 확인되지 않았어요.
     </p>}
     <div id="course-spots-content" className="course-spots__body" role="tabpanel" tabIndex={0} aria-label={spotCategoryLabel(category)}
-      aria-busy={facilityGroups.some(group => group.state.status === "loading") || (includesPhotos && photos.status === 'loading')}>
+      aria-busy={(category === "control" && control.state.status === "loading") || facilityGroups.some(group => group.state.status === "loading") || (includesPhotos && photos.status === 'loading')}>
       {includesPhotos && photos.status === 'loading' && <p role="status">사진 스팟을 불러오는 중이에요.</p>}
       {includesPhotos && photos.status === 'unavailable' && <p role="status">이 코스의 사진 스팟 조회를 준비 중이에요.</p>}
       {includesPhotos && photos.status === 'error' && <div className="course-spots__status">
@@ -72,9 +74,7 @@ export function CourseSpots({ spots, category, selectedId, restrooms, onRetryRes
           코스에서 {COURSE_FACILITY_RADIUS_METERS}m 이내에 조회된 {label}{kind === "restroom" ? "이" : "가"} 없어요.
         </p>}
       </div>)}
-      {category === "control" ? <div className="course-control-placeholder">
-        <img src={placeholderAsset} alt="" /><p>통제정보 이미지 추가 예정</p>
-      </div> : spots.length ? <div className="course-spots__list" ref={listRef}>
+      {category === "control" ? <CourseControl {...control} /> : spots.length ? <div className="course-spots__list" ref={listRef}>
         {spots.map(spot => <button key={spot.id} type="button" className="course-spot-card" data-spot-id={spot.id}
           aria-label={spot.communityTarget && spot.id === selectedId ? `${spot.name} 커뮤니티 상세 보기` : `${spot.name} 지도에서 보기`}
           aria-pressed={spot.id === selectedId} onClick={() => onOpen(spot)}>
