@@ -221,6 +221,16 @@ test('등산 완료 화면에서 바로 연 산 후기 폼에 서버의 완료 �
   assert.match(source, /setDraft\(current => current\.kind === 'mountain'[\s\S]*completedHikeId: initialReviewHikes\[0\]\.id/);
 });
 
+test('코스 전체 후기 등록은 코스 ID 없이도 완료 산행을 조회한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /kind === 'course'[\s\S]*targetId[\s\S]*communityApi\.courseEligibility\(targetId\)[\s\S]*communityApi\.eligibleHikes\(mountainId\)/);
+});
+
+test('스팟 후기 등록은 완료 산행을 확인한 뒤 선택 화면을 연다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /const startMapReview = async[\s\S]*communityApi\.eligibleHikes\(mountainId\)[\s\S]*eligibleHikes\.length === 0[\s\S]*notify\(reviewEligibilityMessage\)[\s\S]*move\('spotPicker'\)/);
+});
+
 test('산행 후 스팟 등록은 가장 최근에 완료한 코스를 기본 경로로 사용한다', () => {
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(source, /\[\.\.\.eligibility\.hikes\][\s\S]*Date\.parse\(b\.endedAt\) - Date\.parse\(a\.endedAt\)/);
@@ -440,10 +450,24 @@ test('24시간 이내 완료 산행은 같은 코스라도 각각 최신순으�
   assert.equal(canWriteCourseReview(eligible, 'bukhansan', 'course-a', 'a-old', now), true);
 });
 
-test('일반 코스 상세는 사진 없이 최신 후기 2개만 요청한다', () => {
+test('일반 코스 상세는 사진 없이 최신 후기 4개만 요청한다', () => {
   const source = readFileSync(new URL('../src/pages/CourseDetailPage/CourseDetailPage.tsx', import.meta.url), 'utf8');
-  assert.match(source, /communityApi\.courseReviews\(String\(course\.courseId\), controller\.signal, 2\)/);
+  assert.match(source, /communityApi\.courseReviews\(String\(course\.courseId\), controller\.signal, 4\)/);
   assert.doesNotMatch(source, /communityApi\.coursePhotos/);
+});
+
+test('산·코스·스팟 상세 후기는 공통 가로 캐러셀을 사용한다', () => {
+  const communitySource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const courseSource = readFileSync(new URL('../src/pages/CourseDetailPage/components/CourseAnalysis.tsx', import.meta.url), 'utf8');
+  const carouselSource = readFileSync(new URL('../src/components/review/ReviewCarousel.tsx', import.meta.url), 'utf8');
+  const cardSource = readFileSync(new URL('../src/components/review/ReviewCarouselCards.tsx', import.meta.url), 'utf8');
+  assert.equal((communitySource.match(/<ReviewCarousel type=/g) ?? []).length, 3);
+  assert.match(courseSource, /<ReviewCarousel type="course"/);
+  assert.match(carouselSource, /MoreReviewsCard/);
+  assert.match(carouselSource, /scrollIntoView/);
+  assert.match(cardSource, /평점 없음/);
+  assert.match(cardSource, /community-review-card__photo--placeholder/);
+  assert.match(cardSource, /아직 등록된 후기가 없어요\./);
 });
 
 test('이미 작성한 스팟 후기와 새 스팟 등록 지도 클릭을 구분한다', () => {
@@ -454,6 +478,9 @@ test('이미 작성한 스팟 후기와 새 스팟 등록 지도 클릭을 구�
   assert.match(pageSource, /오늘 산행에서 해당 스팟 후기를 이미 작성했어요\./);
   assert.match(pageSource, /error instanceof CommunityApiError && error\.status === 409/);
   assert.match(apiSource, /review-eligibility\$\{hikeRecordId \? `\?hikeRecordId=\$\{hikeRecordId\}` : ''\}/);
+  assert.match(apiSource, /eligibilityCode: 'ELIGIBLE' \| 'NO_COMPLETED_HIKE' \| 'ALREADY_REVIEWED'/);
+  assert.match(pageSource, /eligibility\.eligibilityCode !== 'ELIGIBLE'/);
+  assert.match(pageSource, /notify\(eligibility\.reason \?\? reviewEligibilityMessage\)/);
   assert.match(cssSource, /community-registration-error\.af-modal-layer \{[^}]*display:grid;[^}]*place-items:center/);
   assert.doesNotMatch(registrationSource, /onMarkerSelect=\{marker => \{ const found = spots\.find/);
   assert.match(registrationSource, /label="기존 스팟에 추가" onClick=\{\(\) => onUseExisting\(spot\)\}/);

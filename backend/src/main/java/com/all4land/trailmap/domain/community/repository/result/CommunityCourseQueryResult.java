@@ -7,6 +7,7 @@ public record CommunityCourseQueryResult(
         String name,
         double distanceKm,
         long reviewCount,
+        Double averageRating,
         long photoCount,
         String representativePhotoKey,
         String routeGeoJson

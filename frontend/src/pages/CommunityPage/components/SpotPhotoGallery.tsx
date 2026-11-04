@@ -90,7 +90,7 @@ export function CommunityPhotoReview({ photo, kind, index, total, onPrevious, on
     <div className="community-gallery-review__top"><h2>사진 후기</h2><span aria-live="polite">{index + 1} / {total}</span></div>
     <div className="community-gallery-review__image"><PhotoContent photo={photo} /></div>
     <article className="community-gallery-review__text">
-      <div className="community-gallery-review__meta"><strong>{nickname}</strong>{kind === 'mountain' && rating != null && <span>★ {rating.toFixed(1)}</span>}<time dateTime={photo.review?.createdAt}>{date}</time></div>
+      <div className="community-gallery-review__meta"><strong>{nickname}</strong>{kind === 'course' && <span>{rating != null ? `★ ${rating.toFixed(1)}` : '평점 없음'}</span>}<time dateTime={photo.review?.createdAt}>{date}</time></div>
       <p>{content}</p>
     </article>
   </section>

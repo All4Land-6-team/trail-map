@@ -28,7 +28,7 @@ export function ReviewForm({ draft, mountainName, spot, errors, canSubmit, onCha
   return <div className={`community-form-layout community-form-layout--review community-form-layout--review-${draft.kind}`}>
     <div className="community-form-layout__scroll">
       <h2>{draft.kind === 'mountain' ? `${mountainName} 후기` : draft.kind === 'spot' ? spot?.name ?? '스팟 후기' : '코스 후기'}</h2>
-      {draft.kind === 'mountain' && <div className="community-form-section">
+      {draft.kind === 'course' && <div className="community-form-section">
         <span className="community-field-label">평점</span>
         <RatingInput value={draft.rating} onChange={rating => onChange({ rating })} />
         {errors.rating && <p className="community-field-error" role="alert">{errors.rating}</p>}
@@ -56,7 +56,6 @@ export function ReviewForm({ draft, mountainName, spot, errors, canSubmit, onCha
         {errors.target && <p className="community-field-error" role="alert">{errors.target}</p>}
       </fieldset>}
       <div className="community-form-section">
-        <label className="community-field-label" htmlFor="community-review-content">후기</label>
         <MultilineField id="community-review-content" value={draft.content} maxLength={1000}
           aria-describedby={errors.content ? 'community-review-error' : undefined}
           onChange={event => onChange({ content: event.target.value })}

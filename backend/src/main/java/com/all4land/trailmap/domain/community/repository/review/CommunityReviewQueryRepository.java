@@ -88,7 +88,7 @@ public class CommunityReviewQueryRepository {
                        review.hike_record_id,
                        review.user_id,
                        review.review_content,
-                       review.rating::double precision AS rating,
+                       NULL::double precision AS rating,
                        review.visited_date,
                        review.created_at
                 FROM mountain_review review
@@ -104,7 +104,7 @@ public class CommunityReviewQueryRepository {
                        review.hike_record_id,
                        review.user_id,
                        review.review_content,
-                       NULL::double precision AS rating,
+                       review.rating::double precision AS rating,
                        review.visited_date,
                        review.created_at
                 FROM course_review review
@@ -215,7 +215,11 @@ public class CommunityReviewQueryRepository {
     public CommunityMountainReviewSummaryResponse findMountainReviewSummary(Long mountainId) {
         return jdbcTemplate.queryForObject("""
                 SELECT count(*) AS review_count,
-                       avg(review.rating)::double precision AS average_rating,
+                       (SELECT avg(course_review.rating)::double precision
+                        FROM course_review
+                        JOIN course ON course.course_id = course_review.course_id
+                        WHERE course.mountain_id = :mountainId
+                          AND course_review.deleted_at IS NULL) AS average_rating,
                        (SELECT count(*)
                         FROM photo
                         JOIN mountain_review photo_review ON photo_review.review_id = photo.mountain_review_id

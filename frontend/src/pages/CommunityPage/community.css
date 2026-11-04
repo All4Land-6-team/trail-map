@@ -57,11 +57,16 @@
 .community-map-filters::-webkit-scrollbar { display:none; }
 .community-map-filters .af-chip { flex:none; height:34px; padding-inline:14px; }
 .community-map__dimension.af-map-action { position:absolute; z-index:3; top:128px; right:17px; width:40px; height:40px; border:0; border-radius:12px; color:var(--af-green-dark); background:#fff; box-shadow:0 3px 5px rgb(23 71 54 / 10%); }
-.community-page__sheet { position:absolute; z-index:2; right:0; bottom:var(--community-nav-height); left:0; height:var(--community-sheet-height,auto); max-height:calc(var(--app-viewport-height) - var(--community-nav-height) - 170px); min-height:32px; overflow:hidden; padding:8px 20px 16px; border-radius:25px 25px 0 0; box-shadow:0 -8px 12px #173d320d; transition:var(--community-sheet-transition,none); }
+.community-page__sheet { position:absolute; z-index:2; right:0; bottom:var(--community-nav-height); left:0; height:var(--community-sheet-height,auto); max-height:calc(var(--app-viewport-height) - var(--community-nav-height) - 170px); min-height:32px; overflow:hidden; padding:8px 20px 10px; border-radius:25px 25px 0 0; box-shadow:0 -8px 12px #173d320d; transition:var(--community-sheet-transition,none); }
 .community-page__sheet--map { gap:6px; }
 @media(prefers-reduced-motion:reduce) { .community-page__sheet { transition:none; } }
 .community-page__sheet--peek { padding-bottom:0; }
 .community-page__sheet--peek .af-bottom-sheet__body { display:none; }
+.community-page__sheet--detail.community-page__sheet--peek .af-bottom-sheet__body { display:flex; }
+.community-page__sheet--detail.community-page__sheet--peek .af-bottom-sheet__content { display:none; }
+.community-page__sheet--detail.community-page__sheet--peek .af-bottom-sheet__footer { margin-top:auto; }
+.community-page__sheet--detail.community-page__sheet--collapsed .af-bottom-sheet__body { display:none; }
+.community-page__sheet--detail.community-page__sheet--collapsed { min-height:0; padding-bottom:0; }
 .community-page__sheet .af-bottom-sheet__handle-row { flex:none; height:22px; margin:-8px -20px -10px; cursor:ns-resize; touch-action:none; }
 .community-page__sheet .af-bottom-sheet__handle-row:focus-visible { outline:2px solid var(--af-green); outline-offset:-3px; border-radius:25px 25px 0 0; }
 .community-page__sheet .af-bottom-sheet__handle { width:40px; background:#ccd9cc; }
@@ -130,17 +135,22 @@
 .community-review-kind-dialog .community-review-kind-dialog__cancel { justify-content:center; border-color:transparent; background:#fff; }
 .community-detail-score { display:inline-flex; flex:none; align-items:baseline; gap:6px; margin:0; color:var(--af-green); font-size:11px; font-weight:700; white-space:nowrap; }
 .community-detail-score small { color:#849d89; font-size:inherit; font-weight:400; }
-.community-detail-meta { margin:0 0 4px; color:#849d89; font-size:11px; }
+.community-detail-header-meta { flex:none; color:#849d89; font-size:13px; line-height:26px; white-space:nowrap; }
+.community-detail-meta { margin:0 0 4px; color:#849d89; font-size:13px; }
+.community-course-detail-score { font-size:13px; }
 .community-detail-label { margin:10px 0 6px; color:var(--af-ink); font-size:12px; font-weight:600; }
 .community-page__sheet--detail .af-bottom-sheet__body { gap:4px; }
-.community-page__sheet--detail { max-height:calc(var(--app-viewport-height) - var(--community-nav-height) - 96px); }
+.community-page__sheet--detail { touch-action:none; }
+.community-page__sheet--detail .community-review-carousel,
+.community-page__sheet--detail .community-gallery-strip { touch-action:none; }
+.community-page__sheet--detail { max-height:calc(var(--app-viewport-height) - var(--community-nav-height) - 96px); padding-bottom:10px; }
+.community-page__sheet--select .af-bottom-sheet__footer { padding-top:4px; }
 .community-page__sheet--detail .af-bottom-sheet__title-row { margin-top:3px; }
-.community-page__sheet--detail-level-photo .community-detail-label,
-.community-page__sheet--detail-level-photo .community-review-heading,
-.community-page__sheet--detail-level-photo .community-quote-list,
-.community-page__sheet--detail-level-photo .community-vote { display:none; }
+.community-page__sheet--detail-level-photo .af-bottom-sheet__content { overflow:hidden; }
 .community-page__sheet--detail-mountain .af-bottom-sheet__title-row { display:grid; grid-template-columns:max-content max-content; align-items:baseline; justify-content:start; gap:0 10px; }
 .community-page__sheet--detail-mountain .community-detail-score { display:contents; }
+.community-page__sheet--detail-spot .af-bottom-sheet__title-row,
+.community-page__sheet--detail-course .af-bottom-sheet__title-row { display:grid; grid-template-columns:max-content max-content; align-items:baseline; justify-content:start; gap:0 10px; }
 .community-page__sheet--detail-mountain .community-detail-score__summary { display:inline-flex; align-items:baseline; gap:6px; font-size:13px; line-height:26px; }
 .community-page__sheet--detail-mountain .community-detail-metrics { grid-column:1 / -1; line-height:16px; }
 .community-page__sheet--detail-mountain .af-bottom-sheet__body { gap:0; }
@@ -172,6 +182,7 @@
 .community-gallery-page h2 { margin:0; color:var(--af-ink); font-size:19px; line-height:28px; }
 .community-gallery-album .community-gallery-page__intro { margin-bottom:16px; }
 .community-review-list-page .community-quote-list { margin-top:14px; }
+.community-review-list-page { min-height:0; max-height:none; overflow-y:auto; padding-bottom:calc(24px + var(--community-nav-height)); }
 .community-review-list-page .community-quote { padding:14px; border:1px solid var(--af-line); background:#fff; font-size:13px; line-height:20px; }
 .community-gallery-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .community-gallery-grid .community-gallery-tile { width:100%; height:auto; aspect-ratio:1; }
@@ -226,7 +237,7 @@
 .community-form-layout__scroll>h2 { margin:0 0 18px; color:var(--af-ink); font-size:20px; line-height:28px; }
 .community-form-layout--review .community-form-layout__scroll>h2 { margin-bottom:7px; }
 .community-form-layout--review-mountain .community-form-layout__scroll>h2 { margin-bottom:21px; }
-.community-form-layout--review-mountain .community-form-section:first-of-type { margin-bottom:26px; padding-bottom:11px; border-bottom:1px solid var(--af-line); }
+.community-form-layout--review-mountain .community-form-section:first-of-type { margin-bottom:26px; }
 .community-form-layout--review-mountain .community-form-section:first-of-type .community-field-label { margin-bottom:14px; color:#617b6c; font-size:11px; line-height:16px; font-weight:400; }
 .community-form-layout--review-mountain .af-rating-input { min-height:48px; gap:0; padding:0; }
 .community-form-layout--review-mountain .af-rating-input__star { width:42px; height:48px; color:#d98a26; font-size:34px; }

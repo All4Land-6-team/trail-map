@@ -21,6 +21,7 @@ export type CommunityCourseDto = {
   name: string
   distanceKm: number
   reviewCount: number
+  averageRating: number | null
   photoCount: number
   representativePhotoUrl: string | null
   coordinates: { longitude: number; latitude: number }[]
@@ -72,7 +73,11 @@ export type EligibleHikeDto = {
   endedAt: string
 }
 
-export type CommunityEligibilityDto = { hikes: EligibleHikeDto[] }
+export type CommunityEligibilityDto = {
+  eligibilityCode: 'ELIGIBLE' | 'NO_COMPLETED_HIKE' | 'ALREADY_REVIEWED'
+  reason: string | null
+  hikes: EligibleHikeDto[]
+}
 
 export type CommunityPhotoDto = {
   photoId: number
