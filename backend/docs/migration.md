@@ -24,6 +24,7 @@ DB 스키마 변경은 Flyway migration SQL 파일로만 수행합니다.
 - `V8__add_course_guide_metadata.sql`: 공식 안내의 구간·시간·난이도·URL·확인일과 적용한 코스 버전·경로 지문을 보존합니다. 데이터는 별도 검증 CLI로 적재합니다.
 - `V9__add_email_authentication.sql`: 기존 익명 사용자 행을 보존하면서 이메일·비밀번호 해시를 추가하고, 만료·폐기를 지원하는 로그인 세션 테이블을 생성합니다.
 - `V10__store_course_analysis_document.sql`: 기존 `course_analysis`에 NULL 허용 `analysis_document JSONB`와 문서 버전·ID·지문·크기 검증 제약을 추가합니다. 새 샘플 테이블은 생성하지 않으며 기존 파일 문서를 자동 이전하지 않습니다.
+- `V11__add_park_access_control.sql`: 사무소별 통제정보 및 첨부 테이블을 생성하고, 미수집 상태의 북한산·북한산도봉 사무소 식별자 두 행을 추가합니다.
 
 기존 `app_user` 행은 `email`과 `password_hash`가 모두 NULL인 레거시 사용자로 보존됩니다. 신규 가입자는 정규화한 고유 이메일과 BCrypt 비밀번호 해시를 함께 저장합니다. 닉네임은 중복을 허용합니다.
 
