@@ -9,10 +9,21 @@ export function useParkControl(courseId: number | undefined, mountainKey: string
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<ParkControlState>({ status: 'loading' });
   const renewed = useRef(false);
+  const failed = useRef(false);
   const connected = Number.isSafeInteger(courseId) && courseId! > 0 && ['bukhansan', 'dobongsan'].includes(mountainKey);
 
   useEffect(() => {
-    if (enabled) setEntered(true);
+    failed.current = state.status === 'error';
+  }, [state]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    setEntered(true);
+    // 오류 화면에는 다시 조회 버튼이 없으므로 실패한 뒤 탭에 다시 들어오면 재조회한다.
+    if (failed.current) {
+      setState({ status: 'loading' });
+      setAttempt(value => value + 1);
+    }
   }, [enabled]);
 
   useEffect(() => {
@@ -33,15 +44,10 @@ export function useParkControl(courseId: number | undefined, mountainKey: string
       });
     }).catch(() => {
       if (!controller.signal.aborted) setState(previous => previous.status === 'success' ? previous :
-        { status: 'error', message: '통제정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' });
+        { status: 'error', message: '통제정보를 불러오지 못했어요. 잠시 후 통제정보 탭을 다시 열어 주세요.' });
     });
     return () => controller.abort();
   }, [entered, connected, courseId, mountainKey, attempt]);
-
-  function retry() {
-    setState({ status: 'loading' });
-    setAttempt(value => value + 1);
-  }
 
   function renewImages() {
     if (renewed.current) return;
@@ -49,5 +55,5 @@ export function useParkControl(courseId: number | undefined, mountainKey: string
     setAttempt(value => value + 1);
   }
 
-  return { state: connected ? state : { status: 'unavailable' } as const, expanded, setExpanded, retry, renewImages };
+  return { state: connected ? state : { status: 'unavailable' } as const, expanded, setExpanded, renewImages };
 }

@@ -44,11 +44,10 @@ test('부분통제 카드와 정상 요약을 사무소 상태에 맞게 렌더�
      {kind:'ATTACHMENT', name:'3.구천계곡 부분통제.jpg', sourceUrl:'https://www.knps.or.kr/file', imageUrl:'https://example.com/file.jpg'}];
    assert.match(render(), /구천계곡/); assert.match(render(), /src="https:\/\/example.com\/saved.png"/);
    r.data.office.assets.push({kind:'ATTACHMENT',name:'공고.pdf',sourceUrl:'https://www.knps.or.kr/notice',imageUrl:null});
-   assert.match(render(), /href="https:\/\/www\.knps\.or\.kr\/file"[^>]*>3\.구천계곡 부분통제\.jpg/);
-   assert.match(render(), /href="https:\/\/www\.knps\.or\.kr\/notice"[^>]*>공고\.pdf/);
+   assert.doesNotMatch(render(), /첨부파일|부분통제\.jpg|공고\.pdf|www\.knps\.or\.kr\/(file|notice)/);
    assert.doesNotMatch(render(), /이미지를 불러오지 못했어요/);
    assert.doesNotMatch(render(), /다시 조회/);
-   assert.match(renderToStaticMarkup(createElement(CourseControl, {state:{status:'error',message:'실패'}})), /<button[^>]*>다시 조회/);
+   assert.doesNotMatch(renderToStaticMarkup(createElement(CourseControl, {state:{status:'error',message:'실패'}})), /다시 조회|<button/);
    r.data.office.status = 'NORMAL'; assert.doesNotMatch(render(), /구천계곡|saved.png/);
    r.data.office.stale = true; assert.match(render(), /마지막 수집 당시/);
    r.data.availability = 'MISSING'; r.data.office = null; assert.match(render(), /아직 수집하지 않았어요/);

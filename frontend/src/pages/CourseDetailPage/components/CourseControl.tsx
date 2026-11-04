@@ -16,12 +16,11 @@ type Props = {
   state: ParkControlState;
   expanded: boolean;
   setExpanded: (open: boolean) => void;
-  retry: () => void;
   renewImages: () => void;
 };
-export function CourseControl({ state, expanded, setExpanded, retry, renewImages }: Props) {
+export function CourseControl({ state, expanded, setExpanded, renewImages }: Props) {
   if (state.status === 'loading') return <p role="status">통제정보를 불러오는 중이에요.</p>;
-  if (state.status === 'error') return <div className="course-spots__status"><p role="alert">{state.message}</p><button type="button" onClick={retry}>다시 조회</button></div>;
+  if (state.status === 'error') return <div className="course-spots__status"><p role="alert">{state.message}</p></div>;
   if (state.status === 'unavailable' || (state.status === 'success' && state.data.availability !== 'AVAILABLE')) return <div className="course-spots__status">
     <p role="status">{state.status === 'success' && state.data.availability === 'MISSING'
       ? '담당 사무소의 통제정보를 아직 수집하지 않았어요.' : '이 코스는 사무소 통제정보를 지원하지 않아요.'}</p>
@@ -46,12 +45,6 @@ export function CourseControl({ state, expanded, setExpanded, retry, renewImages
       {previews.map((a, i) => <ControlImage key={`${a.sourceUrl}/${a.imageUrl}/${i}`} asset={a} onFailure={renewImages} />)}
       {o.contentText ? <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}><summary>상세 안내</summary><p className="course-control__text">{o.contentText}</p></details> : <p>상세 안내를 확인하지 못했어요. 공단 원문을 확인해 주세요.</p>}
       {o.contact && <p className="course-control__contact">문의: {o.contact}</p>}
-      {attachments.length > 0 && <section aria-label="공단 첨부파일">
-        <h4>첨부파일</h4>
-        <ul>{attachments.map((asset, index) => <li key={`${asset.sourceUrl}/${index}`}>
-          <a href={asset.sourceUrl} target="_blank" rel="noopener noreferrer">{asset.name} ↗</a>
-        </li>)}</ul>
-      </section>}
       {o.collectionState === 'ASSET_ERROR' && <p role="status">일부 첨부 이미지를 가져오지 못했어요. 원본 첨부를 확인해 주세요.</p>}
     </> : o.status === 'NORMAL' && <p>{uncertain ? '마지막 수집 당시 공단 목록상 정상 상태였어요.' : '공단 목록상 해당 사무소 관할 탐방로가 정상 상태입니다.'}</p>}
     <footer><a href={o.sourceUrl} target="_blank" rel="noopener noreferrer">공단 원문 보기 ↗</a></footer>
