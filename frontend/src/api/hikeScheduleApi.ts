@@ -40,8 +40,6 @@ export function apiBaseUrl() {
   return (import.meta.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
 }
 
-const backendCourseIds = new Map(Object.entries(DEV_COURSE_IDS).map(([screenId, dbId]) => [dbId, screenId]));
-
 /** 화면 코스 ID → DB 코스 번호. 예시 코스는 개발용 매핑, 실제 경로 코스(`db-{번호}`)는 그 번호. 둘 다 아니면 저장할 수 없다. */
 export function toBackendCourseId(courseId: string) {
   const id = DEV_COURSE_IDS[courseId] ?? databaseCourseId(courseId) ?? undefined;
@@ -54,7 +52,8 @@ function toSchedule(response: ScheduleResponse): HikeSchedule {
     scheduleId: response.scheduleId,
     date: response.date,
     startTime: response.startTime,
-    courseId: backendCourseIds.get(response.courseId) ?? `db-${response.courseId}`,
+    // 서버 일정은 항상 실제 DB 코스(`db-{번호}`)로 다룬다. 예시 코스로 되돌리면 다른 코스의 예시 경로가 표시된다.
+    courseId: `db-${response.courseId}`,
     serverCourseId: response.courseId,
     serverMountainId: response.mountainId,
     mountainName: response.mountainName,

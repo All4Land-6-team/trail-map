@@ -8,4 +8,3 @@
 .hike-detail-page__cancel { display: block; min-height: 36px; margin: 12px auto 0; padding: 0 12px; border: 0; color: var(--af-muted); background: transparent; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; cursor: pointer; }
 .hike-detail-page__cancel:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; border-radius: 6px; }
 .hike-detail-page__toast { bottom: 300px; }
-.hike-page__empty-state .af-top-bar { align-self: stretch; }

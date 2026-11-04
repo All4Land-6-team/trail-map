@@ -32,7 +32,7 @@ export function HikeDescentPage() {
   return <div className="hike-page hike-map-page hike-descent-page">
     <main className="hike-page__body hike-map-page__body">
       <div className="hike-map-page__map">
-        <HikeRouteMap route={controls.route} peak={controls.peak}
+        <HikeRouteMap route={controls.route} peak={controls.peak} mountainName={hike.mountainName}
           {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
           padding={MAP_PADDING} label={`${hike.courseName} 하산 경로 지도`} />
         <div className="hike-map-page__top">

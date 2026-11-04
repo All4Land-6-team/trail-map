@@ -31,7 +31,7 @@ export function HikeDetailPage() {
     <main className="hike-page__body hike-map-page__body">
       {schedule && course ? <>
         <div className="hike-map-page__map">
-          {course.route.length ? <HikeRouteMap route={course.route} padding={MAP_PADDING}
+          {course.route.length ? <HikeRouteMap route={course.route} mountainName={course.mountainName} padding={MAP_PADDING}
             label={`${course.mountainName} ${course.courseName} 코스 경로 지도`} />
             : <p className="hike-map-page__route-status" role="status">
               {course.routeLoading ? "코스 경로를 불러오는 중이에요." : "코스 경로를 불러오지 못했어요."}</p>}
