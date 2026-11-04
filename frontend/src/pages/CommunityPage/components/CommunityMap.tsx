@@ -101,6 +101,8 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   const [dimension, setDimension] = useState<MapDimension>('2D')
   const [terrainStatus, setTerrainStatus] = useState<TerrainStatus>('idle')
   const mapLibreMarkers = useRef<Map<string, Marker>>(new Map())
+  const markerEnterTimers = useRef<Map<string, number>>(new Map())
+  const markerExitTimers = useRef<Map<string, number>>(new Map())
   const [markerElements] = useState(() => new Map<string, HTMLDivElement>())
   const isMainMap = className?.includes('community-page__map--main') ?? false
   const wasMainMap = useRef(isMainMap)
@@ -127,12 +129,14 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   useEffect(() => {
     if (!map) return
     const update = () => {
-      const mode = communityMarkerMode(map.getZoom())
+      const currentZoom = map.getZoom()
+      const mode = communityMarkerMode(currentZoom)
       if (isMainMap) setMarkerMode(mode)
+      if (isMainMap && (currentZoom < CLUSTER_CHOICE_MIN_ZOOM || currentZoom >= OVERLAP_RELEASE_ZOOM)) setClusterChoice(null)
       const visibleMarkers = isMainMap && mode === 'overview'
         ? overviewSnapshot ? [overviewSnapshot] : markerSnapshot.filter(marker => marker.kind === 'mountain')
         : markerSnapshot
-      const worldSize = 512 * 2 ** map.getZoom()
+      const worldSize = 512 * 2 ** currentZoom
       setProjected(visibleMarkers.map(marker => {
         const point = map.project(marker.coordinate)
         const mapPoint = MercatorCoordinate.fromLngLat(marker.coordinate)
@@ -331,13 +335,39 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     return { key, group, coordinate, offset: group.length > 1 && naturalPoint ? [x - naturalPoint.x, y - naturalPoint.y] : [0, 0], element: markerElements.get(key)! }
   })
 
+  const visibleClusterChoice = clusterChoice && (() => {
+    const selectedIds = new Set(clusterChoice.markers.map(markerIdentity))
+    const remainingCluster = markerPlacements
+      .filter(placement => placement.group.length > 1)
+      .map(placement => ({ placement, overlap: placement.group.filter(item => selectedIds.has(markerIdentity(item.marker))).length }))
+      .sort((left, right) => right.overlap - left.overlap)[0]
+    return remainingCluster && remainingCluster.overlap >= 2
+      ? { ...clusterChoice, key: remainingCluster.placement.key, markers: remainingCluster.placement.group.map(item => item.marker) }
+      : null
+  })()
+
   useEffect(() => {
     if (!map) return
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const liveKeys = new Set(markerPlacements.map(placement => placement.key))
     markerPlacements.forEach(({ key, coordinate, offset, element }) => {
+      const exitTimer = markerExitTimers.current.get(key)
+      if (exitTimer !== undefined) {
+        window.clearTimeout(exitTimer)
+        markerExitTimers.current.delete(key)
+        element.classList.remove('community-map__marker--disappearing')
+      }
       let marker = mapLibreMarkers.current.get(key)
       if (!marker || marker.getElement() !== element) {
         marker?.remove()
+        if (!reducedMotion) {
+          element.classList.add('community-map__marker--appearing')
+          const enterTimer = window.setTimeout(() => {
+            element.classList.remove('community-map__marker--appearing')
+            markerEnterTimers.current.delete(key)
+          }, 180)
+          markerEnterTimers.current.set(key, enterTimer)
+        }
         marker = new Marker({ element, anchor: 'center', opacityWhenCovered: 0.2, subpixelPositioning: true })
           .setLngLat(coordinate).setOffset(offset).addTo(map)
         mapLibreMarkers.current.set(key, marker)
@@ -349,13 +379,39 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       if (Math.abs(currentOffset.x - offset[0]) > 0.1 || Math.abs(currentOffset.y - offset[1]) > 0.1) marker.setOffset(offset)
     })
     mapLibreMarkers.current.forEach((marker, key) => {
-      if (!liveKeys.has(key)) { marker.remove(); mapLibreMarkers.current.delete(key); markerElements.delete(key) }
+      if (liveKeys.has(key) || markerExitTimers.current.has(key)) return
+      const element = marker.getElement()
+      if (reducedMotion) {
+        marker.remove()
+        mapLibreMarkers.current.delete(key)
+        markerElements.delete(key)
+        return
+      }
+      element.classList.remove('community-map__marker--appearing')
+      element.classList.add('community-map__marker--disappearing')
+      const exitTimer = window.setTimeout(() => {
+        if (markerExitTimers.current.get(key) !== exitTimer) return
+        marker.remove()
+        mapLibreMarkers.current.delete(key)
+        markerElements.delete(key)
+        markerExitTimers.current.delete(key)
+      }, 120)
+      markerExitTimers.current.set(key, exitTimer)
     })
   }, [map, markerElements, markerPlacements])
 
   useEffect(() => {
     const markersOnMap = mapLibreMarkers.current
-    return () => { markersOnMap.forEach(marker => marker.remove()); markersOnMap.clear() }
+    const enterTimers = markerEnterTimers.current
+    const exitTimers = markerExitTimers.current
+    return () => {
+      enterTimers.forEach(timer => window.clearTimeout(timer))
+      exitTimers.forEach(timer => window.clearTimeout(timer))
+      enterTimers.clear()
+      exitTimers.clear()
+      markersOnMap.forEach(marker => marker.remove())
+      markersOnMap.clear()
+    }
   }, [map])
 
   const expandCluster = (group: readonly ProjectedMarker[]) => {
@@ -394,18 +450,18 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       disabled={!map || mapUnavailable || (terrainEnabled && terrainStatus !== 'ready')}
       onDimensionModeChange={() => setDimension(current => current === '2D' ? '3D' : '2D')} />}
     {markerPlacements.map(({ key: groupKey, group, element }) => {
-      const choiceOpen = clusterChoice?.key === groupKey
+      const choiceOpen = visibleClusterChoice?.key === groupKey
       return createPortal(<div
         className={`community-map__pin ${group.length > 1 ? 'community-map__pin--cluster' : `community-map__pin--${group[0].marker.kind}`}${choiceOpen ? ' community-map__pin--cluster-choice' : ''}${group.length === 1 && group[0].marker.selected ? ' community-map__pin--selected' : ''}`}>
         {group.length > 1 ? <>
           <button type="button" className="community-map__cluster"
             aria-label={`겹친 지도 항목 ${group.length}개 ${markerMode === 'individual' ? '목록 보기' : '확대 또는 목록 보기'}`} onClick={() => expandCluster(group)}><span>{group.length}</span></button>
-          {choiceOpen && <div ref={clusterChoicesRef} className={`community-map__cluster-choices community-map__cluster-choices--${clusterChoice.align}`}
+          {choiceOpen && <div ref={clusterChoicesRef} className={`community-map__cluster-choices community-map__cluster-choices--${visibleClusterChoice.align}`}
             role="dialog" aria-label="겹친 지도 항목 선택"
             onPointerDown={event => event.stopPropagation()} onWheel={event => event.stopPropagation()} onTouchMove={event => event.stopPropagation()}
             onKeyDown={event => { if (event.key === 'Escape') setClusterChoice(null) }}>
             <button type="button" className="community-map__cluster-close" onClick={() => setClusterChoice(null)} aria-label="목록 닫기">×</button>
-            <strong>이 위치의 항목</strong>{clusterChoice.markers.map(marker => <button type="button" className="community-map__cluster-choice" key={markerIdentity(marker)} onClick={() => { onMarkerSelect?.(marker); setClusterChoice(null) }}>{marker.name}</button>)}
+            <strong>이 위치의 항목</strong>{visibleClusterChoice.markers.map(marker => <button type="button" className="community-map__cluster-choice" key={markerIdentity(marker)} onClick={() => { onMarkerSelect?.(marker); setClusterChoice(null) }}>{marker.name}</button>)}
           </div>}
         </> : group.map(({ marker }) => <span key={markerIdentity(marker)}>
         {marker.kind === 'mountain'

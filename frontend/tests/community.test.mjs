@@ -81,7 +81,15 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.match(mapSource, /currentZoom >= OVERLAP_RELEASE_ZOOM[\s\S]*map\(item => \[item\]\)/);
   assert.match(mapSource, /targetZoom = Math\.min\(CLUSTER_CHOICE_ZOOM, map\.getMaxZoom\(\)\)/);
   assert.match(mapSource, /map\.getZoom\(\) < CLUSTER_CHOICE_MIN_ZOOM/);
+  assert.match(mapSource, /remainingCluster\.overlap >= 2/);
+  assert.match(mapSource, /markers: remainingCluster\.placement\.group\.map/);
   assert.match(cssSource, /community-map__cluster span \{[^}]*width:30px;[^}]*height:30px/);
+  assert.doesNotMatch(mapSource, /map\.on\('zoomstart'/);
+  assert.match(mapSource, /element\.classList\.add\('community-map__marker--appearing'\)/);
+  assert.match(mapSource, /element\.classList\.add\('community-map__marker--disappearing'\)/);
+  assert.match(cssSource, /community-map__marker--appearing \.community-map__pin \{[^}]*animation:community-map-marker-appear 180ms cubic-bezier\(\.22,1,\.36,1\)/);
+  assert.match(cssSource, /community-map__marker--disappearing \.community-map__pin \{[^}]*animation:community-map-marker-disappear 120ms ease-in forwards/);
+  assert.match(cssSource, /@media\(prefers-reduced-motion:reduce\) \{[^}]*community-map__marker--appearing[^}]*community-map__marker--disappearing[^}]*animation:none/);
   assert.match(cssSource, /community-map__pin \.af-spot-marker \{[^}]*width:44px;[^}]*height:44px/);
   assert.match(cssSource, /community-map__pin \.af-spot-marker::before \{[^}]*inset:7px/);
   assert.match(cssSource, /community-picker \.community-map__pin--selected \.af-spot-marker::before \{[^}]*border:2px solid var\(--af-green\)/);

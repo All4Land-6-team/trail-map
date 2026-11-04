@@ -37,6 +37,10 @@
 .community-page__map--main[data-marker-mode="overview"] .af-mountain-marker--point:focus-visible { outline:2px solid var(--af-green); outline-offset:2px; border-radius:50%; }
 .community-page__map--detail-spot .community-map__pin:not(.community-map__pin--selected) .af-spot-marker__label { display:none; }
 .community-page__map--detail-spot .community-map__pin--selected { z-index:3; }
+.community-page__map--main .community-map__marker--appearing .community-map__pin { transform-origin:center; animation:community-map-marker-appear 180ms cubic-bezier(.22,1,.36,1); }
+.community-page__map--main .community-map__marker--disappearing .community-map__pin { transform-origin:center; pointer-events:none; animation:community-map-marker-disappear 120ms ease-in forwards; }
+@keyframes community-map-marker-appear { from { opacity:0; transform:scale(.72); } to { opacity:1; transform:scale(1); } }
+@keyframes community-map-marker-disappear { from { opacity:1; transform:scale(1); } to { opacity:0; transform:scale(.72); } }
 .community-map__cluster { display:grid; width:44px; height:44px; padding:0; place-items:center; border:0; background:transparent; cursor:pointer; }
 .community-map__cluster span { display:grid; width:30px; height:30px; place-items:center; border:2px solid #fff; border-radius:50%; color:#fff; background:var(--af-green); box-shadow:0 2px 8px rgb(23 71 54 / 20%); font:700 12px/1 "Noto Sans KR",sans-serif; }
 .community-map .maplibregl-marker:has(.community-map__pin--cluster-choice) { z-index:10; }
@@ -53,6 +57,7 @@
 .community-map__custom-symbol { display:grid; min-width:30px; height:30px; padding:4px; place-items:center; border:1px solid var(--community-course-color,var(--af-green)); border-radius:50%; color:var(--community-course-color,var(--af-green)); background:#fff; font-size:11px; font-weight:700; }
 .community-map__custom-marker--point .community-map__custom-symbol { min-width:24px; width:24px; height:24px; padding:2px; color:#fff; background:var(--af-green); font-size:13px; font-weight:900; line-height:1; }
 .community-map__custom-label { max-width:100px; overflow:hidden; padding:3px 7px; border-radius:10px; color:var(--af-green-dark); background:#fff; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+@media(prefers-reduced-motion:reduce) { .community-page__map--main .community-map__marker--appearing .community-map__pin,.community-page__map--main .community-map__marker--disappearing .community-map__pin { animation:none; } }
 .community-map-filters { position:absolute; z-index:11; top:82px; left:12px; display:flex; width:calc(100% - 12px); gap:7px; overflow-x:auto; scrollbar-width:none; }
 .community-map-filters::-webkit-scrollbar { display:none; }
 .community-map-filters .af-chip { flex:none; height:34px; padding-inline:14px; }
