@@ -243,6 +243,11 @@
 .cart-metric-track { display: block; grid-column: 1 / -1; height: 5px; margin-left: 28px; border-radius: 3px; background: #e9efe7; overflow: hidden; }
 .cart-metric-track > span { display: block; height: 100%; border-radius: inherit; }
 .cart-metric-value { max-width: 8em; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.cart-metrics-screen .cart-metric-guide { display: flex; grid-column: 1 / -1; flex-wrap: wrap; gap: 4px 10px; min-width: 0; margin: 0 0 0 28px; color: #526d60; overflow-wrap: anywhere; }
+.cart-metric-guide-route { flex-basis: 100%; word-break: keep-all; }
+.cart-metric-guide a { color: var(--af-green); text-underline-offset: 3px; }
+.cart-guide-retry { min-height: 44px; margin-top: 10px; padding: 8px 12px; border: 1px solid #b8c9bb; border-radius: 6px; color: var(--af-green-dark); background: #fff; font: inherit; cursor: pointer; }
+.cart-metric-guide a:focus-visible, .cart-guide-retry:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
 .cart-metrics-screen .cart-metrics-note { display: block; margin: 12px 0 0; color: #526d60; word-break: keep-all; overflow-wrap: anywhere; }
 .cart-compare-screen, .cart-metrics-screen { min-height: 0; }
 .cart-analysis-status { flex: none; padding-block: 4px; }
