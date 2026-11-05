@@ -433,3 +433,7 @@ $env:ANALYSIS_TEST_JDBC_URL = "jdbc:postgresql://127.0.0.1:5433/trail_map"
 .\gradlew.bat test --tests "*CourseComparisonPostgisIntegrationTest" --rerun-tasks
 Remove-Item Env:ANALYSIS_TEST_JDBC_URL
 ```
+
+## 통제정보 조회 (#130)
+
+코스별 담당 사무소 통제정보와 이미지 URL은 [통제정보 조회·적재 계약](docs/park-access-control.md)을 따른다. [수집 방식 및 운영 설정](docs/park-control-import.md)에 따라 V11 적용과 수동 수집을 확인한 후 배포 서버에서 주 1회 자동 실행을 설정한다. 마지막 성공 확인 후 7일이 지나면 오래된 정보로 표시한다.

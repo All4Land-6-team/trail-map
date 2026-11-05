@@ -19,6 +19,7 @@ import { useCourseAnalysis } from "./hooks/useCourseAnalysis";
 import { CourseAnalysis } from "./components/CourseAnalysis";
 import { CourseSpots } from "./components/CourseSpots";
 import { useCourseDetail } from "./hooks/useCourseDetail";
+import { useParkControl } from "./hooks/useParkControl";
 import { useCourseFacilities } from "./hooks/useCourseFacilities";
 import { useCoursePhotoSpots } from "./hooks/useCoursePhotoSpots";
 import { coursePhotoSpotDisplay } from "../../utils/coursePhotoSpotDisplay";
@@ -53,6 +54,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const savedIds = useSavedCourseIds();
   const saved = savedIds.includes(courseId);
   const data = state.status === "success" ? state.data : null;
+  const control = useParkControl(data?.course.routeSource ? data.course.backendCourseId : undefined, mountainId,
+    view.tab === "spots" && view.category === "control");
   const examplePhotos = import.meta.env.DEV && import.meta.env.VITE_COURSE_PHOTO_SPOTS_SOURCE === "mock"
     && mountainId === "bukhansan" && courseId === "bukhansan-baegundae";
   const photos = useCoursePhotoSpots(mountainId, courseId, !examplePhotos && !!data && view.tab === "spots"
@@ -179,7 +182,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
           ? <CourseAnalysis data={data} analysisState={analysisState} analysisView={analysisView} onRetryAnalysis={retryAnalysis}
             reviews={reviewExcerpts} reviewTotal={reviewTotal} visibility={visibility} selectedIndex={selectedIndex}
             onSelect={index => setSelection({ key: selectionKey, index })} onToggle={toggleMetric} onReviewsOpen={onReviewsOpen ? () => onReviewsOpen(request) : undefined} />
-          : <CourseSpots spots={spots} category={view.category} selectedId={view.spotId}
+          : <CourseSpots control={control} spots={spots} category={view.category} selectedId={view.spotId}
             photos={photoState} onRetryPhotos={photos.retry}
             restrooms={restrooms.state} onRetryRestrooms={restrooms.retry}
             water={water.state} onRetryWater={water.retry}

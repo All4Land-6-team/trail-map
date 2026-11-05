@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly KNPS office control collection
+
+[Timer]
+OnCalendar=Mon *-*-* 04:00:00 Asia/Seoul
+Persistent=true
+AccuracySec=1min
+Unit=trail-map-park-control.service
+
+[Install]
+WantedBy=timers.target
