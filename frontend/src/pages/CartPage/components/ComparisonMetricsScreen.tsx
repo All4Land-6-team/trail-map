@@ -5,6 +5,8 @@ import { BottomNavigation, TopBar, type BottomDestination } from "../../../compo
 import { analysisSteepNotice, formatAnalysisDistance, formatAnalysisDuration, formatSteepRatio,
   steepSlopeThreshold, type ComparisonCourseView } from "../../../utils/courseComparison";
 import type { CourseComparisonState } from "../../../types/courseAnalysis";
+import type { CourseGuideComparisonState } from "../../../types/courseGuide";
+import { comparisonGuideView } from "../../../utils/courseGuideComparison";
 import { ComparisonAnalysisStatus } from "./ComparisonAnalysisStatus";
 import type { CartCourse } from "../types";
 import { ScheduleRegistrationSheet } from "./ScheduleRegistrationSheet";
@@ -14,6 +16,8 @@ type ComparisonMetricsScreenProps = {
   courses: readonly CartCourse[];
   analysisCourses: readonly ComparisonCourseView[];
   analysisState: CourseComparisonState;
+  guideState?: CourseGuideComparisonState;
+  onRetryGuides?: () => void;
   onRetry: () => void;
   onBack: () => void;
   onCourseDetail: (courseId: string) => void;
@@ -24,33 +28,18 @@ type ComparisonMetricsScreenProps = {
 };
 
 type Metric = {
+  id: 'distance' | 'duration' | 'steep';
   label: string;
   getValue: (course: ComparisonCourseView) => number | null;
   formatValue: (course: ComparisonCourseView) => string;
 };
 
-const metrics: readonly Metric[] = [
-  {
-    label: "거리 비교",
-    getValue: (course) => course.analysis?.metrics.distanceMeters ?? null,
-    formatValue: (course) => formatAnalysisDistance(course.analysis?.metrics.distanceMeters),
-  },
-  {
-    label: "예상 시간 비교",
-    getValue: (course) => course.analysis?.metrics.estimatedDurationSeconds ?? null,
-    formatValue: (course) => formatAnalysisDuration(course.analysis?.metrics.estimatedDurationSeconds),
-  },
-  {
-    label: "급경사 비율 비교",
-    getValue: (course) => course.analysis?.metrics.steepSectionRatioPercent ?? null,
-    formatValue: (course) => formatSteepRatio(course.analysis?.metrics.steepSectionRatioPercent),
-  },
-];
-
 export function ComparisonMetricsScreen({
   courses,
   analysisCourses,
   analysisState,
+  guideState = { status: 'unavailable', message: '공식 안내 시간 정보가 없어요.' },
+  onRetryGuides,
   onRetry,
   onBack,
   onCourseDetail,
@@ -66,6 +55,27 @@ export function ComparisonMetricsScreen({
     .map(course => steepSlopeThreshold(course.analysis)));
   const differentSteepPolicies = steepThresholds.has(null) || steepThresholds.size > 1;
   const steepNotices = [...new Set(analysisCourses.map(course => analysisSteepNotice(course.analysis)).filter(value => value !== null))];
+  const guideViews = new Map(analysisCourses.map(course => [course.id, comparisonGuideView(course, guideState)]));
+  const guideFor = (course: ComparisonCourseView) => {
+    const view = guideViews.get(course.id);
+    return view?.status === 'available' ? view.guide : null;
+  };
+  const needsGuideRetry = guideState.status === 'error' || [...guideViews.values()].some(view => view && view.status !== 'available');
+  const retryGuides = () => {
+    if ([...guideViews.values()].some(view => view?.status === 'outdated')) onRetry();
+    onRetryGuides?.();
+  };
+  const metrics: readonly Metric[] = [
+    { id: 'distance', label: '거리 비교',
+      getValue: course => course.analysis?.metrics.distanceMeters ?? null,
+      formatValue: course => formatAnalysisDistance(course.analysis?.metrics.distanceMeters) },
+    { id: 'duration', label: '공식 안내 시간 비교',
+      getValue: course => guideFor(course)?.durationSeconds ?? null,
+      formatValue: course => formatAnalysisDuration(guideFor(course)?.durationSeconds) },
+    { id: 'steep', label: '급경사 비율 비교',
+      getValue: course => course.analysis?.metrics.steepSectionRatioPercent ?? null,
+      formatValue: course => formatSteepRatio(course.analysis?.metrics.steepSectionRatioPercent) },
+  ];
 
   return (
     <main className="cart-screen cart-metrics-screen">
@@ -99,6 +109,8 @@ export function ComparisonMetricsScreen({
                 <ul className="cart-metric-rows">
                   {analysisCourses.map((course, index) => {
                     const value = metric.getValue(course);
+                    const guideView = guideViews.get(course.id);
+                    const guide = guideView?.status === 'available' ? guideView.guide : null;
                     return (
                       <li className="cart-metric-row" key={course.id}>
                         <span className="cart-metric-identity">
@@ -110,15 +122,34 @@ export function ComparisonMetricsScreen({
                         <Typography variant="buttonLabel" className="cart-metric-value">
                           {metric.formatValue(course)}
                         </Typography>
-                        {value != null && !(metric.label === "급경사 비율 비교" && differentSteepPolicies)
+                        {value != null && !(metric.id === 'steep' && differentSteepPolicies)
                           && <span className="cart-metric-track" aria-hidden="true">
                           <span style={{ width: `${(value / maxValue) * 100}%`, backgroundColor: course.color }} />
                         </span>}
+                        {metric.id === 'duration' && <Typography as="p" variant="bodySmall" className="cart-metric-guide">
+                          {guide ? <>
+                            <span className="cart-metric-guide-route">{guide.routeLabel}</span>
+                            <a href={guide.sourceUrl} target="_blank" rel="noopener noreferrer"
+                              aria-label={`${course.name} 국립공원공단 코스 안내 (새 창)`}>국립공원공단 코스 안내 ↗</a>
+                            <span>확인 {guide.checkedOn}</span>
+                          </> : guideView && guideView.status !== 'available' ? guideView.message : null}
+                        </Typography>}
                       </li>
                     );
                   })}
                 </ul>
-                {metric.label === "급경사 비율 비교" && <>
+                {metric.id === 'duration' && <>
+                  <Typography as="p" variant="bodySmall" className="cart-metrics-note">
+                    공식 안내 구간 기준이며 왕복 시간이 아니에요. 실제 소요 시간은 보행 속도와 휴식 등에 따라 달라질 수 있어요.
+                  </Typography>
+                  {guideState.status === 'loading' && <Typography as="p" variant="bodySmall" className="cart-metrics-note" role="status">
+                    공식 안내 시간을 불러오는 중이에요.
+                  </Typography>}
+                  {(guideState.status === 'unavailable' || guideState.status === 'error')
+                    && <Typography as="p" variant="bodySmall" className="cart-metrics-note" role="status">{guideState.message}</Typography>}
+                  {needsGuideRetry && onRetryGuides && <button type="button" className="cart-guide-retry" onClick={retryGuides}>공식 안내 다시 불러오기</button>}
+                </>}
+                {metric.id === 'steep' && <>
                   {differentSteepPolicies && <Typography as="p" variant="bodySmall" className="cart-metrics-note">
                     급경사 기준이 다르거나 확인되지 않은 코스가 있어 직접 비교하기 어려워요. 분석 상태에서 각 기준을 확인해 주세요.
                   </Typography>}
@@ -129,7 +160,7 @@ export function ComparisonMetricsScreen({
           })}
         </div>
         <Typography as="p" variant="bodySmall" className="cart-metrics-note">
-          미계산 값은 —로 표시해요.
+          확인되지 않은 값은 —로 표시해요.
         </Typography>
         <ComparisonAnalysisStatus state={analysisState} courses={analysisCourses} onRetry={onRetry} />
         <nav className="cart-course-detail-links" aria-label="선택한 코스 상세">
