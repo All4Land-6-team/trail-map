@@ -290,7 +290,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     && !reviews.some(review => review.kind === 'spot' && review.targetId === detailSpotForHeight.id)
   const detailKey = screen === 'spotDetail' ? `spot:${detailSpotId}` : screen === 'courseDetail' ? `course:${detailCourseId}` : `mountain:${mountainId}`
   const mapSheetCanReachLimit = screen === 'map' && !inlineMountainDetail && (mapCategory === 'all' || mapCategory === 'spot' || mapCategory === 'course')
-  const { rootRef, style: sheetStyle, peek: sheetPeek, collapsed: sheetCollapsed, level: sheetLevel, reset: resetSheet, handleProps, sheetDragProps } = useCommunitySheet(isDetail || inlineMountainDetail, mapSheetCanReachLimit, compactEmptySpot, screen === 'spotDetail' || screen === 'courseDetail', screen === 'spotDetail', detailKey)
+  const { rootRef, style: sheetStyle, peek: sheetPeek, collapsed: sheetCollapsed, level: sheetLevel, reset: resetSheet, handleProps } = useCommunitySheet(isDetail || inlineMountainDetail, mapSheetCanReachLimit, compactEmptySpot, screen === 'spotDetail' || screen === 'courseDetail', screen === 'spotDetail', detailKey)
   const hideSheetBody = sheetPeek && !isDetail && !inlineMountainDetail
   useEffect(() => {
     const controller = new AbortController()
@@ -624,7 +624,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const visibleListedSpots = listedSpots.filter(spot => !isSpotHidden(votes[spot.id]))
   const visibleCourseTargets = useMemo(() => courses.filter(course => course.mountainId === mountainId), [courses, mountainId])
   const allCourseRoutes = useMemo(() => visibleCourseTargets.map(course => ({
-    id: course.id, color: communityCourseColor(course.name), coordinates: course.coordinates,
+    id: course.id, color: communityCourseColor(course.id), coordinates: course.coordinates,
   })), [visibleCourseTargets])
   const showAllCourseRoutes = screen === 'map' || screen === 'mountainDetail' || screen === 'spotDetail'
   const mapFocus = useMemo(() => {
@@ -638,11 +638,11 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     ?? visibleCourseTargets[0] ?? { id: '', mountainId, name: '코스', coordinates: [mountain.position],
       distanceKm: 0, baselinePhotos: 0, baselineReviews: 0, seedQuote: '' },
   [courses, detailCourseId, mountainId, mountain.position, visibleCourseTargets])
-  const selectedCourseColor = communityCourseColor(selectedCourse.name)
+  const selectedCourseColor = communityCourseColor(selectedCourse.id)
   const spotRegistrationCourses = useMemo<SpotRegistrationCourse[]>(() => eligibleCourses.flatMap(hike => {
     const course = visibleCourseTargets.find(item => item.id === hike.courseId)
     return course ? [{ hikeRecordId: hike.id, courseId: course.id, name: course.name, finishedAt: hike.finishedAt,
-      color: communityCourseColor(course.name), coordinates: course.coordinates }] : []
+      color: communityCourseColor(course.id), coordinates: course.coordinates }] : []
   }), [eligibleCourses, visibleCourseTargets])
   const mountainDetailFocus = useMemo(() => ({ coordinate: mountain.position as Coordinate, request: 1, zoom: MOUNTAIN_DETAIL_ZOOM, resetZoom: true }), [mountain.position])
   const courseDetailFocus = useMemo(() => ({ coordinate: courseCenter(selectedCourse), request: 1 }), [selectedCourse])
@@ -993,7 +993,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     ...(mapCategory === 'all' || mapCategory === 'spot' ? filteredSpots.map(spot => ({ id: spot.id, name: spot.name, coordinate: spot.coordinate, kind: 'spot' as const, spotType: spot.type, targetType: spot.targetType })) : []),
     ...(mapCategory === 'all' || mapCategory === 'course'
       ? visibleCourseTargets.map(course => ({ id: course.id, name: course.name, coordinate: courseCenter(course),
-        kind: 'course' as const, color: communityCourseColor(course.name) })) : []),
+        kind: 'course' as const, color: communityCourseColor(course.id) })) : []),
   ]
   const activePickerPosition = spotRegistrationMode === 'active' ? activeHike?.currentPosition : undefined
   const spotPickerFocus = useMemo(() => activePickerPosition
@@ -1003,7 +1003,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     ...visibleSpots.map(spot => ({ id: spot.id, name: spot.name,
       coordinate: spot.coordinate, kind: 'spot' as const, spotType: spot.type, selected: pickerSpotId === spot.id })),
     ...(activePickerPosition ? [{ id: 'active-position', name: '현재 위치', coordinate: activePickerPosition,
-      kind: 'point' as const, shortLabel: '✓' }] : []),
+      kind: 'current-location' as const }] : []),
   ]
   function handleBottomNavigation(destination: BottomDestination) {
     if (destination === 'community') {
@@ -1044,7 +1044,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const courseHeaderScore = <span className="community-detail-score community-course-detail-score">
     <span>{selectedCourse.averageRating !== undefined ? `★ ${selectedCourse.averageRating.toFixed(1)}` : '평점 없음'}</span>
   </span>
-  return <main ref={rootRef} className="community-page" style={sheetStyle} aria-label={title}>
+  return <main ref={rootRef} className="community-page" aria-label={title}>
     <TopBar title={title} showLeading={screen !== 'mountainSelect' || Boolean(onExit)} showAction={false} onBack={back} className="community-page__topbar" />
 
     {screen === 'mountainSelect' && <>
@@ -1052,6 +1052,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         markers={mountains.map(item => ({ id: item.id, name: item.name, kind: 'mountain', coordinate: item.position as Coordinate, selected: mountainId === item.id }))}
         onMarkerSelect={marker => selectMountain(marker.id)} />
       <BottomSheet title="커뮤니티에서 볼 산을 선택해주세요" showClose={false}
+        style={sheetStyle}
         handleProps={handleProps} bodyHidden={false}
         className={`community-page__sheet community-page__sheet--select${sheetPeek ? ' community-page__sheet--peek' : ''}`} content={<div className="community-mountain-chips">{mountains.map(item =>
           <Chip key={item.id} label={item.name} selected={mountainId === item.id} onClick={() => selectMountain(item.id)} />)}</div>}
@@ -1092,12 +1093,13 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
 
     {screen === 'map' && <>
       {inlineMountainDetail ? <BottomSheet title={mountain.name} showClose={false}
+        style={sheetStyle}
         className={`community-page__sheet community-page__sheet--detail community-page__sheet--detail-mountain community-page__sheet--detail-level-${sheetLevel}${sheetPeek ? ' community-page__sheet--peek' : ''}`}
         headerAction={mountainHeaderScore}
-        handleProps={handleProps} {...sheetDragProps} bodyHidden={hideSheetBody}
+        handleProps={handleProps} bodyHidden={hideSheetBody}
         content={<div id="community-map-results">{mountainReviewContent}</div>}
         showFooter={!readOnly} footer={<Button fullWidth label="후기 등록" onClick={() => registerReview(() => beginReview('mountain', mountainId))} />} />
-        : <BottomSheet title={mapCategory === 'spot' ? '스팟 사진·후기' : mapCategory === 'course' ? '코스 후기' : mapCategory === 'all' ? '전체 후기' : '지도에서 후기 보기'} headerAction={<ReviewEligibilityInfo />} showClose={false} className={`community-page__sheet community-page__sheet--map${mapCategory === 'spot' ? ' community-page__sheet--map-spot' : ''}${sheetPeek ? ' community-page__sheet--peek' : ''}`}
+        : <BottomSheet title={mapCategory === 'spot' ? '스팟 사진·후기' : mapCategory === 'course' ? '코스 후기' : mapCategory === 'all' ? '전체 후기' : '지도에서 후기 보기'} headerAction={<ReviewEligibilityInfo />} showClose={false} style={sheetStyle} className={`community-page__sheet community-page__sheet--map${mapCategory === 'spot' ? ' community-page__sheet--map-spot' : ''}${sheetPeek ? ' community-page__sheet--peek' : ''}`}
         handleProps={handleProps} bodyHidden={hideSheetBody}
         content={<div id="community-map-results" className="community-map-results" aria-live="polite">
           {(mapCategory === 'all' || mapCategory === 'mountain') && <section className="community-map-section" aria-label="산 평점과 후기">
@@ -1139,7 +1141,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
               {course.representativePhotoUrl ? <img className="community-preview-row__photo" src={course.representativePhotoUrl} alt="" loading="lazy" />
                 : <span className="community-preview-row__photo-placeholder" aria-hidden="true"><Icon name="Photo" size={24} /></span>}
               <span className="community-preview-row__text"><span className="community-preview-row__heading">
-                <span className="community-course-color" style={{ backgroundColor: communityCourseColor(course.name) }} aria-hidden="true" />
+                <span className="community-course-color" style={{ backgroundColor: communityCourseColor(course.id) }} aria-hidden="true" />
                 <strong>{course.name}</strong></span>
                 <small>{course.averageRating !== undefined ? `★ ${course.averageRating.toFixed(1)} · ` : '평점 없음 · '}{course.distanceKm} km · 후기 {course.baselineReviews}</small></span><Icon name="ChevronRight" size={18} /></button>
           })
@@ -1172,7 +1174,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
 
     {isDetail && <>
       <BottomSheet showClose={false} className={`community-page__sheet community-page__sheet--detail community-page__sheet--detail-${screen === 'mountainDetail' ? 'mountain' : screen === 'spotDetail' ? 'spot' : 'course'} community-page__sheet--detail-level-${sheetLevel}${sheetPeek ? ' community-page__sheet--peek' : ''}${sheetCollapsed ? ' community-page__sheet--collapsed' : ''}`}
-        handleProps={handleProps} {...sheetDragProps} bodyHidden={hideSheetBody}
+        style={sheetStyle}
+        handleProps={handleProps} bodyHidden={hideSheetBody}
         title={screen === 'mountainDetail' ? mountain.name : screen === 'spotDetail' ? selectedSpot?.name ?? '스팟' : selectedCourse.name}
         headerAction={screen === 'mountainDetail' ? mountainHeaderScore : screen === 'courseDetail' ? courseHeaderScore : undefined}
         content={screen === 'mountainDetail' ? mountainReviewContent : screen === 'spotDetail' ? spotDetailFailure

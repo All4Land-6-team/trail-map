@@ -7,7 +7,7 @@ import { hikePaths, navigateTab as navigateFromBottom } from './pages/hikeRoutes
 import { internalReturnPath } from './routes/communityRoutes'
 import { saveSchedule, useHikeSchedules } from './store/hikeScheduleStore'
 import { courseFixtures } from './api/courseMock'
-import { useCompletedHikes, useHikeSession } from './store/hikeSessionStore'
+import { hikeTargetIds, useCompletedHikes, useHikeSession } from './store/hikeSessionStore'
 import { navigate, routePath, useHashRoute } from './hooks/useHashRoute'
 import { HikeActivePage } from './pages/HikeActivePage/HikeActivePage'
 import { HikeCalendarPage } from './pages/HikeCalendarPage/HikeCalendarPage'
@@ -73,7 +73,7 @@ function AuthenticatedApp({ route }: { route: string }) {
         initialCourseId={query.get('course') ?? undefined}
         spotRegistrationMode={query.get('mode') === 'active' ? 'active' : 'postHike'}
         activeHike={query.get('mode') === 'active' && hikeSession && hikeSession.phase !== 'complete' ? {
-          hikeRecordId: hikeSession.hikeRecordId, courseId: hikeSession.schedule.courseId,
+          hikeRecordId: hikeSession.hikeRecordId, courseId: hikeTargetIds(hikeSession).courseId,
           currentPosition: hikeSession.currentPosition, startedAt: hikeSession.startedAt,
         } : undefined}
         onSpotRegistered={(entry === 'newSpot' || (entry === 'spotPicker' && query.get('mode') === 'active')) && returnTo.startsWith('hikes/') ? () => { window.location.hash = returnTo } : undefined}

@@ -27,11 +27,14 @@ function PhotoContent({ photo }: { photo: CommunityGalleryPhoto }) {
 export function CommunityPhotoStrip({ photos, onOpen, onViewAll, kindLabel, headingAside, totalCount, endRef }: GalleryProps & { onViewAll: () => void; kindLabel: string; headingAside?: ReactNode; totalCount?: number; endRef?: RefObject<HTMLButtonElement | null> }) {
   if (photos.length === 0) return <div className="community-gallery-empty">아직 등록된 사진이 없어요.</div>
   return <>
-    <div className="community-gallery-heading"><strong>사진 {totalCount ?? photos.length}장</strong>{headingAside}<button type="button" aria-label={`${kindLabel} 사진 전체보기`} onClick={onViewAll}>전체보기 <Icon name="ChevronRight" size={16} /></button></div>
+    <div className="community-gallery-heading"><strong>사진 {totalCount ?? photos.length}장</strong>{headingAside}</div>
     <div className="community-gallery-strip" role="region" aria-label={`${kindLabel} 사진 가로 목록`} tabIndex={0}>
       {photos.map((photo, index) => <button type="button" key={photo.id} ref={index === photos.length - 1 ? endRef : undefined} className="community-gallery-tile"
         aria-label={`${index + 1}번째 사진, ${photo.source === 'example' ? '예시 사진' : photo.source === 'review' ? '후기 사진' : '스팟 등록 사진'} 보기`}
         onClick={() => onOpen(photo.id)}><PhotoContent photo={photo} /></button>)}
+      <button type="button" className="community-gallery-more-card" aria-label={`${kindLabel} 사진 더보기`} onClick={onViewAll}>
+        <span>사진<br />더보기</span>
+      </button>
     </div>
   </>
 }

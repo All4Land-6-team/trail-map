@@ -9,7 +9,7 @@
 .community-review-card__photo--placeholder { display: grid; place-items: center; color: var(--af-green); }
 .community-review-card__body { display: flex; min-width: 0; flex: 1; flex-direction: column; justify-content: center; gap: 7px; }
 .community-review-card__rating { color: #f4b41b; font-size: 14px; font-weight: 700; letter-spacing: .5px; white-space: nowrap; }
-.community-review-card__no-rating { color: #617b6c; font-size: 12px; font-weight: 400; }
+.community-review-card__rating-empty { color: #d7a83e; }
 .community-review-card__meta { display: flex; min-width: 0; align-items: baseline; gap: 6px; color: #617b6c; font-size: 11px; line-height: 16px; }
 .community-review-card__meta strong { overflow: hidden; color: var(--af-ink); font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
 .community-review-card__content { display: -webkit-box; overflow: hidden; color: var(--af-ink); font-size: 14px; line-height: 21px; font-weight: 400; -webkit-box-orient: vertical; -webkit-line-clamp: 2; word-break: keep-all; }

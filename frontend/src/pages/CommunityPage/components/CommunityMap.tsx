@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { createPortal } from 'react-dom'
 import { Marker, MercatorCoordinate, type LngLatBoundsLike, type MapLibreMap } from 'maplibre-gl'
 import BaseMap, { type MapRoute } from '../../../components/map/BaseMap'
-import { MapAction, MountainMarker, SpotMarker, supportsTerrain, type MapDimension, type TerrainStatus } from '../../../components/map'
+import { CurrentLocationMarker, MapAction, MountainMarker, SpotMarker, supportsTerrain, type MapDimension, type TerrainStatus } from '../../../components/map'
 import mountainFlag from '../../../assets/icons/mountain-flag.svg'
 import { Icon } from '../../../components/common/Icon'
 import type { CommunitySpotTargetType, Coordinate, SpotType } from '../../../types/community'
@@ -15,7 +15,7 @@ export type CommunityMapMarker = {
   id: string
   name: string
   label?: string
-  kind: 'mountain' | 'spot' | 'course' | 'point'
+  kind: 'mountain' | 'spot' | 'course' | 'point' | 'current-location'
   coordinate: Coordinate
   spotType?: SpotType
   targetType?: CommunitySpotTargetType
@@ -43,7 +43,6 @@ type Props = {
   showMountainLabel?: boolean
   highlightedRoute?: Coordinate[]
   fitHighlightedRoute?: boolean
-  cooperativeGestures?: boolean
   highlightedRouteColor?: string
   highlightedRoutes?: readonly CommunityMapRoute[]
   onMarkerSelect?: (marker: CommunityMapMarker) => void
@@ -61,7 +60,7 @@ const MARKER_CLUSTER_DISTANCE = 45
 const INDIVIDUAL_OVERLAP_DISTANCE = 20
 const OVERLAP_RELEASE_ZOOM = 16
 const CLUSTER_CHOICE_ZOOM = OVERLAP_RELEASE_ZOOM - 0.5
-const CLUSTER_CHOICE_MIN_ZOOM = 13
+const CLUSTER_CHOICE_MIN_ZOOM = CLUSTER_CHOICE_ZOOM
 
 type ProjectedMarker = { marker: CommunityMapMarker; x: number; y: number; mapX: number; mapY: number }
 type ClusterChoiceState = { key: string; markers: CommunityMapMarker[]; align: 'left' | 'right' }
@@ -72,7 +71,7 @@ const clusterIdentity = (group: readonly ProjectedMarker[]) => group.map(item =>
 
 function groupNearbyMarkers(markers: readonly ProjectedMarker[], distance: number, useMapDistance = false) {
   return groupCommunityMapPoints([...markers]
-    .filter(({ marker }) => marker.kind !== 'mountain')
+    .filter(({ marker }) => marker.kind !== 'mountain' && marker.kind !== 'current-location')
     .sort((left, right) => markerIdentity(left.marker).localeCompare(markerIdentity(right.marker)))
     .map(item => ({ value: item, x: useMapDistance ? item.mapX : item.x, y: useMapDistance ? item.mapY : item.y })), distance)
     .map(group => group.map(point => point.value))
@@ -90,7 +89,7 @@ function visibleMapArea(map: MapLibreMap) {
 }
 
 export function CommunityMap({ markers = [], overviewMarker, mountainId, center = DEFAULT_CENTER, focusTarget, zoom = 14, showRoute = true, showMountainFlag = false, showMountainLabel = true,
-  highlightedRoute, fitHighlightedRoute = false, cooperativeGestures = false, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, onViewportChange, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
+  highlightedRoute, fitHighlightedRoute = false, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, onViewportChange, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [projected, setProjected] = useState<ProjectedMarker[]>([])
   const [markerMode, setMarkerMode] = useState(() => communityMarkerMode(zoom))
@@ -148,7 +147,11 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     map.on('moveend', update)
     map.on('resize', update)
     update()
-    return () => { observer.disconnect(); map.off('moveend', update); map.off('resize', update) }
+    return () => {
+      observer.disconnect()
+      map.off('moveend', update)
+      map.off('resize', update)
+    }
   }, [map, markerSnapshot, overviewSnapshot, isMainMap])
 
   useEffect(() => {
@@ -164,12 +167,6 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
     // 시트는 지도 위 오버레이이므로 시트의 높이로 카메라 중심을 옮기지 않는다.
     map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 })
   }, [map, className])
-
-  useEffect(() => {
-    if (!map) return
-    if (cooperativeGestures) map.cooperativeGestures.enable()
-    else map.cooperativeGestures.disable()
-  }, [map, cooperativeGestures])
 
   useEffect(() => {
     if (!map || terrainEnabled) return
@@ -314,11 +311,12 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   const currentZoom = map?.getZoom() ?? zoom
   const markerGroups = isMainMap && markerMode !== 'overview'
     ? markerMode === 'individual' && currentZoom >= OVERLAP_RELEASE_ZOOM
-      ? projected.filter(({ marker }) => marker.kind !== 'mountain').map(item => [item])
+      ? projected.filter(({ marker }) => marker.kind !== 'mountain' && marker.kind !== 'current-location').map(item => [item])
       : groupNearbyMarkers(projected, markerMode === 'cluster' ? MARKER_CLUSTER_DISTANCE : INDIVIDUAL_OVERLAP_DISTANCE, markerMode === 'cluster')
-    : projected.filter(({ marker }) => marker.kind !== 'mountain').map(item => [item])
+    : projected.filter(({ marker }) => marker.kind !== 'mountain' && marker.kind !== 'current-location').map(item => [item])
   const mountainMarkers = projected.filter(({ marker }) => marker.kind === 'mountain')
-  const displayedGroups = [...mountainMarkers.map(item => [item]), ...markerGroups]
+  const currentLocationMarkers = projected.filter(({ marker }) => marker.kind === 'current-location')
+  const displayedGroups = [...mountainMarkers.map(item => [item]), ...markerGroups, ...currentLocationMarkers.map(item => [item])]
   displayedGroups.forEach(group => {
     const key = clusterIdentity(group)
     if (!markerElements.has(key)) markerElements.set(key, document.createElement('div'))
@@ -421,7 +419,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       group.reduce((total, item) => total + item.marker.coordinate[1], 0) / group.length,
     ]
     const targetZoom = Math.min(CLUSTER_CHOICE_ZOOM, map.getMaxZoom())
-    if (map.getZoom() < CLUSTER_CHOICE_MIN_ZOOM) {
+    if (map.getZoom() < targetZoom) {
       setClusterChoice(null)
       const { visibleCenter, mapHeight } = visibleMapArea(map)
       map.easeTo({ center, offset: [0, visibleCenter - mapHeight / 2], zoom: targetZoom,
@@ -464,7 +462,9 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
             <strong>이 위치의 항목</strong>{visibleClusterChoice.markers.map(marker => <button type="button" className="community-map__cluster-choice" key={markerIdentity(marker)} onClick={() => { onMarkerSelect?.(marker); setClusterChoice(null) }}>{marker.name}</button>)}
           </div>}
         </> : group.map(({ marker }) => <span key={markerIdentity(marker)}>
-        {marker.kind === 'mountain'
+        {marker.kind === 'current-location'
+          ? <CurrentLocationMarker />
+          : marker.kind === 'mountain'
           ? <span className={`community-map__mountain-marker${showMountainLabel ? '' : ' community-map__mountain-marker--label-hidden'}`}>{showMountainFlag && <img src={mountainFlag} alt="" aria-hidden="true" className="community-map__mountain-flag" />}
               <MountainMarker name={marker.name} variant="point" selected={marker.selected} aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker)} />
             </span>

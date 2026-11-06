@@ -8,9 +8,10 @@ const dateLabel = (createdAt: string) => new Intl.DateTimeFormat('ko-KR', { mont
 
 function Rating({ review, type }: Pick<ReviewCardProps, 'review' | 'type'>) {
   if (type !== 'course') return null
-  if (review.rating == null) return <span className="community-review-card__no-rating">평점 없음</span>
-  return <span className="community-review-card__rating" aria-label={`별점 ${review.rating.toFixed(1)}점`}>
-    <span aria-hidden="true">{'★'.repeat(Math.max(0, Math.min(5, Math.round(review.rating))))}</span> {review.rating.toFixed(1)}
+  const rating = review.rating == null ? 0 : Math.max(0, Math.min(5, Math.round(review.rating)))
+  return <span className="community-review-card__rating" aria-label={review.rating == null ? '평점 없음' : `별점 ${review.rating.toFixed(1)}점`}>
+    <span aria-hidden="true">{'★'.repeat(rating)}<span className="community-review-card__rating-empty">{'☆'.repeat(5 - rating)}</span></span>
+    {review.rating != null && <> {review.rating.toFixed(1)}</>}
   </span>
 }
 
