@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { createHikeSchedule, deleteHikeSchedule, fetchHikeSchedules, updateHikeSchedule } from "../api/hikeScheduleApi";
+import { createHikeSchedule, deleteHikeSchedule, fetchHikeSchedules, toBackendCourseId, updateHikeSchedule } from "../api/hikeScheduleApi";
 import { sampleSchedules, toDateKey } from "../api/hikeMock";
 import type { HikeSchedule } from "../types/hike";
 
@@ -95,6 +95,16 @@ export type SaveScheduleOptions = {
  * api 모드에서 같은 날짜에 일정이 있으면 HikeScheduleApiError("conflict")를 던지고, 화면은 대체 확인 후 replaceExisting으로 다시 부른다.
  */
 export async function saveSchedule(schedule: HikeSchedule, { previousDate, replaceExisting = false }: SaveScheduleOptions = {}) {
+  // 초기 조회가 끝나기 전에 실제 일정이 로컬 예시로 저장되는 것을 막는다.
+  await whenScheduleModeReady();
+  if (schedule.courseId.startsWith("db-")) {
+    toBackendCourseId(schedule.courseId);
+    if (state.mode !== "api") {
+      // 실제 코스는 API에만 저장한다. 서버가 복구되면 같은 입력으로 다시 시도할 수 있다.
+      const schedules = await fetchHikeSchedules(dateOffset(-PAST_DAYS), dateOffset(FUTURE_DAYS));
+      setState({ mode: "api", schedules });
+    }
+  }
   if (state.mode !== "api") {
     replaceLocal(schedule, previousDate);
     return schedule;

@@ -8,6 +8,7 @@ import { EmptyState, Toast } from "../../components/feedback";
 import { BottomSheet } from "../../components/overlay";
 import { useSnappingMapSheet } from "../../hooks/useSnappingMapSheet";
 import { coursePaths } from "../../routes/courseRoutes";
+import { canScheduleCourse } from "../../utils/courseIdentity";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
 import type { Course, CourseDifficulty, CourseFilters, CourseRequest, DetailedCourseFilters } from "../../types/course";
@@ -71,7 +72,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     }
   }
   function openSchedule(course: Course) {
-    if (course.routeSource) return;
+    if (!canScheduleCourse(course)) return;
     const request = { mountainId, courseId: course.id };
     if (onScheduleOpen) onScheduleOpen(request);
     else {

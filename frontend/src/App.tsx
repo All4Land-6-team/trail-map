@@ -1,12 +1,11 @@
 import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
-import type { PlannedHike } from './types/hiking'
+import type { PlanHike, PlannedHike } from './types/hiking'
 import { HomePage } from './pages/HomePage/HomePage'
 import { CourseFlow } from './pages/CourseDetailPage/CourseFlow'
 import { readCourseRoute } from './routes/courseRoutes'
 import { hikePaths, navigateTab as navigateFromBottom } from './pages/hikeRoutes'
 import { internalReturnPath } from './routes/communityRoutes'
 import { saveSchedule, useHikeSchedules } from './store/hikeScheduleStore'
-import { courseFixtures } from './api/courseMock'
 import { useCompletedHikes, useHikeSession } from './store/hikeSessionStore'
 import { navigate, routePath, useHashRoute } from './hooks/useHashRoute'
 import { HikeActivePage } from './pages/HikeActivePage/HikeActivePage'
@@ -48,14 +47,11 @@ function AuthenticatedApp({ route }: { route: string }) {
   const completedHikes = useCompletedHikes()
   const hikeSession = useHikeSession()
 
-  function planHike(plannedHike: PlannedHike) {
-    // 등산 담기 시트에서 같은 날짜 대체 확인을 이미 거쳤으므로 대체 등록으로 보낸다.
-    saveSchedule({ date: plannedHike.date, startTime: plannedHike.time, courseId: plannedHike.courseId,
+  const planHike: PlanHike = async (plannedHike, { replaceExisting }) => {
+    const saved = await saveSchedule({ date: plannedHike.date, startTime: plannedHike.time, courseId: plannedHike.courseId,
       mountainName: plannedHike.mountain, courseName: plannedHike.courseName,
-      distanceKm: courseFixtures.find(course => course.id === plannedHike.courseId)?.distanceKm ?? 0 },
-    { replaceExisting: true })
-      .then(saved => navigate(hikePaths.calendar(saved.date)))
-      .catch(() => navigate(hikePaths.calendar(plannedHike.date)))
+      distanceKm: plannedHike.distanceKm ?? 0 }, { replaceExisting })
+    navigate(hikePaths.calendar(saved.date))
   }
 
   const path = routePath(route)

@@ -4,6 +4,7 @@ import { savedCourses } from "./data";
 import type { CartCourse } from "./types";
 import type { Course } from "../../types/course";
 import { getSavedCourse } from "../../store/courseSelectionStore";
+import { canScheduleCourse } from "../../utils/courseIdentity";
 
 // 탐색 화면의 ID를 유지하고, 기존 비교 시안에 있는 분석값만 재사용한다.
 export function toCartCourse(course: Course, index: number): CartCourse {
@@ -11,7 +12,7 @@ export function toCartCourse(course: Course, index: number): CartCourse {
   return {
     id: course.id, mountainId: course.mountainId, name: course.name, shortName: course.name.replace(/ 코스$/, ""),
     analysisReference: course.analysisReference,
-    scheduleAvailable: !course.routeSource,
+    scheduleAvailable: canScheduleCourse(course),
     mountain: mountains.find(item => item.id === course.mountainId)?.name ?? "산",
     distanceKm: course.distanceKm, durationMinutes: course.durationMinutes,
     routeCoordinates: course.routeCoordinates, color: example?.color ?? ["#1b6a53", "#5b8bd6", "#d9964a"][index % 3],
