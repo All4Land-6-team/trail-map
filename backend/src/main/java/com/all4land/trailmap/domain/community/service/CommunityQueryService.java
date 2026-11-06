@@ -74,6 +74,7 @@ public class CommunityQueryService {
                         course.name(),
                         course.distanceKm(),
                         course.reviewCount(),
+                        course.averageRating(),
                         course.photoCount(),
                         toReadUrl(course.representativePhotoKey()),
                         parseRouteCoordinates(course.routeGeoJson())

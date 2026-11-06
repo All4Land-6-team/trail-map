@@ -99,7 +99,8 @@ class CommunityCommandApiIntegrationTest {
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/review-eligibility")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.eligible").doesNotExist())
+                .andExpect(jsonPath("$.data.eligibilityCode").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.data.reason").doesNotExist())
                 .andExpect(jsonPath("$.data.hikes.length()").value(2))
                 .andExpect(jsonPath("$.data.hikes[0].hikeRecordId").value(latestId))
                 .andExpect(jsonPath("$.data.hikes[0].courseId").value(courseId))
@@ -114,17 +115,18 @@ class CommunityCommandApiIntegrationTest {
 
         mockMvc.perform(asUser(post("/v1/community/mountains/" + mountainId + "/reviews"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewJson(hikeRecordId, " 경치가 좋아요. ", 5)))
+                        .content(reviewJson(hikeRecordId, " 경치가 좋아요. ", null)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.kind").value("MOUNTAIN"))
                 .andExpect(jsonPath("$.data.content").value("경치가 좋아요."))
-                .andExpect(jsonPath("$.data.rating").value(5.0));
+                .andExpect(jsonPath("$.data.rating").doesNotExist());
 
         mockMvc.perform(asUser(post("/v1/community/courses/" + courseId + "/reviews"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewJson(hikeRecordId, "코스 상태가 좋아요.", null)))
+                        .content(reviewJson(hikeRecordId, "코스 상태가 좋아요.", 5)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.kind").value("COURSE"));
+                .andExpect(jsonPath("$.data.kind").value("COURSE"))
+                .andExpect(jsonPath("$.data.rating").value(5.0));
 
         mockMvc.perform(asUser(post("/v1/community/mountains/%d/spots/FACILITY/%d/reviews"
                                 .formatted(mountainId, facilityId)))
@@ -148,7 +150,7 @@ class CommunityCommandApiIntegrationTest {
 
         mockMvc.perform(asUser(post(mountainReviewUrl))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewJson(firstHikeId, "첫 산 후기", 5)))
+                        .content(reviewJson(firstHikeId, "첫 산 후기", null)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/eligible-hikes")))
@@ -156,6 +158,7 @@ class CommunityCommandApiIntegrationTest {
                 .andExpect(jsonPath("$.data.hikes.length()").value(2));
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/review-eligibility")))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.eligibilityCode").value("ELIGIBLE"))
                 .andExpect(jsonPath("$.data.hikes.length()").value(1))
                 .andExpect(jsonPath("$.data.hikes[0].hikeRecordId").value(secondHikeId));
 
@@ -180,8 +183,36 @@ class CommunityCommandApiIntegrationTest {
                 .andExpect(jsonPath("$.code").value("COMMUNITY_409_2"));
         mockMvc.perform(asUser(get("/v1/community/courses/" + courseId + "/review-eligibility")))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.eligibilityCode").value("ELIGIBLE"))
                 .andExpect(jsonPath("$.data.hikes.length()").value(1))
                 .andExpect(jsonPath("$.data.hikes[0].hikeRecordId").value(secondHikeId));
+    }
+
+    @Test
+    void 후기_자격_없음과_중복_사유를_구분해_반환한다() throws Exception {
+        long otherCourseId = jdbcTemplate.queryForObject("""
+                INSERT INTO course (mountain_id, course_name, course_geometry, source_id, source_hash, imported_at)
+                VALUES (?, '대남문 코스', ST_GeomFromText('LINESTRING(126.96 37.64, 126.98 37.66)', 4326), ?, ?, now())
+                RETURNING course_id
+                """, Long.class, mountainId, sourceId, hash());
+        long hikeRecordId = insertCompletedHike(courseId, 2);
+
+        mockMvc.perform(asUser(get("/v1/community/courses/" + otherCourseId + "/review-eligibility")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.eligibilityCode").value("NO_COMPLETED_HIKE"))
+                .andExpect(jsonPath("$.data.reason").value("산행 완료 후 24시간 이내에만 작성할 수 있어요."))
+                .andExpect(jsonPath("$.data.hikes.length()").value(0));
+
+        mockMvc.perform(asUser(post("/v1/community/courses/" + courseId + "/reviews"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reviewJson(hikeRecordId, "이미 작성한 코스 후기", 5)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(asUser(get("/v1/community/courses/" + courseId + "/review-eligibility")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.eligibilityCode").value("ALREADY_REVIEWED"))
+                .andExpect(jsonPath("$.data.reason").value("오늘 산행에서 해당 코스 후기를 이미 작성했어요."))
+                .andExpect(jsonPath("$.data.hikes.length()").value(0));
     }
 
     @Test

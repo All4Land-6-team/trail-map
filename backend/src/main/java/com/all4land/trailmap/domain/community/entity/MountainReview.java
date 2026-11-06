@@ -11,7 +11,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
@@ -41,26 +40,22 @@ public class MountainReview extends BaseEntity {
     @Column(name = "visited_date")
     private LocalDate visitedDate;
 
-    @Column(name = "rating")
-    private BigDecimal rating;
-
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
 
     private MountainReview(Long userId, Long mountainId, Long hikeRecordId, String content,
-                           LocalDate visitedDate, BigDecimal rating) {
+                           LocalDate visitedDate) {
         this.userId = userId;
         this.mountainId = mountainId;
         this.hikeRecordId = hikeRecordId;
         this.content = content;
         this.visitedDate = visitedDate;
-        this.rating = rating;
     }
 
     public static MountainReview create(Long userId, Long mountainId, Long hikeRecordId, String content,
-                                        LocalDate visitedDate, int rating) {
+                                        LocalDate visitedDate) {
         return new MountainReview(
-                userId, mountainId, hikeRecordId, content, visitedDate, BigDecimal.valueOf(rating)
+                userId, mountainId, hikeRecordId, content, visitedDate
         );
     }
 }

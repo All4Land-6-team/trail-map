@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.math.BigDecimal;
 
 @Getter
 @Entity
@@ -40,15 +41,20 @@ public class CourseReview extends BaseEntity {
     @Column(name = "visited_date")
     private LocalDate visitedDate;
 
+    @Column(name = "rating")
+    private BigDecimal rating;
+
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
 
-    private CourseReview(Long userId, Long courseId, Long hikeRecordId, String content, LocalDate visitedDate) {
+    private CourseReview(Long userId, Long courseId, Long hikeRecordId, String content,
+                         LocalDate visitedDate, BigDecimal rating) {
         this.userId = userId;
         this.courseId = courseId;
         this.hikeRecordId = hikeRecordId;
         this.content = content;
         this.visitedDate = visitedDate;
+        this.rating = rating;
     }
 
     public static CourseReview create(
@@ -56,8 +62,9 @@ public class CourseReview extends BaseEntity {
             Long courseId,
             Long hikeRecordId,
             String content,
-            LocalDate visitedDate
+            LocalDate visitedDate,
+            int rating
     ) {
-        return new CourseReview(userId, courseId, hikeRecordId, content, visitedDate);
+        return new CourseReview(userId, courseId, hikeRecordId, content, visitedDate, BigDecimal.valueOf(rating));
     }
 }
