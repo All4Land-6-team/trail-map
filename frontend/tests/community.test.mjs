@@ -178,11 +178,10 @@ test('상세 바텀시트는 콘텐츠를 제거하지 않고 측정한 단계 �
   assert.doesNotMatch(styles, /\.community-page__sheet--detail\.community-page__sheet--collapsed \.af-bottom-sheet__body \{ display:none; \}/);
 });
 
-test('상세 바텀시트는 사진에서 이름 단계로 이동할 때 버튼 하단 여백을 유지한다', () => {
-  const styles = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
-  assert.match(styles, /\.community-page__sheet:not\(\.community-page__sheet--detail\)\.community-page__sheet--peek \{ padding-bottom:0; \}/);
-  assert.doesNotMatch(styles, /\n\.community-page__sheet--peek \{ padding-bottom:0; \}/);
-  assert.match(styles, /\.community-page__sheet--detail\.community-page__sheet--collapsed \{ min-height:0; padding-bottom:0; \}/);
+test('상세 바텀시트의 이름 단계는 일반 peek 스타일을 적용하지 않는다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/hooks/useCommunitySheet.ts', import.meta.url), 'utf8');
+  assert.match(source, /const peek = !detail && currentLevel === 'peek' && dragHeight === null/);
+  assert.match(source, /const collapsed = detail && currentLevel === 'collapsed' && dragHeight === null/);
 });
 
 test('커뮤니티 목록 바텀시트는 드래그 중 React 상태를 반복 갱신하지 않는다', () => {

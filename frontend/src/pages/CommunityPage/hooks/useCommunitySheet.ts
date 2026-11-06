@@ -256,7 +256,7 @@ export function useCommunitySheet(detail = false, mapPreview = false, compactDet
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
   }
 
-  const peek = currentLevel === 'peek' && dragHeight === null
+  const peek = !detail && currentLevel === 'peek' && dragHeight === null
   const collapsed = detail && currentLevel === 'collapsed' && dragHeight === null
   const detailReady = measuredDetailKey === detailKey
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
