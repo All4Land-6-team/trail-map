@@ -9,6 +9,7 @@ import { CourseSelectionScreen } from "./components/CourseSelectionScreen";
 import { limitComparisonCourseIds, toggleComparisonCourseId } from "./data";
 import type { PlannedHike } from "../../types/hiking";
 import { useCourseComparison } from "./hooks/useCourseComparison";
+import { useCourseComparisonGuides } from "./hooks/useCourseComparisonGuides";
 import { comparisonCourseViews, withComparisonColors } from "../../utils/courseComparison";
 import type { CartCourse } from "./types";
 import "./cart.css";
@@ -24,10 +25,12 @@ function ConnectedComparison({ courses, metrics, onBack, onViewMetrics, onCourse
   plannedHikes: readonly PlannedHike[]; onPlanHike: (hike: PlannedHike) => void;
 }) {
   const { state, retry } = useCourseComparison(courses);
+  const { state: guideState, retry: retryGuides } = useCourseComparisonGuides(courses);
   const analysisCourses = useMemo(() => comparisonCourseViews(courses, state), [courses, state]);
   const common = { courses, analysisCourses, analysisState: state, onRetry: retry, onNavigate, onBack };
   return <Suspense fallback={<main aria-busy="true">비교 화면을 불러오는 중이에요</main>}>
-    {metrics ? <ComparisonMetricsScreen {...common} onCourseDetail={onCourseDetail} onKeepCart={onKeepCart}
+    {metrics ? <ComparisonMetricsScreen {...common} guideState={guideState} onRetryGuides={retryGuides}
+      onCourseDetail={onCourseDetail} onKeepCart={onKeepCart}
       plannedHikes={plannedHikes} onPlanHike={onPlanHike} />
       : <CourseCompareScreen {...common} onViewMetrics={onViewMetrics} />}
   </Suspense>;
