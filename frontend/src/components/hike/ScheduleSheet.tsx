@@ -4,6 +4,7 @@ import { toDateKey } from "../../api/hikeMock";
 import { useSingleFlight } from "../../hooks/useSingleFlight";
 import { deleteSchedule, findSchedule, refreshScheduleOn, saveSchedule } from "../../store/hikeScheduleStore";
 import type { HikeSchedule } from "../../types/hike";
+import { scheduleErrorMessage as saveErrorMessage } from "../../utils/hikeSchedule";
 import { Button } from "../common/Button";
 import { DateTimePicker, formatTimeValue, getNextAvailableTime, isTimeAtOrAfter, type DateTimeValue } from "../common/DateTimePicker";
 import { BottomSheet } from "../overlay";
@@ -55,13 +56,6 @@ function validate({ date, time }: DateTimeValue, today: string): Feedback | null
   const earliest = earliestTimeOn(date, today);
   if (earliest === null || !isTimeAtOrAfter(time, earliest)) return { tone: "error", field: "time", message: "지금 이후 시간을 선택해 주세요." };
   return null;
-}
-
-/** 저장·삭제 실패 안내. 서버 연결 실패, 지원하지 않는 코스, 진행 중인 등산 일정을 구분한다. */
-function saveErrorMessage(error: unknown, action = "저장") {
-  if (error instanceof HikeScheduleApiError && (error.kind === "unsupportedCourse" || error.kind === "activeHike")) return error.message;
-  if (error instanceof HikeScheduleApiError && error.kind === "network") return `서버에 연결하지 못해 일정을 ${action}하지 못했어요.`;
-  return `일정을 ${action}하지 못했어요. 잠시 후 다시 시도해 주세요.`;
 }
 
 /** FLOW-06 등산 일정 등록/수정/삭제 시트, HIKE-09 일정 수정 오버레이. 일정은 날짜당 1개만 저장한다. */
@@ -137,15 +131,16 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
   };
 
   const replacing = pendingReplace ? findSchedule(pendingReplace.date) : undefined;
+  const close = () => { if (!pending) onClose(); };
 
   return <>
-    <OverlayLayer placement="bottom" aboveNav onDismiss={onClose}>
+    <OverlayLayer placement="bottom" aboveNav onDismiss={close}>
       <BottomSheet className={["af-schedule-sheet", isEdit && "af-schedule-sheet--edit"].filter(Boolean).join(" ")}
         role="dialog" aria-modal="true" title={title} showDescription={!isEdit}
-        description={`${course.mountainName} · ${course.courseName}`} onClose={onClose}
-        content={<form id={`${feedbackId}-form`} className="af-schedule-sheet__form" noValidate onSubmit={event => void submit(event)}>
+        description={`${course.mountainName} · ${course.courseName}`} onClose={close}
+        content={<form id={`${feedbackId}-form`} className="af-schedule-sheet__form" aria-busy={pending} noValidate onSubmit={event => void submit(event)}>
           {/* 등산 담기 일정 등록과 같은 공용 날짜·시간 선택기. 칸 어디를 눌러도 열리고, 분은 10분 단위 */}
-          <DateTimePicker dateLabel="등산할 날짜" timeLabel="등산 시작 시간" value={value}
+          <DateTimePicker dateLabel="등산할 날짜" timeLabel="등산 시작 시간" value={value} disabled={pending}
             minDate={today} minuteStep={MINUTE_STEP} today={today}
             minTime={earliestTimeOn(value.date, today) ?? undefined}
             dateInvalid={feedback?.field === "date"} timeInvalid={feedback?.field === "time"}
@@ -159,7 +154,7 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
           ? <div className="af-schedule-sheet__actions">
             <Button type="submit" form={`${feedbackId}-form`} fullWidth label="일정 수정" disabled={pending} />
             <Button fullWidth variant="secondary" className="af-schedule-sheet__delete" label="일정 삭제"
-              onClick={() => setConfirmingDelete(true)} />
+              onClick={() => setConfirmingDelete(true)} disabled={pending} />
           </div>
           : <Button type="submit" form={`${feedbackId}-form`} fullWidth label={isEdit ? "일정 저장" : "일정 확정"} disabled={pending} />} />
     </OverlayLayer>

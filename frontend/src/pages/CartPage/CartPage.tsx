@@ -7,7 +7,7 @@ import { getSavedCartCourses } from "./catalog";
 import { CartHomeScreen } from "./components/CartHomeScreen";
 import { CourseSelectionScreen } from "./components/CourseSelectionScreen";
 import { limitComparisonCourseIds, toggleComparisonCourseId } from "./data";
-import type { PlannedHike } from "../../types/hiking";
+import type { PlanHike, PlannedHike } from "../../types/hiking";
 import { useCourseComparison } from "./hooks/useCourseComparison";
 import { useCourseComparisonGuides } from "./hooks/useCourseComparisonGuides";
 import { comparisonCourseViews, withComparisonColors } from "../../utils/courseComparison";
@@ -22,7 +22,7 @@ function ConnectedComparison({ courses, metrics, onBack, onViewMetrics, onCourse
   onNavigate, plannedHikes, onPlanHike }: {
   courses: readonly CartCourse[]; metrics: boolean; onBack: () => void; onViewMetrics: () => void;
   onCourseDetail: (id: string) => void; onKeepCart: () => void; onNavigate: (destination: BottomDestination) => void;
-  plannedHikes: readonly PlannedHike[]; onPlanHike: (hike: PlannedHike) => void;
+  plannedHikes: readonly PlannedHike[]; onPlanHike: PlanHike;
 }) {
   const { state, retry } = useCourseComparison(courses);
   const { state: guideState, retry: retryGuides } = useCourseComparisonGuides(courses);
@@ -40,7 +40,7 @@ type CartPageProps = {
   route: string;
   onNavigateOutsideCart: (destination: BottomDestination) => void;
   plannedHikes: readonly PlannedHike[];
-  onPlanHike: (plannedHike: PlannedHike) => void;
+  onPlanHike: PlanHike;
 };
 
 function LegacyCartCourseRedirect({ path }: { path: string }) {

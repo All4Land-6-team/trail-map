@@ -10,7 +10,7 @@ import { comparisonGuideView } from "../../../utils/courseGuideComparison";
 import { ComparisonAnalysisStatus } from "./ComparisonAnalysisStatus";
 import type { CartCourse } from "../types";
 import { ScheduleRegistrationSheet } from "./ScheduleRegistrationSheet";
-import type { PlannedHike } from "../../../types/hiking";
+import type { PlanHike, PlannedHike } from "../../../types/hiking";
 
 type ComparisonMetricsScreenProps = {
   courses: readonly CartCourse[];
@@ -24,7 +24,7 @@ type ComparisonMetricsScreenProps = {
   onKeepCart: () => void;
   onNavigate: (destination: BottomDestination) => void;
   plannedHikes: readonly PlannedHike[];
-  onPlanHike: (plannedHike: PlannedHike) => void;
+  onPlanHike: PlanHike;
 };
 
 type Metric = {
@@ -188,19 +188,20 @@ export function ComparisonMetricsScreen({
         <ScheduleRegistrationSheet
           courses={schedulableCourses}
           courseSummaries={Object.fromEntries(analysisCourses.map(course => [course.id,
-            `${formatAnalysisDistance(course.analysis?.metrics.distanceMeters)} · ${formatAnalysisDuration(course.analysis?.metrics.estimatedDurationSeconds)}`]))}
+            `${formatAnalysisDistance(course.analysis?.metrics.distanceMeters)} · 공식 안내 ${formatAnalysisDuration(guideFor(course)?.durationSeconds)}`]))}
           selectCourseFirst
           existingSchedules={plannedHikes}
           onClose={() => setScheduleOpen(false)}
-          onConfirm={(courseId, schedule) => {
+          onConfirm={async (courseId, schedule, options) => {
             const course = schedulableCourses.find((item) => item.id === courseId);
-            if (!course) return;
-            onPlanHike({
+            if (!course) throw new Error("선택한 코스를 다시 확인해 주세요.");
+            await onPlanHike({
               ...schedule,
               courseId,
               mountain: course.mountain,
               courseName: course.name,
-            });
+              distanceKm: course.distanceKm,
+            }, options);
           }}
         />
       )}

@@ -357,3 +357,4 @@
 @media (max-height: 639px) {
   .cart-screen:not(.cart-metrics-screen):has(.cart-schedule-overlay) { min-height: 100dvh; }
 }
+.cart-schedule-error { color: #b64135; margin: 12px 0 0; }

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 import * as selection from '../src/utils/settledCarouselSelection.ts';
+import * as identity from '../src/utils/courseIdentity.ts';
 
 function mountCarousel() {
   const slots = [], effects = [], trackListeners = new Map(), windowListeners = new Map();
@@ -28,7 +29,7 @@ function mountCarousel() {
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/pages/CourseListPage/components/CourseCarousel.tsx', import.meta.url), 'utf8'), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, { exports, require: name => name === 'react' ? react : name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
-    : name.endsWith('settledCarouselSelection') ? selection : name.endsWith('courseDiscovery')
+    : name.endsWith('courseIdentity') ? identity : name.endsWith('settledCarouselSelection') ? selection : name.endsWith('courseDiscovery')
       ? { COURSE_DIFFICULTY_LABELS: {}, formatCourseDuration: () => '정보 없음' } : { CourseCard: 'card' },
     window: { addEventListener: (name, callback) => windowListeners.set(name, callback), removeEventListener: name => windowListeners.delete(name) },
   });
