@@ -15,6 +15,14 @@ test('홈 지도는 초기 전국 줌과 카메라를 유지하며 2D Hillshade�
   assert.match(homeMap, /<BaseMap[^>]*zoom=\{6\.1\}[^>]*terrainMode="2D"[^>]*terrainCameraManaged/);
 });
 
+test('홈 산 탐색은 정적 mock 대신 커뮤니티 DB API를 사용한다', () => {
+  const discovery = readFileSync(new URL('../src/pages/HomePage/hooks/useHomeDiscovery.ts', import.meta.url), 'utf8');
+  const api = readFileSync(new URL('../src/api/homeApi.ts', import.meta.url), 'utf8');
+  assert.match(discovery, /from "\.\.\/\.\.\/\.\.\/api\/homeApi"/);
+  assert.match(api, /communityApi\.mountains\(signal\)/);
+  assert.doesNotMatch(discovery, /from "\.\.\/\.\.\/\.\.\/api\/homeMock"/);
+});
+
 test('한글 조합형과 공백을 정규화하고 정확한 이름·부분 이름을 찾는다', () => {
   assert.equal(normalizeMountainQuery('  북 한 산  '.normalize('NFD')), '북한산');
   assert.equal(findMountainByQuery(mountains, '도봉')?.id, 'dobongsan');
