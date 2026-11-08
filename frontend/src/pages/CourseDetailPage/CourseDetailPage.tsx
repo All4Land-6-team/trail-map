@@ -8,6 +8,7 @@ import { CourseRouteMap } from "../../components/map/CourseRouteMap";
 import { courseDetailPath } from "../../routes/courseDetailRoutes";
 import { readHashParams } from "../../hooks/useHashRoute";
 import { coursePaths } from "../../routes/courseRoutes";
+import { canScheduleCourse } from "../../utils/courseIdentity";
 import { communityApi, type CommunityCourseDto, type CommunityReviewDto } from "../../api/community";
 import type { CommunityReview } from "../../types/community";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
@@ -127,7 +128,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
     notify(saved ? "장바구니에서 뺐어요." : "장바구니에 담았어요.");
   }
   function schedule() {
-    if (data?.course.routeSource) return;
+    if (!data || !canScheduleCourse(data.course)) return;
     if (onScheduleOpen) onScheduleOpen(request);
     else {
       const path = courseDetailPath(request, view);
@@ -191,7 +192,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
         footer={<div className="course-detail-actions">
           <Button variant="secondary" aria-pressed={saved} onClick={save}
             leadingIcon={saved ? <img src={savedBagAsset} alt="" /> : <Icon name="Bag" size={17} color="currentColor" />}>{saved ? "장바구니 담김" : "장바구니 담기"}</Button>
-          <Button disabled={!!data.course.routeSource} onClick={schedule}>{hasSchedule ? "일정 변경 →" : "일정 등록 →"}</Button>
+          <Button disabled={!canScheduleCourse(data.course)} onClick={schedule}>{hasSchedule ? "일정 변경 →" : "일정 등록 →"}</Button>
         </div>} />
     </> : <div className="course-detail-page__status">
       <TopBar title="코스 상세" showAction={false} onBack={back} className="course-detail-page__top" />

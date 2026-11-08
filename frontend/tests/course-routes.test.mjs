@@ -149,7 +149,9 @@ test('목록·상세의 경로 안내 UI는 제거하고 카드와 출처 데이
   const saveButton = html.match(/<button[^>]*aria-label="북한산성코스 등산 담기"[^>]*>/)?.[0];
   assert.ok(saveButton);
   assert.doesNotMatch(saveButton, /disabled/);
-  assert.match(html, /<button[^>]*disabled=""[^>]*aria-label="북한산성코스 일정 등록 \(연동 예정\)"/);
+  const scheduleButton = html.match(/<button[^>]*aria-label="북한산성코스 일정 등록"[^>]*>/)?.[0];
+  assert.ok(scheduleButton);
+  assert.doesNotMatch(scheduleButton, /disabled/);
   assert.match(html, /코스 상세 보기/);
 });
 
@@ -172,7 +174,7 @@ test('실제 코스 담기 → 장바구니 변환 → 해제는 DB 식별자와
     assert.equal(formatCourseDuration(actual.durationMinutes), '정보 없음');
     assert.deepEqual(actual.elevationProfile, []);
     assert.equal(actual.averageSlopePercent, undefined);
-    assert.equal(actual.scheduleAvailable, false);
+    assert.equal(actual.scheduleAvailable, true);
     const { CourseSelectionScreen } = await server.ssrLoadModule('/src/pages/CartPage/components/CourseSelectionScreen.tsx');
     const html = renderToStaticMarkup(createElement(CourseSelectionScreen, {
       courses: [actual], selectedCourseIds: new Set([actual.id]),
