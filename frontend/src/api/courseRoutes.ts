@@ -1,6 +1,6 @@
 import type { Course, CourseDiscoveryData, CourseRequest } from "../types/course";
 import type { CourseDetailData } from "../types/courseDetail";
-import { loadHomeDiscoveryData } from "./homeMock";
+import { loadHomeDiscoveryData } from "./homeApi";
 import { loadCourseDiscoveryData as loadExampleDiscovery } from "./courseMock";
 import { loadCourseDetailData as loadExampleDetail } from "./courseDetailMock";
 import { databaseCourseId } from "../utils/courseIdentity";

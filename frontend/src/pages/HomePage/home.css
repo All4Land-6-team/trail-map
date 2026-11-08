@@ -22,8 +22,6 @@
 .home-map__pin .af-mountain-marker { pointer-events: auto; transform: translateY(var(--home-label-offset)); }
 .home-map__pin .af-mountain-marker__point { transform: translateY(calc(-1 * var(--home-label-offset))); }
 .home-map__pin[data-side="left"] .af-mountain-marker { flex-direction: row-reverse; }
-.home-map__leader { position: absolute; top: 50%; left: 6px; width: 1px; background: #91b8a2; }
-.home-map__pin[data-side="left"] .home-map__leader { right: 6px; left: auto; }
 .home-page__top {
   position: absolute; z-index: 3; top: calc(16px + env(safe-area-inset-top)); right: 16px; left: 16px;
   display: flex; flex-direction: column; gap: 15px; pointer-events: none;

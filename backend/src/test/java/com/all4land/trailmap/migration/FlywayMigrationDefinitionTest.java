@@ -16,7 +16,7 @@ class FlywayMigrationDefinitionTest {
                 .getResources("classpath*:db/migration/V*__*.sql");
         assertThat(migrations)
                 .extracting(resource -> resource.getFilename().split("__", 2)[0])
-                .containsExactlyInAnyOrder("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11");
+                .containsExactlyInAnyOrder("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12");
     }
 
     private static final String[] CORE_TABLES = {

@@ -71,7 +71,8 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.match(source, /sheetPeek \? 240 : 0/);
   assert.match(source, /zoom: MOUNTAIN_DETAIL_ZOOM/);
   assert.match(source, /const MOUNTAIN_DETAIL_ZOOM = CATEGORY_MAP_ZOOM\.mountain/);
-  assert.match(mapSource, /community-page__map--detail-mountain'[\s\S]*max-height: 720px\)'[\s\S]*154 : 160/);
+  assert.match(source, /mountainDetailFocus = useMemo\(\(\) => \(\{[\s\S]*verticalOffset: 44/);
+  assert.match(mapSource, /community-page__map--detail-mountain'[\s\S]*community-page__map--mountain-focus'[\s\S]*visibleTop \+ 76/);
   assert.match(mapSource, /MARKER_CLUSTER_DISTANCE = 45/);
   assert.match(mapSource, /INDIVIDUAL_OVERLAP_DISTANCE = 20/);
   assert.match(mapSource, /OVERLAP_RELEASE_ZOOM = 16/);
@@ -120,7 +121,7 @@ test('산 필터만 라벨을 표시하고 다른 화면에는 라벨 없는 깃
   const map = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
   assert.match(page, /const mapMarkers:[\s\S]*\{ id: mountain\.id, name: mountain\.name, coordinate: mountain\.position/);
   assert.match(page, /\{\(screen === 'map' \|\| isDetail\) && <CommunityMap[\s\S]*showMountainFlag/);
-  assert.match(page, /showMountainLabel=\{screen === 'map' && mapCategory === 'mountain'\}/);
+  assert.match(page, /showMountainLabel=\{screen === 'mountainDetail' \|\| \(screen === 'map' && mapCategory === 'mountain'\)\}/);
   assert.doesNotMatch(page, /community-page__map--select"[^>]*showMountainFlag/);
   assert.match(map, /mountain-flag\.svg/);
   assert.match(map, /showMountainFlag && <img[\s\S]*community-map__mountain-flag/);

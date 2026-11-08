@@ -644,7 +644,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     return course ? [{ hikeRecordId: hike.id, courseId: course.id, name: course.name, finishedAt: hike.finishedAt,
       color: communityCourseColor(course.id), coordinates: course.coordinates }] : []
   }), [eligibleCourses, visibleCourseTargets])
-  const mountainDetailFocus = useMemo(() => ({ coordinate: mountain.position as Coordinate, request: 1, zoom: MOUNTAIN_DETAIL_ZOOM, resetZoom: true }), [mountain.position])
+  const mountainDetailFocus = useMemo(() => ({ coordinate: mountain.position as Coordinate, request: 1, zoom: MOUNTAIN_DETAIL_ZOOM, resetZoom: true, verticalOffset: 44 }), [mountain.position])
   const courseDetailFocus = useMemo(() => ({ coordinate: courseCenter(selectedCourse), request: 1 }), [selectedCourse])
   const selectedSpotHidden = selectedSpot ? isSpotHidden(votes[selectedSpot.id]) : false
   useEffect(() => {
@@ -1063,7 +1063,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       className={`community-page__map ${screen === 'map' ? `community-page__map--main${inlineMountainDetail ? ' community-page__map--mountain-focus' : ''}` : `community-page__map--detail community-page__map--detail-${screen === 'mountainDetail' ? 'mountain' : screen === 'spotDetail' ? 'spot' : 'course'}`}`}
       mountainId={terrainMountainId}
       showMountainFlag
-      showMountainLabel={screen === 'map' && mapCategory === 'mountain'}
+      showMountainLabel={screen === 'mountainDetail' || (screen === 'map' && mapCategory === 'mountain')}
       center={mountain.position as Coordinate}
       zoom={MAIN_MAP_ZOOM}
       focusTarget={screen === 'map' ? mapFocus : screen === 'mountainDetail' ? mountainDetailFocus : screen === 'spotDetail' ? detailSpotFocus ?? undefined

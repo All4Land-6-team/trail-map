@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { loadHomeDiscoveryData } from "../../../api/homeMock";
+import { loadHomeDiscoveryData } from "../../../api/homeApi";
 import { useHikeSchedules } from "../../../store/hikeScheduleStore";
 import { useHikeSession } from "../../../store/hikeSessionStore";
 import type { TodayHikeSchedule } from "../../../types/home";

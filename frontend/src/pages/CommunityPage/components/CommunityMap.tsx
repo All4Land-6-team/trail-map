@@ -226,11 +226,9 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       })
       return
     }
-    const focusY = className.includes('community-page__map--detail-mountain')
-      ? window.matchMedia('(max-height: 720px)').matches ? 154 : 160
-      : className.includes('community-page__map--mountain-focus')
-        ? Math.max(visibleTop + 44, Math.min(visibleCenter - 28, visibleTop + 48))
-        : visibleCenter + (focusTarget.verticalOffset ?? 0)
+    const focusY = className.includes('community-page__map--detail-mountain') || className.includes('community-page__map--mountain-focus')
+      ? Math.max(visibleTop + 76, Math.min(visibleCenter + 4, visibleTop + 80)) + (focusTarget.verticalOffset ?? 0)
+      : visibleCenter + (focusTarget.verticalOffset ?? 0)
     const targetZoom = focusTarget.zoom === undefined ? map.getZoom() : focusTarget.resetZoom
       ? focusTarget.zoom : Math.max(map.getZoom(), focusTarget.zoom)
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
