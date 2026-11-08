@@ -65,7 +65,6 @@ export function HomeMap({ mountains, selectedMountainId, onSelect, onMapClick }:
       {positions.map(({ mountain, x, y, labelOffset, labelLeft }) => <div key={mountain.id}
         className="home-map__pin" data-side={labelLeft ? "left" : "right"}
         style={{ left: x, top: y, "--home-label-offset": `${labelOffset}px` } as CSSProperties}>
-        {labelOffset > 0 && <span className="home-map__leader" aria-hidden="true" style={{ height: labelOffset }} />}
         <MountainMarker name={mountain.name} variant="point" selected={selectedMountainId === mountain.id}
           onClick={() => onSelect(mountain.id)} />
       </div>)}
