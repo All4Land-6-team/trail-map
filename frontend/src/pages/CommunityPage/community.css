@@ -66,7 +66,7 @@
 .community-page__sheet { position:absolute; z-index:2; right:0; bottom:var(--community-nav-height); left:0; height:var(--community-sheet-height,auto); max-height:calc(var(--app-viewport-height) - var(--community-nav-height) - 170px); min-height:32px; overflow:hidden; padding:8px 20px 10px; border-radius:25px 25px 0 0; box-shadow:0 -8px 12px #173d320d; transition:var(--community-sheet-transition,none); }
 .community-page__sheet--map { gap:6px; }
 @media(prefers-reduced-motion:reduce) { .community-page__sheet { transition:none; } }
-.community-page__sheet--peek { padding-bottom:0; }
+.community-page__sheet:not(.community-page__sheet--detail).community-page__sheet--peek { padding-bottom:0; }
 .community-page__sheet:not(.community-page__sheet--detail).community-page__sheet--peek .af-bottom-sheet__body { display:none; }
 .community-page__sheet--detail.community-page__sheet--collapsed { min-height:0; padding-bottom:0; }
 .community-page__sheet .af-bottom-sheet__handle-row { flex:none; height:22px; margin:-8px -20px -10px; cursor:ns-resize; touch-action:none; }
