@@ -31,6 +31,7 @@ export type CommunityCourseReviewTarget = {
   name: string
   coordinates: Coordinate[]
   distanceKm: number
+  averageRating?: number
   baselinePhotos: number
   baselineReviews: number
   representativePhotoUrl?: string

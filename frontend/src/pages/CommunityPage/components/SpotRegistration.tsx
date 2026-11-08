@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '../../../components/common/Button'
 import { Field } from '../../../components/common/Field'
 import { Icon } from '../../../components/common/Icon'
@@ -40,6 +40,7 @@ type LocationState = 'idle' | 'loading' | 'ready' | 'unavailable'
 export function SpotRegistration({ spots, votes, mountainId, mountainCenter, initialCoordinate, terrainMountainId, routeCoordinates, mode,
   recentCourses, selectedHikeId, onCourseSelect, onError, onCreate, onUseExisting, onViewportChange }: Props) {
   const [coordinate, setCoordinate] = useState<Coordinate | null>(initialCoordinate ?? null)
+  const [currentPosition, setCurrentPosition] = useState<Coordinate | null>(initialCoordinate ?? null)
   const [locationState, setLocationState] = useState<LocationState>(initialCoordinate ? 'ready' : 'idle')
   const [locationFocus, setLocationFocus] = useState<{ coordinate: Coordinate; request: number; zoom: number; resetZoom: boolean } | null>(
     initialCoordinate ? { coordinate: initialCoordinate, request: 1, zoom: 16, resetZoom: true } : null,
@@ -51,11 +52,18 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, ini
   const [creating, setCreating] = useState(false)
   const mountainSpots = useMemo(() => spots.filter(spot => spot.mountainId === mountainId), [spots, mountainId])
   const candidates = useMemo(() => coordinate && type ? nearbySpotCandidates(mountainSpots, coordinate, type, votes) : [], [mountainSpots, coordinate, type, votes])
+  const selectedCurrentPosition = coordinate && currentPosition
+    && Math.abs(coordinate[0] - currentPosition[0]) < 0.000000001
+    && Math.abs(coordinate[1] - currentPosition[1]) < 0.000000001
   const markers: CommunityMapMarker[] = [
     ...mountainSpots.filter(spot => !isSpotHidden(votes[spot.id])).map(spot => ({ id: spot.id, name: spot.name, kind: 'spot' as const,
       coordinate: spot.coordinate, spotType: spot.type, targetType: spot.targetType })),
-    ...(coordinate ? [{ id: 'new-position', name: '선택한 위치', kind: 'point' as const, coordinate, shortLabel: '✓' }] : []),
+    ...(currentPosition ? [{ id: 'current-position', name: '현재 위치', kind: 'current-location' as const, coordinate: currentPosition }] : []),
+    ...(coordinate && !selectedCurrentPosition ? [{ id: 'new-position', name: '선택한 위치', kind: 'point' as const, coordinate, shortLabel: '✓' }] : []),
   ]
+  useEffect(() => {
+    if (initialCoordinate) setCurrentPosition(initialCoordinate)
+  }, [initialCoordinate?.[0], initialCoordinate?.[1]])
   const recentRoutes = useMemo<CommunityMapRoute[]>(() => recentCourses.map(course => ({
     id: course.hikeRecordId,
     color: course.color,
@@ -70,6 +78,7 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, ini
     setLocationState('loading')
     navigator.geolocation.getCurrentPosition(position => {
       const current: Coordinate = [position.coords.longitude, position.coords.latitude]
+      setCurrentPosition(current)
       setCoordinate(current)
       setDistinct(false)
       setLocationFocus(previous => ({ coordinate: current, request: (previous?.request ?? 0) + 1, zoom: 16, resetZoom: true }))
@@ -111,7 +120,7 @@ export function SpotRegistration({ spots, votes, mountainId, mountainCenter, ini
         </label>)}
       </fieldset>}
       <div className="community-register__map"><CommunityMap markers={markers} mountainId={terrainMountainId} center={mountainCenter} zoom={14}
-        className="community-page__map--select" cooperativeGestures focusTarget={locationFocus ?? undefined}
+        className="community-page__map--select" focusTarget={locationFocus ?? undefined}
         showRoute={mode === 'active' ? (routeCoordinates?.length ?? 0) > 1 : recentRoutes.length > 0}
         highlightedRoute={mode === 'active' ? routeCoordinates : undefined}
         highlightedRoutes={mode === 'postHike' ? recentRoutes : undefined}

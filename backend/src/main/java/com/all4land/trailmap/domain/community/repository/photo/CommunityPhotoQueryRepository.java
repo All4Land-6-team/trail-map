@@ -27,7 +27,7 @@ public class CommunityPhotoQueryRepository {
                             course_review.review_content,
                             spot_review.review_content) AS review_content,
                    photo.created_at,
-                   mountain_review.rating::double precision AS review_rating
+                   course_review.rating::double precision AS review_rating
             FROM photo
             JOIN app_user ON app_user.user_id = photo.user_id
             LEFT JOIN mountain_review ON mountain_review.review_id = photo.mountain_review_id

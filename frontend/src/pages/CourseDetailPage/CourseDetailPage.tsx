@@ -10,6 +10,7 @@ import { readHashParams } from "../../hooks/useHashRoute";
 import { coursePaths } from "../../routes/courseRoutes";
 import { canScheduleCourse } from "../../utils/courseIdentity";
 import { communityApi, type CommunityCourseDto, type CommunityReviewDto } from "../../api/community";
+import type { CommunityReview } from "../../types/community";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
 import type { CourseRequest } from "../../types/course";
@@ -76,11 +77,10 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const shelters = useCourseFacilities(courseId, data?.course.backendCourseId,
     view.tab === "spots" && (view.category === "all" || view.category === "shelter"), "SHELTER");
   const shelterSpots = shelters.state.status === "success" ? shelters.state.spots : EMPTY_SPOTS;
-  const reviewExcerpts = communityReviews.map(review => ({
-    id: String(review.reviewId),
-    meta: `${review.author} · ${new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric" }).format(new Date(review.createdAt))}`,
-    quote: review.content,
-  })).slice(0, 2);
+  const reviewExcerpts: CommunityReview[] = communityReviews.map(review => ({
+    id: String(review.reviewId), kind: "course" as const, targetId: String(review.targetId), content: review.content,
+    photos: review.photoUrls, rating: review.rating ?? undefined, author: review.author, createdAt: review.createdAt,
+  })).slice(0, 4);
   const reviewTotal = communityCourse?.reviewCount ?? communityReviews.length;
   const mapCourse = useMemo(() => data ? { ...data.course, routeCoordinates: analysisView.routeCoordinates } : null, [data, analysisView]);
   const courses = useMemo(() => mapCourse && mapCourse.routeCoordinates.length > 1 ? [mapCourse] : [], [mapCourse]);
@@ -104,7 +104,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
       if (!courses) return null;
       const course = courses.find(item => `db-${item.courseId}` === courseId || String(item.courseId) === courseId || item.externalId === courseId);
       setCommunityCourse(course ?? null);
-      return course ? communityApi.courseReviews(String(course.courseId), controller.signal, 2) : null;
+      return course ? communityApi.courseReviews(String(course.courseId), controller.signal, 4) : null;
     }).then(reviews => {
       if (reviews) setCommunityReviews(reviews);
     }).catch(() => {

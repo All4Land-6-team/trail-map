@@ -9,6 +9,7 @@ public record CommunityCourseResponse(
         String name,
         double distanceKm,
         long reviewCount,
+        Double averageRating,
         long photoCount,
         String representativePhotoUrl,
         List<CommunityCoordinateResponse> coordinates

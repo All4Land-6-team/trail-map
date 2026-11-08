@@ -4,6 +4,7 @@ import com.all4land.trailmap.domain.community.dto.request.CommunityReviewCreateR
 import com.all4land.trailmap.domain.community.dto.request.CommunitySpotCreateRequest;
 import com.all4land.trailmap.domain.community.dto.request.CommunitySpotDuplicateRequest;
 import com.all4land.trailmap.domain.community.dto.request.CommunitySpotVoteRequest;
+import com.all4land.trailmap.domain.community.dto.response.CommunityReviewEligibilityCode;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewEligibilityResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotCreatedResponse;
@@ -70,7 +71,10 @@ public class CommunityCommandService {
         List<EligibleHikeResponse> hikes = reviewQueryRepository.findEligibleHikes(
                 userId, mountainId, null, now.minus(REVIEW_WINDOW), now
         ).stream().map(CommunityCommandService::eligibleHikeResponse).toList();
-        return new CommunityReviewEligibilityResponse(hikes);
+        return hikes.isEmpty()
+                ? notEligible(CommunityReviewEligibilityCode.NO_COMPLETED_HIKE,
+                        "산행 완료 후 24시간 이내에만 작성할 수 있어요.")
+                : eligible(hikes);
     }
 
     @Transactional(readOnly = true)
@@ -102,7 +106,7 @@ public class CommunityCommandService {
             EligibleHikeQueryResult hike = requireSpotReviewEligibleHike(
                     userId, mountainId, hikeRecordId, targetType, targetId
             );
-            return new CommunityReviewEligibilityResponse(List.of(eligibleHikeResponse(hike)));
+            return eligible(List.of(eligibleHikeResponse(hike)));
         }
         return eligibility(userId, mountainId, null, CommunityReviewKind.SPOT, targetType, targetId);
     }
@@ -114,9 +118,7 @@ public class CommunityCommandService {
     ) {
         validateUser(userId);
         validateMountain(mountainId);
-        if (request.rating() == null) {
-            throw new CommunityException(CommunityErrorCode.INVALID_REVIEW_REQUEST);
-        }
+        validateRatingAbsent(request);
         EligibleHikeQueryResult hike = requireReviewEligibleHike(
                 userId, mountainId, null, request.hikeRecordId(), CommunityReviewKind.MOUNTAIN, null, mountainId
         );
@@ -125,12 +127,11 @@ public class CommunityCommandService {
                 mountainId,
                 hike.hikeRecordId(),
                 request.content().trim(),
-                hike.endedAt().atZoneSameInstant(SERVICE_ZONE).toLocalDate(),
-                request.rating()
+                hike.endedAt().atZoneSameInstant(SERVICE_ZONE).toLocalDate()
         )));
         return reviewResponse(
                 review.getReviewId(), CommunityReviewKind.MOUNTAIN, mountainId, hike.hikeRecordId(),
-                userId, review.getContent(), review.getRating().doubleValue(), review.getVisitedDate(), review.getCreatedAt()
+                userId, review.getContent(), null, review.getVisitedDate(), review.getCreatedAt()
         );
     }
 
@@ -139,7 +140,7 @@ public class CommunityCommandService {
             Long courseId,
             CommunityReviewCreateRequest request
     ) {
-        validateRatingAbsent(request);
+        validateRatingPresent(request);
         validateUser(userId);
         Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
@@ -151,11 +152,12 @@ public class CommunityCommandService {
                 courseId,
                 hike.hikeRecordId(),
                 request.content().trim(),
-                hike.endedAt().atZoneSameInstant(SERVICE_ZONE).toLocalDate()
+                hike.endedAt().atZoneSameInstant(SERVICE_ZONE).toLocalDate(),
+                request.rating()
         )));
         return reviewResponse(
                 review.getReviewId(), CommunityReviewKind.COURSE, courseId, hike.hikeRecordId(),
-                userId, review.getContent(), null, review.getVisitedDate(), review.getCreatedAt()
+                userId, review.getContent(), review.getRating().doubleValue(), review.getVisitedDate(), review.getCreatedAt()
         );
     }
 
@@ -299,13 +301,38 @@ public class CommunityCommandService {
             Long targetId
     ) {
         OffsetDateTime now = OffsetDateTime.now(SERVICE_ZONE);
-        List<EligibleHikeResponse> hikes = reviewQueryRepository.findEligibleHikes(
+        List<EligibleHikeQueryResult> completedHikes = reviewQueryRepository.findEligibleHikes(
                 userId, mountainId, courseId, now.minus(REVIEW_WINDOW), now
-        ).stream()
+        );
+        if (completedHikes.isEmpty()) {
+            return notEligible(CommunityReviewEligibilityCode.NO_COMPLETED_HIKE,
+                    "산행 완료 후 24시간 이내에만 작성할 수 있어요.");
+        }
+        List<EligibleHikeResponse> hikes = completedHikes.stream()
                 .filter(hike -> !reviewExists(kind, targetType, targetId, hike.hikeRecordId()))
                 .map(CommunityCommandService::eligibleHikeResponse)
                 .toList();
-        return new CommunityReviewEligibilityResponse(hikes);
+        if (hikes.isEmpty()) {
+            String targetName = switch (kind) {
+                case MOUNTAIN -> "산";
+                case COURSE -> "코스";
+                case SPOT -> "스팟";
+            };
+            return notEligible(CommunityReviewEligibilityCode.ALREADY_REVIEWED,
+                    "오늘 산행에서 해당 " + targetName + " 후기를 이미 작성했어요.");
+        }
+        return eligible(hikes);
+    }
+
+    private static CommunityReviewEligibilityResponse eligible(List<EligibleHikeResponse> hikes) {
+        return new CommunityReviewEligibilityResponse(CommunityReviewEligibilityCode.ELIGIBLE, null, hikes);
+    }
+
+    private static CommunityReviewEligibilityResponse notEligible(
+            CommunityReviewEligibilityCode code,
+            String reason
+    ) {
+        return new CommunityReviewEligibilityResponse(code, reason, List.of());
     }
 
     private CommunityVoteTargetQueryResult lockVoteTarget(
@@ -510,6 +537,12 @@ public class CommunityCommandService {
 
     private static void validateRatingAbsent(CommunityReviewCreateRequest request) {
         if (request.rating() != null) {
+            throw new CommunityException(CommunityErrorCode.INVALID_REVIEW_REQUEST);
+        }
+    }
+
+    private static void validateRatingPresent(CommunityReviewCreateRequest request) {
+        if (request.rating() == null) {
             throw new CommunityException(CommunityErrorCode.INVALID_REVIEW_REQUEST);
         }
     }
