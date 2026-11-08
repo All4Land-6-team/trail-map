@@ -25,8 +25,8 @@ export function SpotMarker({
   return <button {...rest} type={type} data-kind={kind}
     aria-label={ariaLabel ?? spot.label}
     className={["af-spot-marker", compact && "af-spot-marker--compact", className].filter(Boolean).join(" ")}>
-    {compact ? <span className="af-spot-marker__symbol">{kind === "restroom" ? <span className="af-spot-marker__wc">WC</span>
-      : <Icon name={spot.icon} size={14} color="currentColor" />}</span>
+    {compact ? <span className="af-spot-marker__symbol"><Icon name={spot.icon}
+      size={kind === "restroom" ? 19 : 14} color="currentColor" /></span>
       : <Icon name={spot.icon} size={18} color="currentColor" />}
     {label && <span className="af-spot-marker__label">{label}</span>}
   </button>;

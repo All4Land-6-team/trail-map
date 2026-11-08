@@ -28,11 +28,6 @@ export function ReviewForm({ draft, mountainName, spot, errors, canSubmit, onCha
   return <div className={`community-form-layout community-form-layout--review community-form-layout--review-${draft.kind}`}>
     <div className="community-form-layout__scroll">
       <h2>{draft.kind === 'mountain' ? `${mountainName} 후기` : draft.kind === 'spot' ? spot?.name ?? '스팟 후기' : '코스 후기'}</h2>
-      {draft.kind === 'mountain' && <div className="community-form-section">
-        <span className="community-field-label">평점</span>
-        <RatingInput value={draft.rating} onChange={rating => onChange({ rating })} />
-        {errors.rating && <p className="community-field-error" role="alert">{errors.rating}</p>}
-      </div>}
       {draft.kind === 'spot' && <div className="community-form-section">
         <p className="community-form-subtitle">스팟 후기</p>
         <button type="button" className="community-target-card" onClick={onChooseSpot}>
@@ -44,8 +39,17 @@ export function ReviewForm({ draft, mountainName, spot, errors, canSubmit, onCha
         <button type="button" className="community-inline-link" onClick={onNewSpot}>찾는 스팟이 없나요? 새 스팟 등록</button>
       </div>}
       {draft.kind === 'course' && <fieldset className="community-form-section community-course-options">
-        <legend className="community-field-label">후기를 남길 코스</legend>
-        <p className="community-form-subtitle">최근 24시간 안에 완료한 코스만 표시됩니다.</p>
+        <legend className="community-field-label community-course-options__legend">
+          <span>후기를 남길 코스</span>
+          <span className="community-course-options__info">
+            <button type="button" aria-label="코스 후기 작성 조건" aria-describedby="community-course-review-rule">
+              <span aria-hidden="true">!</span>
+            </button>
+            <span id="community-course-review-rule" role="tooltip" className="community-course-options__tooltip">
+              최근 24시간 안에 완료한 코스만 표시됩니다.
+            </span>
+          </span>
+        </legend>
         {eligibleCourses.map(course => <label key={course.id} className="community-course-option">
           <input type="radio" name="completed-course" value={course.id} checked={draft.completedHikeId === course.id}
             onChange={() => onChange({ targetId: course.courseId, completedHikeId: course.id })} />
@@ -55,8 +59,12 @@ export function ReviewForm({ draft, mountainName, spot, errors, canSubmit, onCha
         </label>)}
         {errors.target && <p className="community-field-error" role="alert">{errors.target}</p>}
       </fieldset>}
+      {draft.kind === 'course' && <div className="community-form-section community-rating-section">
+        <span className="community-field-label">평점</span>
+        <RatingInput value={draft.rating} onChange={rating => onChange({ rating })} />
+        {errors.rating && <p className="community-field-error" role="alert">{errors.rating}</p>}
+      </div>}
       <div className="community-form-section">
-        <label className="community-field-label" htmlFor="community-review-content">후기</label>
         <MultilineField id="community-review-content" value={draft.content} maxLength={1000}
           aria-describedby={errors.content ? 'community-review-error' : undefined}
           onChange={event => onChange({ content: event.target.value })}

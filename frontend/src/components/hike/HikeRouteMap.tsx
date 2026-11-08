@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LngLatBounds, Marker, type GeoJSONSource, type MapLibreMap, type PaddingOptions } from "maplibre-gl";
 import BaseMap, { type MapRoute } from "../map/BaseMap";
-import { DistanceBubble, SpotMarker } from "../map";
+import { CurrentLocationMarker, DistanceBubble, SpotMarker } from "../map";
 import { supportsTerrain } from "../map/terrain";
 import type { HikeSpot, LngLat } from "../../types/hike";
 import "./hike.css";
@@ -76,6 +76,8 @@ export function HikeRouteMap({
   const paddingRef = useRef(padding);
   const currentRef = useRef<LngLat | undefined>(undefined);
   const traveledPathRef = useRef(traveledPath);
+  const currentMarkerRef = useRef<Marker | null>(null);
+  const currentMarkerVisibleRef = useRef(false);
   // MapLibre Marker에 넘길 DOM 노드. React 마커 컴포넌트는 포털로 이 안에 그린다.
   const [nodes] = useState(() => ({
     spots: new Map<string, HTMLDivElement>(),
@@ -148,11 +150,35 @@ export function HikeRouteMap({
   const currentLng = current?.[0];
   const currentLat = current?.[1];
   useEffect(() => {
-    if (!map || currentLng === undefined || currentLat === undefined) return;
-    const markers = [new Marker({ element: nodes.current }).setLngLat([currentLng, currentLat])];
-    if (showBubble) markers.push(new Marker({ element: nodes.bubble, anchor: "bottom", offset: [-10, -14] }).setLngLat([currentLng, currentLat]));
-    markers.forEach(marker => marker.addTo(map));
-    return () => markers.forEach(marker => marker.remove());
+    if (!map) return;
+    const marker = new Marker({ element: nodes.current });
+    currentMarkerRef.current = marker;
+    return () => {
+      marker.remove();
+      if (currentMarkerRef.current === marker) currentMarkerRef.current = null;
+      currentMarkerVisibleRef.current = false;
+    };
+  }, [map, nodes]);
+
+  useEffect(() => {
+    const marker = currentMarkerRef.current;
+    if (!map || !marker || currentLng === undefined || currentLat === undefined) {
+      if (currentMarkerVisibleRef.current) marker?.remove();
+      currentMarkerVisibleRef.current = false;
+      return;
+    }
+    marker.setLngLat([currentLng, currentLat]);
+    if (!currentMarkerVisibleRef.current) {
+      marker.addTo(map);
+      currentMarkerVisibleRef.current = true;
+    }
+  }, [map, currentLng, currentLat]);
+
+  useEffect(() => {
+    if (!map || currentLng === undefined || currentLat === undefined || !showBubble) return;
+    const marker = new Marker({ element: nodes.bubble, anchor: "bottom", offset: [-10, -14] })
+      .setLngLat([currentLng, currentLat]).addTo(map);
+    return () => { marker.remove(); };
   }, [map, currentLng, currentLat, showBubble, nodes]);
 
   // 지형이 없는 산은 BaseMap이 기울기를 다루지 않으므로 직접 기울인다.
@@ -177,7 +203,7 @@ export function HikeRouteMap({
     {visibleSpots.map(spot => createPortal(
       <SpotMarker kind={spot.kind} aria-label={spot.name} />, nodes.spots.get(spot.id)!, spot.id))}
     {createPortal(<span className="hike-route-map__peak"><span aria-hidden="true" />정상</span>, nodes.peak)}
-    {current && createPortal(<span className="hike-route-map__current" role="img" aria-label="현재 위치" />, nodes.current)}
+    {current && createPortal(<CurrentLocationMarker />, nodes.current)}
     {current && traveledKm !== undefined && createPortal(<DistanceBubble label={`${traveledKm.toFixed(1)} km`}
       aria-label={`지금까지 ${traveledKm.toFixed(1)} km 이동`} />, nodes.bubble)}
   </div>;

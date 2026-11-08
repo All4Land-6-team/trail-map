@@ -120,8 +120,8 @@ class CommunityQueryApiIntegrationTest {
     @Test
     void 커뮤니티_산과_코스_목록을_지도_좌표와_함께_조회한다() throws Exception {
         long courseReviewId = jdbcTemplate.queryForObject("""
-                INSERT INTO course_review (user_id, course_id, review_content, visited_date)
-                VALUES (?, ?, '대표 사진이 있는 코스 후기', CURRENT_DATE)
+                INSERT INTO course_review (user_id, course_id, review_content, visited_date, rating)
+                VALUES (?, ?, '대표 사진이 있는 코스 후기', CURRENT_DATE, 4)
                 RETURNING review_id
                 """, Long.class, userId, courseId);
         insertPhoto("course/%d/representative.webp".formatted(courseReviewId), "course_review_id", courseReviewId);
@@ -138,6 +138,7 @@ class CommunityQueryApiIntegrationTest {
                 .andExpect(jsonPath("$.data[0].courseId").value(courseId))
                 .andExpect(jsonPath("$.data[0].externalId").value("bukhansan-baegundae"))
                 .andExpect(jsonPath("$.data[0].reviewCount").value(1))
+                .andExpect(jsonPath("$.data[0].averageRating").value(4.0))
                 .andExpect(jsonPath("$.data[0].photoCount").value(1))
                 .andExpect(jsonPath("$.data[0].representativePhotoUrl", containsString(
                         "course/%d/representative.webp".formatted(courseReviewId)
@@ -266,15 +267,15 @@ class CommunityQueryApiIntegrationTest {
         long latestRecordId = insertCompletedHike("2026-10-21 01:00:00+00", "2026-10-21 04:00:00+00");
         long mountainReviewId = jdbcTemplate.queryForObject("""
                 INSERT INTO mountain_review
-                    (user_id, mountain_id, hike_record_id, review_content, visited_date, rating)
-                VALUES (?, ?, ?, '경치가 좋아요.', DATE '2026-10-21', 5)
+                    (user_id, mountain_id, hike_record_id, review_content, visited_date)
+                VALUES (?, ?, ?, '경치가 좋아요.', DATE '2026-10-21')
                 RETURNING review_id
                 """, Long.class, userId, mountainId, latestRecordId);
         jdbcTemplate.update("""
                 INSERT INTO course_review
-                    (user_id, course_id, hike_record_id, review_content, visited_date, created_at)
-                VALUES (?, ?, ?, '예전 코스 후기', DATE '2026-10-20', TIMESTAMPTZ '2026-10-20 05:00:00+00'),
-                       (?, ?, ?, '최근 코스 후기', DATE '2026-10-21', TIMESTAMPTZ '2026-10-21 05:00:00+00')
+                    (user_id, course_id, hike_record_id, review_content, visited_date, created_at, rating)
+                VALUES (?, ?, ?, '예전 코스 후기', DATE '2026-10-20', TIMESTAMPTZ '2026-10-20 05:00:00+00', 4),
+                       (?, ?, ?, '최근 코스 후기', DATE '2026-10-21', TIMESTAMPTZ '2026-10-21 05:00:00+00', 5)
                 """, userId, courseId, oldRecordId, userId, courseId, latestRecordId);
         insertPhoto("mountain/%d/review.webp".formatted(mountainReviewId), "mountain_review_id", mountainReviewId);
         insertPhoto("mountain/%d/review-2.webp".formatted(mountainReviewId), "mountain_review_id", mountainReviewId);
@@ -283,7 +284,7 @@ class CommunityQueryApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].kind").value("MOUNTAIN"))
                 .andExpect(jsonPath("$.data[0].author").value("산길친구"))
-                .andExpect(jsonPath("$.data[0].rating").value(5.0))
+                .andExpect(jsonPath("$.data[0].rating").doesNotExist())
                 .andExpect(jsonPath("$.data[0].photoUrls[0]", containsString(
                         "mountain/%d/review.webp".formatted(mountainReviewId)
                 )));
@@ -291,6 +292,7 @@ class CommunityQueryApiIntegrationTest {
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/preview")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.summary.reviewCount").value(1))
+                .andExpect(jsonPath("$.data.summary.averageRating").value(4.5))
                 .andExpect(jsonPath("$.data.reviews.length()").value(1))
                 .andExpect(jsonPath("$.data.photos.length()").value(2));
 
@@ -298,7 +300,7 @@ class CommunityQueryApiIntegrationTest {
                         .param("limit", "1").param("offset", "0")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].reviewRating").value(5.0));
+                .andExpect(jsonPath("$.data[0].reviewRating").doesNotExist());
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/photos")
                         .param("limit", "1").param("offset", "1")))
                 .andExpect(status().isOk())
@@ -309,6 +311,7 @@ class CommunityQueryApiIntegrationTest {
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].content").value("최근 코스 후기"))
                 .andExpect(jsonPath("$.data[0].hikeRecordId").value(latestRecordId))
+                .andExpect(jsonPath("$.data[0].rating").value(5.0))
                 .andExpect(jsonPath("$.data[1].content").value("예전 코스 후기"))
                 .andExpect(jsonPath("$.data[1].hikeRecordId").value(oldRecordId));
 

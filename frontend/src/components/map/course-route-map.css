@@ -31,8 +31,7 @@
 .af-spot-marker--compact[data-kind="shelter"] .af-spot-marker__symbol { background: #fff4e8; }
 .af-spot-marker--compact[data-kind="water"] .af-spot-marker__symbol { background: #e8f5fc; }
 .af-spot-marker--compact[data-kind="photo"] .af-spot-marker__symbol { background: #fff0f5; }
-.af-spot-marker--compact[data-kind="restroom"] .af-spot-marker__symbol { width: 23px; height: 23px; background: #f2ebfa; }
-.af-spot-marker__wc { font-size: 12px; line-height: 18px; font-weight: 500; letter-spacing: -.02em; }
+.af-spot-marker--compact[data-kind="restroom"] .af-spot-marker__symbol { width: 23px; height: 23px; background: #fff; }
 .af-spot-marker--compact[data-kind="restroom"] { width: 33px; height: 33px; }
 .af-spot-marker__label { position: absolute; top: 3px; left: calc(100% + 4px); padding: 2px 6px; border-radius: 5px; background: #fff; color: var(--af-ink); font-size: 10px; line-height: 16px; white-space: nowrap; box-shadow: 0 1px 5px rgb(23 71 54 / 8%); }
 @media (max-height: 580px) {

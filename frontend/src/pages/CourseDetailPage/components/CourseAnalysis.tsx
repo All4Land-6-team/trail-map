@@ -1,10 +1,10 @@
 import { Checkbox } from "../../../components/common/Checkbox";
 import { CourseProfileChart } from "../../../components/chart/CourseProfileChart";
-import { Icon } from "../../../components/common/Icon";
-import { ReviewQuote } from "../../../components/content/ReviewQuote";
+import { ReviewCarousel } from "../../../components/review/ReviewCarousel";
 import { EmptyState } from "../../../components/feedback";
 import type { CourseDetailData, ProfileVisibility } from "../../../types/courseDetail";
 import type { CourseAnalysisState } from "../../../types/courseAnalysis";
+import type { CommunityReview } from "../../../types/community";
 import { detailAnalysisView, formatProfileValue } from "../../../utils/courseDetailAnalysis";
 import { CourseAnalysisStatus } from "./CourseAnalysisStatus";
 import { CourseBasicInfo } from "./CourseBasicInfo";
@@ -15,7 +15,7 @@ type Props = {
   analysisState: CourseAnalysisState;
   analysisView: ReturnType<typeof detailAnalysisView>;
   onRetryAnalysis: () => void;
-  reviews: readonly { id: string; meta: string; quote: string }[];
+  reviews: readonly CommunityReview[];
   reviewTotal: number;
   visibility: ProfileVisibility;
   selectedIndex: number;
@@ -58,11 +58,8 @@ export function CourseAnalysis({ data, analysisState, analysisView, onRetryAnaly
       </> : <EmptyState title="표시할 분석 프로필이 없어요." description="분석 조회 상태를 확인해 주세요." showIcon={false} className="course-detail-empty" />}
     </section>
     <section className="course-analysis__reviews" aria-label="코스 후기">
-      <div className="course-analysis__heading"><h2>코스 후기</h2>{reviewTotal > 0 && onReviewsOpen
-        ? <button type="button" className="course-analysis__review-link" aria-label="코스 후기 전체보기" onClick={onReviewsOpen}>전체보기 <Icon name="ChevronRight" size={16} /></button>
-        : <span>후기 {reviewTotal}</span>}</div>
-      {reviews.length ? reviews.map(review => <ReviewQuote key={review.id} meta={review.meta} quote={review.quote} />)
-        : <EmptyState title="아직 등록된 후기가 없어요." description="" showIcon={false} className="course-detail-empty" />}
+      <div className="course-analysis__heading"><h2>코스 후기</h2><span>후기 {reviewTotal}</span></div>
+      <ReviewCarousel type="course" reviews={reviews} onReviewClick={() => onReviewsOpen?.()} onViewAll={() => onReviewsOpen?.()} />
     </section>
   </div>;
 }

@@ -46,6 +46,11 @@ public class CommunityMapQueryRepository {
                         FROM course_review review
                         WHERE review.course_id = course.course_id
                           AND review.deleted_at IS NULL) AS review_count,
+                       (SELECT avg(review.rating)::double precision
+                        FROM course_review review
+                        WHERE review.course_id = course.course_id
+                          AND review.deleted_at IS NULL
+                          AND review.rating IS NOT NULL) AS average_rating,
                        (SELECT count(*)
                         FROM photo
                         JOIN course_review review ON review.review_id = photo.course_review_id
@@ -72,6 +77,7 @@ public class CommunityMapQueryRepository {
                         resultSet.getString("course_name"),
                         resultSet.getDouble("distance_km"),
                         resultSet.getLong("review_count"),
+                        resultSet.getObject("average_rating", Double.class),
                         resultSet.getLong("photo_count"),
                         resultSet.getString("representative_photo_key"),
                         resultSet.getString("route_geo_json")
