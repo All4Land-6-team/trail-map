@@ -9,7 +9,7 @@ function toHomeMountain(mountain: Awaited<ReturnType<typeof communityApi.mountai
   }
 }
 
-/** 홈 산 탐색은 커뮤니티와 같은 DB 산 목록을 사용한다. */
+/** 홈 산 탐색은 백엔드의 공통 산 기본 정보 목록을 사용한다. */
 export async function loadHomeDiscoveryData(signal: AbortSignal): Promise<HomeDiscoveryData> {
   const mountains = (await communityApi.mountains(signal)).map(toHomeMountain)
   signal.throwIfAborted()
