@@ -25,10 +25,11 @@ DB_POOL_SIZE=5
 비밀번호에 `@`가 포함되어도 `DB_PASSWORD`에 분리해 저장하면 URL 인코딩하지
 않는다.
 
-환경 변수 대신 로컬 비밀 설정을 사용하려면
-`src/main/resources/application-secret.properties.example`을
-`src/main/resources/application-secret.properties`로 복사한 뒤 자리표시자를
-바꾼다. 실제 파일은 Git에서 제외된다.
+위 `DB_*` 환경 변수는 profile 없이 실행하는 배포·수집기용이다. 개발 서버는
+`supabase` profile로 실행한다.
+`src/main/resources/application-supabase-secret.properties.example`을
+`src/main/resources/application-supabase-secret.properties`로 복사한 뒤 자리표시자를
+바꾼다. 실제 파일은 Git과 JAR에서 제외된다.
 
 ```properties
 spring.datasource.url=jdbc:postgresql://<SESSION_POOLER_HOST>:5432/postgres?sslmode=require
@@ -37,9 +38,18 @@ spring.datasource.password=<DB_PASSWORD>
 spring.datasource.hikari.maximum-pool-size=5
 ```
 
-아무 설정도 하지 않으면 `application.properties`의 기본값에 따라 기존 로컬
-`jdbc:postgresql://localhost:5432/trail_map` DB를 사용한다. 로컬 DB도
-`DB_PASSWORD` 또는 로컬 비밀 설정이 필요하다.
+```powershell
+.\gradlew.bat bootRun -Pdb=supabase   # Supabase 공용 개발 DB
+.\gradlew.bat bootRun -Pdb=localdb    # 로컬 localhost:5432/trail_map
+```
+
+시작 로그의 `DB 연결 대상:` 줄에서 실제 연결 대상을 확인한다. profile과 실제 주소가
+맞지 않거나 `SPRING_DATASOURCE_*` 환경 변수가 남아 있으면 시작하지 않는다. 자세한
+전환 절차와 DB별 코스 ID 차이는 [백엔드 README](../README.md#개발-서버-db-선택)를 따른다.
+
+profile 없이 실행하면 기존과 같이 `DB_URL` 등 환경 변수와
+`application-secret.properties`의 값을 따르고, 둘 다 없으면
+`jdbc:postgresql://localhost:5432/trail_map`을 사용한다.
 
 ## Migration 적용
 

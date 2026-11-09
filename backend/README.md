@@ -24,6 +24,43 @@ Java 21, Spring Boot, PostgreSQL/PostGIS 기반 백엔드입니다.
 검증 절차를 따릅니다. `application-secret.properties.example`에는 안전한
 자리표시자만 있으며 실제 비밀번호는 커밋하지 않습니다.
 
+### 개발 서버 DB 선택
+
+개발 서버는 연결할 DB를 `-Pdb`로 명시해 실행합니다. 셸에 남은 환경 변수나
+`application-secret.properties`의 DB 설정과 관계없이 지정한 DB에만 연결합니다.
+
+| 대상 | 실행 명령 | 접속 정보 |
+| --- | --- | --- |
+| 로컬 PostgreSQL/PostGIS | `.\gradlew.bat bootRun -Pdb=localdb` | `localhost:5432/trail_map`, 사용자 `postgres`. 비밀번호는 `DB_PASSWORD` 환경 변수 또는 `application-localdb-secret.properties` |
+| Supabase 공용 개발 DB | `.\gradlew.bat bootRun -Pdb=supabase` | `application-supabase-secret.properties`(예시: `.example` 파일) |
+
+두 비밀 파일은 `src/main/resources`에 두며 Git과 JAR에서 제외됩니다.
+
+시작 로그 첫 부분에서 실제 연결 대상을 확인합니다. 비밀번호와 사용자 이름은 표시하지 않습니다.
+
+```text
+DB 연결 대상: supabase (postgresql <SESSION_POOLER_HOST>:5432/postgres)
+DB 연결 대상: localdb (postgresql localhost:5432/trail_map)
+```
+
+다음 경우에는 다른 DB에 연결하지 않고 시작을 중단합니다.
+
+- `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` 환경 변수가 남아 있는 경우.
+  이 변수는 profile 설정보다 우선하므로 새 셸에서 실행하거나 `Remove-Item Env:SPRING_DATASOURCE_*`로 지웁니다.
+- `-Pdb=localdb`인데 로컬이 아닌 주소이거나, `-Pdb=supabase`인데 Supabase 비밀 파일이나 원격 주소가 없는 경우.
+
+`-Pdb` 없이 실행하면 기존과 같이 `DB_URL`·`application-secret.properties` 순서의 설정을
+따르며 로그에 `기본 설정(DB profile 미지정)`으로 표시됩니다. 수집기 등 배포 실행은
+이 기본 방식을 유지합니다.
+
+DB를 전환할 때 주의할 점은 다음과 같습니다.
+
+- **코스 ID가 DB마다 다릅니다.** 예를 들어 대남문코스는 로컬에서 `db-121`, Supabase에서 `db-2`입니다.
+  전환 전 상세 URL을 그대로 열면 "코스 정보를 찾을 수 없어요." 안내가 나오므로 코스 목록에서 다시 선택합니다.
+- **데이터도 DB마다 따로 쌓입니다.** 통제정보 등 수집 데이터는 수집기를 실행한 DB에만 저장됩니다.
+- **Supabase에는 최신 `develop` 기준 코드로 연결합니다.** 공용 DB는 최신 migration이 적용되어 있어,
+  오래된 브랜치는 `spring.jpa.hibernate.ddl-auto=validate` 단계에서 컬럼 불일치로 시작에 실패할 수 있습니다.
+
 ## 개발용 시드 데이터
 
 등산 일정 API를 화면과 함께 확인하려면 빈 개발 DB에 `docs/dev-seed-hike-courses.sql`을 실행합니다. 프론트 임시 코스 데이터와 같은 산 5개·코스 11개와 임시 사용자(1번)를 넣습니다. Flyway 마이그레이션이 아니므로 운영 DB에는 실행하지 않습니다.

@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.all4land.trailmap.global.config.DataSourceTargetEnvironmentPostProcessor
