@@ -1,9 +1,15 @@
-.hike-today-page__distance { margin: 10px 0 0; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
-.hike-today-page__sunset { display: flex; align-items: center; gap: 6px; min-height: 52px; margin-top: 14px; border-top: 1px solid #e3ece2; font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
-.hike-today-page__detail-link { min-height: 32px; margin-left: auto; padding: 0 2px; border: 0; color: var(--af-ink); background: transparent; font: 700 10px/14px "Noto Sans KR", sans-serif; letter-spacing: -.02em; cursor: pointer; }
-.hike-today-page__detail-link:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; border-radius: 6px; }
-.hike-today-page__start { min-height: 44px; margin-top: 10px; border-radius: 10px; }
-/* 화살표를 버튼 오른쪽 끝에 둔다 (Figma) */
-.hike-today-page__start .af-button__icon { position: absolute; right: 20px; }
-.hike-today-page__start { position: relative; }
-.hike-today-page__toast { bottom: 250px; }
+.hike-today-page__bottom { position: absolute; z-index: 3; right: 0; bottom: 0; left: 0; display: flex; box-sizing: border-box; flex-direction: column; align-items: center; padding: 74px 16px max(8px, env(safe-area-inset-bottom)); background: linear-gradient(to bottom, transparent 0 56%, rgb(237 244 235 / 32%) 72%, rgb(237 244 235 / 88%) 90%, #edf4eb 100%); pointer-events: none; }
+.hike-today-page__bottom > * { pointer-events: auto; }
+.hike-today-page__route-chip { position: relative; z-index: 2; display: flex; max-width: calc(100% - 20px); min-height: 34px; align-items: center; gap: 6px; margin-bottom: 1px; padding: 5px 10px; border: 1px solid rgb(212 224 211 / 72%); border-radius: 999px; color: var(--af-ink); background: rgb(255 255 255 / 76%); box-shadow: 0 2px 8px rgb(23 71 54 / 8%); backdrop-filter: blur(4px); cursor: pointer; transform: translateY(40px); }
+.hike-today-page__route-chip span { flex: none; color: #617b6c; font: 600 9px/13px "Noto Sans KR", sans-serif; }
+.hike-today-page__route-chip strong { overflow: hidden; font: 700 11px/15px "Noto Sans KR", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.hike-today-page__route-chip:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; }
+.hike-today-page__toast { bottom: 238px; }
+.hike-today-page .hike-map-page__tools { top: 126px; }
+.hike-today-page .hike-route-map__base .base-map__notices { right: 72px; bottom: 300px; }
+@media (max-height: 650px) {
+  .hike-today-page__bottom { padding-top: 46px; padding-bottom: 5px; }
+  .hike-today-page__route-chip { min-height: 30px; margin-bottom: -3px; }
+  .hike-today-page .hike-map-page__tools { top: 120px; }
+  .hike-today-page .hike-route-map__base .base-map__notices { bottom: 214px; }
+}

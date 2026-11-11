@@ -5,6 +5,7 @@ import BaseMap, { type MapRoute } from "../map/BaseMap";
 import { CurrentLocationMarker, DistanceBubble, SpotMarker } from "../map";
 import { supportsTerrain } from "../map/terrain";
 import type { HikeSpot, LngLat } from "../../types/hike";
+import { buildHikeRouteSegments, COURSE_ROUTE_COLOR, GRAY_ROUTE_COLOR, hikeRouteColors } from "./hikeRouteSegments";
 import "./hike.css";
 
 export type SpotFilter = "all" | HikeSpot["kind"] | "other";
@@ -24,6 +25,10 @@ export type HikeRouteMapProps = {
   position?: LngLat;
   /** GPS로 실제 이동한 경로. 코스 위에 지나온 경로 색으로 겹쳐 그린다. */
   traveledPath?: LngLat[];
+  /** 현재 진행 방향의 코스 시작점부터 이동한 거리 */
+  progressMeters?: number;
+  /** 등산은 지난 구간을 회색으로, 하산은 돌아온 구간을 원래 색으로 표시한다. */
+  stage?: "ascent" | "descent";
   /** 현재 위치 위에 이동 거리 말풍선을 띄운다 */
   traveledKm?: number;
   spots?: HikeSpot[];
@@ -35,8 +40,6 @@ export type HikeRouteMapProps = {
   padding?: PaddingOptions;
 };
 
-const TRAVELED_COLOR = "#a6b1a9";
-const REMAINING_COLOR = "#19765b";
 const GPS_SOURCE_ID = "hike-gps-path";
 const DEFAULT_PADDING: PaddingOptions = { top: 150, bottom: 60, left: 40, right: 70 };
 const NO_SPOTS: HikeSpot[] = [];
@@ -68,7 +71,8 @@ function withSheetInset(padding: PaddingOptions, container: HTMLElement | null):
  */
 export function HikeRouteMap({
   route, label, mountainName, peak = route[route.length - 1], currentIndex, position, traveledPath = NO_PATH, traveledKm,
-  spots = NO_SPOTS, filter = "all", dimension = "2D", recenterKey = 0, padding = DEFAULT_PADDING,
+  progressMeters, stage = "ascent", spots = NO_SPOTS, filter = "all", dimension = "2D", recenterKey = 0,
+  padding = DEFAULT_PADDING,
 }: HikeRouteMapProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<MapLibreMap | null>(null);
@@ -76,6 +80,7 @@ export function HikeRouteMap({
   const paddingRef = useRef(padding);
   const currentRef = useRef<LngLat | undefined>(undefined);
   const traveledPathRef = useRef(traveledPath);
+  const stageRef = useRef(stage);
   const currentMarkerRef = useRef<Marker | null>(null);
   const currentMarkerVisibleRef = useRef(false);
   // MapLibre Marker에 넘길 DOM 노드. React 마커 컴포넌트는 포털로 이 안에 그린다.
@@ -96,17 +101,13 @@ export function HikeRouteMap({
     paddingRef.current = padding;
     currentRef.current = current;
     traveledPathRef.current = traveledPath;
+    stageRef.current = stage;
   });
 
   const bounds = useMemo(() => routeBounds(route).toArray() as [LngLat, LngLat], [route]);
-  const routes = useMemo<MapRoute[]>(() => {
-    const index = currentIndex ?? 0;
-    return [
-      ...(currentIndex !== undefined && index > 0
-        ? [{ id: "hike-traveled", color: TRAVELED_COLOR, coordinates: route.slice(0, index + 1) }] : []),
-      { id: "hike-remaining", color: REMAINING_COLOR, coordinates: route.slice(index) },
-    ];
-  }, [route, currentIndex]);
+  const routeColors = hikeRouteColors(stage);
+  const routes = useMemo<MapRoute[]>(() => buildHikeRouteSegments(route, stage, progressMeters, currentIndex),
+    [route, stage, progressMeters, currentIndex]);
 
   const fitRoute = useCallback((target: MapLibreMap, duration: number) => {
     target.fitBounds(bounds, { padding: withSheetInset(paddingRef.current, shellRef.current), duration });
@@ -120,7 +121,8 @@ export function HikeRouteMap({
       if (!next.getSource(GPS_SOURCE_ID)) {
         next.addSource(GPS_SOURCE_ID, { type: "geojson", data: pathData(traveledPathRef.current) });
         next.addLayer({ id: GPS_SOURCE_ID, type: "line", source: GPS_SOURCE_ID,
-          layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": TRAVELED_COLOR, "line-width": 5 } });
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": stageRef.current === "descent" ? COURSE_ROUTE_COLOR : GRAY_ROUTE_COLOR, "line-width": 5 } });
       }
       // 생성 시점에는 컨테이너·시트 크기가 확정되지 않을 수 있어 경로 전체를 다시 맞춘다.
       next.resize();
@@ -131,6 +133,12 @@ export function HikeRouteMap({
   useEffect(() => {
     (map?.getSource(GPS_SOURCE_ID) as GeoJSONSource | undefined)?.setData(pathData(traveledPath));
   }, [map, traveledPath]);
+
+  useEffect(() => {
+    if (map?.getLayer(GPS_SOURCE_ID)) {
+      map.setPaintProperty(GPS_SOURCE_ID, "line-color", routeColors.completed);
+    }
+  }, [map, routeColors.completed]);
 
   // BaseMap이 코스 선을 다시 그리면 그 위로 올라오므로 GPS 경로를 다시 맨 위로 올린다.
   useEffect(() => {
