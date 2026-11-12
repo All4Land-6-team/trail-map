@@ -436,7 +436,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
 
   return <div className={['community-map', className].filter(Boolean).join(' ')} data-marker-mode={isMainMap ? markerMode : undefined}>
     <BaseMap key={mapRetry} className="community-map__base" ariaLabel={ariaLabel} center={center} zoom={zoom}
-      routes={routes} showNavigationControl={false} onMapReady={onReady}
+      routes={routes} enableRouteHover={Boolean(highlightedRoutes?.length)} showNavigationControl={false} onMapReady={onReady}
       terrainMode={terrainEnabled ? dimension : undefined} onTerrainStatusChange={setTerrainStatus} />
     {mapUnavailable && <div className="community-map__fallback" role="status"><span>지도 배경을 불러오지 못했어요. 목록이나 마커로 후기를 볼 수 있어요.</span>
       <button type="button" onClick={() => { setMapUnavailable(false); setMapRetry(current => current + 1) }}>다시 시도</button></div>}

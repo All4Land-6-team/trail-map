@@ -4,7 +4,9 @@ import {
   NavigationControl,
   setWorkerUrl,
   type FilterSpecification,
+  type GeoJSONSource,
   type LngLatBoundsLike,
+  type MapMouseEvent,
   type MapOptions,
   type PaddingOptions,
 } from 'maplibre-gl'
@@ -32,6 +34,7 @@ export type BaseMapProps = {
   className?: string
   fitBoundsPadding?: number | PaddingOptions
   routes?: readonly MapRoute[]
+  enableRouteHover?: boolean
   showNavigationControl?: boolean
   terrainBeforeLayerId?: string
   terrainMode?: MapDimension
@@ -54,6 +57,10 @@ export type MapRoute = {
 }
 
 const EMPTY_ROUTES: readonly MapRoute[] = []
+const ROUTE_HOVER_SOURCE = 'base-map-route-hover'
+const ROUTE_HOVER_OUTLINE = 'base-map-route-hover-outline'
+const ROUTE_HOVER_LINE = 'base-map-route-hover-line'
+const EMPTY_ROUTE_FILTER: FilterSpecification = ['==', ['get', 'routeId'], '']
 
 function BaseMap({
   ariaLabel = '남한 배경지도',
@@ -62,6 +69,7 @@ function BaseMap({
   className,
   fitBoundsPadding,
   routes = EMPTY_ROUTES,
+  enableRouteHover = false,
   showNavigationControl = true,
   terrainBeforeLayerId,
   terrainMode,
@@ -239,6 +247,106 @@ function BaseMap({
     }
   }, [routes])
 
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !enableRouteHover || mapLoadVersion === 0) return
+    const routeIds = renderedRouteIdsRef.current.map(routeId => `${routeId}-hit`)
+    const hoverRoutes = routes.filter(route => route.coordinates.length > 1)
+    if (routeIds.length < 2 || hoverRoutes.length < 2) return
+    const data = {
+      type: 'FeatureCollection' as const,
+      features: hoverRoutes.map(route => ({
+        type: 'Feature' as const,
+        properties: {
+          routeId: `course-route-${route.id}`,
+          color: route.color,
+          opacity: route.opacity ?? 0.95,
+          width: (route.width ?? 4) + 2,
+          outlineColor: route.outlineColor ?? route.color,
+          outlineOpacity: 1,
+          outlineWidth: (route.outlineWidth ?? (route.width ?? 4) + 3) + 2,
+        },
+        geometry: { type: 'LineString' as const, coordinates: route.coordinates },
+      })),
+    }
+    const source = map.getSource(ROUTE_HOVER_SOURCE) as GeoJSONSource | undefined
+    if (source) source.setData(data)
+    else {
+      map.addSource(ROUTE_HOVER_SOURCE, { type: 'geojson', data })
+      map.addLayer({ id: ROUTE_HOVER_OUTLINE, type: 'line', source: ROUTE_HOVER_SOURCE, filter: EMPTY_ROUTE_FILTER,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'outlineColor'], 'line-opacity': ['get', 'outlineOpacity'], 'line-width': ['get', 'outlineWidth'] } })
+      map.addLayer({ id: ROUTE_HOVER_LINE, type: 'line', source: ROUTE_HOVER_SOURCE, filter: EMPTY_ROUTE_FILTER,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'color'], 'line-opacity': ['get', 'opacity'], 'line-width': ['get', 'width'] } })
+    }
+    const clearHoveredRoute = () => {
+      if (map.getLayer(ROUTE_HOVER_OUTLINE)) map.setFilter(ROUTE_HOVER_OUTLINE, EMPTY_ROUTE_FILTER)
+      if (map.getLayer(ROUTE_HOVER_LINE)) map.setFilter(ROUTE_HOVER_LINE, EMPTY_ROUTE_FILTER)
+      map.getCanvas().style.cursor = ''
+    }
+    const highlightRoute = (routeId: string) => {
+      const filter: FilterSpecification = ['==', ['get', 'routeId'], routeId]
+      map.setFilter(ROUTE_HOVER_OUTLINE, filter)
+      map.setFilter(ROUTE_HOVER_LINE, filter)
+      map.getCanvas().style.cursor = 'pointer'
+    }
+    const updateHoveredRoute = (event: MapMouseEvent) => {
+      const feature = map.queryRenderedFeatures(event.point, { layers: routeIds })[0]
+      const routeId = typeof feature?.layer?.id === 'string' ? feature.layer.id : null
+      if (routeId) highlightRoute(routeId)
+      else clearHoveredRoute()
+    }
+    const highlightTouchedRoute = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch') return
+      const rect = map.getCanvas().getBoundingClientRect()
+      const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top]
+      const feature = map.queryRenderedFeatures(point, { layers: routeIds })[0]
+      const routeId = typeof feature?.layer?.id === 'string' ? feature.layer.id : null
+      if (routeId) {
+        map.getCanvas().setPointerCapture?.(event.pointerId)
+        highlightRoute(routeId)
+      } else clearHoveredRoute()
+    }
+    const clearTouchedRoute = () => {
+      clearHoveredRoute()
+    }
+    const clearTouchState = () => clearTouchedRoute()
+    const layerHandlers = routeIds.map(routeId => {
+      const enter = () => highlightRoute(routeId)
+      const leave = () => clearHoveredRoute()
+      map.on('mouseenter', routeId, enter)
+      map.on('mouseleave', routeId, leave)
+      return { routeId, enter, leave }
+    })
+    map.on('mousemove', updateHoveredRoute)
+    map.on('mouseout', clearHoveredRoute)
+    map.on('click', clearTouchState)
+    map.getCanvas().addEventListener('pointerdown', highlightTouchedRoute)
+    window.addEventListener('pointerup', clearTouchState)
+    window.addEventListener('pointercancel', clearTouchState)
+    window.addEventListener('blur', clearTouchState)
+    document.addEventListener('visibilitychange', clearTouchState)
+    return () => {
+      layerHandlers.forEach(({ routeId, enter, leave }) => {
+        map.off('mouseenter', routeId, enter)
+        map.off('mouseleave', routeId, leave)
+      })
+      map.off('mousemove', updateHoveredRoute)
+      map.off('mouseout', clearHoveredRoute)
+      map.off('click', clearTouchState)
+      map.getCanvas().removeEventListener('pointerdown', highlightTouchedRoute)
+      window.removeEventListener('pointerup', clearTouchState)
+      window.removeEventListener('pointercancel', clearTouchState)
+      window.removeEventListener('blur', clearTouchState)
+      document.removeEventListener('visibilitychange', clearTouchState)
+      clearHoveredRoute()
+      if (map.getLayer(ROUTE_HOVER_LINE)) map.removeLayer(ROUTE_HOVER_LINE)
+      if (map.getLayer(ROUTE_HOVER_OUTLINE)) map.removeLayer(ROUTE_HOVER_OUTLINE)
+      if (map.getSource(ROUTE_HOVER_SOURCE)) map.removeSource(ROUTE_HOVER_SOURCE)
+    }
+  }, [enableRouteHover, mapLoadVersion, routes])
+
   return <div className={["base-map-shell", className].filter(Boolean).join(' ')}>
     <div ref={containerRef} className="base-map" aria-label={ariaLabel} />
     {(isOffline || hasLoadError || hasStaticCacheMiss || (hasTerrainError && terrainEnabled)) && <div className="base-map__notices" aria-live="polite">
@@ -274,7 +382,9 @@ function replaceMapRoutes(
 ) {
   renderedRouteIds.forEach((sourceId) => {
     const endpointLayerId = `${sourceId}-endpoint`
+    const hitLayerId = `${sourceId}-hit`
     const outlineLayerId = `${sourceId}-outline`
+    if (map.getLayer(hitLayerId)) map.removeLayer(hitLayerId)
     if (map.getLayer(endpointLayerId)) map.removeLayer(endpointLayerId)
     if (map.getLayer(sourceId)) map.removeLayer(sourceId)
     if (map.getLayer(outlineLayerId)) map.removeLayer(outlineLayerId)
@@ -340,6 +450,18 @@ function replaceMapRoutes(
         },
       })
     }
+    map.addLayer({
+      id: `${sourceId}-hit`,
+      type: 'line',
+      source: sourceId,
+      filter: ['==', ['get', 'kind'], 'route'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': route.color,
+        'line-opacity': 0,
+        'line-width': (route.width ?? 4) + 4,
+      },
+    })
     return sourceId
   })
 }
