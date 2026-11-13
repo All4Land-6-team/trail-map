@@ -234,6 +234,7 @@ public class CommunityCommandService {
         ).orElseGet(() -> spotCommandRepository.findByClientRequestId(userId, request.clientRequestId())
                 .map(CreatedUserSpotQueryResult::spotId)
                 .orElseThrow(() -> new IllegalStateException("스팟 등록 결과를 찾지 못했습니다.")));
+        spotCommandRepository.linkToCourse(spotId, hike.courseId(), "USER_SELECTED");
         var existingReview = spotReviewRepository.findByHikeRecordIdAndSpotIdAndDeletedAtIsNull(hike.hikeRecordId(), spotId);
         if (existingReview.isPresent()) {
             return createdSpotResponse(userId, spotCommandRepository.findByClientRequestId(userId, request.clientRequestId())

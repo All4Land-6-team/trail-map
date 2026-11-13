@@ -203,6 +203,17 @@ public class CommunitySpotCommandRepository {
                 .stream().findFirst();
     }
 
+    public void linkToCourse(Long spotId, Long courseId, String matchingMethod) {
+        jdbcTemplate.update("""
+                INSERT INTO spot_course (user_spot_id, course_id, matching_method)
+                VALUES (:spotId, :courseId, :matchingMethod)
+                ON CONFLICT DO NOTHING
+                """, new MapSqlParameterSource()
+                .addValue("spotId", spotId)
+                .addValue("courseId", courseId)
+                .addValue("matchingMethod", matchingMethod));
+    }
+
     public Optional<CreatedUserSpotQueryResult> findByClientRequestId(Long userId, UUID clientRequestId) {
         return jdbcTemplate.query("""
                 SELECT spot_id,
