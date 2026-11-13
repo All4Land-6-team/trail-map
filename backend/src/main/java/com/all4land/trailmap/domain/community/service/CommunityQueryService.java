@@ -89,6 +89,7 @@ public class CommunityQueryService {
     ) {
         validateUser(userId);
         validateMountain(mountainId);
+        validateCourseMountain(mountainId, request.courseId());
         return spotQueryRepository.findSpots(userId, mountainId, request).stream()
                 .map(this::toSpotResponse)
                 .toList();
@@ -97,6 +98,7 @@ public class CommunityQueryService {
     public List<CommunitySpotMapResponse> getMapMarkers(Long userId, Long mountainId, CommunitySpotMapRequest request) {
         validateUser(userId);
         validateMountain(mountainId);
+        validateCourseMountain(mountainId, request.courseId());
         return spotQueryRepository.findMapMarkers(userId, mountainId, request);
     }
 
@@ -134,6 +136,12 @@ public class CommunityQueryService {
                         + last.targetType().name() + "|" + last.targetId())
                         .getBytes(StandardCharsets.UTF_8));
         return new CommunitySpotPageResponse(items, next, last != null);
+    }
+
+    private void validateCourseMountain(Long mountainId, Long courseId) {
+        if (courseId != null && !mapQueryRepository.findCourseMountainId(courseId).filter(mountainId::equals).isPresent()) {
+            throw new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND);
+        }
     }
 
     public List<CommunitySpotResponse> getCoursePhotoSpots(Long userId, Long courseId) {

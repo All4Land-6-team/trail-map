@@ -11,7 +11,8 @@ public record CommunitySpotMapRequest(
         @NotNull @DecimalMin("-90.0") @DecimalMax("90.0") Double south,
         @NotNull @DecimalMin("-180.0") @DecimalMax("180.0") Double east,
         @NotNull @DecimalMin("-90.0") @DecimalMax("90.0") Double north,
-        CommunitySpotType type
+        CommunitySpotType type,
+        Long courseId
 ) {
 
     @AssertTrue(message = "지도 조회 영역이 올바르지 않습니다.")

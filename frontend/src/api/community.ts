@@ -140,11 +140,12 @@ export const communityApi = {
   mountains: (signal?: AbortSignal) => request<CommunityMountainDto[]>('/mountains', { signal }),
   courses: (mountainId: string, signal?: AbortSignal) =>
     request<CommunityCourseDto[]>(`/mountains/${mountainId}/courses`, { signal }),
-  spots: (mountainId: string, bounds: CommunitySpotBounds, signal?: AbortSignal, type?: CommunitySpotDto['type']) => {
+  spots: (mountainId: string, bounds: CommunitySpotBounds, signal?: AbortSignal, type?: CommunitySpotDto['type'], courseId?: string) => {
     const query = new URLSearchParams({
       west: String(bounds.west), south: String(bounds.south), east: String(bounds.east), north: String(bounds.north),
     })
     if (type) query.set('type', type)
+    if (courseId) query.set('courseId', courseId)
     return request<CommunityMapSpotDto[]>(`/mountains/${mountainId}/spots/map?${query}`, { signal })
   },
   spotList: (mountainId: string, signal?: AbortSignal, type?: CommunitySpotDto['type'], cursor?: string) => {

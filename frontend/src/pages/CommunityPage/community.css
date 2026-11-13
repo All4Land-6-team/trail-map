@@ -63,6 +63,11 @@
 .community-map-filters::-webkit-scrollbar { display:none; }
 .community-map-filters .af-chip { flex:none; height:34px; padding-inline:14px; }
 .community-map__dimension.af-map-action { position:absolute; z-index:3; top:128px; right:17px; width:40px; height:40px; border:0; border-radius:12px; color:var(--af-green-dark); background:#fff; box-shadow:0 3px 5px rgb(23 71 54 / 10%); }
+.community-map__spots-toggle { position:absolute; z-index:3; top:177px; right:17px; display:grid; width:40px; height:40px; place-items:center; padding:0; border:0; border-radius:12px; color:#fff; background:var(--community-course-color,var(--af-green)); box-shadow:0 3px 5px rgb(23 71 54 / 10%); }
+.community-map__spots-toggle[aria-pressed="false"] { color:#849d89; background:#fff; }
+.community-map__spots-icon { display:block; width:24px; height:29px; background:currentColor; -webkit-mask:url("../../assets/icons/spot-location.svg") center/contain no-repeat; mask:url("../../assets/icons/spot-location.svg") center/contain no-repeat; }
+.community-map__course-destination { position:relative; display:block; width:44px; height:44px; padding:0; border:0; color:var(--community-course-color); background:transparent; font-size:26px; line-height:30px; text-shadow:1px 1px #fff,-1px -1px #fff; }
+@media (max-height:720px) { .community-map__dimension.af-map-action { top:122px; } .community-map__spots-toggle { top:171px; } }
 .community-page__sheet { position:absolute; z-index:2; right:0; bottom:var(--community-nav-height); left:0; height:var(--community-sheet-height,auto); max-height:calc(var(--app-viewport-height) - var(--community-nav-height) - 170px); min-height:32px; overflow:hidden; padding:8px 20px 10px; border-radius:25px 25px 0 0; box-shadow:0 -8px 12px #173d320d; transition:var(--community-sheet-transition,none); }
 .community-page__sheet--map { gap:6px; }
 @media(prefers-reduced-motion:reduce) { .community-page__sheet { transition:none; } }

@@ -145,6 +145,11 @@ function BaseMap({
             : { bounds: SOUTH_KOREA_BOUNDS }),
       }
       map = new MapLibreMap(mapOptions)
+      // 커뮤니티 화면의 터치 제스처에서도 회전·기울기 입력을 유지한다.
+      map.dragRotate.enable()
+      map.touchZoomRotate.enable()
+      map.touchZoomRotate.enableRotation()
+      map.touchPitch.enable()
       map.on('style.load', () => guardNullableRoadShieldFilter(map))
       if (!bounds && !center) map.jumpTo({ center: SOUTH_KOREA_MAINLAND_CENTER })
     } catch {
@@ -304,7 +309,6 @@ function BaseMap({
       const feature = map.queryRenderedFeatures(point, { layers: routeIds })[0]
       const routeId = typeof feature?.layer?.id === 'string' ? feature.layer.id : null
       if (routeId) {
-        map.getCanvas().setPointerCapture?.(event.pointerId)
         highlightRoute(routeId)
       } else clearHoveredRoute()
     }
