@@ -72,7 +72,7 @@ public class FacilityImportService {
             }
         }
         repository.insert(sourceId, inserts, hashes);
-        repository.linkFacilitiesToCourses(sourceId);
+        repository.linkFacilitiesToCourses(sourceId, inserts.stream().map(FacilityInput::sourceRecordId).toList());
         return new ImportResult(sourceId, document.facilities().size(), inserts.size(), 0,
                 document.facilities().size() - inserts.size());
     }

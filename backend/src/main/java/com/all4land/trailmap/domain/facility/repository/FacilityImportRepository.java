@@ -80,7 +80,10 @@ public class FacilityImportRepository {
                 """, batch);
     }
 
-    public int linkFacilitiesToCourses(long sourceId) {
+    public int linkFacilitiesToCourses(long sourceId, List<String> sourceRecordIds) {
+        if (sourceRecordIds.isEmpty()) {
+            return 0;
+        }
         return jdbc.update("""
                 INSERT INTO spot_course (facility_id, course_id, distance_meters, matching_method)
                 SELECT facility.facility_id,
@@ -90,6 +93,7 @@ public class FacilityImportRepository {
                 FROM facility
                 JOIN course ON course.mountain_id = facility.mountain_id
                 WHERE facility.source_id = :sourceId
+                  AND facility.source_record_id IN (:sourceRecordIds)
                   AND facility.mountain_id IS NOT NULL
                   AND ST_DWithin(
                         facility.facility_location::geography,
@@ -97,6 +101,7 @@ public class FacilityImportRepository {
                         30
                       )
                 ON CONFLICT (facility_id, course_id) DO NOTHING
-                """, new MapSqlParameterSource("sourceId", sourceId));
+                """, new MapSqlParameterSource("sourceId", sourceId)
+                .addValue("sourceRecordIds", sourceRecordIds));
     }
 }
