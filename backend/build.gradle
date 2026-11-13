@@ -53,15 +53,14 @@ tasks.named('test') {
     systemProperty 'app.auth.legacy-user-header-enabled', 'true'
 }
 
-// 개발 서버 DB 대상 선택: .\gradlew.bat bootRun -Pdb=localdb | -Pdb=supabase
+// 개발 서버 DB 대상: 기본은 Supabase 공용 개발 DB, 로컬 DB는 .\gradlew.bat bootRun -Pdb=localdb
+// JAR 실행(수집기 배포 등)과 테스트에는 적용되지 않는다.
 tasks.named('bootRun') {
-    if (project.hasProperty('db')) {
-        def target = project.property('db').toString()
-        if (!(target in ['localdb', 'supabase'])) {
-            throw new GradleException("-Pdb는 localdb 또는 supabase만 사용할 수 있습니다: ${target}")
-        }
-        args "--spring.profiles.active=${target}"
+    def target = (project.findProperty('db') ?: 'supabase').toString()
+    if (!(target in ['localdb', 'supabase'])) {
+        throw new GradleException("-Pdb는 localdb 또는 supabase만 사용할 수 있습니다: ${target}")
     }
+    args "--spring.profiles.active=${target}"
 }
 
 // 로컬 비밀 설정은 bootRun에서는 사용할 수 있지만 JAR에는 포함하지 않는다.

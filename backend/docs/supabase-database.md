@@ -25,8 +25,8 @@ DB_POOL_SIZE=5
 비밀번호에 `@`가 포함되어도 `DB_PASSWORD`에 분리해 저장하면 URL 인코딩하지
 않는다.
 
-위 `DB_*` 환경 변수는 profile 없이 실행하는 배포·수집기용이다. 개발 서버는
-`supabase` profile로 실행한다.
+위 `DB_*` 환경 변수는 profile 없이 실행하는 배포·수집기용이다. 개발 서버의
+`bootRun`은 기본으로 `supabase` profile을 사용한다.
 `src/main/resources/application-supabase-secret.properties.example`을
 `src/main/resources/application-supabase-secret.properties`로 복사한 뒤 자리표시자를
 바꾼다. 실제 파일은 Git과 JAR에서 제외된다.
@@ -39,7 +39,7 @@ spring.datasource.hikari.maximum-pool-size=5
 ```
 
 ```powershell
-.\gradlew.bat bootRun -Pdb=supabase   # Supabase 공용 개발 DB
+.\gradlew.bat bootRun                 # Supabase 공용 개발 DB (기본)
 .\gradlew.bat bootRun -Pdb=localdb    # 로컬 localhost:5432/trail_map
 ```
 
@@ -47,7 +47,7 @@ spring.datasource.hikari.maximum-pool-size=5
 맞지 않거나 `SPRING_DATASOURCE_*` 환경 변수가 남아 있으면 시작하지 않는다. 자세한
 전환 절차와 DB별 코스 ID 차이는 [백엔드 README](../README.md#개발-서버-db-선택)를 따른다.
 
-profile 없이 실행하면 기존과 같이 `DB_URL` 등 환경 변수와
+JAR처럼 profile 없이 실행하면 기존과 같이 `DB_URL` 등 환경 변수와
 `application-secret.properties`의 값을 따르고, 둘 다 없으면
 `jdbc:postgresql://localhost:5432/trail_map`을 사용한다.
 

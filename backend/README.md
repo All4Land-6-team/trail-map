@@ -4,13 +4,17 @@ Java 21, Spring Boot, PostgreSQL/PostGIS 기반 백엔드입니다.
 
 ## 실행
 
-1. `src/main/resources/application-secret.properties` 파일을 로컬에서 만들고 DB/R2 값을 설정합니다.
-2. PostgreSQL + PostGIS를 실행합니다.
-3. Windows에서는 다음 명령으로 서버를 실행합니다.
+1. `src/main/resources/application-supabase-secret.properties.example`을
+   `application-supabase-secret.properties`로 복사해 Supabase 접속 정보를 넣고,
+   R2 등 나머지 비밀값은 `application-secret.properties`에 설정합니다.
+2. Windows에서는 다음 명령으로 서버를 실행합니다. 기본으로 Supabase 공용 개발 DB에 연결합니다.
 
 ```powershell
 .\gradlew.bat bootRun
 ```
+
+로컬 PostgreSQL + PostGIS를 쓰려면 `.\gradlew.bat bootRun -Pdb=localdb`로 실행합니다.
+자세한 내용은 아래 [개발 서버 DB 선택](#개발-서버-db-선택)을 따릅니다.
 
 테스트와 빌드는 다음 명령으로 확인합니다.
 
@@ -19,20 +23,19 @@ Java 21, Spring Boot, PostgreSQL/PostGIS 기반 백엔드입니다.
 .\gradlew.bat bootJar
 ```
 
-로컬 DB 대신 Supabase 공용 개발 DB를 사용할 때는
-[Supabase 공용 개발 DB](docs/supabase-database.md)의 Session pooler 설정과
-검증 절차를 따릅니다. `application-secret.properties.example`에는 안전한
+Supabase Session pooler 설정과 검증 절차는
+[Supabase 공용 개발 DB](docs/supabase-database.md)를 따릅니다. `.example` 파일에는 안전한
 자리표시자만 있으며 실제 비밀번호는 커밋하지 않습니다.
 
 ### 개발 서버 DB 선택
 
-개발 서버는 연결할 DB를 `-Pdb`로 명시해 실행합니다. 셸에 남은 환경 변수나
-`application-secret.properties`의 DB 설정과 관계없이 지정한 DB에만 연결합니다.
+`bootRun`은 기본으로 Supabase 공용 개발 DB에 연결하고, 로컬 DB는 `-Pdb=localdb`로 지정합니다.
+셸에 남은 환경 변수나 `application-secret.properties`의 DB 설정과 관계없이 선택한 DB에만 연결합니다.
 
 | 대상 | 실행 명령 | 접속 정보 |
 | --- | --- | --- |
+| Supabase 공용 개발 DB (기본) | `.\gradlew.bat bootRun` (`-Pdb=supabase`와 같음) | `application-supabase-secret.properties`(예시: `.example` 파일) |
 | 로컬 PostgreSQL/PostGIS | `.\gradlew.bat bootRun -Pdb=localdb` | `localhost:5432/trail_map`, 사용자 `postgres`. 비밀번호는 `DB_PASSWORD` 환경 변수 또는 `application-localdb-secret.properties` |
-| Supabase 공용 개발 DB | `.\gradlew.bat bootRun -Pdb=supabase` | `application-supabase-secret.properties`(예시: `.example` 파일) |
 
 두 비밀 파일은 `src/main/resources`에 두며 Git과 JAR에서 제외됩니다.
 
@@ -47,11 +50,11 @@ DB 연결 대상: localdb (postgresql localhost:5432/trail_map)
 
 - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` 환경 변수가 남아 있는 경우.
   이 변수는 profile 설정보다 우선하므로 새 셸에서 실행하거나 `Remove-Item Env:SPRING_DATASOURCE_*`로 지웁니다.
-- `-Pdb=localdb`인데 로컬이 아닌 주소이거나, `-Pdb=supabase`인데 Supabase 비밀 파일이나 원격 주소가 없는 경우.
+- `-Pdb=localdb`인데 로컬이 아닌 주소이거나, Supabase 실행인데 Supabase 비밀 파일이나 원격 주소가 없는 경우.
 
-`-Pdb` 없이 실행하면 기존과 같이 `DB_URL`·`application-secret.properties` 순서의 설정을
-따르며 로그에 `기본 설정(DB profile 미지정)`으로 표시됩니다. 수집기 등 배포 실행은
-이 기본 방식을 유지합니다.
+이 기본값은 `bootRun`에만 적용됩니다. JAR 실행(수집기 배포 등)은 profile 없이 기존과 같이
+`DB_URL`·`application-secret.properties` 순서의 설정을 따르며 로그에
+`기본 설정(DB profile 미지정)`으로 표시됩니다. 테스트는 `test` profile의 H2를 사용합니다.
 
 DB를 전환할 때 주의할 점은 다음과 같습니다.
 

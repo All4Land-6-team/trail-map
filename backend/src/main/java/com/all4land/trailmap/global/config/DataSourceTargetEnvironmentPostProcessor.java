@@ -55,7 +55,7 @@ public class DataSourceTargetEnvironmentPostProcessor implements EnvironmentPost
 
         if (targets.isEmpty()) {
             return "DB 연결 대상: 기본 설정(DB profile 미지정) " + endpoint
-                    + " — 명시하려면 bootRun -Pdb=localdb 또는 -Pdb=supabase로 실행";
+                    + " — 개발 서버는 bootRun(기본 supabase) 또는 bootRun -Pdb=localdb로 실행";
         }
 
         String target = targets.get(0);
