@@ -194,10 +194,9 @@ public class CommunitySpotQueryRepository {
               AND spot.spot_type = 'PHOTO_SPOT'
               AND EXISTS (
                   SELECT 1
-                  FROM user_spot registered_spot
-                  JOIN hike_record record ON record.hike_record_id = registered_spot.hike_record_id
-                  WHERE registered_spot.spot_id = spot.target_id
-                    AND record.course_id = :courseId
+                  FROM spot_course link
+                  WHERE link.user_spot_id = spot.target_id
+                    AND link.course_id = :courseId
               )
             ORDER BY spot.target_id ASC
             """;

@@ -397,11 +397,20 @@ class CommunityQueryApiIntegrationTest {
     }
 
     private long insertPhotoSpot(Long hikeId, String type, String status) {
-        return jdbcTemplate.queryForObject("""
+        long spotId = jdbcTemplate.queryForObject("""
                 INSERT INTO user_spot (user_id, mountain_id, hike_record_id, spot_type, spot_location, spot_name, spot_status)
                 VALUES (?, ?, ?, ?, ST_SetSRID(ST_MakePoint(126.98, 37.66), 4326), '사진 명소', ?)
                 RETURNING spot_id
                 """, Long.class, userId, mountainId, hikeId, type, status);
+        if (hikeId != null) {
+            jdbcTemplate.update("""
+                    INSERT INTO spot_course (user_spot_id, course_id, matching_method)
+                    SELECT ?, course_id, 'HIKE_RECORD'
+                    FROM hike_record
+                    WHERE hike_record_id = ?
+                    """, spotId, hikeId);
+        }
+        return spotId;
     }
 
     private long insertUser(String nickname) {
