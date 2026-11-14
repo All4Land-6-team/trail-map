@@ -32,7 +32,8 @@
     "echarts": "^6.1.0",
     "maplibre-gl": "^6.11.2",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "suncalc": "^2.1.4"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
