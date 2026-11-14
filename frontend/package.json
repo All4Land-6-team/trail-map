@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "test:picker": "node --experimental-strip-types --test tests/date-time-picker.test.mjs",
     "test:hiking": "node --experimental-strip-types --test tests/hiking-status.test.mjs",
-    "test:hike-tracking": "node --experimental-strip-types --test tests/hike-tracking.test.mjs tests/hike-record.test.mjs",
+    "test:hike-tracking": "node --experimental-strip-types --test tests/hike-tracking.test.mjs tests/hike-record.test.mjs tests/hike-navigation.test.mjs",
     "test:profile": "node --experimental-strip-types --test tests/hike-profile.test.mjs",
     "test:auth": "node --experimental-strip-types --test tests/auth.test.mjs tests/hike-profile.test.mjs",
     "test:offline": "node --test tests/service-worker.test.cjs",

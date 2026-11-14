@@ -23,7 +23,8 @@ export function HikeActivePage() {
   const hike = useMemo(() => activeHikeFor(course, session?.schedule, session?.coursePath, session?.phase === "downhill"),
     [course, session?.schedule, session?.coursePath, session?.phase]);
   const [filter, setFilter] = useState<SpotFilter>("all");
-  const [dimension, setDimension] = useState<"2D" | "3D">("2D");
+  // 등산을 시작하면 3D 내비 모드(현재 위치를 따라가며 진행 방향을 위로)로 보여 준다. 2D는 경로 전체 보기다.
+  const [dimension, setDimension] = useState<"2D" | "3D">("3D");
   const [recenterKey, setRecenterKey] = useState(0);
   const alertsOn = session?.alertsOn ?? false;
   const [overlay, setOverlay] = useState<"share" | "end" | null>(null);
@@ -41,7 +42,7 @@ export function HikeActivePage() {
         <HikeRouteMap route={controls.route} peak={controls.peak} mountainName={hike.mountainName} traveledKm={controls.traveledKm ?? hike.traveledKm}
           {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
           progressMeters={controls.progressMeters} stage={session.phase === "downhill" ? "descent" : "ascent"}
-          spots={hike.spots} filter={filter} dimension={dimension} recenterKey={recenterKey}
+          spots={hike.spots} filter={filter} dimension={dimension} recenterKey={recenterKey} navigation
           padding={{ top: 150, bottom: 280, left: 40, right: 72 }}
           label={`${hike.courseName} 등산 경로 지도`} />
         <div className="hike-map-page__top">
