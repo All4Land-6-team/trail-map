@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { loadCourseFacilities } from '../../../api/courseFacilities';
-import type { CourseFacilitiesState } from '../../../types/courseDetail';
-import type { CourseFacilityType } from '../../../types/facility';
-import { toCourseFacilitySpots } from '../../../utils/courseFacilities';
+import { loadCourseFacilities } from '../api/courseFacilities';
+import type { CourseFacilitiesState } from '../types/courseDetail';
+import type { CourseFacilityType } from '../types/facility';
+import { toCourseFacilitySpots } from '../utils/courseFacilities';
 
 export function useCourseFacilities(courseId: string, backendCourseId: number | undefined, enabled: boolean,
   type: CourseFacilityType = 'RESTROOM') {

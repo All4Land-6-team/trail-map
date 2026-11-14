@@ -22,7 +22,7 @@ import { CourseAnalysis } from "./components/CourseAnalysis";
 import { CourseSpots } from "./components/CourseSpots";
 import { useCourseDetail } from "./hooks/useCourseDetail";
 import { useParkControl } from "./hooks/useParkControl";
-import { useCourseFacilities } from "./hooks/useCourseFacilities";
+import { useCourseFacilities } from "../../hooks/useCourseFacilities";
 import { useCoursePhotoSpots } from "./hooks/useCoursePhotoSpots";
 import { coursePhotoSpotDisplay } from "../../utils/coursePhotoSpotDisplay";
 import { withCourseFacilities } from "../../utils/courseFacilities";
