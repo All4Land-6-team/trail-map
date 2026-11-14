@@ -58,14 +58,16 @@ export function HikeActivePage() {
         <div className="hike-active-page__bottom">
           <HikeStatusHUD stage={session.phase === "downhill" ? "descent" : "ascent"} courseName={hike.courseName}
             courseNotice={controls.courseNotice} paused={controls.paused}
-            alertsOn={alertsOn} onAlertsChange={setHikeAlerts} onRequestEnd={() => setOverlay("end")} />
+            alertsOn={alertsOn} onAlertsChange={setHikeAlerts} />
           <HikeSunsetNotice sun={sun} />
           <div className="hike-sun-controls">
             <SunArc sun={sun} variant="compact" />
             <HikeFloatingControls state={controls.paused ? "paused" : "recording"} busy={controls.busy} showMain={false}
               secondaryLabel={session.phase === "downhill" ? "등산 종료" : "하산 시작"}
               onMain={controls.togglePaused}
-              onSecondary={() => session.phase === "downhill" ? setOverlay("end") : void controls.descend(alertsOn)} />
+              onSecondary={() => session.phase === "downhill" ? setOverlay("end") : void controls.descend(alertsOn)}
+              // 올라가는 중에는 하산 시작(왼쪽) 옆에 종료(오른쪽)를 둔다. 하산 중에는 등산 종료 하나만 둔다.
+              {...session.phase === "downhill" ? {} : { endLabel: "종료", onEnd: () => setOverlay("end") }} />
           </div>
         </div>
       </div>
