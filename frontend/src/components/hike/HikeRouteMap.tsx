@@ -5,9 +5,11 @@ import BaseMap, { type MapRoute } from "../map/BaseMap";
 import { CurrentLocationMarker, DistanceBubble, SpotMarker } from "../map";
 import { supportsTerrain, type TerrainStatus } from "../map/terrain";
 import type { HikeSpot, LngLat } from "../../types/hike";
-import { buildHikeRouteSegments, COURSE_ROUTE_COLOR, GRAY_ROUTE_COLOR, hikeRouteColors } from "./hikeRouteSegments";
+import { buildHikeRouteSegments, hikeRouteColors } from "./hikeRouteSegments";
+import { distanceToCourseMeters, OFF_COURSE_METERS } from "../../utils/hikeTracking";
 import { cameraForTwoPoints, chaikinSmooth, NAVIGATION_FAR_METERS, navigationFix, progressOnSmoothRoute, smoothLine, splitRouteAt } from "../../utils/hikeNavigation";
 import { NavigationArrowMarker } from "./NavigationArrowMarker";
+import { installTerrainFallback } from "./terrainFallback";
 import "./hike.css";
 
 export type SpotFilter = "all" | HikeSpot["kind"] | "other";
@@ -54,7 +56,14 @@ const NAV_AHEAD_CASING_ID = "hike-nav-ahead-casing";
 /** 차량 내비처럼 현재 위치 뒤에서 낮게 깔려 앞을 길게 보는 각도. MapLibre 기본 최대(60°)보다 커서 최대 기울기를 올린다. */
 const NAV_PITCH = 70;
 const NAV_MAX_PITCH = 80;
-const NAV_ZOOM = 17.5;
+/** 능선에 가릴 때 낮출 수 있는 최소 기울기와 한 번에 바꾸는 크기 */
+const NAV_MIN_PITCH = 40;
+const NAV_PITCH_DOWN_STEP = 10;
+const NAV_PITCH_UP_STEP = 5;
+/** 이만큼 연달아 가리지 않아야 기울기를 다시 올린다 */
+const NAV_PITCH_RECOVER_MOVES = 3;
+/** 가까이 붙여 화면에 들어오는 범위를 줄인다. 멀리 지평선 쪽 지형 타일을 덜 요청한다. */
+const NAV_ZOOM = 18.5;
 /** 현재 위치를 화면 아래쪽에 두어 앞쪽 경로를 넓게 보여 준다 (지도 높이 대비 위쪽 여백 비율) */
 const NAV_TOP_PADDING_RATIO = 0.55;
 /** 등산을 시작하면 직전 화면의 시점에서 내비 시점으로 옮겨 가는 시간 */
@@ -151,6 +160,9 @@ export function HikeRouteMap({
   const navigationRef = useRef(navigation);
   const navBearingRef = useRef(0);
   const navFarTargetRef = useRef<LngLat | undefined>(undefined);
+  // 산 능선이 현재 위치를 가리면 기울기를 낮추고, 한동안 가리지 않으면 다시 올린다.
+  const navPitchRef = useRef(NAV_PITCH);
+  const navClearMovesRef = useRef(0);
   const navFix = useMemo(() => {
     if (!navigationActive || currentLng === undefined || currentLat === undefined) return null;
     return navigationFix(route, [currentLng, currentLat]);
@@ -186,6 +198,8 @@ export function HikeRouteMap({
   const handleMapReady = useCallback((next: MapLibreMap | null) => {
     setMap(next);
     if (!next) return;
+    // 범위 안의 빈 지형 타일 때문에 3D 지형 전체가 꺼지지 않도록 평평한 타일로 채운다.
+    installTerrainFallback(next);
     next.once("load", () => {
       if (!next.getSource(NAV_AHEAD_SOURCE_ID)) {
         // 내비 모드에서 앞으로 갈 경로: 흰 테두리 위에 굵은 선. 내비 모드가 아니면 숨긴다.
@@ -200,8 +214,8 @@ export function HikeRouteMap({
       if (!next.getSource(GPS_SOURCE_ID)) {
         next.addSource(GPS_SOURCE_ID, { type: "geojson", data: pathData(chaikinSmooth(traveledPathRef.current)) });
         next.addLayer({ id: GPS_SOURCE_ID, type: "line", source: GPS_SOURCE_ID,
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": stageRef.current === "descent" ? COURSE_ROUTE_COLOR : GRAY_ROUTE_COLOR, "line-width": 5 } });
+          layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+          paint: { "line-color": hikeRouteColors(stageRef.current).completed, "line-width": 5 } });
       }
       // 생성 시점에는 컨테이너·시트 크기가 확정되지 않을 수 있어 경로 전체를 다시 맞춘다.
       next.resize();
@@ -223,6 +237,14 @@ export function HikeRouteMap({
   useEffect(() => {
     (map?.getSource(GPS_SOURCE_ID) as GeoJSONSource | undefined)?.setData(pathData(smoothTraveledPath));
   }, [map, smoothTraveledPath, layersReady]);
+
+  // 지나온 길은 코스 선(회색)이 이미 보여 주므로, 실제 GPS 경로까지 그리면 나란한 두 줄이 된다.
+  // 코스를 벗어났을 때만 실제로 걸어온 길을 보여 준다.
+  const offCourse = useMemo(() => currentLng !== undefined && currentLat !== undefined
+    && (distanceToCourseMeters(route, [currentLng, currentLat]) ?? 0) > OFF_COURSE_METERS, [route, currentLng, currentLat]);
+  useEffect(() => {
+    if (map?.getLayer(GPS_SOURCE_ID)) map.setLayoutProperty(GPS_SOURCE_ID, "visibility", offCourse ? "visible" : "none");
+  }, [map, offCourse, layersReady]);
 
   useEffect(() => {
     if (map?.getLayer(GPS_SOURCE_ID)) {
@@ -258,7 +280,7 @@ export function HikeRouteMap({
     const height = target.getContainer().clientHeight;
     // 화면이 넘겨준 아래 여백(하단 HUD·시트)만큼 비워 현재 위치가 가리지 않게 한다.
     const bottom = withSheetInset({ bottom: paddingRef.current.bottom ?? 0 }, shellRef.current).bottom ?? 0;
-    const animation = { bearing: navBearingRef.current, pitch: NAV_PITCH,
+    const animation = { bearing: navBearingRef.current, pitch: navPitchRef.current,
       duration: prefersReducedMotion() ? 0 : duration, essential: true };
     // 코스에서 멀리 벗어나면 현재 위치와 가장 가까운 코스 지점을 함께 보여 준다.
     const onCourse = navFarTargetRef.current;
@@ -289,6 +311,27 @@ export function HikeRouteMap({
     if (Date.now() < intro.until) return;
     followCamera(map, [currentLng, currentLat], 900);
   }, [map, navigationActive, following, currentLng, currentLat, navFix, followCamera, layersReady]);
+
+  // 내려갈 때처럼 카메라 앞을 산 능선이 막아 현재 위치가 가리면(MapLibre가 마커에 covered 클래스를 붙인다)
+  // 기울기를 낮춰 다시 맞춘다. 연달아 가리지 않으면 조금씩 원래 기울기로 되돌린다.
+  useEffect(() => {
+    if (!map || !navigationActive || !following) return;
+    const adjustPitch = () => {
+      const target = currentRef.current;
+      if (!target || Date.now() < introRef.current.until) return;
+      const covered = nodes.current.classList.contains("maplibregl-marker-covered");
+      if (covered && navPitchRef.current > NAV_MIN_PITCH) {
+        navPitchRef.current = Math.max(NAV_MIN_PITCH, navPitchRef.current - NAV_PITCH_DOWN_STEP);
+        navClearMovesRef.current = 0;
+        followCamera(map, target, 500);
+      } else if (!covered && navPitchRef.current < NAV_PITCH && ++navClearMovesRef.current >= NAV_PITCH_RECOVER_MOVES) {
+        navPitchRef.current = Math.min(NAV_PITCH, navPitchRef.current + NAV_PITCH_UP_STEP);
+        navClearMovesRef.current = 0;
+      }
+    };
+    map.on("moveend", adjustPitch);
+    return () => { map.off("moveend", adjustPitch); };
+  }, [map, navigationActive, following, followCamera, nodes]);
 
   // 3D 지형이 켜지면 MapLibre가 카메라 높이를 유지하려고 확대 수준을 바꾸므로 내비 카메라를 다시 맞춘다.
   useEffect(() => {
