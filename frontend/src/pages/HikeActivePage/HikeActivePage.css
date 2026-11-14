@@ -14,3 +14,5 @@
   .hike-descent-page .hike-route-map__base .base-map__notices { bottom: 226px; }
   .hike-active-page .hike-page__toast, .hike-descent-page .hike-page__toast { bottom: 236px; }
 }
+/* 상태 칸(올라가는 중)과 일몰 안내 사이 간격 */
+.hike-active-page__bottom > .af-hike-sunset-notice { margin-top: 8px; }

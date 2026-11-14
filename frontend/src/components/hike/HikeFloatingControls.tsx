@@ -6,11 +6,14 @@ export type HikeFloatingControlsProps = {
   showMain?: boolean;
   mainLabel?: string;
   secondaryLabel?: string;
+  /** 보조 버튼 오른쪽에 두는 종료 버튼 (빨간 글씨) */
+  endLabel?: string;
   onMain: () => void;
   onSecondary?: () => void;
+  onEnd?: () => void;
 };
 
-export function HikeFloatingControls({ state, busy = false, showMain = true, mainLabel, secondaryLabel, onMain, onSecondary }: HikeFloatingControlsProps) {
+export function HikeFloatingControls({ state, busy = false, showMain = true, mainLabel, secondaryLabel, endLabel, onMain, onSecondary, onEnd }: HikeFloatingControlsProps) {
   const playing = state === "start" || state === "paused";
   const label = mainLabel ?? (state === "start" ? "등산 시작" : state === "paused" ? "기록 재개" : "일시정지");
   return <div className={["af-hike-controls", !showMain && "af-hike-controls--secondary-only"].filter(Boolean).join(" ")}
@@ -34,5 +37,7 @@ export function HikeFloatingControls({ state, busy = false, showMain = true, mai
     </div>}
     {secondaryLabel && onSecondary && <button type="button" className="af-hike-control__secondary" disabled={busy}
       onClick={onSecondary}>{secondaryLabel}</button>}
+    {endLabel && onEnd && <button type="button" className="af-hike-control__secondary af-hike-control__secondary--end" disabled={busy}
+      onClick={onEnd}>{endLabel}</button>}
   </div>;
 }

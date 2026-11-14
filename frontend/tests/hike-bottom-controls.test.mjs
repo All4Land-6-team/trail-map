@@ -88,7 +88,7 @@ test('진행 정보는 지도 경로 색상으로 표시하고 SunArc 위 거리
   assert.match(descent, /progressMeters=\{controls\.progressMeters\}/);
 });
 
-test('등산은 지나온 경로를 회색으로, 하산은 돌아온 경로를 원래 색으로 표시한다', () => {
+test('등산·하산 모두 지나온 경로는 회색, 앞으로 갈 경로는 원래 색으로 표시한다', () => {
   const route = [[126.95, 37.63], [126.95, 37.64], [126.96, 37.64]];
   const partial = distanceMeters(route[0], route[1]) / 2;
 
@@ -97,11 +97,11 @@ test('등산은 지나온 경로를 회색으로, 하산은 돌아온 경로를 
   assert.deepEqual(ascent[0].coordinates.at(-1), ascent[1].coordinates[0]);
 
   const descent = buildHikeRouteSegments(route, 'descent', partial);
-  assert.deepEqual(descent.map(segment => segment.color), [COURSE_ROUTE_COLOR, GRAY_ROUTE_COLOR]);
+  assert.deepEqual(descent.map(segment => segment.color), [GRAY_ROUTE_COLOR, COURSE_ROUTE_COLOR]);
   assert.deepEqual(descent[0].coordinates.at(-1), descent[1].coordinates[0]);
 
   assert.deepEqual(buildHikeRouteSegments(route, 'ascent', 0).map(segment => segment.color), [COURSE_ROUTE_COLOR]);
-  assert.deepEqual(buildHikeRouteSegments(route, 'descent', Infinity).map(segment => segment.color), [COURSE_ROUTE_COLOR]);
+  assert.deepEqual(buildHikeRouteSegments(route, 'descent', Infinity).map(segment => segment.color), [GRAY_ROUTE_COLOR]);
   assert.deepEqual(buildHikeRouteSegments(route, 'descent', undefined, 1).map(segment => segment.color),
-    [COURSE_ROUTE_COLOR, GRAY_ROUTE_COLOR]);
+    [GRAY_ROUTE_COLOR, COURSE_ROUTE_COLOR]);
 });

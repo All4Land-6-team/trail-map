@@ -7,10 +7,12 @@ export type HikeStage = "ascent" | "descent";
 export const GRAY_ROUTE_COLOR = "#a6b1a9";
 export const COURSE_ROUTE_COLOR = "#19765b";
 
-export function hikeRouteColors(stage: HikeStage) {
-  return stage === "descent"
-    ? { completed: COURSE_ROUTE_COLOR, pending: GRAY_ROUTE_COLOR }
-    : { completed: GRAY_ROUTE_COLOR, pending: COURSE_ROUTE_COLOR };
+/**
+ * 등산·하산 모두 지나온 구간은 회색, 앞으로 갈 구간은 원래 색이다.
+ * 내비 모드에서 가야 할 길이 눈에 띄도록 하산도 등산과 같은 규칙을 쓴다.
+ */
+export function hikeRouteColors(_stage: HikeStage) {
+  return { completed: GRAY_ROUTE_COLOR, pending: COURSE_ROUTE_COLOR };
 }
 
 export function buildHikeRouteSegments(route: LngLat[], stage: HikeStage,

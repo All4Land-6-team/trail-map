@@ -90,3 +90,9 @@
 .af-overlay-layer--bottom > .af-overlay-layer__panel { max-width: 390px; }
 /* 하단 내비게이션 위에 띄우는 바텀시트. 내비게이션은 어둡게 비쳐 보인다 (Figma FLOW-06 · HIKE-04 · HIKE-09) */
 .af-overlay-layer--above-nav { padding-bottom: var(--af-overlay-nav-offset, 0px); }
+
+/* 내비 모드 현재 위치 화살표 (HikeRouteMap navigation) */
+.hike-nav-arrow { position: relative; display: block; width: 44px; height: 44px; pointer-events: none; }
+.hike-nav-arrow__halo { position: absolute; inset: 0; border-radius: 50%; background: rgb(25 118 91 / .18); }
+.hike-nav-arrow__icon { position: absolute; inset: 6px; width: 32px; height: 32px; filter: drop-shadow(0 2px 3px rgb(0 0 0 / .35)); }
+.hike-nav-arrow__icon path { fill: #19765b; stroke: #fff; stroke-width: 3; stroke-linejoin: round; }
