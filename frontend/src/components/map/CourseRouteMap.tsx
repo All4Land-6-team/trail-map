@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { LngLatBounds, type FilterSpecification, type GeoJSONSource, type GeoJSONSourceSpecification, type MapLayerMouseEvent, type MapLibreMap } from "maplibre-gl";
 import BaseMap from "./BaseMap";
 import { MapAction, type MapDimension } from "./MapAction";
@@ -39,11 +39,12 @@ export type CourseRouteMapProps = {
   selectedSpotId?: string;
   focusSpotId?: string;
   showSpotLabels?: boolean;
+  extraMapAction?: ReactNode;
   onSpotSelect?: (id: string) => void;
 };
 
 export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewStart, onPreviewEnd, mountainId, center, mapBottomInset = 0, onSelect, onNotify, variant = "list", profileSample,
-  summitCoordinate, summitLabel = "정상", dataLabel, spots, selectedSpotId, focusSpotId, showSpotLabels = false, onSpotSelect }: CourseRouteMapProps) {
+  summitCoordinate, summitLabel = "정상", dataLabel, spots, selectedSpotId, focusSpotId, showSpotLabels = false, extraMapAction, onSpotSelect }: CourseRouteMapProps) {
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [readyInput, setReadyInput] = useState<{ map: MapLibreMap; courses: readonly Course[] } | null>(null);
   const routesReady = readyInput?.map === map && readyInput?.courses === courses;
@@ -192,10 +193,10 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
       style={{ left: profilePoint.x, top: profilePoint.y }} aria-label={`그래프 선택 위치 ${profileSample.distanceKm.toFixed(1)} km`}>
       <img src={profilePositionAsset} alt="" />
     </span>}
-    {spotPoints.map(({ spot, x, y }) => <SpotMarker key={spot.id} kind={spot.kind} compact
+    {spots?.length ? spotPoints.filter(({ spot }) => spot.courseId === selected?.id).map(({ spot, x, y }) => <SpotMarker key={spot.id} kind={spot.kind} compact
       className="course-map__spot" style={{ left: x, top: y }} data-spot-id={spot.id}
       aria-label={`${spot.name} ${spot.communityTarget && spot.id === selectedSpotId ? '커뮤니티 상세 보기' : '지도에서 선택'}`} aria-pressed={spot.id === selectedSpotId}
-      label={showSpotLabels ? spot.name : undefined} onClick={() => onSpotSelect?.(spot.id)} />)}
+      label={showSpotLabels ? spot.name : undefined} onClick={() => onSpotSelect?.(spot.id)} />) : null}
     <div className="course-map__actions">
       <MapAction dimensionMode={dimension === "2D" ? "3D" : "2D"} aria-label={`${dimension === "2D" ? "3D" : "2D"} 지도 보기`}
         aria-busy={terrainEnabled && terrainStatus === "loading"}
@@ -206,6 +207,7 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
       {enhanced && <MapAction className="course-map__overview" aria-label="전체 코스" icon={<span>전체 코스</span>}
         disabled={!map || !enhancedRoute.metrics.valid}
         onClick={() => { preview.finish(false); enhancedRoute.fitWhole(); }} />}
+      {extraMapAction}
     </div>
     {enhanced && dimension === "3D" && <div className="course-map__preview" data-preview-state={preview.state}>
       {preview.state === "idle" ? <button type="button" disabled={!preview.available} onClick={preview.play}>코스 미리보기</button>
