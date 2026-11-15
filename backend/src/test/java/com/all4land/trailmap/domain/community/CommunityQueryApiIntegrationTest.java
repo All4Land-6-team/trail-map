@@ -126,7 +126,7 @@ class CommunityQueryApiIntegrationTest {
                 """, Long.class, userId, courseId);
         insertPhoto("course/%d/representative.webp".formatted(courseReviewId), "course_review_id", courseReviewId);
 
-        mockMvc.perform(asUser(get("/v1/community/mountains")))
+        mockMvc.perform(asUser(get("/v1/mountains")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].mountainId").value(mountainId))
                 .andExpect(jsonPath("$.data[0].externalId").value("bukhansan"))

@@ -6,14 +6,6 @@ const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:80
 type SuccessResponse<T> = { data: T }
 type ApiErrorResponse = { message?: string }
 
-export type CommunityMountainDto = {
-  mountainId: number
-  externalId: string | null
-  name: string
-  longitude: number
-  latitude: number
-}
-
 export type CommunityCourseDto = {
   courseId: number
   mountainId: number
@@ -137,7 +129,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const communityApi = {
-  mountains: (signal?: AbortSignal) => request<CommunityMountainDto[]>('/mountains', { signal }),
   courses: (mountainId: string, signal?: AbortSignal) =>
     request<CommunityCourseDto[]>(`/mountains/${mountainId}/courses`, { signal }),
   spots: (mountainId: string, bounds: CommunitySpotBounds, signal?: AbortSignal, type?: CommunitySpotDto['type'], courseId?: string) => {

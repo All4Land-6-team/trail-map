@@ -6,7 +6,6 @@ import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoRespons
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityCoordinateResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityCourseResponse;
-import com.all4land.trailmap.domain.community.dto.response.CommunityMountainResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotDetailResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotPageResponse;
@@ -49,19 +48,6 @@ public class CommunityQueryService {
     private final CommunityPhotoService photoService;
     private final R2PhotoStorage r2PhotoStorage;
     private final ObjectMapper objectMapper;
-
-    public List<CommunityMountainResponse> getMountains(Long userId) {
-        validateUser(userId);
-        return mapQueryRepository.findMountains().stream()
-                .map(mountain -> new CommunityMountainResponse(
-                        mountain.mountainId(),
-                        mountain.externalId(),
-                        mountain.name(),
-                        mountain.longitude(),
-                        mountain.latitude()
-                ))
-                .toList();
-    }
 
     public List<CommunityCourseResponse> getCourses(Long userId, Long mountainId) {
         validateUser(userId);

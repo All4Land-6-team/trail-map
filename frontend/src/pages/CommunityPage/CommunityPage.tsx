@@ -5,7 +5,8 @@ import { Chip } from '../../components/common/Chip'
 import { BottomNavigation, TopBar, type BottomDestination } from '../../components/layout'
 import { BottomSheet, ConfirmDialog, ModalLayer } from '../../components/overlay'
 import { EmptyState, Toast } from '../../components/feedback'
-import { CommunityApiError, communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityEligibilityDto, type CommunityMapSpotDto, type CommunityMountainDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
+import { CommunityApiError, communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityEligibilityDto, type CommunityMapSpotDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
+import { mountainApi, type MountainDto } from '../../api/mountainApi'
 import type { CommunityReview, CommunityCourseReviewTarget, CommunitySpotTargetType, Coordinate, ReviewDraft, ReviewKind, SpotType } from '../../types/community'
 import type { CompletedHike } from '../../store/hikeSessionStore'
 import type { CommunitySpot, SpotVote } from '../../types/community'
@@ -70,7 +71,7 @@ function blankDraft(kind: ReviewKind, targetId: string): ReviewDraft {
   return { kind, targetId, content: '', photos: [], rating: 0 }
 }
 
-function toMountain(mountain: CommunityMountainDto): CommunityMountain {
+function toMountain(mountain: MountainDto): CommunityMountain {
   return { id: String(mountain.mountainId), externalId: mountain.externalId ?? undefined,
     name: mountain.name, position: [mountain.longitude, mountain.latitude] }
 }
@@ -295,7 +296,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const hideSheetBody = sheetPeek && !isDetail && !inlineMountainDetail
   useEffect(() => {
     const controller = new AbortController()
-    void communityApi.mountains(controller.signal).then(result => {
+    void mountainApi.list(controller.signal).then(result => {
       const loaded = result.map(toMountain)
       setMountains(loaded)
       const requestedName = initialMountainId ? legacyMountainNames[initialMountainId] : undefined
@@ -434,16 +435,17 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
 
   useEffect(() => {
     if (!mountainId || !mapBounds || !['map', 'spotDetail', 'courseDetail', 'spotPicker', 'newSpot'].includes(screen)) return
-    const controller = new AbortController()
     if (screen === 'courseDetail' && !courseSpotsOnly) {
       setMapSpots([])
       shownMapSpotKey.current = ''
-      return () => controller.abort()
+      return
     }
+    const detailCourse = screen === 'courseDetail' ? findCommunityCourse(courses, detailCourseId) : undefined
+    if (screen === 'courseDetail' && !detailCourse) return
+    const controller = new AbortController()
     const type = screen === 'map' && mapCategory === 'spot' && spotTypeFilter !== 'all'
       ? toSpotType(spotTypeFilter) : undefined
-    const courseId = screen === 'courseDetail' && courseSpotsOnly
-      ? (findCommunityCourse(courses, detailCourseId)?.id ?? detailCourseId) : undefined
+    const courseId = screen === 'courseDetail' && courseSpotsOnly ? detailCourse?.id : undefined
     const cacheKey = `${screen}:${mountainId}:${type ?? 'all'}:${courseId ?? 'all'}`
     const cached = mapSpotCache.current.get(cacheKey)
     if (cached && Date.now() - cached.fetchedAt < MAP_SPOT_CACHE_MS && coversMapBounds(cached.bounds, mapBounds)) {

@@ -10,6 +10,7 @@ import { readHashParams } from "../../hooks/useHashRoute";
 import { coursePaths } from "../../routes/courseRoutes";
 import { canScheduleCourse } from "../../utils/courseIdentity";
 import { communityApi, type CommunityCourseDto, type CommunityReviewDto } from "../../api/community";
+import { mountainApi } from "../../api/mountainApi";
 import type { CommunityReview } from "../../types/community";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
@@ -95,7 +96,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
 
   useEffect(() => {
     const controller = new AbortController();
-    void communityApi.mountains(controller.signal).then(mountains => {
+    void mountainApi.list(controller.signal).then(mountains => {
       const mountain = mountains.find(item => String(item.mountainId) === mountainId || item.externalId === mountainId)
         ?? mountains.find(item => item.name === ({ bukhansan: "북한산", dobongsan: "도봉산", gwanaksan: "관악산" } as Record<string, string>)[mountainId]);
       if (!mountain) return null;

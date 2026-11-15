@@ -1,6 +1,6 @@
-package com.all4land.trailmap.domain.community.dto.response;
+package com.all4land.trailmap.domain.mountain.dto.response;
 
-public record CommunityMountainResponse(
+public record MountainResponse(
         Long mountainId,
         String externalId,
         String name,
