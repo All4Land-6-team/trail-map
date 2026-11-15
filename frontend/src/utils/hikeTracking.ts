@@ -25,6 +25,29 @@ export function pathLengthMeters(path: LngLat[]) {
   return meters;
 }
 
+/** 코스 진행 거리 지점에서 선을 나눈다. 두 구간은 같은 보간 좌표를 경계로 공유한다. */
+export function splitRouteAtMeters(route: LngLat[], alongMeters: number) {
+  if (route.length < 2 || Number.isNaN(alongMeters) || alongMeters <= 0) {
+    return { completed: [] as LngLat[], pending: route };
+  }
+  let segmentStartMeters = 0;
+  for (let index = 1; index < route.length; index += 1) {
+    const start = route[index - 1];
+    const end = route[index];
+    const segmentLength = distanceMeters(start, end);
+    const segmentEndMeters = segmentStartMeters + segmentLength;
+    if (alongMeters <= segmentEndMeters) {
+      const ratio = segmentLength === 0 ? 0 : (alongMeters - segmentStartMeters) / segmentLength;
+      if (ratio <= 0) return { completed: route.slice(0, index), pending: route.slice(index - 1) };
+      if (ratio >= 1) return { completed: route.slice(0, index + 1), pending: route.slice(index) };
+      const boundary: LngLat = [start[0] + (end[0] - start[0]) * ratio, start[1] + (end[1] - start[1]) * ratio];
+      return { completed: [...route.slice(0, index), boundary], pending: [boundary, ...route.slice(index)] };
+    }
+    segmentStartMeters = segmentEndMeters;
+  }
+  return { completed: route, pending: [] as LngLat[] };
+}
+
 /** 이동 경로에 넣을 위치인지 판단한다. */
 export function isPathPosition(previous: LngLat | undefined, next: LngLat, accuracyMeters?: number) {
   if (accuracyMeters !== undefined && accuracyMeters > MAX_ACCURACY_METERS) return false;

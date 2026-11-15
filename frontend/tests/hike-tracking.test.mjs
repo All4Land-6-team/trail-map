@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   courseProgress, distanceMeters, distanceToCourseMeters, formatCourseDistance, gateCourseProgress, hasReachedCourse, hikeStartDistance,
-  isPathPosition, pathLengthMeters,
+  isPathPosition, pathLengthMeters, splitRouteAtMeters,
 } from "../src/utils/hikeTracking.ts";
 
 const start = [126.9783, 37.5666];
@@ -76,6 +76,18 @@ test("화면에 바로 보여 줄 이동 거리는 경로 구간 길이의 합�
   assert.equal(pathLengthMeters([]), 0);
   assert.equal(pathLengthMeters([[126.95, 37.63]]), 0);
   near1(pathLengthMeters(course), distanceMeters(course[0], course[1]) + distanceMeters(course[1], course[2]), 0.01);
+});
+
+test("코스를 진행 거리 지점에서 나눠 두 경로가 같은 경계 좌표를 공유한다", () => {
+  const halfFirstSegment = distanceMeters(course[0], course[1]) / 2;
+  const split = splitRouteAtMeters(course, halfFirstSegment);
+
+  assert.deepEqual(split.completed[0], course[0]);
+  assert.deepEqual(split.completed.at(-1), split.pending[0]);
+  near1(split.completed.at(-1)[1], 37.635, 0.000001);
+  assert.deepEqual(split.pending.at(-1), course.at(-1));
+  assert.deepEqual(splitRouteAtMeters(course, 0), { completed: [], pending: course });
+  assert.deepEqual(splitRouteAtMeters(course, Infinity), { completed: course, pending: [] });
 });
 
 test("코스까지 거리는 코스 선의 가장 가까운 지점까지의 거리다", () => {

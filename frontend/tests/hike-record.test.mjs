@@ -5,7 +5,7 @@ import { flushHikePositions } from "../src/hooks/useHikeTracking.ts";
 import { deleteHikeSchedule } from "../src/api/hikeScheduleApi.ts";
 import {
   finishHikeSession, getCompletedHikes, getHikeSession, hikeTargetIds, recordHikePosition, restoreHikeSession, setHikeTraveledMeters,
-  startHikeDescent, startHikeSession,
+  setHikeTrackingPaused, startHikeDescent, startHikeSession,
 } from "../src/store/hikeSessionStore.ts";
 import { activeHikeFor, routeFromResponse } from "../src/utils/activeHike.ts";
 
@@ -94,6 +94,19 @@ test("받은 위치는 현재 위치로 옮기고, 경로에 넣을 위치만 �
   assert.equal(getHikeSession().traveledPath.length, 1);
   recordHikePosition([126.952, 37.632], true);
   assert.equal(getHikeSession().traveledPath.length, 2);
+});
+
+test("기록을 일시정지하면 위치를 추가하지 않고 재개 후 같은 세션에서 이어 간다", () => {
+  const before = getHikeSession().traveledPath.length;
+  setHikeTrackingPaused(true);
+  recordHikePosition([126.953, 37.633], true);
+  assert.equal(getHikeSession().trackingPaused, true);
+  assert.equal(getHikeSession().traveledPath.length, before);
+
+  setHikeTrackingPaused(false);
+  recordHikePosition([126.954, 37.634], true);
+  assert.equal(getHikeSession().trackingPaused, false);
+  assert.equal(getHikeSession().traveledPath.length, before + 1);
 });
 
 test("이동 거리는 진행 중인 기록의 응답만 반영한다", () => {

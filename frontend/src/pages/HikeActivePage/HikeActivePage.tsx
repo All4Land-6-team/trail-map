@@ -5,12 +5,12 @@ import { Toast } from "../../components/feedback";
 import { hikeTargetIds, setHikeAlerts, useHikeSession } from "../../store/hikeSessionStore";
 import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
 import { activeHikeFor } from "../../utils/activeHike";
-import { HikeEndConfirm, HikeRouteMap, HikeShareSheet, SpotFilterChips, type SpotFilter } from "../../components/hike";
-import { BottomNavigation, TopBar } from "../../components/layout";
+import { HikeEndConfirm, HikeFloatingControls, HikeRouteMap, HikeShareSheet, HikeStatusHUD, HikeSunsetNotice, SpotFilterChips, SunArc, type SpotFilter } from "../../components/hike";
+import { TopBar } from "../../components/layout";
 import { MapAction } from "../../components/map";
 import { navigate } from "../../hooks/useHashRoute";
-import { hikePaths, navigateTab } from "../hikeRoutes";
-import { HikeProgressSheet } from "./components/HikeProgressSheet";
+import { useSunTimes } from "../../hooks/useSunTimes";
+import { hikePaths } from "../hikeRoutes";
 import { useHikeControls } from "./useHikeControls";
 import "../hikePages.css";
 import "./HikeActivePage.css";
@@ -23,12 +23,15 @@ export function HikeActivePage() {
   const hike = useMemo(() => activeHikeFor(course, session?.schedule, session?.coursePath, session?.phase === "downhill"),
     [course, session?.schedule, session?.coursePath, session?.phase]);
   const [filter, setFilter] = useState<SpotFilter>("all");
-  const [dimension, setDimension] = useState<"2D" | "3D">("2D");
+  // 등산을 시작하면 3D 내비 모드(현재 위치를 따라가며 진행 방향을 위로)로 보여 준다. 2D는 경로 전체 보기다.
+  const [dimension, setDimension] = useState<"2D" | "3D">("3D");
   const [recenterKey, setRecenterKey] = useState(0);
   const alertsOn = session?.alertsOn ?? false;
   const [overlay, setOverlay] = useState<"share" | "end" | null>(null);
   const controls = useHikeControls(session, hike);
-  const finish = () => void controls.finish();
+  const routeCenter = controls.route[Math.floor(controls.route.length / 2)];
+  const sun = useSunTimes(session?.currentPosition ?? routeCenter);
+  const finish = () => controls.finish();
   if (!session && restoring) return <main className="hike-page__empty-state"><p>진행 중인 등산을 불러오는 중이에요.</p></main>;
   if (!session || !hike || session.phase === "complete") return <main className="hike-page__empty-state">
     <p>진행 중인 등산이 없어요.</p><Button label="오늘의 등산 보기" onClick={() => navigate(hikePaths.today)} /></main>;
@@ -38,7 +41,9 @@ export function HikeActivePage() {
       <div className="hike-map-page__map">
         <HikeRouteMap route={controls.route} peak={controls.peak} mountainName={hike.mountainName} traveledKm={controls.traveledKm ?? hike.traveledKm}
           {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
-          spots={hike.spots} filter={filter} dimension={dimension} recenterKey={recenterKey}
+          progressMeters={controls.progressMeters} stage={session.phase === "downhill" ? "descent" : "ascent"}
+          spots={hike.spots} filter={filter} dimension={dimension} recenterKey={recenterKey} navigation
+          padding={{ top: 150, bottom: 280, left: 40, right: 72 }}
           label={`${hike.courseName} 등산 경로 지도`} />
         <div className="hike-map-page__top">
           <TopBar title="등산 중" showAction={false} onBack={() => navigate(hikePaths.calendar())} />
@@ -50,18 +55,23 @@ export function HikeActivePage() {
           <MapAction aria-label="현재 위치로 이동" onClick={() => setRecenterKey(key => key + 1)} />
           <MapAction variant="brand" aria-label="공유" onClick={() => setOverlay("share")} />
         </div>
+        <div className="hike-active-page__bottom">
+          <HikeStatusHUD stage={session.phase === "downhill" ? "descent" : "ascent"} courseName={hike.courseName}
+            courseNotice={controls.courseNotice} paused={controls.paused}
+            alertsOn={alertsOn} onAlertsChange={setHikeAlerts} />
+          <HikeSunsetNotice sun={sun} />
+          <div className="hike-sun-controls">
+            <SunArc sun={sun} variant="compact" />
+            <HikeFloatingControls state={controls.paused ? "paused" : "recording"} busy={controls.busy} showMain={false}
+              secondaryLabel={session.phase === "downhill" ? "등산 종료" : "하산 시작"}
+              onMain={controls.togglePaused}
+              onSecondary={() => session.phase === "downhill" ? setOverlay("end") : void controls.descend(alertsOn)}
+              // 올라가는 중에는 하산 시작(왼쪽) 옆에 종료(오른쪽)를 둔다. 하산 중에는 등산 종료 하나만 둔다.
+              {...session.phase === "downhill" ? {} : { endLabel: "종료", onEnd: () => setOverlay("end") }} />
+          </div>
+        </div>
       </div>
-      <HikeProgressSheet stage={session.phase === "downhill" ? "descent" : "ascent"} courseName={hike.courseName}
-        traveledKm={controls.traveledKm ?? hike.traveledKm} remainingKm={controls.remainingKm}
-        progressPercent={controls.progressPercent} courseNotice={controls.courseNotice} sunset={hike.sunset}
-        alertsOn={alertsOn} onAlertsChange={setHikeAlerts}
-        onStartDescent={() => void controls.descend(alertsOn)}
-        onEnd={() => {
-          if (session.phase === "downhill") finish();
-          else setOverlay("end");
-        }} />
     </main>
-    <BottomNavigation className="hike-page__nav" active="home" onNavigate={navigateTab} />
     {controls.message && <Toast className="hike-page__toast" message={controls.message} />}
 
     {overlay === "share" && <HikeShareSheet onClose={() => setOverlay(null)} onShareSpot={() => {
@@ -72,7 +82,6 @@ export function HikeActivePage() {
       if (target.mountainId) query.set("mountain", target.mountainId);
       navigate(`community?${query}`);
     }} />}
-    {overlay === "end" && <HikeEndConfirm onCancel={() => setOverlay(null)}
-      onConfirm={finish} />}
+    {overlay === "end" && <HikeEndConfirm onCancel={() => setOverlay(null)} onConfirm={finish} />}
   </div>;
 }

@@ -68,11 +68,14 @@ export function flushHikePositions(hikeRecordId: number): Promise<void> {
  * 등산 중·하산 중 화면에서 GPS 위치를 계속 받아 지도에 표시하고, 묶어서 등산 기록 API로 보낸다.
  * 기록 번호가 없으면(예시 데이터 모드) 위치를 받지 않는다. 위치를 못 받는 동안의 상태를 돌려준다.
  */
-export function useHikeTracking(hikeRecordId?: number) {
+export function useHikeTracking(hikeRecordId?: number, paused = false) {
   const [issue, setIssue] = useState<HikeTrackingIssue | null>(null);
 
   useEffect(() => {
-    if (hikeRecordId === undefined) return;
+    if (hikeRecordId === undefined || paused) {
+      queueMicrotask(() => setIssue(null));
+      return;
+    }
     const flushQuietly = () => { void flushHikePositions(hikeRecordId).catch(() => { /* 다음 간격에 다시 보낸다. */ }); };
     // 지난번에 보내지 못한 위치부터 보낸다.
     flushQuietly();
@@ -105,7 +108,7 @@ export function useHikeTracking(hikeRecordId?: number) {
       window.removeEventListener("online", flushQuietly);
       flushQuietly();
     };
-  }, [hikeRecordId]);
+  }, [hikeRecordId, paused]);
 
   return issue;
 }

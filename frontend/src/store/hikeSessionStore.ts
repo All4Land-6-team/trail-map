@@ -12,6 +12,8 @@ export type HikeSession = {
   mountainId?: string;
   phase: "active" | "downhill" | "complete";
   alertsOn: boolean;
+  /** 백엔드 상태를 바꾸지 않고 이 브라우저의 GPS 수집·전송만 잠시 멈춘다. */
+  trackingPaused?: boolean;
   startedAt: string;
   finishedAt?: string;
   /** 등산 기록 API로 저장 중인 기록 번호. 예시 데이터 모드에서는 없고 GPS도 수집하지 않는다. */
@@ -141,6 +143,10 @@ export function startHikeSession(schedule: HikeSchedule, mountainId: string | un
   update(withCourseProgress({ ...next, descentPathStart: restoredDescentStart(next) }));
 }
 export function setHikeAlerts(alertsOn: boolean) { if (session && session.alertsOn !== alertsOn) update({ ...session, alertsOn }); }
+export function setHikeTrackingPaused(trackingPaused: boolean) {
+  if (!session || session.phase === "complete" || session.trackingPaused === trackingPaused) return;
+  update({ ...session, trackingPaused });
+}
 /** 하산을 시작하면 지금 위치(이동 경로의 마지막 점)부터 하산 경로를 새로 그린다. */
 export function startHikeDescent() {
   if (session?.phase !== "active") return;
@@ -151,7 +157,7 @@ export function startHikeDescent() {
 
 /** GPS 위치를 받을 때마다 현재 위치를 옮긴다. addToPath가 false면 경로에는 넣지 않는다(정확도가 낮은 위치 등). */
 export function recordHikePosition(position: LngLat, addToPath: boolean) {
-  if (!session || session.phase === "complete") return;
+  if (!session || session.phase === "complete" || session.trackingPaused) return;
   update(withCourseProgress({ ...session, currentPosition: position,
     traveledPath: addToPath ? [...session.traveledPath, position] : session.traveledPath }, session.courseProgress?.alongMeters));
 }

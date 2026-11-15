@@ -5,6 +5,15 @@
   color: var(--af-ink); background: #edf3ea; font-family: "Noto Sans KR", sans-serif;
 }
 .course-page__base { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.course-facility-controls { position: absolute; left: 16px; right: 76px; top: calc(76px + env(safe-area-inset-top)); z-index: 2; pointer-events: none; }
+.course-facility-filters { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; pointer-events: auto; }
+.course-facility-filters .af-chip { flex: none; height: 32px; padding: 0 10px; border-radius: 999px; }
+.course-facility-status:not(:empty) { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 3px 8px; border-radius: 10px; color: var(--af-green-dark); background: white; font-size: 12px; pointer-events: auto; }
+.course-facility-status button { border: 0; color: inherit; background: none; text-decoration: underline; cursor: pointer; }
+.course-facility-toggle span { font-size: 10px; line-height: 15px; }
+.course-facility-toggle strong { display: block; font-size: 12px; }
+.course-page__map-area:has(.course-facility-controls) .course-map__preview { top: calc(142px + env(safe-area-inset-top)); }
+.course-page__map-area .course-map__actions { z-index: 5; }
 .course-page__map-area { position: absolute; inset: 0 0 var(--course-nav-height); min-height: 0; }
 .course-page__top { position: absolute; z-index: 3; top: calc(16px + env(safe-area-inset-top)); right: 16px; left: 16px; width: auto; }
 .course-page__nav { position: absolute; z-index: 4; right: 0; bottom: 0; left: 0; min-height: var(--course-nav-height); padding-bottom: env(safe-area-inset-bottom); }

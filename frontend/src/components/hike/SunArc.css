@@ -1,0 +1,93 @@
+.af-sun-arc {
+  position: relative;
+  width: 100%;
+  min-height: 180px;
+  box-sizing: border-box;
+  margin-inline: auto;
+  color: var(--af-ink);
+}
+
+.af-sun-arc__graphic {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+}
+
+.af-sun-arc__halo,
+.af-sun-arc__track,
+.af-sun-arc__elapsed {
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: 8;
+}
+
+.af-sun-arc__halo { stroke: rgb(214 226 216 / 20%); stroke-width: 14; }
+.af-sun-arc__track { stroke: rgb(255 255 255 / 56%); }
+.af-sun-arc__elapsed { opacity: .94; }
+.af-sun-arc__sun { transition: transform .55s ease; }
+.af-sun-arc__glow { filter: blur(3.2px); }
+.af-sun-arc__disc { filter: drop-shadow(0 2px 4px rgb(184 115 32 / 20%)); }
+
+.af-sun-arc__times {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.af-sun-arc__times > span {
+  position: absolute;
+  display: flex;
+  min-width: 44px;
+  flex-direction: column;
+  gap: 1px;
+  text-shadow: 0 1px 3px #fff, 0 0 8px #fff;
+}
+
+.af-sun-arc__times > span:first-child {
+  bottom: 0;
+  left: 21.11%;
+  align-items: center;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.af-sun-arc__times > span:last-child {
+  right: auto;
+  bottom: 0;
+  left: 78.89%;
+  align-items: center;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.af-sun-arc__times > span:first-child small { color: #a95f45; }
+.af-sun-arc__times > span:last-child small { color: #75638f; }
+.af-sun-arc__times small { color: #6b766c; font: 600 8px/12px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-sun-arc__times strong { color: #324d43; font: 700 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; white-space: nowrap; }
+
+.af-sun-arc__now {
+  top: auto;
+  bottom: 0;
+  left: 50%;
+  align-items: center;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.af-sun-arc__now small { display: none; }
+.af-sun-arc__now strong { color: #6c5a37; font-size: 13px; line-height: 18px; }
+.af-sun-arc--sunset-soon .af-sun-arc__now strong { color: #985d24; }
+.af-sun-arc--after-sunset .af-sun-arc__now strong { color: var(--af-danger); }
+.af-sun-arc--unavailable .af-sun-arc__graphic { opacity: .48; }
+.af-sun-arc--unavailable .af-sun-arc__now strong { color: var(--af-muted); white-space: normal; }
+
+.af-sun-arc--compact .af-sun-arc__times strong { font-size: 10px; line-height: 14px; }
+.af-sun-arc--compact .af-sun-arc__now strong { font-size: 12px; }
+
+@media (max-height: 650px) {
+  .af-sun-arc { min-height: 170px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .af-sun-arc__sun { transition: none; }
+}
