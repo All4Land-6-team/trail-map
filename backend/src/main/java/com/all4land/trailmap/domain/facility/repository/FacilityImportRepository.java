@@ -79,4 +79,29 @@ public class FacilityImportRepository {
                     :sourceId, :recordId, :date, :hash, CURRENT_TIMESTAMP, :mountainId)
                 """, batch);
     }
+
+    public int linkFacilitiesToCourses(long sourceId, List<String> sourceRecordIds) {
+        if (sourceRecordIds.isEmpty()) {
+            return 0;
+        }
+        return jdbc.update("""
+                INSERT INTO spot_course (facility_id, course_id, distance_meters, matching_method)
+                SELECT facility.facility_id,
+                       course.course_id,
+                       ST_Distance(facility.facility_location::geography, course.course_geometry::geography),
+                       'SPATIAL_BUFFER'
+                FROM facility
+                JOIN course ON course.mountain_id = facility.mountain_id
+                WHERE facility.source_id = :sourceId
+                  AND facility.source_record_id IN (:sourceRecordIds)
+                  AND facility.mountain_id IS NOT NULL
+                  AND ST_DWithin(
+                        facility.facility_location::geography,
+                        course.course_geometry::geography,
+                        30
+                      )
+                ON CONFLICT DO NOTHING
+                """, new MapSqlParameterSource("sourceId", sourceId)
+                .addValue("sourceRecordIds", sourceRecordIds));
+    }
 }

@@ -5,7 +5,8 @@ import { Chip } from '../../components/common/Chip'
 import { BottomNavigation, TopBar, type BottomDestination } from '../../components/layout'
 import { BottomSheet, ConfirmDialog, ModalLayer } from '../../components/overlay'
 import { EmptyState, Toast } from '../../components/feedback'
-import { CommunityApiError, communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityEligibilityDto, type CommunityMapSpotDto, type CommunityMountainDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
+import { CommunityApiError, communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityEligibilityDto, type CommunityMapSpotDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
+import { mountainApi, type MountainDto } from '../../api/mountainApi'
 import type { CommunityReview, CommunityCourseReviewTarget, CommunitySpotTargetType, Coordinate, ReviewDraft, ReviewKind, SpotType } from '../../types/community'
 import type { CompletedHike } from '../../store/hikeSessionStore'
 import type { CommunitySpot, SpotVote } from '../../types/community'
@@ -70,7 +71,7 @@ function blankDraft(kind: ReviewKind, targetId: string): ReviewDraft {
   return { kind, targetId, content: '', photos: [], rating: 0 }
 }
 
-function toMountain(mountain: CommunityMountainDto): CommunityMountain {
+function toMountain(mountain: MountainDto): CommunityMountain {
   return { id: String(mountain.mountainId), externalId: mountain.externalId ?? undefined,
     name: mountain.name, position: [mountain.longitude, mountain.latitude] }
 }
@@ -266,6 +267,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const reviewPickerRef = useRef<HTMLElement>(null)
   const [detailSpotId, setDetailSpotId] = useState(initialSpotTargetType && initialSpotId ? `${initialSpotTargetType}:${initialSpotId}` : initialSpotId ?? '')
   const [detailCourseId, setDetailCourseId] = useState(initialCourseId ?? '')
+  const [courseSpotsOnly, setCourseSpotsOnly] = useState(true)
   const [galleryPhotoId, setGalleryPhotoId] = useState<string | null>(null)
   const [galleryKind, setGalleryKind] = useState<ReviewKind>('spot')
   const [lightboxPhoto, setLightboxPhoto] = useState<CommunityGalleryPhoto | null>(null)
@@ -294,7 +296,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const hideSheetBody = sheetPeek && !isDetail && !inlineMountainDetail
   useEffect(() => {
     const controller = new AbortController()
-    void communityApi.mountains(controller.signal).then(result => {
+    void mountainApi.list(controller.signal).then(result => {
       const loaded = result.map(toMountain)
       setMountains(loaded)
       const requestedName = initialMountainId ? legacyMountainNames[initialMountainId] : undefined
@@ -432,30 +434,38 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   }, [])
 
   useEffect(() => {
-    if (!mountainId || !mapBounds || !['map', 'spotDetail', 'spotPicker', 'newSpot'].includes(screen)) return
+    if (!mountainId || !mapBounds || !['map', 'spotDetail', 'courseDetail', 'spotPicker', 'newSpot'].includes(screen)) return
+    if (screen === 'courseDetail' && !courseSpotsOnly) {
+      setMapSpots([])
+      shownMapSpotKey.current = ''
+      return
+    }
+    const detailCourse = screen === 'courseDetail' ? findCommunityCourse(courses, detailCourseId) : undefined
+    if (screen === 'courseDetail' && !detailCourse) return
     const controller = new AbortController()
     const type = screen === 'map' && mapCategory === 'spot' && spotTypeFilter !== 'all'
       ? toSpotType(spotTypeFilter) : undefined
-    const cacheKey = `${screen}:${mountainId}:${type ?? 'all'}`
+    const courseId = screen === 'courseDetail' && courseSpotsOnly ? detailCourse?.id : undefined
+    const cacheKey = `${screen}:${mountainId}:${type ?? 'all'}:${courseId ?? 'all'}`
     const cached = mapSpotCache.current.get(cacheKey)
     if (cached && Date.now() - cached.fetchedAt < MAP_SPOT_CACHE_MS && coversMapBounds(cached.bounds, mapBounds)) {
-      if (screen === 'map' && shownMapSpotKey.current !== cacheKey) {
+      if ((screen === 'map' || screen === 'courseDetail') && shownMapSpotKey.current !== cacheKey) {
         setMapSpots(cached.spots.map(toMapSpot))
         setVotes(current => ({ ...Object.fromEntries(cached.spots.map(spot => [`${spot.targetType}:${spot.targetId}`, toVote(spot)])), ...current }))
         shownMapSpotKey.current = cacheKey
       }
       return
     }
-    if (screen === 'map' && shownMapSpotKey.current !== cacheKey) {
+    if ((screen === 'map' || screen === 'courseDetail') && shownMapSpotKey.current !== cacheKey) {
       setMapSpots([])
       shownMapSpotKey.current = cacheKey
     }
     const queryBounds = bufferMapBounds(mapBounds)
-    void communityApi.spots(mountainId, queryBounds, controller.signal, type).then(result => {
+    void communityApi.spots(mountainId, queryBounds, controller.signal, type, courseId).then(result => {
       if (controller.signal.aborted) return
       mapSpotCache.current.set(cacheKey, { bounds: queryBounds, spots: result, fetchedAt: Date.now() })
       const loaded = result.map(toMapSpot)
-      if (screen === 'map') setMapSpots(loaded)
+      if (screen === 'map' || screen === 'courseDetail') setMapSpots(loaded)
       setSpots(current => {
         const merged = new Map(current.map(spot => [spot.id, spot]))
         loaded.forEach(spot => { if (!merged.has(spot.id)) merged.set(spot.id, spot) })
@@ -466,7 +476,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       if (!controller.signal.aborted) notify(error instanceof Error ? error.message : '주변 스팟을 불러오지 못했습니다.')
     })
     return () => controller.abort()
-  }, [mapBounds, mapCategory, mountainId, notify, screen, spotTypeFilter])
+  }, [courses, detailCourseId, courseSpotsOnly, mapBounds, mapCategory, mountainId, notify, screen, spotTypeFilter])
 
   const listType = mapCategory === 'spot' && spotTypeFilter !== 'all' ? toSpotType(spotTypeFilter) : undefined
   useEffect(() => {
@@ -639,6 +649,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       distanceKm: 0, baselinePhotos: 0, baselineReviews: 0, seedQuote: '' },
   [courses, detailCourseId, mountainId, mountain.position, visibleCourseTargets])
   const selectedCourseColor = communityCourseColor(selectedCourse.id)
+  useEffect(() => {
+    if (screen === 'courseDetail') setCourseSpotsOnly(true)
+  }, [detailCourseId, screen])
   const spotRegistrationCourses = useMemo<SpotRegistrationCourse[]>(() => eligibleCourses.flatMap(hike => {
     const course = visibleCourseTargets.find(item => item.id === hike.courseId)
     return course ? [{ hikeRecordId: hike.id, courseId: course.id, name: course.name, finishedAt: hike.finishedAt,
@@ -782,7 +795,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const showDetail = (kind: ReviewKind, targetId?: string) => {
     if (screen === 'map') mapScrollTop.current = rootRef.current?.querySelector<HTMLElement>('.community-page__sheet--map .af-bottom-sheet__content')?.scrollTop ?? mapScrollTop.current
     if (kind === 'spot' && targetId) focusSpot(targetId)
-    if (kind === 'course' && targetId) setDetailCourseId(targetId)
+    if (kind === 'course' && targetId) setDetailCourseId(findCommunityCourse(visibleCourseTargets, targetId)?.id ?? targetId)
     move(kind === 'mountain' ? 'mountainDetail' : kind === 'spot' ? 'spotDetail' : 'courseDetail')
   }
   const changeMapCategory = (category: MapCategory) => {
@@ -1062,7 +1075,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     {(screen === 'map' || isDetail) && <CommunityMap
       className={`community-page__map ${screen === 'map' ? `community-page__map--main${inlineMountainDetail ? ' community-page__map--mountain-focus' : ''}` : `community-page__map--detail community-page__map--detail-${screen === 'mountainDetail' ? 'mountain' : screen === 'spotDetail' ? 'spot' : 'course'}`}`}
       mountainId={terrainMountainId}
-      showMountainFlag
+      showMountainFlag={screen !== 'courseDetail'}
       showMountainLabel={screen === 'mountainDetail' || (screen === 'map' && mapCategory === 'mountain')}
       center={mountain.position as Coordinate}
       zoom={MAIN_MAP_ZOOM}
@@ -1074,12 +1087,22 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       highlightedRoute={screen === 'courseDetail' ? selectedCourse.coordinates : undefined}
       highlightedRouteColor={screen === 'courseDetail' ? selectedCourseColor : undefined}
       highlightedRoutes={showAllCourseRoutes ? allCourseRoutes : undefined}
-      onViewportChange={screen === 'map' || screen === 'spotDetail' ? reportMapBounds : undefined}
+      onViewportChange={screen === 'map' || screen === 'spotDetail' || screen === 'courseDetail' ? reportMapBounds : undefined}
+      courseSpotsOnly={screen === 'courseDetail' ? courseSpotsOnly : undefined}
+      onCourseSpotsOnlyChange={screen === 'courseDetail' ? setCourseSpotsOnly : undefined}
       markers={screen === 'map' ? mapMarkers : screen === 'mountainDetail'
         ? [{ id: mountain.id, name: mountain.name, kind: 'mountain', coordinate: mountain.position as Coordinate }]
           : screen === 'spotDetail' ? visibleSpots.map(spot => ({ id: spot.id, name: spot.name, kind: 'spot' as const,
-          coordinate: spot.coordinate, spotType: spot.type, targetType: spot.targetType, selected: spot.id === selectedSpot?.id })) : []}
-      onMarkerSelect={screen === 'spotDetail' ? marker => focusSpot(marker.id) : screen === 'map' ? marker => {
+          coordinate: spot.coordinate, spotType: spot.type, targetType: spot.targetType, selected: spot.id === selectedSpot?.id }))
+          : screen === 'courseDetail' ? [
+            ...visibleMapSpots.map(spot => ({ id: spot.id, name: spot.name, kind: 'spot' as const,
+              coordinate: spot.coordinate, spotType: spot.type, targetType: spot.targetType })),
+            ...(selectedCourse.coordinates.length > 0 ? [{ id: `course-destination:${selectedCourse.id}`, name: selectedCourse.name,
+              kind: 'course-destination' as const, coordinate: selectedCourse.coordinates[selectedCourse.coordinates.length - 1], color: selectedCourseColor }] : []),
+          ] : []}
+      onMarkerSelect={screen === 'spotDetail' ? marker => focusSpot(marker.id) : screen === 'courseDetail' ? marker => {
+        if (marker.kind === 'spot') showDetail('spot', marker.id)
+      } : screen === 'map' ? marker => {
         if (marker.kind === 'mountain') showDetail('mountain', marker.id)
         else if (marker.kind === 'course') showDetail('course', marker.id)
         else showDetail('spot', marker.id)

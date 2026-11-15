@@ -1,7 +1,7 @@
-import { communityApi } from './community'
+import { mountainApi, type MountainDto } from './mountainApi'
 import type { HomeDiscoveryData, HomeMountain } from '../types/home'
 
-function toHomeMountain(mountain: Awaited<ReturnType<typeof communityApi.mountains>>[number]): HomeMountain {
+function toHomeMountain(mountain: MountainDto): HomeMountain {
   return {
     id: mountain.externalId ?? String(mountain.mountainId),
     name: mountain.name,
@@ -11,7 +11,7 @@ function toHomeMountain(mountain: Awaited<ReturnType<typeof communityApi.mountai
 
 /** 홈 산 탐색은 커뮤니티와 같은 DB 산 목록을 사용한다. */
 export async function loadHomeDiscoveryData(signal: AbortSignal): Promise<HomeDiscoveryData> {
-  const mountains = (await communityApi.mountains(signal)).map(toHomeMountain)
+  const mountains = (await mountainApi.list(signal)).map(toHomeMountain)
   signal.throwIfAborted()
 
   const preferred = mountains.filter(mountain => mountain.id === 'bukhansan' || mountain.id === 'dobongsan')

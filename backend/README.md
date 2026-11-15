@@ -106,11 +106,11 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 ### 코스별 사진 스팟 (#99)
 
 `GET /api/v1/community/courses/{courseId}/photo-spots`는 로그인 세션과 양의 정수 코스 ID를 받습니다.
-`user_spot.hike_record_id → hike_record.course_id`가 요청 코스와 일치하고 코스의 소속 산과 일치하는
-`PHOTO_SPOT` 사용자 스팟만 반환합니다. 응답은 기존 스팟 목록 형식이며 API 유형은 `PHOTO_SPOT`, 대상 종류는
+`spot_course.user_spot_id → spot_course.course_id`가 요청 코스와 일치하는 `PHOTO_SPOT` 사용자 스팟만
+반환합니다. 응답은 기존 스팟 목록 형식이며 API 유형은 `PHOTO_SPOT`, 대상 종류는
 `USER_SPOT`입니다. 스팟 ID 오름차순으로 반환하고 삭제·숨김·등록 산행 미연결 스팟은 제외합니다.
 거리 반경, 후기 작성자의 코스, 사진 유무, 현재 후기 작성 가능 기간은 목록 포함 조건이 아닙니다.
-새 DB 컬럼이나 마이그레이션은 필요하지 않습니다.
+코스 연결은 `V13__link_spots_to_courses.sql`에서 생성한 `spot_course` 테이블에 저장합니다.
 
 없는 코스는 기존 `COURSE_NOT_FOUND` 오류, 정상 빈 결과는 `data: []`입니다.
 스팟 사진 API는 직접 사진과 활성 후기 사진을 반환하며 삭제된 후기의 사진은 제외합니다.
@@ -121,7 +121,7 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 등산 종료 시 `POST /api/v1/hike-records/{hikeRecordId}/finish`를 호출해 진행 중 기록을 `COMPLETED`로 변경합니다. 이 기록이 아래 후기 작성 자격에 사용됩니다.
 
-- `GET /api/v1/community/mountains`: 커뮤니티에서 선택할 산과 지도 표시 좌표를 조회합니다.
+- `GET /api/v1/mountains`: 홈과 커뮤니티에서 공통으로 사용할 산과 지도 표시 좌표를 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/courses`: 산에 속한 코스, 거리, 경로 좌표와 후기 수를 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots`: 지도 영역의 공식 시설과 사용자 스팟을 함께 조회합니다. `west`, `south`, `east`, `north`가 필수이며 `type`으로 종류를 선택할 수 있습니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots/map`: 지도 이동 시 현재 화면 영역·유형 조건으로 마커 표시 필드만 조회합니다. 후기·사진 집계는 포함하지 않습니다.

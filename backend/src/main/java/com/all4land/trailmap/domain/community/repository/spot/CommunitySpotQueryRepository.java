@@ -137,6 +137,10 @@ public class CommunitySpotQueryRepository {
                     ST_MakeEnvelope(:west, :south, :east, :north, 4326)
                   )
               AND (CAST(:spotType AS varchar) IS NULL OR spot.spot_type = CAST(:spotType AS varchar))
+              AND (CAST(:courseId AS bigint) IS NULL OR EXISTS (SELECT 1 FROM spot_course link
+                   WHERE link.course_id = CAST(:courseId AS bigint)
+                     AND ((spot.target_type = 'FACILITY' AND link.facility_id = spot.target_id)
+                       OR (spot.target_type = 'USER_SPOT' AND link.user_spot_id = spot.target_id))))
             ORDER BY spot.target_type, spot.target_id
             """;
 
@@ -155,6 +159,10 @@ public class CommunitySpotQueryRepository {
             FROM community_spot spot
             WHERE ST_Intersects(spot.location, ST_MakeEnvelope(:west, :south, :east, :north, 4326))
               AND (CAST(:spotType AS varchar) IS NULL OR spot.spot_type = CAST(:spotType AS varchar))
+              AND (CAST(:courseId AS bigint) IS NULL OR EXISTS (SELECT 1 FROM spot_course link
+                   WHERE link.course_id = CAST(:courseId AS bigint)
+                     AND ((spot.target_type = 'FACILITY' AND link.facility_id = spot.target_id)
+                       OR (spot.target_type = 'USER_SPOT' AND link.user_spot_id = spot.target_id))))
             ORDER BY spot.target_type, spot.target_id
             """;
 
@@ -186,10 +194,9 @@ public class CommunitySpotQueryRepository {
               AND spot.spot_type = 'PHOTO_SPOT'
               AND EXISTS (
                   SELECT 1
-                  FROM user_spot registered_spot
-                  JOIN hike_record record ON record.hike_record_id = registered_spot.hike_record_id
-                  WHERE registered_spot.spot_id = spot.target_id
-                    AND record.course_id = :courseId
+                  FROM spot_course link
+                  WHERE link.user_spot_id = spot.target_id
+                    AND link.course_id = :courseId
               )
             ORDER BY spot.target_id ASC
             """;
@@ -232,7 +239,8 @@ public class CommunitySpotQueryRepository {
                 .addValue("south", request.south())
                 .addValue("east", request.east())
                 .addValue("north", request.north())
-                .addValue("spotType", request.type() == null ? null : request.type().name());
+                .addValue("spotType", request.type() == null ? null : request.type().name())
+                .addValue("courseId", request.courseId());
         return jdbcTemplate.query(SPOT_MAP_SQL, parameters, SPOT_ROW_MAPPER);
     }
 
@@ -242,7 +250,8 @@ public class CommunitySpotQueryRepository {
                 .addValue("south", request.south())
                 .addValue("east", request.east())
                 .addValue("north", request.north())
-                .addValue("spotType", request.type() == null ? null : request.type().name());
+                .addValue("spotType", request.type() == null ? null : request.type().name())
+                .addValue("courseId", request.courseId());
         return jdbcTemplate.query(MAP_MARKER_SQL, parameters, (rs, row) -> new CommunitySpotMapResponse(
                 CommunitySpotTargetType.valueOf(rs.getString("target_type")), rs.getLong("target_id"),
                 rs.getLong("mountain_id"), rs.getString("name"), CommunitySpotType.valueOf(rs.getString("spot_type")),
