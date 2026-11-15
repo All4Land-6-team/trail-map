@@ -100,7 +100,7 @@ public class FacilityImportRepository {
                         course.course_geometry::geography,
                         30
                       )
-                ON CONFLICT (facility_id, course_id) DO NOTHING
+                ON CONFLICT DO NOTHING
                 """, new MapSqlParameterSource("sourceId", sourceId)
                 .addValue("sourceRecordIds", sourceRecordIds));
     }
