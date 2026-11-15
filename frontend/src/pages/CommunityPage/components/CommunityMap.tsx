@@ -475,8 +475,8 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
               <MountainMarker name={marker.name} variant="point" selected={marker.selected} aria-label={`${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker)} />
             </span>
           : marker.kind === 'course-destination'
-            ? <button type="button" className="community-map__course-destination" style={{ '--community-course-color': marker.color ?? '#19765b' } as CSSProperties}
-                aria-label={`${marker.name} 목적지`} onClick={() => onMarkerSelect?.(marker)}><span aria-hidden="true">⚑</span></button>
+            ? <span className="community-map__course-destination" style={{ '--community-course-color': marker.color ?? '#19765b' } as CSSProperties}
+                role="img" aria-label={`${marker.name} 목적지`}><span aria-hidden="true">⚑</span></span>
           : marker.kind === 'spot' && marker.spotType !== 'other'
             ? <SpotMarker kind={marker.spotType ?? 'photo'} label={marker.name} aria-pressed={marker.selected}
                 aria-label={`${marker.targetType === 'FACILITY' ? '공식 시설' : '사용자 스팟'} ${marker.name} 선택`} onClick={() => onMarkerSelect?.(marker)} />

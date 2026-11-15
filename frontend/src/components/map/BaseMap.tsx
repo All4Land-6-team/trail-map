@@ -296,9 +296,10 @@ function BaseMap({
       map.setFilter(ROUTE_HOVER_LINE, filter)
       map.getCanvas().style.cursor = 'pointer'
     }
+    const sourceIdFromHitLayer = (layerId: string) => layerId.slice(0, -'-hit'.length)
     const updateHoveredRoute = (event: MapMouseEvent) => {
       const feature = map.queryRenderedFeatures(event.point, { layers: routeIds })[0]
-      const routeId = typeof feature?.layer?.id === 'string' ? feature.layer.id : null
+      const routeId = typeof feature?.layer?.id === 'string' ? sourceIdFromHitLayer(feature.layer.id) : null
       if (routeId) highlightRoute(routeId)
       else clearHoveredRoute()
     }
@@ -307,7 +308,7 @@ function BaseMap({
       const rect = map.getCanvas().getBoundingClientRect()
       const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top]
       const feature = map.queryRenderedFeatures(point, { layers: routeIds })[0]
-      const routeId = typeof feature?.layer?.id === 'string' ? feature.layer.id : null
+      const routeId = typeof feature?.layer?.id === 'string' ? sourceIdFromHitLayer(feature.layer.id) : null
       if (routeId) {
         highlightRoute(routeId)
       } else clearHoveredRoute()
@@ -317,7 +318,7 @@ function BaseMap({
     }
     const clearTouchState = () => clearTouchedRoute()
     const layerHandlers = routeIds.map(routeId => {
-      const enter = () => highlightRoute(routeId)
+      const enter = () => highlightRoute(sourceIdFromHitLayer(routeId))
       const leave = () => clearHoveredRoute()
       map.on('mouseenter', routeId, enter)
       map.on('mouseleave', routeId, leave)

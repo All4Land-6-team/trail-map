@@ -235,11 +235,20 @@ test('커뮤니티 스팟과 클러스터는 3D 지형 뒤에서 흐리게 표�
   assert.match(css, /\.maplibregl-marker:has\(\.community-map__pin--cluster-choice\) \{ z-index:10; \}/);
 });
 
-test('스팟 상세 지도 조회는 메인 지도의 마커 목록을 덮어쓰지 않는다', () => {
+test('겹친 코스 hover와 터치는 선택 영역 ID를 실제 경로 ID로 변환한다', () => {
+  const source = readFileSync(new URL('../src/components/map/BaseMap.tsx', import.meta.url), 'utf8');
+  assert.match(source, /sourceIdFromHitLayer = \(layerId: string\) => layerId\.slice\(0, -'-hit'\.length\)/);
+  assert.equal((source.match(/sourceIdFromHitLayer\(/g) ?? []).length, 3);
+});
+
+test('스팟 상세 지도 조회는 메인 지도의 마커 목록을 덮어쓰지 않고 코스 상세는 DB 코스 확인 후 조회한다', () => {
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
-  assert.match(source, /const cacheKey = `\$\{screen\}:\$\{mountainId\}:\$\{type \?\? 'all'\}`/);
-  assert.match(source, /if \(screen === 'map'\) setMapSpots\(loaded\)/);
-  assert.match(source, /if \(screen === 'map' && shownMapSpotKey\.current !== cacheKey\)/);
+  const css = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
+  assert.match(source, /const detailCourse = screen === 'courseDetail' \? findCommunityCourse\(courses, detailCourseId\) : undefined/);
+  assert.match(source, /if \(screen === 'courseDetail' && !detailCourse\) return/);
+  assert.match(source, /const cacheKey = `\$\{screen\}:\$\{mountainId\}:\$\{type \?\? 'all'\}:\$\{courseId \?\? 'all'\}`/);
+  assert.match(source, /if \(screen === 'map' \|\| screen === 'courseDetail'\) setMapSpots\(loaded\)/);
+  assert.match(css, /\.community-map__spots-toggle \{[^}]*width:44px; height:44px/);
 });
 
 test('클러스터는 3D 화면 투영이 아니라 줌 단계의 평면 지도 거리로 계산한다', () => {
@@ -431,7 +440,7 @@ test('커뮤니티 지도는 현재 영역의 공식 시설을 조회하고 출�
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(apiSource, /west: String\(bounds\.west\)[\s\S]*north: String\(bounds\.north\)/);
   assert.match(mapSource, /map\.on\('moveend', report\)/);
-  assert.match(pageSource, /communityApi\.spots\(mountainId, queryBounds, controller\.signal, type\)/);
+  assert.match(pageSource, /communityApi\.spots\(mountainId, queryBounds, controller\.signal, type, courseId\)/);
   assert.match(pageSource, /targetType: spot\.targetType/);
 });
 
