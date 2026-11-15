@@ -26,7 +26,8 @@ export function HikeDescentPage() {
     [course, session?.schedule, session?.coursePath, session?.phase]);
   const alertsParam = readHashParams().get("alerts");
   const controls = useHikeControls(session, hike);
-  const [dimension, setDimension] = useState<"2D" | "3D">("2D");
+  // 등산 중 화면과 같이 3D 내비 모드로 시작한다. 2D는 경로 전체 보기다.
+  const [dimension, setDimension] = useState<"2D" | "3D">("3D");
   const [recenterKey, setRecenterKey] = useState(0);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const routeCenter = controls.route[Math.floor(controls.route.length / 2)];
@@ -41,7 +42,7 @@ export function HikeDescentPage() {
         <HikeRouteMap route={controls.route} peak={controls.peak} mountainName={hike.mountainName}
           traveledKm={controls.traveledKm ?? hike.traveledKm} spots={hike.spots}
           {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
-          progressMeters={controls.progressMeters} stage="descent"
+          progressMeters={controls.progressMeters} stage="descent" navigation
           padding={MAP_PADDING} dimension={dimension} recenterKey={recenterKey} label={`${hike.courseName} 하산 경로 지도`} />
         <div className="hike-map-page__top">
           <TopBar title="하산 중" showAction={false}

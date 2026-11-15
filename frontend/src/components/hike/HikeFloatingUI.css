@@ -39,3 +39,4 @@
   .af-hike-control__circle svg { width: 25px; height: 25px; }
 }
 @media (prefers-reduced-motion: reduce) { .af-hike-control__circle, .af-hike-control__start { transition: none; } }
+.af-hike-control__secondary--end { border-color: rgb(198 64 76 / 34%); color: var(--af-danger); }
