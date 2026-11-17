@@ -1,8 +1,10 @@
 import type { CommunitySpot, Coordinate, SpotType, SpotVote } from '../types/community'
 import type { CompletedHike } from '../store/hikeSessionStore'
+import { distanceToCourseMeters } from './hikeTracking.ts'
 
 /** 화면의 중복 후보 안내용 값. 서버도 같은 반경으로 최종 검증한다. */
 export const DUPLICATE_RADIUS_METERS = 50
+export const SPOT_COURSE_WARNING_METERS = 30
 export const SPOT_HIDE_NEGATIVE_VOTES = 3
 export const REVIEW_WINDOW_MS = 24 * 60 * 60 * 1000
 function isEligibleCompletion(hike: CompletedHike, mountainId: string, now: number): boolean {
@@ -31,6 +33,12 @@ export function distanceMeters(a: Coordinate, b: Coordinate): number {
   const dLon = (b[0] - a[0]) * rad
   const x = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2
   return 6371000 * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
+}
+
+/** 선택한 위치가 코스에서 경고 기준보다 멀면 코스까지 거리(m)를 반환한다. */
+export function spotCourseDistanceWarning(route: Coordinate[], coordinate: Coordinate): number | null {
+  const meters = distanceToCourseMeters(route, coordinate)
+  return meters !== null && meters > SPOT_COURSE_WARNING_METERS ? meters : null
 }
 
 export function isSpotHidden(vote?: SpotVote): boolean {

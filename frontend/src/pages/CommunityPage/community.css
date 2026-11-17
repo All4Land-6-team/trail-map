@@ -216,6 +216,7 @@
 .community-quote__photo:focus-visible { outline:2px solid var(--af-green); outline-offset:2px; }
 .community-photo-lightbox.af-modal-layer { z-index:10; display:grid; place-items:center; padding:20px; background:rgb(0 0 0 / 85%); }
 .community-registration-error.af-modal-layer { display:grid; place-items:center; padding:20px; }
+.community-course-distance-warning.af-modal-layer { display:grid; place-items:center; padding:20px; }
 .community-photo-lightbox__dialog { position:relative; display:grid; width:100%; max-height:calc(var(--app-viewport-height) - 88px); place-items:center; }
 .community-photo-lightbox__dialog img { display:block; max-width:100%; max-height:calc(var(--app-viewport-height) - 88px); border-radius:8px; object-fit:contain; }
 .community-photo-lightbox__close { position:absolute; top:-48px; right:0; display:grid; width:44px; height:44px; place-items:center; padding:0; border:0; border-radius:50%; color:#fff; background:transparent; }

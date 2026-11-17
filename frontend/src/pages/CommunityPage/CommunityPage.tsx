@@ -1289,6 +1289,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
 
     {screen === 'newSpot' && <SpotRegistration spots={spots} votes={votes} mountainId={mountainId} mountainCenter={mountain.position as Coordinate}
       initialCoordinate={spotRegistrationMode === 'active' ? activeHike?.currentPosition : undefined}
+      initialSpot={pendingSpot ?? undefined}
       terrainMountainId={terrainMountainId} routeCoordinates={selectedCourse.coordinates} mode={spotRegistrationMode}
       onViewportChange={reportMapBounds}
       recentCourses={spotRegistrationCourses} selectedHikeId={spotHikeId} onCourseSelect={setSpotHikeId} onError={notify}
@@ -1298,7 +1299,10 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         setPendingSpot({ name: spot.name, type: spot.type, coordinate: spot.coordinate, distinct, clientRequestId: crypto.randomUUID() })
         setReviewEligibleCourses(eligibleCourses)
         if (screens.includes('review')) { updateDraft({ kind: 'spot', targetId: '', completedHikeId: hike.id }); setScreens(current => current.slice(0, -1)) }
-        else { setDraft({ ...blankDraft('spot', ''), completedHikeId: hike.id }); setScreens(['mountainSelect', 'map', 'review']) }
+        else {
+          setDraft({ ...blankDraft('spot', ''), completedHikeId: hike.id })
+          setScreens(current => spotRegistrationMode === 'active' ? [...current, 'review'] : ['mountainSelect', 'map', 'review'])
+        }
       }}
       onUseExisting={spot => {
         const hike = eligibleCourses.find(item => item.id === spotHikeId) ?? eligibleCourses[0]

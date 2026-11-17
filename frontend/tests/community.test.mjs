@@ -2,11 +2,19 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { communityApi } from '../src/api/community.ts';
-import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SPOT_HIDE_NEGATIVE_VOTES, canWriteCourseReview, canWriteReview, castSpotVote, distanceMeters, eligibleCourseCompletions, isSpotHidden, nearbySpotCandidates } from '../src/utils/community.ts';
+import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SPOT_COURSE_WARNING_METERS, SPOT_HIDE_NEGATIVE_VOTES, canWriteCourseReview, canWriteReview, castSpotVote, distanceMeters, eligibleCourseCompletions, isSpotHidden, nearbySpotCandidates, spotCourseDistanceWarning } from '../src/utils/community.ts';
 import { communityMarkerMode } from '../src/pages/CommunityPage/components/communityMapZoom.ts';
 import { groupCommunityMapPoints } from '../src/pages/CommunityPage/components/communityMapClusters.ts';
 import { bufferMapBounds, coversMapBounds, nearestCoordinate } from '../src/pages/CommunityPage/components/communityMapBounds.ts';
 import { communityCourseColor } from '../src/constants/community.ts';
+
+test('선택 위치가 코스에서 30m를 초과할 때만 확인 거리를 반환한다', () => {
+  const route = [[127, 37], [127.01, 37]];
+  assert.equal(SPOT_COURSE_WARNING_METERS, 30);
+  assert.equal(spotCourseDistanceWarning(route, [127.005, 37.0001]), null);
+  assert.ok(spotCourseDistanceWarning(route, [127.005, 37.001]) > SPOT_COURSE_WARNING_METERS);
+  assert.equal(spotCourseDistanceWarning([[127, 37]], [127.005, 37.001]), null);
+});
 
 test('커뮤니티 지도 줌 단계는 기본점, 숫자 클러스터, 개별 아이콘 순으로 전환한다', () => {
   assert.equal(communityMarkerMode(9.5), 'overview');
@@ -328,6 +336,7 @@ test('커뮤니티의 스팟 등록 지도는 선택한 산의 최근 완료 코
   const registration = readFileSync(new URL('../src/pages/CommunityPage/components/SpotRegistration.tsx', import.meta.url), 'utf8');
   assert.match(page, /spotRegistrationCourses = useMemo[\s\S]*eligibleCourses\.flatMap/);
   assert.match(registration, /mode === 'postHike'[\s\S]*최근에 다녀온 코스/);
+  assert.match(registration, /mode === 'active' \? '진행 중인 코스에서' : '선택한 코스에서'/);
   assert.match(registration, /highlightedRoutes=\{mode === 'postHike' \? recentRoutes : undefined\}/);
   assert.doesNotMatch(registration, /requestAnimationFrame\(locate\)/);
 });
@@ -344,12 +353,19 @@ test('스팟 등록 지도는 등산 중 현재 위치를 우선하고 실패하
   assert.match(app, /spotRegistrationMode=\{query\.get\('mode'\) === 'active' \? 'active' : 'postHike'\}/);
   assert.match(app, /currentPosition: hikeSession\.currentPosition/);
   assert.match(page, /DEV_COURSE_IDS\[courseId\][\s\S]*course\.id === String\(dbCourseId\)/);
-  assert.match(registration, /initialCoordinate \? \{ coordinate: initialCoordinate/);
+  assert.match(registration, /initialSelection \? \{ coordinate: initialSelection/);
   assert.doesNotMatch(registration, /requestAnimationFrame\(locate\)/);
   assert.doesNotMatch(registration, /cooperativeGestures/);
   assert.match(registration, /ariaLabel="새 스팟 위치 지정" onMapSelect=/);
   assert.match(registration, /center=\{mountainCenter\}[\s\S]*fitHighlightedRoute=\{!locationFocus\}/);
+  assert.match(registration, /mode === 'active' \? '진행 중인 코스에서' : '선택한 코스에서'/);
   assert.match(page, /activePickerPosition[\s\S]*name: '현재 위치'[\s\S]*focusTarget=\{spotPickerFocus \?\? undefined\}[\s\S]*fitHighlightedRoute=\{spotRegistrationMode === 'active' && !spotPickerFocus\}/);
+  assert.match(page, /setScreens\(current => spotRegistrationMode === 'active' \? \[\.\.\.current, 'review'\] : \['mountainSelect', 'map', 'review'\]\)/);
+  assert.match(page, /initialSpot=\{pendingSpot \?\? undefined\}/);
+  assert.match(registration, /initialSelection = initialSpot\?\.coordinate \?\? initialCoordinate/);
+  assert.match(registration, /useState<SpotType \| undefined>\(initialSpot\?\.type\)/);
+  assert.match(registration, /useState\(initialSpot\?\.name \?\? ''\)/);
+  assert.match(registration, /useState\(initialSpot\?\.distinct \?\? false\)/);
   assert.doesNotMatch(registration, /mountainSpots\[0\]\?\.coordinate \?\? mountainCenter/);
   assert.match(map, /fitHighlightedRoute[\s\S]*map\.fitBounds/);
 });
