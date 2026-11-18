@@ -13,6 +13,7 @@ import { HikeCalendarPage } from './pages/HikeCalendarPage/HikeCalendarPage'
 import { HikeCompletePage } from './pages/HikeCompletePage/HikeCompletePage'
 import { HikeDescentPage } from './pages/HikeDescentPage/HikeDescentPage'
 import { HikeDetailPage } from './pages/HikeDetailPage/HikeDetailPage'
+import { HikeRecordPage } from './pages/HikeRecordPage/HikeRecordPage'
 import { HikeTodayPage } from './pages/HikeTodayPage/HikeTodayPage'
 import { AuthPage } from './pages/AuthPage/AuthPage'
 import { fetchCurrentUser } from './api/auth'
@@ -35,6 +36,7 @@ const FacilityPreviewPage = import.meta.env.DEV
 const hikeRoutes: Record<string, ComponentType> = {
   'hikes/calendar': HikeCalendarPage,
   'hikes/detail': HikeDetailPage,
+  'hikes/record': HikeRecordPage,
   'hikes/today': HikeTodayPage,
   'hikes/active': HikeActivePage,
   'hikes/downhill': HikeDescentPage,

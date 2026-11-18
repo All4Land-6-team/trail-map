@@ -6,6 +6,7 @@ import { homePaths } from "../routes/homeRoutes";
 export const hikePaths = {
   calendar: (date?: string) => date ? `hikes/calendar?date=${date}` : "hikes/calendar",
   detail: (date: string) => `hikes/detail?date=${date}`,
+  record: (date: string) => `hikes/record?date=${date}`,
   today: "hikes/today",
   active: (alerts: boolean) => `hikes/active?alerts=${alerts ? "on" : "off"}`,
   downhill: (alerts: boolean) => `hikes/downhill?alerts=${alerts ? "on" : "off"}`,
