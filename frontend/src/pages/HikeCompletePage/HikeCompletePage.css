@@ -18,7 +18,6 @@
 
 .hike-complete-page__sunset { display: flex; flex-direction: column; gap: 7px; min-height: 72px; margin-top: 16px; padding: 14px; border: 1px solid var(--af-line); border-radius: 14px; }
 .hike-complete-page__sunset p { margin: 0; }
-.hike-complete-page__sunset-time { font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-complete-page__sunset-note { color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 
 .hike-complete-page__review { margin-top: 28px; }
