@@ -22,5 +22,5 @@
 
 .hike-complete-page__review { margin-top: 28px; }
 .hike-complete-page__question { margin: 0; font: 700 16px/24px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: center; }
-.hike-complete-page__actions { display: flex; flex-direction: column; gap: 12px; margin-top: 62px; }
+.hike-complete-page__actions { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
 .hike-complete-page__actions .af-button { min-height: 44px; border-radius: 10px; }
