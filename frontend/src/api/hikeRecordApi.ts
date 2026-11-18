@@ -114,6 +114,33 @@ export async function fetchHikeRecord(hikeRecordId: number) {
   return toRecord(await request<HikeRecordBody>(`/${hikeRecordId}`));
 }
 
+/** 등산 기록으로 작성한 후기 한 건. 산 후기 → 코스 후기 → 스팟 후기 순서로 온다. */
+export type HikeRecordReview = {
+  kind: "MOUNTAIN" | "COURSE" | "SPOT";
+  reviewId: number;
+  targetType: "MOUNTAIN" | "COURSE" | "USER_SPOT" | "FACILITY";
+  targetId: number;
+  targetName: string | null;
+  /** 코스 후기 평점 (1~5). 다른 후기는 null */
+  rating: number | null;
+  content: string;
+  visitedDate: string | null;
+  createdAt: string;
+  photoIds: number[];
+};
+
+export type HikeRecordReviews = {
+  /** 산·코스 후기는 기록마다 하나라 이미 썼으면 후기 유형 선택에서 막는다. */
+  mountainReviewed: boolean;
+  courseReviewed: boolean;
+  reviews: HikeRecordReview[];
+};
+
+/** REC-03 등산 기록 상세 아래에 보여 줄 작성한 후기 */
+export function fetchHikeRecordReviews(hikeRecordId: number) {
+  return request<HikeRecordReviews>(`/${hikeRecordId}/reviews`);
+}
+
 export function sendHikePositions(hikeRecordId: number, positions: HikePosition[]) {
   return post<HikePositionsResult>(`/${hikeRecordId}/positions`, { positions });
 }
