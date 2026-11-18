@@ -4,11 +4,14 @@ import com.all4land.trailmap.domain.hike.dto.request.HikePositionsRequest;
 import com.all4land.trailmap.domain.hike.dto.request.HikeRecordStartRequest;
 import com.all4land.trailmap.domain.hike.dto.response.HikePositionsResponse;
 import com.all4land.trailmap.domain.hike.dto.response.HikeRecordResponse;
+import com.all4land.trailmap.domain.hike.dto.response.HikeRecordReviewResponse;
+import com.all4land.trailmap.domain.hike.dto.response.HikeRecordReviewsResponse;
 import com.all4land.trailmap.domain.hike.entity.HikeSchedule;
 import com.all4land.trailmap.domain.hike.error.HikeErrorCode;
 import com.all4land.trailmap.domain.hike.exception.HikeException;
 import com.all4land.trailmap.domain.hike.repository.HikeCourseRepository;
 import com.all4land.trailmap.domain.hike.repository.HikeRecordRepository;
+import com.all4land.trailmap.domain.hike.repository.HikeRecordReviewRepository;
 import com.all4land.trailmap.domain.hike.repository.HikeRecordRow;
 import com.all4land.trailmap.domain.hike.repository.HikeScheduleRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +43,7 @@ public class HikeRecordService {
     private final HikeRecordRepository recordRepository;
     private final HikeScheduleRepository scheduleRepository;
     private final HikeCourseRepository courseRepository;
+    private final HikeRecordReviewRepository reviewRepository;
 
     @Transactional
     public HikeRecordResponse start(Long userId, HikeRecordStartRequest request) {
@@ -78,6 +82,18 @@ public class HikeRecordService {
     public HikeRecordResponse getRecord(Long userId, Long hikeRecordId) {
         validateUser(userId);
         return toResponse(getOwnedRecord(userId, hikeRecordId));
+    }
+
+    /** REC-03 등산 기록 상세 아래에 보여 줄, 이 기록으로 작성한 후기 */
+    public HikeRecordReviewsResponse getReviews(Long userId, Long hikeRecordId) {
+        validateUser(userId);
+        getOwnedRecord(userId, hikeRecordId);
+        List<HikeRecordReviewResponse> reviews = reviewRepository.findReviews(userId, hikeRecordId);
+        return new HikeRecordReviewsResponse(
+                reviews.stream().anyMatch(review -> review.kind().equals("MOUNTAIN")),
+                reviews.stream().anyMatch(review -> review.kind().equals("COURSE")),
+                reviews
+        );
     }
 
     @Transactional
