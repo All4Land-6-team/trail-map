@@ -18,10 +18,17 @@ public record HikeScheduleResponse(
         Long mountainId,
         String mountainName,
         Double distanceMeters,
-        Integer durationSeconds
+        Integer durationSeconds,
+        /** 이 일정의 등산 기록 요약. 아직 등산을 시작하지 않았으면 null */
+        HikeScheduleRecordResponse hikeRecord
 ) {
 
     public static HikeScheduleResponse of(HikeSchedule schedule, HikeCourseSummary course, ZoneId zoneId) {
+        return of(schedule, course, null, zoneId);
+    }
+
+    public static HikeScheduleResponse of(HikeSchedule schedule, HikeCourseSummary course,
+                                          HikeScheduleRecordResponse hikeRecord, ZoneId zoneId) {
         ZonedDateTime startsAt = schedule.getScheduledStartsAt().atZoneSameInstant(zoneId);
         return new HikeScheduleResponse(
                 schedule.getScheduleId(),
@@ -32,7 +39,8 @@ public record HikeScheduleResponse(
                 course.mountainId(),
                 course.mountainName(),
                 course.distanceMeters(),
-                course.durationSeconds()
+                course.durationSeconds(),
+                hikeRecord
         );
     }
 }

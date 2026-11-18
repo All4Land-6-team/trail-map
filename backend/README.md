@@ -101,6 +101,8 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 진행 중·하산 중 기록이 있는 일정은 수정(`PATCH /api/v1/hike-schedules/{scheduleId}`)·삭제(`DELETE`)할 수 없고, 같은 날짜 대체 등록(`replaceExisting=true`)으로도 지울 수 없습니다(`HIKE_409_6`). 기록과 일정의 코스가 달라지지 않게 하기 위해서이며, 종료한 기록만 있는 일정은 기존처럼 바꿀 수 있습니다.
 
+일정 조회(`GET /api/v1/hike-schedules`, `GET /api/v1/hike-schedules/{scheduleId}`)와 수정 응답에는 그 일정의 등산 기록 요약 `hikeRecord`(`hikeRecordId`, `status`, `startedAt`, `endedAt`, `traveledDistanceMeters`, `actualDurationSeconds`)가 들어갑니다. 아직 등산을 시작하지 않았거나 기록이 삭제됐으면 `null`입니다. 내 등산 캘린더는 이 값으로 완료한 등산(`COMPLETED`)과 끝내지 않은 등산(`IN_PROGRESS`·`DESCENDING`)을 표시하고, 기록 상세는 `hikeRecordId`로 `GET /api/v1/hike-records/{hikeRecordId}`를 호출합니다.
+
 ## 커뮤니티 API
 
 ### 코스별 사진 스팟 (#99)

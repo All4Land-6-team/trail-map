@@ -1,5 +1,6 @@
 package com.all4land.trailmap.domain.hike.repository;
 
+import com.all4land.trailmap.domain.hike.dto.response.HikeScheduleRecordResponse;
 import com.all4land.trailmap.domain.hike.entity.HikeRecordStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
@@ -9,7 +10,9 @@ import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -87,6 +90,30 @@ public class HikeRecordRepository {
                 )
                 """, new MapSqlParameterSource("scheduleIds", scheduleIds), Boolean.class);
         return Boolean.TRUE.equals(exists);
+    }
+
+    /** 일정별 등산 기록 요약. 일정마다 기록은 최대 1개다(uq_hike_record_schedule). */
+    public Map<Long, HikeScheduleRecordResponse> findSummariesBySchedules(Collection<Long> scheduleIds) {
+        if (scheduleIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, HikeScheduleRecordResponse> summaries = new HashMap<>();
+        jdbcTemplate.query("""
+                SELECT schedule_id, hike_record_id, hike_status, started_at, ended_at,
+                       traveled_distance_meters, actual_duration_seconds
+                FROM hike_record
+                WHERE schedule_id IN (:scheduleIds) AND deleted_at IS NULL
+                """, new MapSqlParameterSource("scheduleIds", scheduleIds), resultSet -> {
+            summaries.put(resultSet.getLong("schedule_id"), new HikeScheduleRecordResponse(
+                    resultSet.getLong("hike_record_id"),
+                    HikeRecordStatus.valueOf(resultSet.getString("hike_status")),
+                    resultSet.getObject("started_at", OffsetDateTime.class),
+                    resultSet.getObject("ended_at", OffsetDateTime.class),
+                    resultSet.getObject("traveled_distance_meters", Double.class),
+                    resultSet.getObject("actual_duration_seconds", Integer.class)
+            ));
+        });
+        return summaries;
     }
 
     public Optional<HikeRecordRow> findOwned(Long userId, Long hikeRecordId) {
