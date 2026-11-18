@@ -1,6 +1,8 @@
 /* HIKE-05·07 하단 진행 시트 (Figma: 진행률 · 이동/남은 거리 · 하산 시작/등산 종료) */
 .hike-progress-panel { position: relative; z-index: 4; box-sizing: border-box; padding: 26px 16px 14px; border-radius: 25px 25px 0 0; color: var(--af-ink); background: #fff; box-shadow: 0 -8px 12px rgb(23 71 54 / 6%); }
-.hike-progress-panel__percent { margin: 0; color: var(--af-green); font: 700 18px/24px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: right; }
+.hike-progress-panel__percent { display: flex; align-items: baseline; justify-content: space-between; margin: 0; letter-spacing: -.02em; }
+.hike-progress-panel__percent span { color: #617b6c; font: 500 12px/18px "Noto Sans KR", sans-serif; }
+.hike-progress-panel__percent strong { color: var(--af-green); font: 700 18px/24px "Noto Sans KR", sans-serif; }
 .hike-progress-panel__track { height: 6px; margin-top: 6px; overflow: hidden; border-radius: 3px; background: #dde7db; }
 .hike-progress-panel__track > span { display: block; height: 100%; border-radius: inherit; background: var(--af-green); transition: width .4s ease; }
 .hike-progress-panel__body { padding-top: 10px; transition: opacity .2s ease; }

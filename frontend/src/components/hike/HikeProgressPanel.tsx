@@ -31,7 +31,7 @@ export function HikeProgressPanel({ stage, traveledKm, remainingKm, progressPerc
   return <section ref={sheetRef} style={sheetStyle} aria-label={descent ? "하산 진행 상황" : "등산 진행 상황"}
     className={["hike-progress-panel", sheetClassName].filter(Boolean).join(" ")}>
     <SheetHandle {...handleProps} />
-    <p className="hike-progress-panel__percent">{percent}%</p>
+    <p className="hike-progress-panel__percent"><span>진행률</span><strong>{percent}%</strong></p>
     <div className="hike-progress-panel__track" role="progressbar" aria-label={descent ? "하산 진행률" : "등산 진행률"}
       aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
       <span style={{ width: `${percent}%` }} />
