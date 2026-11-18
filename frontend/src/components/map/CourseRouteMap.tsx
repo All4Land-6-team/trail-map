@@ -8,7 +8,8 @@ import type { CourseProfileSample, CourseSpot } from "../../types/courseDetail";
 import { SpotMarker } from "./SpotMarker";
 import { useEnhancedCourseRoute, reducedRouteMotion } from "./useEnhancedCourseRoute";
 import { useCourseRoutePreview } from "./useCourseRoutePreview";
-import { recoverRouteTerrain } from "./routeMapCamera";
+import { recoverRouteTerrain, spotFocusZoom } from "./routeMapCamera";
+import { isFoodSpot } from "../../utils/courseProfile.ts";
 import "./course-route-map.css";
 
 const summitAsset = new URL("../../assets/icons/course-summit.svg", import.meta.url).href;
@@ -104,7 +105,9 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
       const padding = { top: Math.min(110, visibleHeight * 0.35), bottom: inset + Math.min(36, visibleHeight * 0.15), left: 35, right: 82 };
       const focusedSpot = spots?.find(spot => spot.id === focusSpotId);
       if (focusedSpot) {
-        map.easeTo({ center: focusedSpot.coordinate, padding, offset: [0, 20], duration: 200 });
+        map.easeTo({ center: focusedSpot.coordinate,
+          ...(isFoodSpot(focusedSpot) ? { zoom: spotFocusZoom(map.getZoom()) } : {}), padding,
+          offset: [0, 20], duration: 200 });
       } else if (selected?.routeCoordinates.length) {
         const bounds = new LngLatBounds();
         selected.routeCoordinates.forEach(point => bounds.extend(point));
@@ -177,6 +180,23 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
     }, { timeout: 10000, maximumAge: 60000 });
   }
 
+  const visibleSpotPoints = spotPoints.filter(({ spot }) => spot.courseId === selected?.id);
+  const selectedFoodActive = Boolean(selectedSpotId && visibleSpotPoints.some(({ spot }) => isFoodSpot(spot) && spot.id === selectedSpotId));
+
+  const renderSpot = ({ spot, x, y }: { spot: CourseSpot; x: number; y: number }) => {
+    const food = isFoodSpot(spot);
+    const selectedFood = food && spot.id === selectedSpotId;
+    return <SpotMarker key={spot.id} kind={spot.kind} compact
+      className={["course-map__spot", food && "course-map__food-marker",
+        selectedFood && "course-map__food-marker--selected", food && selectedFoodActive && !selectedFood && "course-map__food-marker--muted"]
+        .filter(Boolean).join(" ")}
+      style={{ left: x, top: y }} data-spot-id={spot.id}
+      aria-label={`${spot.name} ${spot.communityTarget && spot.id === selectedSpotId ? '커뮤니티 상세 보기' : '지도에서 선택'}`}
+      aria-pressed={spot.id === selectedSpotId}
+      label={food ? selectedFood ? spot.name : undefined : showSpotLabels ? spot.name : undefined}
+      onClick={event => { event.stopPropagation(); onSpotSelect?.(spot.id); }} />;
+  };
+
   return <div className={`course-map course-map--${variant}`} data-selected-course={selected?.id ?? ""} data-map-mode={dimension} data-route-ready={routesReady}
     data-route-count={courses.length} data-route-coordinate-count={courses.reduce((total, course) => total + course.routeCoordinates.length, 0)}
     aria-label={selected ? `지도 경로: ${selected.name}` : "코스 지도"}>
@@ -193,10 +213,7 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
       style={{ left: profilePoint.x, top: profilePoint.y }} aria-label={`그래프 선택 위치 ${profileSample.distanceKm.toFixed(1)} km`}>
       <img src={profilePositionAsset} alt="" />
     </span>}
-    {spots?.length ? spotPoints.filter(({ spot }) => spot.courseId === selected?.id).map(({ spot, x, y }) => <SpotMarker key={spot.id} kind={spot.kind} compact
-      className="course-map__spot" style={{ left: x, top: y }} data-spot-id={spot.id}
-      aria-label={`${spot.name} ${spot.communityTarget && spot.id === selectedSpotId ? '커뮤니티 상세 보기' : '지도에서 선택'}`} aria-pressed={spot.id === selectedSpotId}
-      label={showSpotLabels ? spot.name : undefined} onClick={() => onSpotSelect?.(spot.id)} />) : null}
+    {spots?.length ? visibleSpotPoints.map(point => renderSpot(point)) : null}
     <div className="course-map__actions">
       <MapAction dimensionMode={dimension === "2D" ? "3D" : "2D"} aria-label={`${dimension === "2D" ? "3D" : "2D"} 지도 보기`}
         aria-busy={terrainEnabled && terrainStatus === "loading"}

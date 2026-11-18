@@ -20,6 +20,7 @@ function render(overrides = {}) {
     spots: [], category: 'water', restrooms: { status: 'success', spots: [] },
     shelters: { status: 'success', spots: [] }, onRetryShelters() {},
     photos: { status: 'success', spots: [] }, onRetryPhotos() {},
+    nearby: { status: 'success', spots: [] }, onRetryNearby() {},
     water: { status: 'success', spots: [] }, onRetryRestrooms() {}, onRetryWater() {}, onCategory() {}, onOpen() {},
     ...overrides,
   }));
@@ -31,6 +32,28 @@ test('음수대 빈 결과는 0곳과 범위 안내를 표시한다', () => {
   assert.match(html, /조회된 음수대가 없어요/);
   assert.match(html, /음용 적합 여부는 확인되지 않았어요/);
   assert.doesNotMatch(html, /음수대 1|course-spot-card/);
+});
+
+test('선택한 음식점·카페의 주소와 전화번호, 외부 상세 링크를 표시한다', () => {
+  const place = {
+    id: 'kakao-101', courseId: 'db-7', kind: 'cafe', name: '능선 카페',
+    coordinate: [126.9846, 37.6599], distanceMeters: 120,
+    address: '서울 종로구 구기동 1', roadAddress: '서울 종로구 진흥로 1', phone: '02-123-4567',
+    placeUrl: 'https://place.map.kakao.com/101',
+  };
+  const html = render({ category: 'food', spots: [place], selectedId: place.id,
+    nearby: { status: 'success', spots: [place] } });
+  assert.match(html, /음식점 · 1곳/);
+  assert.match(html, /data-category="food"/);
+  assert.match(html, /data-spot-id="kakao-101"/);
+  assert.match(html, /aria-pressed="true"/);
+  assert.match(html, /카페/);
+  assert.match(html, /능선 카페/);
+  assert.match(html, /경로까지 약 120m/);
+  assert.match(html, /서울 종로구 진흥로 1/);
+  assert.match(html, /02-123-4567/);
+  assert.match(html, /href="https:\/\/place\.map\.kakao\.com\/101"/);
+  assert.match(html, /카카오맵에서 자세히 보기/);
 });
 
 test('사진 스팟은 조회 상태와 실제 이름·사진 수를 표시한다', () => {

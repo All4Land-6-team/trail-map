@@ -47,15 +47,16 @@ test('고도·경사도는 개별 전환하며 마지막 항목 해제를 거부
   assert.deepEqual(both, { elevation: true, slope: true });
 });
 test('스팟 카테고리와 통제정보의 마커 없는 상태를 구분한다', () => {
-  const spots = ['shelter', 'shelter', 'water', 'restroom', 'photo', 'photo'].map((kind, id) => ({ id, kind }));
-  assert.equal(selectCourseSpots(spots, 'all').length, 6);
+  const spots = ['shelter', 'shelter', 'water', 'restroom', 'photo', 'photo', 'restaurant', 'cafe'].map((kind, id) => ({ id, kind }));
+  assert.equal(selectCourseSpots(spots, 'all').length, 8);
   assert.equal(selectCourseSpots(spots, 'shelter').length, 2);
   assert.equal(selectCourseSpots(spots, 'water').length, 1);
   assert.equal(selectCourseSpots(spots, 'restroom').length, 1);
   assert.equal(selectCourseSpots(spots, 'photo').length, 2);
+  assert.equal(selectCourseSpots(spots, 'food').length, 2);
   assert.equal(selectCourseSpots(spots, 'control').length, 0);
-  assert.equal(spots.length, 6);
-  assert.equal(new Set(SPOT_CATEGORIES.map(item => item.value)).size, 6);
+  assert.equal(spots.length, 8);
+  assert.equal(new Set(SPOT_CATEGORIES.map(item => item.value)).size, 7);
 });
 test('스팟 후기 복귀 주소가 산·코스·카테고리·선택 ID를 보존한다', () => {
   const request = { mountainId: '산/1', courseId: '코스 2' };

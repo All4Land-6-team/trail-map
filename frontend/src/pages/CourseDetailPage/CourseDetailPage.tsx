@@ -16,7 +16,7 @@ import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
 import type { CourseRequest } from "../../types/course";
 import type { CourseDetailView, CourseSpot, CourseSpotRequest, ProfileVisibility } from "../../types/courseDetail";
-import { courseSpotAction, selectCourseSpots, toggleProfileMetric } from "../../utils/courseProfile";
+import { courseSpotAction, isFoodSpot, selectCourseSpots, toggleProfileMetric } from "../../utils/courseProfile";
 import { detailAnalysisView, detailRouteLabel } from "../../utils/courseDetailAnalysis";
 import { useCourseAnalysis } from "./hooks/useCourseAnalysis";
 import { CourseAnalysis } from "./components/CourseAnalysis";
@@ -24,6 +24,7 @@ import { CourseSpots } from "./components/CourseSpots";
 import { useCourseDetail } from "./hooks/useCourseDetail";
 import { useParkControl } from "./hooks/useParkControl";
 import { useCourseFacilities } from "../../hooks/useCourseFacilities";
+import { useCourseNearbyPlaces } from "../../hooks/useCourseNearbyPlaces";
 import { useCoursePhotoSpots } from "./hooks/useCoursePhotoSpots";
 import { coursePhotoSpotDisplay } from "../../utils/coursePhotoSpotDisplay";
 import { withCourseFacilities } from "../../utils/courseFacilities";
@@ -78,6 +79,9 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const shelters = useCourseFacilities(courseId, data?.course.backendCourseId,
     view.tab === "spots" && (view.category === "all" || view.category === "shelter"), "SHELTER");
   const shelterSpots = shelters.state.status === "success" ? shelters.state.spots : EMPTY_SPOTS;
+  const nearby = useCourseNearbyPlaces(courseId, data?.course.backendCourseId,
+    view.tab === "spots" && view.category === "food", data?.course.routeCoordinates[0]);
+  const nearbySpots = nearby.state.status === "success" ? nearby.state.spots : EMPTY_SPOTS;
   const reviewExcerpts: CommunityReview[] = communityReviews.map(review => ({
     id: String(review.reviewId), kind: "course" as const, targetId: String(review.targetId), content: review.content,
     photos: review.photoUrls, rating: review.rating ?? undefined, author: review.author, createdAt: review.createdAt,
@@ -87,7 +91,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const courses = useMemo(() => mapCourse && mapCourse.routeCoordinates.length > 1 ? [mapCourse] : [], [mapCourse]);
   const allSpots = useMemo(() => withCourseFacilities(photoSpots, [...restroomSpots, ...waterSpots, ...shelterSpots]),
     [photoSpots, restroomSpots, waterSpots, shelterSpots]);
-  const spots = useMemo(() => selectCourseSpots(allSpots, view.category), [allSpots, view.category]);
+  const spots = useMemo(() => view.category === "food" ? nearbySpots : selectCourseSpots(allSpots, view.category),
+    [allSpots, nearbySpots, view.category]);
   const summitCoordinate = useMemo(() => samples.reduce<(typeof samples)[number] | null>((highest, point) =>
     point.elevationMeters !== null && (!highest || point.elevationMeters > highest.elevationMeters!) ? point : highest, null)?.coordinate, [samples]);
   const selectedIndex = samples.length ? Math.max(0, Math.min(selection?.key === selectionKey ? selection.index : 0, samples.length - 1)) : -1;
@@ -138,6 +143,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   }
   function openSpot(spot: CourseSpot) {
     const next = { ...view, spotId: spot.id };
+    if (isFoodSpot(spot)) { changeView(next); return; }
     const action = courseSpotAction(spot, view.spotId);
     if (action === "focus") { changeView(next); return; }
     if (action === "unavailable") {
@@ -189,6 +195,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
             restrooms={restrooms.state} onRetryRestrooms={restrooms.retry}
             water={water.state} onRetryWater={water.retry}
             shelters={shelters.state} onRetryShelters={shelters.retry}
+            nearby={nearby.state} onRetryNearby={nearby.retry}
             onCategory={category => changeView({ tab: "spots", category })} onOpen={openSpot} />}
         footer={<div className="course-detail-actions">
           <Button variant="secondary" aria-pressed={saved} onClick={save}

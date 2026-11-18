@@ -57,6 +57,8 @@
 .af-spot-marker[data-kind="shelter"] { color: #b06428; }
 .af-spot-marker[data-kind="water"] { color: #1876ab; }
 .af-spot-marker[data-kind="restroom"] { color: #7755ad; }
+.af-spot-marker[data-kind="restaurant"],
+.af-spot-marker[data-kind="cafe"] { color: #e8754e; }
 
 .af-mountain-marker {
   gap: 8px;

@@ -20,13 +20,17 @@ export type CourseSpot = {
   communityTarget?: { mountainId: string; targetType: 'FACILITY' | 'USER_SPOT'; targetId: string };
   photoCount?: number;
   reviewCount?: number;
+  address?: string;
+  roadAddress?: string;
+  phone?: string;
+  placeUrl?: string;
   example?: boolean;
 };
 export type CourseFacilitiesState =
   | { status: "unavailable" | "loading" }
   | { status: "success"; spots: readonly CourseSpot[] }
   | { status: "error"; message: string };
-export type SpotCategory = SpotKind | "all" | "control";
+export type SpotCategory = SpotKind | "all" | "food" | "control";
 export type CourseDetailTab = "analysis" | "spots";
 export type CourseDetailView = { tab: CourseDetailTab; category: SpotCategory; spotId?: string };
 export type CourseSpotRequest = {
