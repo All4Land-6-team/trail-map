@@ -105,6 +105,7 @@
   background: #fff;
 }
 .af-top-bar__title { flex: 1 1 0; min-width: 0; color: var(--af-ink); }
+.af-top-bar__subtitle { margin-left: 8px; color: #617b6c; font: 500 13px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .af-top-bar__action {
   display: inline-flex;
   flex: none;
