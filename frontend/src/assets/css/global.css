@@ -67,3 +67,27 @@ body {
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* 지도가 돌아가 있을 때만 보이는 정북 맞춤 버튼. 상단바·하단 시트·오른쪽 도구와 겹치지 않도록 왼쪽 가운데에 둔다. */
+.base-map__compass {
+  position: absolute;
+  z-index: 2;
+  top: 42%;
+  left: 12px;
+  display: flex;
+  width: 44px;
+  height: 44px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #dfe8dc;
+  border-radius: 50%;
+  color: #173d32;
+  background: #fff;
+  box-shadow: 0 2px 10px rgb(23 61 50 / 18%);
+  cursor: pointer;
+}
+
+.base-map__compass svg { transition: transform .1s linear; }
+.base-map__compass span { margin-top: -4px; font: 700 9px/10px "Noto Sans KR", sans-serif; }

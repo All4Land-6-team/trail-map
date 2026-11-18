@@ -36,6 +36,10 @@ export type BaseMapProps = {
   routes?: readonly MapRoute[]
   enableRouteHover?: boolean
   showNavigationControl?: boolean
+  /** false면 끌기·확대·회전 등 손으로 지도를 움직일 수 없다 (요약용 지도). */
+  interactive?: boolean
+  /** 지도가 돌아가 있을 때 정북으로 되돌리는 나침반 버튼을 보여 준다. */
+  showCompass?: boolean
   terrainBeforeLayerId?: string
   terrainMode?: MapDimension
   terrainCameraManaged?: boolean
@@ -71,6 +75,8 @@ function BaseMap({
   routes = EMPTY_ROUTES,
   enableRouteHover = false,
   showNavigationControl = true,
+  interactive = true,
+  showCompass = true,
   terrainBeforeLayerId,
   terrainMode,
   terrainCameraManaged,
@@ -92,6 +98,8 @@ function BaseMap({
   const [terrainRetryVersion, setTerrainRetryVersion] = useState(0)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [hasStaticCacheMiss, setHasStaticCacheMiss] = useState(false)
+  /** 지도 방향(정북 기준 시계 방향 각도). 0이 아니면 나침반 버튼을 보여 준다. */
+  const [bearing, setBearing] = useState(0)
   const terrainEnabled = terrainMode !== undefined
 
   useEffect(() => { onMapReadyRef.current = onMapReady }, [onMapReady])
@@ -144,12 +152,16 @@ function BaseMap({
             ? { center, zoom: zoom ?? 13 }
             : { bounds: SOUTH_KOREA_BOUNDS }),
       }
-      map = new MapLibreMap(mapOptions)
+      map = new MapLibreMap({ ...mapOptions, interactive })
       // 커뮤니티 화면의 터치 제스처에서도 회전·기울기 입력을 유지한다.
-      map.dragRotate.enable()
-      map.touchZoomRotate.enable()
-      map.touchZoomRotate.enableRotation()
-      map.touchPitch.enable()
+      if (interactive) {
+        map.dragRotate.enable()
+        map.touchZoomRotate.enable()
+        map.touchZoomRotate.enableRotation()
+        map.touchPitch.enable()
+      }
+      const created = map
+      created.on('rotate', () => setBearing(created.getBearing()))
       map.on('style.load', () => guardNullableRoadShieldFilter(map))
       if (!bounds && !center) map.jumpTo({ center: SOUTH_KOREA_MAINLAND_CENTER })
     } catch {
@@ -198,7 +210,7 @@ function BaseMap({
       renderedRouteIdsRef.current = []
       map.remove()
     }
-  }, [bounds, center, fitBoundsPadding, showNavigationControl, zoom])
+  }, [bounds, center, fitBoundsPadding, interactive, showNavigationControl, zoom])
 
   useEffect(() => {
     const map = mapRef.current
@@ -354,6 +366,16 @@ function BaseMap({
 
   return <div className={["base-map-shell", className].filter(Boolean).join(' ')}>
     <div ref={containerRef} className="base-map" aria-label={ariaLabel} />
+    {/* 지도가 돌아가 있으면 정북으로 되돌린다. 손으로 돌린 것처럼 알려 등산 내비의 따라가기도 멈춘다. */}
+    {interactive && showCompass && Math.abs(bearing) > 0.5 && <button type="button" className="base-map__compass"
+      aria-label="지도를 정북 방향으로 맞추기" title="정북 방향으로"
+      onClick={(event) => mapRef.current?.easeTo({ bearing: 0, duration: 400 }, { originalEvent: event.nativeEvent })}>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style={{ transform: `rotate(${-bearing}deg)` }}>
+        <path d="M12 3 16 12H8Z" fill="#d6453d" />
+        <path d="M12 21 8 12h8Z" fill="#9aa79f" />
+      </svg>
+      <span aria-hidden="true">N</span>
+    </button>}
     {(isOffline || hasLoadError || hasStaticCacheMiss || (hasTerrainError && terrainEnabled)) && <div className="base-map__notices" aria-live="polite">
       {isOffline && <div className="base-map__notice">
         오프라인입니다. 앱 화면과 저장된 정적 정보는 계속 사용할 수 있지만, 배경지도는 브라우저에 남은 부분만 보일 수 있습니다. 실시간 정보는 연결 후 다시 확인해 주세요.
