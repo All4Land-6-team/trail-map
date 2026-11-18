@@ -1,6 +1,6 @@
 import { DEV_COURSE_IDS } from "../constants/hikeCourseIds.ts";
 import { databaseCourseId } from "../utils/courseIdentity.ts";
-import type { HikeSchedule } from "../types/hike";
+import type { HikeSchedule, HikeScheduleRecord } from "../types/hike";
 import { authHeaders } from "../store/authStore.ts";
 
 // 등산 일정 API (/api/v1/hike-schedules, 이슈 #56·#61).
@@ -17,6 +17,15 @@ type ScheduleResponse = {
   mountainName: string;
   distanceMeters: number | null;
   durationSeconds: number | null;
+  /** 이 일정의 등산 기록 요약. 기록이 없으면 null (일정 응답에 추가 예정) */
+  hikeRecord?: {
+    hikeRecordId: number;
+    status: HikeScheduleRecord["status"];
+    startedAt: string;
+    endedAt: string | null;
+    traveledDistanceMeters: number | null;
+    actualDurationSeconds: number | null;
+  } | null;
 };
 
 type Envelope<T> = { success: boolean; code: string; message: string; data: T };
@@ -59,6 +68,18 @@ function toSchedule(response: ScheduleResponse): HikeSchedule {
     mountainName: response.mountainName,
     courseName: response.courseName,
     distanceKm: response.distanceMeters == null ? 0 : Math.round(response.distanceMeters / 100) / 10,
+    ...(response.hikeRecord ? { record: toScheduleRecord(response.hikeRecord) } : {}),
+  };
+}
+
+function toScheduleRecord(record: NonNullable<ScheduleResponse["hikeRecord"]>): HikeScheduleRecord {
+  return {
+    hikeRecordId: record.hikeRecordId,
+    status: record.status,
+    startedAt: record.startedAt,
+    endedAt: record.endedAt ?? undefined,
+    traveledKm: record.traveledDistanceMeters == null ? undefined : record.traveledDistanceMeters / 1000,
+    durationMinutes: record.actualDurationSeconds == null ? undefined : Math.round(record.actualDurationSeconds / 60),
   };
 }
 
