@@ -4,7 +4,7 @@ import { Button } from "../../../components/common/Button";
 import { Icon } from "../../../components/common/Icon";
 import { Typography } from "../../../components/common/Typography";
 import { BottomNavigation, TopBar, type BottomDestination } from "../../../components/layout";
-import { BaseMap, MapAction, supportsTerrain, type MapDimension, type MapRoute, type TerrainStatus } from "../../../components/map";
+import { BaseMap, MapAction, MapCompassAction, supportsTerrain, type MapDimension, type MapRoute, type TerrainStatus } from "../../../components/map";
 import { BottomSheet } from "../../../components/overlay";
 import { BUKHANSAN_CENTER, formatCourseDuration, MAX_COMPARISON_COURSES } from "../data";
 import type { CartCourse } from "../types";
@@ -78,6 +78,7 @@ export function CourseSelectionScreen({
           disabled={terrainEnabled && terrainStatus !== "ready"}
           onDimensionModeChange={() => setDimension(current => current === "2D" ? "3D" : "2D")} />
         <MapAction iconName="Locate" />
+        <MapCompassAction />
       </div>
 
       <BottomSheet

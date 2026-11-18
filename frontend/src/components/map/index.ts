@@ -11,3 +11,4 @@ export { default as BaseMap } from "./BaseMap";
 export type { BaseMapProps, MapRoute } from "./BaseMap";
 export { supportsTerrain } from "./terrain";
 export type { TerrainStatus } from "./terrain";
+export { MapCompassAction } from "./MapCompassAction";

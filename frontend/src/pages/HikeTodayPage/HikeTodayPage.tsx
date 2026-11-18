@@ -5,7 +5,7 @@ import { Button } from "../../components/common/Button";
 import { Toast } from "../../components/feedback";
 import { HikeAlertConfirm, HikeFloatingControls, HikeRouteMap, LocationPermissionSheet, SpotFilterChips, SunArc, type SpotFilter } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
-import { MapAction } from "../../components/map";
+import { MapAction, MapCompassAction } from "../../components/map";
 import { navigate } from "../../hooks/useHashRoute";
 import { useLocationPermission } from "../../hooks/useLocationPermission";
 import { useToastMessage } from "../../hooks/useToastMessage";
@@ -99,6 +99,7 @@ export function HikeTodayPage() {
             <MapAction iconName="3D" dimensionMode={dimension} onDimensionModeChange={setDimension}
               aria-label={dimension === "3D" ? "2D 지도로 전환" : "3D 지도로 전환"} />
             <MapAction aria-label="코스 전체 보기" onClick={() => setRecenterKey(key => key + 1)} />
+            <MapCompassAction />
           </div>
           <section className="hike-today-page__bottom" aria-label="오늘의 등산 정보와 시작">
             <button type="button" className="hike-today-page__route-chip" onClick={() => navigate(hikePaths.detail(schedule.date))}>

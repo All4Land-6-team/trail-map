@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { compassStore, isRotated, resetNorth } from './compassStore'
+import { CompassNeedle } from './MapCompassAction'
 import {
   MapLibreMap,
   NavigationControl,
@@ -98,8 +100,11 @@ function BaseMap({
   const [terrainRetryVersion, setTerrainRetryVersion] = useState(0)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [hasStaticCacheMiss, setHasStaticCacheMiss] = useState(false)
-  /** 지도 방향(정북 기준 시계 방향 각도). 0이 아니면 나침반 버튼을 보여 준다. */
-  const [bearing, setBearing] = useState(0)
+  // 오른쪽 지도 도구에 나침반 버튼이 없는 화면(홈·커뮤니티 등)만 지도 위에 나침반을 그린다.
+  const compassOwner = useId()
+  const compass = useSyncExternalStore(compassStore.subscribe, compassStore.get, compassStore.get)
+  const showOverlayCompass = interactive && showCompass && compass.slots === 0
+    && compass.owner === compassOwner && isRotated(compass.bearing)
   const terrainEnabled = terrainMode !== undefined
 
   useEffect(() => { onMapReadyRef.current = onMapReady }, [onMapReady])
@@ -160,8 +165,12 @@ function BaseMap({
         map.touchZoomRotate.enableRotation()
         map.touchPitch.enable()
       }
-      const created = map
-      created.on('rotate', () => setBearing(created.getBearing()))
+      // 정북 맞춤 버튼(오른쪽 지도 도구의 MapCompassAction 또는 지도 위 나침반)에 방위를 알린다.
+      if (interactive && showCompass) {
+        const created = map
+        compassStore.attach(created, compassOwner)
+        created.on('rotate', () => compassStore.setBearing(created, created.getBearing()))
+      }
       map.on('style.load', () => guardNullableRoadShieldFilter(map))
       if (!bounds && !center) map.jumpTo({ center: SOUTH_KOREA_MAINLAND_CENTER })
     } catch {
@@ -208,9 +217,10 @@ function BaseMap({
       onMapReadyRef.current?.(null)
       mapRef.current = null
       renderedRouteIdsRef.current = []
+      compassStore.detach(map)
       map.remove()
     }
-  }, [bounds, center, fitBoundsPadding, interactive, showNavigationControl, zoom])
+  }, [bounds, center, compassOwner, fitBoundsPadding, interactive, showCompass, showNavigationControl, zoom])
 
   useEffect(() => {
     const map = mapRef.current
@@ -366,15 +376,11 @@ function BaseMap({
 
   return <div className={["base-map-shell", className].filter(Boolean).join(' ')}>
     <div ref={containerRef} className="base-map" aria-label={ariaLabel} />
-    {/* 지도가 돌아가 있으면 정북으로 되돌린다. 손으로 돌린 것처럼 알려 등산 내비의 따라가기도 멈춘다. */}
-    {interactive && showCompass && Math.abs(bearing) > 0.5 && <button type="button" className="base-map__compass"
+    {/* 지도가 돌아가 있으면 정북으로 되돌린다. 오른쪽 지도 도구가 없는 화면에서만 지도 위에 띄운다. */}
+    {showOverlayCompass && <button type="button" className="af-map-action af-map-action--neutral af-map-compass base-map__compass"
       aria-label="지도를 정북 방향으로 맞추기" title="정북 방향으로"
-      onClick={(event) => mapRef.current?.easeTo({ bearing: 0, duration: 400 }, { originalEvent: event.nativeEvent })}>
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style={{ transform: `rotate(${-bearing}deg)` }}>
-        <path d="M12 3 16 12H8Z" fill="#d6453d" />
-        <path d="M12 21 8 12h8Z" fill="#9aa79f" />
-      </svg>
-      <span aria-hidden="true">N</span>
+      onClick={(event) => resetNorth(compass.map, event.nativeEvent)}>
+      <CompassNeedle bearing={compass.bearing} />
     </button>}
     {(isOffline || hasLoadError || hasStaticCacheMiss || (hasTerrainError && terrainEnabled)) && <div className="base-map__notices" aria-live="polite">
       {isOffline && <div className="base-map__notice">
