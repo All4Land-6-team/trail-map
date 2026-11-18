@@ -45,3 +45,8 @@
 .hike-record-card__distances dt { color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-record-card__distances dd { margin: 0; color: var(--af-ink); font: 700 14px/20px "Noto Sans KR", sans-serif; }
 .hike-calendar-page__record-button.af-button { min-height: 48px; border-radius: 10px; }
+/* 날짜가 지났는데 등산하지 않은 일정: 일정 상세로 들어가지 않는다. */
+.hike-plan-card--past { cursor: default; }
+.hike-plan-card--past .hike-plan-card__time { color: #8a978f; background: #eef1ee; }
+.hike-plan-card--past .hike-plan-card__title { color: #617b6c; }
+.hike-plan-card__past { flex: none; align-self: flex-start; color: #8a978f; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
