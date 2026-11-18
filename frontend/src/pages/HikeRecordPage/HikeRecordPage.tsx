@@ -136,7 +136,6 @@ export function HikeRecordPage() {
 
       <div className="hike-record-page__actions">
         <Button fullWidth label="후기 작성" onClick={() => setPickingReview(true)} />
-        <Button fullWidth variant="secondary" label="내 등산으로" onClick={backToCalendar} />
       </div>
 
       {writtenReviews.length > 0 && <section className="hike-record-page__reviews" aria-labelledby="hike-record-reviews-title">

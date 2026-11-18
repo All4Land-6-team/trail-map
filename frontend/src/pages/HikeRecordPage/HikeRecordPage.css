@@ -21,7 +21,6 @@
 
 .hike-record-page__actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
 .hike-record-page__actions .af-button { min-height: 48px; border-radius: 10px; }
-.hike-record-page__actions .af-button--secondary { border: 1px solid var(--af-line); color: var(--af-green); background: #fff; }
 
 /* 내가 쓴 후기 (산 → 코스 → 스팟) */
 .hike-record-page__reviews { margin-top: 24px; }
