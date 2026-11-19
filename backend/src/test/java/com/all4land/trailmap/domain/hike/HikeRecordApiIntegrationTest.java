@@ -23,7 +23,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -174,6 +177,53 @@ class HikeRecordApiIntegrationTest {
                 Double.class, recordId
         );
         assertThat(length).isCloseTo(111.2, within(1.0));
+    }
+
+    @Test
+    void 응답을_못_받아_같은_위치를_다시_보내도_경로에_두_번_붙지_않는다() throws Exception {
+        long recordId = startedRecord(userId);
+        String first = position(126.9700, 37.6500, "06:00:00", 5);
+        String second = position(126.9700, 37.6510, "06:01:00", 5);
+
+        sendPositions(userId, recordId, first, second)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.acceptedCount").value(2));
+        // 오프라인에서 쌓아 둔 위치를 보낸 뒤 응답을 받기 전에 끊기면 기기는 같은 위치를 다시 보낸다.
+        sendPositions(userId, recordId, first, second, position(126.9700, 37.6520, "06:02:00", 5))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.acceptedCount").value(1))
+                .andExpect(jsonPath("$.data.traveledDistanceMeters").value(closeTo(222.0, 2.0)));
+
+        Integer points = jdbcTemplate.queryForObject(
+                "SELECT ST_NPoints(traveled_path) FROM hike_record WHERE hike_record_id = ?", Integer.class, recordId);
+        assertThat(points).isEqualTo(3);
+    }
+
+    @Test
+    void 오프라인에서_누른_종료는_기기가_보낸_종료_시각으로_소요_시간을_계산한다() throws Exception {
+        long recordId = startedRecord(userId);
+        jdbcTemplate.update("UPDATE hike_record SET started_at = now() - interval '2 hours' WHERE hike_record_id = ?", recordId);
+        String endedAt = java.time.OffsetDateTime.now().minusHours(1).toString();
+
+        mockMvc.perform(asUser(userId, post("/v1/hike-records/" + recordId + "/finish"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"endedAt\": \"%s\"}".formatted(endedAt)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.actualDurationSeconds", allOf(greaterThanOrEqualTo(3595), lessThanOrEqualTo(3605))));
+    }
+
+    @Test
+    void 기기가_보낸_종료_시각이_미래면_지금으로_종료한다() throws Exception {
+        long recordId = startedRecord(userId);
+        jdbcTemplate.update("UPDATE hike_record SET started_at = now() - interval '30 minutes' WHERE hike_record_id = ?", recordId);
+        String future = java.time.OffsetDateTime.now().plusHours(3).toString();
+
+        mockMvc.perform(asUser(userId, post("/v1/hike-records/" + recordId + "/finish"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"endedAt\": \"%s\"}".formatted(future)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.actualDurationSeconds", allOf(greaterThanOrEqualTo(1795), lessThanOrEqualTo(1810))));
     }
 
     @Test
