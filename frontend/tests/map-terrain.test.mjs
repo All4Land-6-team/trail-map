@@ -15,6 +15,12 @@ import {
   removeTerrainLayers,
   supportsTerrain,
 } from "../src/components/map/terrain.ts";
+import {
+  isMissingTerrainTileResponse,
+  isTerrainTileUrl,
+  requestTerrainTile,
+  transformTerrainTileRequest,
+} from "../src/components/map/terrainTileFallback.ts";
 
 const source = {
   type: "raster-dem",
@@ -187,4 +193,90 @@ test("3D는 Terrain과 pitch를 적용하고 2D는 Terrain을 해제한다", () 
     null,
   ]);
   assert.deepEqual(pitches, [50, 0]);
+});
+
+test("Terrain 타일 요청만 공통 fallback 프로토콜로 보낸다", () => {
+  const tileUrl = "https://project.supabase.co/storage/v1/object/public/terrain-public/bukhansan/v1/tiles/14/13970/6337.png";
+
+  assert.equal(isTerrainTileUrl(tileUrl), true);
+  assert.deepEqual(transformTerrainTileRequest(tileUrl, "Tile"), {
+    url: `terrain-dem://${tileUrl}`,
+  });
+  assert.deepEqual(transformTerrainTileRequest(tileUrl, "Source"), { url: tileUrl });
+  assert.deepEqual(transformTerrainTileRequest("https://tiles.example.com/14/1/2.png", "Tile"), {
+    url: "https://tiles.example.com/14/1/2.png",
+  });
+});
+
+test("Supabase와 백엔드가 명시한 객체 누락만 예상 가능한 빈 Terrain 타일로 분류한다", async () => {
+  const supabaseMissing = new Response(JSON.stringify({
+    statusCode: "404",
+    error: "not_found",
+    message: "Object not found",
+    code: "NoSuchKey",
+  }), { status: 400, headers: { "Content-Type": "application/json" } });
+  const backendMissing = new Response(JSON.stringify({
+    success: false,
+    code: "TERRAIN_404_1",
+    httpStatus: 404,
+  }), { status: 404, headers: { "Content-Type": "application/json" } });
+
+  assert.equal(await isMissingTerrainTileResponse(supabaseMissing), true);
+  assert.equal(await isMissingTerrainTileResponse(backendMissing), true);
+  assert.equal(await isMissingTerrainTileResponse(new Response(JSON.stringify({
+    statusCode: "400",
+    error: "invalid_request",
+  }), { status: 400 })), false);
+  assert.equal(await isMissingTerrainTileResponse(new Response("unauthorized", { status: 401 })), false);
+  assert.equal(await isMissingTerrainTileResponse(new Response("server error", { status: 500 })), false);
+});
+
+test("누락 타일만 평면 타일로 대체하고 인증·서버·네트워크 오류는 숨기지 않는다", async () => {
+  const controller = new AbortController();
+  const flatTile = new Uint8Array([1, 2, 3]).buffer;
+  const terrainTile = new Uint8Array([137, 80, 78, 71]).buffer;
+  const missingFetcher = async () => new Response(JSON.stringify({
+    statusCode: "404",
+    error: "not_found",
+    message: "Object not found",
+    code: "NoSuchKey",
+  }), { status: 400 });
+
+  assert.deepEqual(
+    new Uint8Array(await requestTerrainTile("https://example.com/existing.png", controller.signal, {
+      fetcher: async () => new Response(terrainTile, { status: 200 }),
+      createFlatTile: async () => flatTile,
+    })),
+    new Uint8Array(terrainTile),
+  );
+
+  assert.deepEqual(
+    new Uint8Array(await requestTerrainTile("https://example.com/missing.png", controller.signal, {
+      fetcher: missingFetcher,
+      createFlatTile: async () => flatTile,
+    })),
+    new Uint8Array(flatTile),
+  );
+
+  await assert.rejects(
+    requestTerrainTile("https://example.com/unauthorized.png", controller.signal, {
+      fetcher: async () => new Response("unauthorized", { status: 401 }),
+      createFlatTile: async () => flatTile,
+    }),
+    /401/,
+  );
+  await assert.rejects(
+    requestTerrainTile("https://example.com/server-error.png", controller.signal, {
+      fetcher: async () => new Response("server error", { status: 500 }),
+      createFlatTile: async () => flatTile,
+    }),
+    /500/,
+  );
+  await assert.rejects(
+    requestTerrainTile("https://example.com/network-error.png", controller.signal, {
+      fetcher: async () => { throw new TypeError("network failed"); },
+      createFlatTile: async () => flatTile,
+    }),
+    /network failed/,
+  );
 });
