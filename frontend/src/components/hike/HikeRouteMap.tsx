@@ -29,6 +29,8 @@ export type HikeRouteMapProps = {
   position?: LngLat;
   /** GPS로 실제 이동한 경로. 코스 위에 지나온 경로 색으로 겹쳐 그린다. */
   traveledPath?: LngLat[];
+  /** 코스를 벗어나지 않아도 traveledPath를 항상 그린다 (REC-03 기록 상세: 코스와 실제로 걸은 경로 비교) */
+  alwaysShowTraveledPath?: boolean;
   /** 현재 진행 방향의 코스 시작점부터 이동한 거리 */
   progressMeters?: number;
   /** 등산은 지난 구간을 회색으로, 하산은 돌아온 구간을 원래 색으로 표시한다. */
@@ -118,7 +120,7 @@ function prefersReducedMotion() {
  * 배경지도·지형·오프라인 안내는 다른 화면과 같은 BaseMap을 쓴다.
  */
 export function HikeRouteMap({
-  route, label, mountainName, peak = route[route.length - 1], currentIndex, position, traveledPath = NO_PATH, traveledKm,
+  route, label, mountainName, peak = route[route.length - 1], currentIndex, position, traveledPath = NO_PATH, alwaysShowTraveledPath = false, traveledKm,
   progressMeters, stage = "ascent", spots = NO_SPOTS, filter = "all", dimension = "2D", recenterKey = 0,
   padding = DEFAULT_PADDING, navigation = false,
 }: HikeRouteMapProps) {
@@ -243,8 +245,8 @@ export function HikeRouteMap({
   const offCourse = useMemo(() => currentLng !== undefined && currentLat !== undefined
     && (distanceToCourseMeters(route, [currentLng, currentLat]) ?? 0) > OFF_COURSE_METERS, [route, currentLng, currentLat]);
   useEffect(() => {
-    if (map?.getLayer(GPS_SOURCE_ID)) map.setLayoutProperty(GPS_SOURCE_ID, "visibility", offCourse ? "visible" : "none");
-  }, [map, offCourse, layersReady]);
+    if (map?.getLayer(GPS_SOURCE_ID)) map.setLayoutProperty(GPS_SOURCE_ID, "visibility", offCourse || alwaysShowTraveledPath ? "visible" : "none");
+  }, [map, offCourse, alwaysShowTraveledPath, layersReady]);
 
   useEffect(() => {
     if (map?.getLayer(GPS_SOURCE_ID)) {

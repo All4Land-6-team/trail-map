@@ -109,6 +109,11 @@ export async function fetchActiveHikeRecord() {
   return record ? toRecord(record) : null;
 }
 
+/** 기록 한 건 (REC-03 등산 기록 상세) */
+export async function fetchHikeRecord(hikeRecordId: number) {
+  return toRecord(await request<HikeRecordBody>(`/${hikeRecordId}`));
+}
+
 export function sendHikePositions(hikeRecordId: number, positions: HikePosition[]) {
   return post<HikePositionsResult>(`/${hikeRecordId}/positions`, { positions });
 }
