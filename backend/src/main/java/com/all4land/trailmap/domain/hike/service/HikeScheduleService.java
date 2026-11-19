@@ -2,6 +2,7 @@ package com.all4land.trailmap.domain.hike.service;
 
 import com.all4land.trailmap.domain.hike.dto.request.HikeScheduleCreateRequest;
 import com.all4land.trailmap.domain.hike.dto.request.HikeScheduleUpdateRequest;
+import com.all4land.trailmap.domain.hike.dto.response.HikeScheduleRecordResponse;
 import com.all4land.trailmap.domain.hike.dto.response.HikeScheduleResponse;
 import com.all4land.trailmap.domain.hike.entity.HikeSchedule;
 import com.all4land.trailmap.domain.hike.error.HikeErrorCode;
@@ -66,15 +67,19 @@ public class HikeScheduleService {
         Map<Long, HikeCourseSummary> courses = courseRepository.findCourseSummaries(
                 schedules.stream().map(HikeSchedule::getCourseId).distinct().toList()
         );
+        Map<Long, HikeScheduleRecordResponse> records = recordRepository.findSummariesBySchedules(
+                schedules.stream().map(HikeSchedule::getScheduleId).toList()
+        );
         return schedules.stream()
-                .map(schedule -> HikeScheduleResponse.of(schedule, courses.get(schedule.getCourseId()), SCHEDULE_ZONE))
+                .map(schedule -> HikeScheduleResponse.of(schedule, courses.get(schedule.getCourseId()),
+                        records.get(schedule.getScheduleId()), SCHEDULE_ZONE))
                 .toList();
     }
 
     public HikeScheduleResponse getSchedule(Long userId, Long scheduleId) {
         validateUser(userId);
         HikeSchedule schedule = getOwnedSchedule(userId, scheduleId);
-        return HikeScheduleResponse.of(schedule, getCourse(schedule.getCourseId()), SCHEDULE_ZONE);
+        return HikeScheduleResponse.of(schedule, getCourse(schedule.getCourseId()), findRecord(scheduleId), SCHEDULE_ZONE);
     }
 
     @Transactional
@@ -98,7 +103,7 @@ public class HikeScheduleService {
         } catch (DataIntegrityViolationException exception) {
             throw new HikeException(HikeErrorCode.SCHEDULE_ALREADY_EXISTS);
         }
-        return HikeScheduleResponse.of(schedule, course, SCHEDULE_ZONE);
+        return HikeScheduleResponse.of(schedule, course, findRecord(scheduleId), SCHEDULE_ZONE);
     }
 
     @Transactional
@@ -137,6 +142,10 @@ public class HikeScheduleService {
         if (recordRepository.existsActiveBySchedules(scheduleIds)) {
             throw new HikeException(HikeErrorCode.SCHEDULE_HAS_ACTIVE_RECORD);
         }
+    }
+
+    private HikeScheduleRecordResponse findRecord(Long scheduleId) {
+        return recordRepository.findSummariesBySchedules(List.of(scheduleId)).get(scheduleId);
     }
 
     private void validateUser(Long userId) {

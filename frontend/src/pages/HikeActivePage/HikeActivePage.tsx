@@ -5,12 +5,12 @@ import { Toast } from "../../components/feedback";
 import { hikeTargetIds, setHikeAlerts, useHikeSession } from "../../store/hikeSessionStore";
 import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
 import { activeHikeFor } from "../../utils/activeHike";
-import { HikeEndConfirm, HikeFloatingControls, HikeRouteMap, HikeShareSheet, HikeStatusHUD, HikeSunsetNotice, SpotFilterChips, SunArc, type SpotFilter } from "../../components/hike";
-import { TopBar } from "../../components/layout";
-import { MapAction } from "../../components/map";
+import { HikeEndConfirm, HikeProgressPanel, HikeRouteMap, HikeShareSheet, HikeSunsetNotice, SpotFilterChips, SunArc, type SpotFilter } from "../../components/hike";
+import { BottomNavigation, TopBar } from "../../components/layout";
+import { MapAction, MapCompassAction } from "../../components/map";
 import { navigate } from "../../hooks/useHashRoute";
 import { useSunTimes } from "../../hooks/useSunTimes";
-import { hikePaths } from "../hikeRoutes";
+import { hikePaths, navigateTab } from "../hikeRoutes";
 import { useHikeControls } from "./useHikeControls";
 import "../hikePages.css";
 import "./HikeActivePage.css";
@@ -43,35 +43,37 @@ export function HikeActivePage() {
           {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
           progressMeters={controls.progressMeters} stage={session.phase === "downhill" ? "descent" : "ascent"}
           spots={hike.spots} filter={filter} dimension={dimension} recenterKey={recenterKey} navigation
-          padding={{ top: 150, bottom: 280, left: 40, right: 72 }}
+          padding={{ top: 150, bottom: 320, left: 40, right: 72 }}
           label={`${hike.courseName} 등산 경로 지도`} />
         <div className="hike-map-page__top">
-          <TopBar title="등산 중" showAction={false} onBack={() => navigate(hikePaths.calendar())} />
+          <TopBar title={session.phase === "downhill" ? "하산 중" : "등산 중"} subtitle={hike.courseName} showAction={false}
+            onBack={() => navigate(hikePaths.calendar())} />
           <SpotFilterChips value={filter} onChange={setFilter} />
+          {/* 일몰 알림은 지도 한가운데를 가리지 않게 필터 바로 아래에 둔다 */}
+          <HikeSunsetNotice sun={sun} />
         </div>
         <div className="hike-map-page__tools">
           <MapAction iconName="3D" dimensionMode={dimension} onDimensionModeChange={setDimension}
             aria-label={dimension === "3D" ? "2D 지도로 전환" : "3D 지도로 전환"} />
           <MapAction aria-label="현재 위치로 이동" onClick={() => setRecenterKey(key => key + 1)} />
+          <MapAction iconName={alertsOn ? "Bell" : "BellOff"} aria-pressed={alertsOn}
+            aria-label={alertsOn ? "일몰 알림 끄기" : "일몰 알림 켜기"} onClick={() => setHikeAlerts(!alertsOn)} />
           <MapAction variant="brand" aria-label="공유" onClick={() => setOverlay("share")} />
+          <MapCompassAction />
         </div>
-        <div className="hike-active-page__bottom">
-          <HikeStatusHUD stage={session.phase === "downhill" ? "descent" : "ascent"} courseName={hike.courseName}
-            courseNotice={controls.courseNotice} paused={controls.paused}
-            alertsOn={alertsOn} onAlertsChange={setHikeAlerts} />
-          <HikeSunsetNotice sun={sun} />
-          <div className="hike-sun-controls">
-            <SunArc sun={sun} variant="compact" />
-            <HikeFloatingControls state={controls.paused ? "paused" : "recording"} busy={controls.busy} showMain={false}
-              secondaryLabel={session.phase === "downhill" ? "등산 종료" : "하산 시작"}
-              onMain={controls.togglePaused}
-              onSecondary={() => session.phase === "downhill" ? setOverlay("end") : void controls.descend(alertsOn)}
-              // 올라가는 중에는 하산 시작(왼쪽) 옆에 종료(오른쪽)를 둔다. 하산 중에는 등산 종료 하나만 둔다.
-              {...session.phase === "downhill" ? {} : { endLabel: "종료", onEnd: () => setOverlay("end") }} />
-          </div>
+        {/* 진행 시트를 접으면 일출·일몰도 시트를 따라 내려간다 (--hike-sheet-inset) */}
+        <div className="hike-active-page__sun">
+          <SunArc sun={sun} variant="compact" />
         </div>
       </div>
+      {/* 올라가는 중에는 하산 시작(왼쪽) 옆에 등산 종료(오른쪽)를 둔다. 하산 중에는 등산 종료 하나만 둔다. */}
+      <HikeProgressPanel stage={session.phase === "downhill" ? "descent" : "ascent"}
+        traveledKm={controls.traveledKm ?? hike.traveledKm} remainingKm={controls.remainingKm}
+        progressPercent={controls.progressPercent} courseNotice={controls.courseNotice} busy={controls.busy}
+        onStartDescent={session.phase === "downhill" ? undefined : () => void controls.descend(alertsOn)}
+        onEnd={() => setOverlay("end")} />
     </main>
+    <BottomNavigation className="hike-page__nav" active="home" onNavigate={navigateTab} />
     {controls.message && <Toast className="hike-page__toast" message={controls.message} />}
 
     {overlay === "share" && <HikeShareSheet onClose={() => setOverlay(null)} onShareSpot={() => {

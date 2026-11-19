@@ -68,6 +68,9 @@ export function useHikeControls(session: HikeSession | null, hike?: ActiveHike |
   const traveledKm = hikeRecordId !== undefined ? localMeters / 1000
     : session?.traveledMeters === undefined ? undefined : session.traveledMeters / 1000;
   const progress = coursePath ? session?.courseProgress : undefined;
+  // 위치를 받기 전에는 코스 전체 길이가 남은 거리다. 예시 데이터 모드는 예시 코스 값을 쓴다.
+  const courseKm = session?.courseDistanceMeters === undefined ? undefined : session.courseDistanceMeters / 1000;
+  const remainingKm = progress ? progress.remainingMeters / 1000 : (coursePath && courseKm) ?? hike?.remainingKm ?? 0;
   // 원하는 길로 갈 수도 있어 위치를 코스로 옮기거나 막지 않고, 떨어진 거리만 작게 알려 준다.
   const courseNotice = progress && progress.offCourseMeters > OFF_COURSE_METERS
     ? `코스에서 ${Math.round(progress.offCourseMeters)}m 떨어져 있어요` : undefined;
@@ -77,6 +80,10 @@ export function useHikeControls(session: HikeSession | null, hike?: ActiveHike |
     peak: coursePath?.at(-1) ?? hike?.peak,
     /** 현재 진행 방향의 코스 시작점부터 이동한 거리. 예시 데이터 모드에서는 없다. */
     progressMeters: coursePath ? progress?.alongMeters ?? 0 : undefined,
+    /** 현재 진행 방향 코스의 남은 거리(km) */
+    remainingKm,
+    /** 현재 진행 방향 코스의 진행률(%). 예시 데이터 모드에서는 없다. */
+    progressPercent: coursePath ? Math.round((progress && progress.totalMeters > 0 ? progress.alongMeters / progress.totalMeters : 0) * 100) : undefined,
     courseNotice,
     /** 지도에 그릴 실제 이동 경로 (하산 중에는 하산 구간만) */
     mapPath: mapPath ?? [],

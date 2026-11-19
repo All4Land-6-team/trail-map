@@ -4,6 +4,7 @@ import com.all4land.trailmap.domain.hike.dto.request.HikePositionsRequest;
 import com.all4land.trailmap.domain.hike.dto.request.HikeRecordStartRequest;
 import com.all4land.trailmap.domain.hike.dto.response.HikePositionsResponse;
 import com.all4land.trailmap.domain.hike.dto.response.HikeRecordResponse;
+import com.all4land.trailmap.domain.hike.dto.response.HikeRecordReviewsResponse;
 import com.all4land.trailmap.domain.hike.service.HikeRecordService;
 import com.all4land.trailmap.global.response.SuccessResponse;
 import com.all4land.trailmap.global.user.CurrentUserId;
@@ -43,6 +44,14 @@ public class HikeRecordController {
             @PathVariable Long hikeRecordId
     ) {
         return response(SuccessResponse.ok(hikeRecordService.getRecord(userId, hikeRecordId)));
+    }
+
+    @GetMapping("/{hikeRecordId}/reviews")
+    public ResponseEntity<SuccessResponse<HikeRecordReviewsResponse>> getReviews(
+            @CurrentUserId Long userId,
+            @PathVariable Long hikeRecordId
+    ) {
+        return response(SuccessResponse.ok(hikeRecordService.getReviews(userId, hikeRecordId)));
     }
 
     @PostMapping("/{hikeRecordId}/positions")
