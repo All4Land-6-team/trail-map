@@ -14,7 +14,7 @@
 .course-facility-toggle strong { display: block; font-size: 12px; }
 .course-page__map-area:has(.course-facility-controls) .course-map__preview { top: calc(142px + env(safe-area-inset-top)); }
 .course-page__map-area .course-map__actions { z-index: 5; }
-.course-page__map-area { position: absolute; inset: 0 0 var(--course-nav-height); min-height: 0; }
+.course-page__map-area { position: absolute; z-index: 0; inset: 0 0 var(--course-nav-height); min-height: 0; }
 .course-page__top { position: absolute; z-index: 3; top: calc(16px + env(safe-area-inset-top)); right: 16px; left: 16px; width: auto; }
 .course-page__nav { position: absolute; z-index: 4; right: 0; bottom: 0; left: 0; min-height: var(--course-nav-height); padding-bottom: env(safe-area-inset-bottom); }
 .course-list-sheet { position: absolute; z-index: 2; right: 0; bottom: var(--course-nav-height); left: 0; height: var(--map-sheet-height, 296px); overflow: hidden; gap: 0; padding: 8px 0 6px; border-radius: 25px 25px 0 0; box-shadow: 0 -8px 12px rgb(23 71 54 / 5%); }
