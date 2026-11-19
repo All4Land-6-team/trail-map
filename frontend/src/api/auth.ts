@@ -5,6 +5,7 @@ import {
   type AuthSession,
   type AuthUser,
 } from "../store/authStore.ts";
+import { clearScheduleCache } from "../store/scheduleCache.ts";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
 
@@ -68,5 +69,7 @@ export async function logout() {
     await request<null>("/logout", { method: "POST" }, true);
   } finally {
     clearAuthSession();
+    // 휴대폰에 남긴 일정 저장본도 지운다 (같은 기기에서 다른 계정으로 로그인할 때 보이지 않도록).
+    clearScheduleCache();
   }
 }
