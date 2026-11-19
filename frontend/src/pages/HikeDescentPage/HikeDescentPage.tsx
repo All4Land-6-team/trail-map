@@ -1,7 +1,7 @@
 import { findCourse } from "../../api/hikeMock";
 import { useMemo, useState } from "react";
 import { Button } from "../../components/common/Button";
-import { Toast } from "../../components/feedback";
+import { NearbyAlert, Toast } from "../../components/feedback";
 import { hikeTargetIds, setHikeAlerts, useHikeSession } from "../../store/hikeSessionStore";
 import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
 import { activeHikeFor } from "../../utils/activeHike";
@@ -11,6 +11,7 @@ import { MapAction, MapCompassAction } from "../../components/map";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
 import { useSunTimes } from "../../hooks/useSunTimes";
 import { useHikeControls } from "../HikeActivePage/useHikeControls";
+import { useHikeFacilities, useNearbyFacility } from "../HikeActivePage/useHikeFacilities";
 import { hikePaths, navigateTab } from "../hikeRoutes";
 import "../hikePages.css";
 import "../HikeActivePage/HikeActivePage.css";
@@ -27,6 +28,8 @@ export function HikeDescentPage() {
   const alertsParam = readHashParams().get("alerts");
   const alertsOn = session?.alertsOn ?? alertsParam !== "off";
   const controls = useHikeControls(session, hike);
+  const facilities = useHikeFacilities(session, hike);
+  const nearby = useNearbyFacility(session?.currentPosition, facilities);
   const [filter, setFilter] = useState<SpotFilter>("all");
   // 등산 중 화면과 같이 3D 내비 모드로 시작한다. 2D는 경로 전체 보기다.
   const [dimension, setDimension] = useState<"2D" | "3D">("3D");
@@ -42,7 +45,7 @@ export function HikeDescentPage() {
     <main className="hike-page__body hike-map-page__body">
       <div className="hike-map-page__map">
         <HikeRouteMap route={controls.route} peak={controls.peak} mountainName={hike.mountainName}
-          traveledKm={controls.traveledKm ?? hike.traveledKm} spots={hike.spots} filter={filter}
+          traveledKm={controls.traveledKm ?? hike.traveledKm} spots={facilities} filter={filter}
           {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
           progressMeters={controls.progressMeters} stage="descent" navigation
           padding={MAP_PADDING} dimension={dimension} recenterKey={recenterKey} label={`${hike.courseName} 하산 경로 지도`} />
@@ -52,6 +55,8 @@ export function HikeDescentPage() {
           <SpotFilterChips value={filter} onChange={setFilter} />
           {/* 일몰 알림은 지도 한가운데를 가리지 않게 필터 바로 아래에 둔다 */}
           <HikeSunsetNotice sun={sun} />
+          {/* 코스 시설 접근 알림: 휴대폰 안에서 거리만 계산해 통신이 끊겨도 동작한다 */}
+          {nearby && <NearbyAlert className="hike-map-page__nearby" title={nearby.title} detail={nearby.detail} onClose={nearby.dismiss} />}
         </div>
         <div className="hike-map-page__tools">
           <MapAction iconName="3D" dimensionMode={dimension} onDimensionModeChange={setDimension}

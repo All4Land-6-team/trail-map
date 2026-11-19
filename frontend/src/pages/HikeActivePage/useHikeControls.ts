@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { descendHikeRecord, finishHikeRecord } from "../../api/hikeRecordApi";
+import { descendHikeRecord, finishHikeRecord, isHikeNetworkError } from "../../api/hikeRecordApi";
 import { navigate } from "../../hooks/useHashRoute";
 import { flushHikePositions, useHikeTracking, type HikeTrackingIssue } from "../../hooks/useHikeTracking";
+import { queueHikeAction } from "../../store/hikeOfflineSync";
 import { directedCoursePath, finishHikeSession, setHikeTrackingPaused, startHikeDescent, type HikeSession } from "../../store/hikeSessionStore";
 import type { ActiveHike } from "../../types/hike";
 import { OFF_COURSE_METERS, pathLengthMeters } from "../../utils/hikeTracking";
@@ -41,18 +42,34 @@ export function useHikeControls(session: HikeSession | null, hike?: ActiveHike |
     }
   };
 
+  // 통신이 끊겨 서버에 닿지 못하면 화면은 바로 하산으로 바꾸고, 하산 시작은 연결되면 보낸다(hikeOfflineSync).
   const descend = (alertsOn: boolean) => run(async () => {
-    if (hikeRecordId !== undefined) await descendHikeRecord(hikeRecordId);
+    if (hikeRecordId !== undefined) {
+      try {
+        await descendHikeRecord(hikeRecordId);
+      } catch (descendError) {
+        if (!isHikeNetworkError(descendError)) throw descendError;
+        queueHikeAction(hikeRecordId, { descend: true });
+      }
+    }
     startHikeDescent();
     navigate(hikePaths.downhill(alertsOn));
   }, "하산 시작을 저장하지 못했어요. 다시 시도해 주세요.");
 
   // 종료 전에 모아 둔 위치를 먼저 보내야 이동 거리에 반영된다. 보내지 못해도 종료는 진행한다.
+  // 통신이 끊겼으면 누른 시각으로 화면에서 먼저 종료하고, 남은 위치와 종료는 연결되면 보낸다.
   const finish = () => run(async () => {
     if (hikeRecordId === undefined) finishHikeSession();
     else {
+      const finishedAt = new Date().toISOString();
       await flushHikePositions(hikeRecordId).catch(() => undefined);
-      finishHikeSession(await finishHikeRecord(hikeRecordId));
+      try {
+        finishHikeSession(await finishHikeRecord(hikeRecordId, finishedAt));
+      } catch (finishError) {
+        if (!isHikeNetworkError(finishError)) throw finishError;
+        queueHikeAction(hikeRecordId, { finishedAt });
+        finishHikeSession(undefined, { traveledMeters: localMeters });
+      }
     }
     navigate(hikePaths.complete);
   }, "등산 완료 기록을 저장하지 못했어요. 다시 시도해 주세요.");

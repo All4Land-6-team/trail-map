@@ -149,9 +149,17 @@ export async function descendHikeRecord(hikeRecordId: number) {
   return toRecord(await post(`/${hikeRecordId}/descend`));
 }
 
-/** 이미 종료한 기록이면 서버는 그 기록을 그대로 돌려준다 */
-export async function finishHikeRecord(hikeRecordId: number) {
-  return toRecord(await post(`/${hikeRecordId}/finish`));
+/**
+ * 이미 종료한 기록이면 서버는 그 기록을 그대로 돌려준다.
+ * endedAt: 통신이 끊긴 동안 누른 종료를 나중에 보낼 때 기기에서 누른 시각 (소요 시간을 그 시각으로 계산)
+ */
+export async function finishHikeRecord(hikeRecordId: number, endedAt?: string) {
+  return toRecord(await post(`/${hikeRecordId}/finish`, endedAt ? { endedAt } : undefined));
+}
+
+/** 서버에 닿지 못한 실패(통신 끊김·시간 초과)인지. 이때는 화면에 먼저 반영하고 나중에 다시 보낸다. */
+export function isHikeNetworkError(error: unknown) {
+  return error instanceof HikeRecordApiError && error.code === "NETWORK";
 }
 
 /** 기록을 시작한다. 같은 일정의 기록이 이미 진행 중이면(다른 탭·재시도) 그 기록을 이어 간다. */

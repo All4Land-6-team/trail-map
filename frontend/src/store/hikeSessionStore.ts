@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { HikeRecord } from "../api/hikeRecordApi";
 import type { HikeSchedule, LngLat } from "../types/hike";
+import { saveHikeSnapshot } from "./hikeSessionSnapshot.ts";
 import { courseProgress, distanceMeters, gateCourseProgress, hasReachedCourse, OFF_COURSE_METERS, type CourseProgress } from "../utils/hikeTracking.ts";
 
 export type HikeSession = {
@@ -55,6 +56,8 @@ export function getHikeSession() { return session; }
 export function getCompletedHikes() { return completedHikes; }
 function update(next: HikeSession) {
   session = next;
+  // 통신이 끊긴 채 앱을 다시 열어도 이어 가도록 진행 중 등산을 휴대폰에 저장한다 (종료하면 지운다).
+  saveHikeSnapshot(next);
   notify();
 }
 
@@ -167,16 +170,31 @@ export function setHikeTraveledMeters(hikeRecordId: number, meters: number | nul
 }
 
 /** 기록 API로 종료했으면 서버가 계산한 이동 거리·소요 시간을 함께 남긴다. */
-export function finishHikeSession(record?: HikeRecord) {
+export function finishHikeSession(record?: HikeRecord, offline?: { traveledMeters: number }) {
   if (!session || session.phase === "complete") return;
   saveDescentStart(session.hikeRecordId, undefined);
+  // 통신이 끊겨 서버 종료를 못 했으면(offline) 화면에서 계산한 이동 거리로 먼저 완료 화면을 보여 준다.
   const finished = record ? { ...session, ...fromRecord(record), traveledPath: record.traveledPath.length ? record.traveledPath : session.traveledPath }
-    : { ...session, phase: "complete" as const, finishedAt: new Date().toISOString() };
+    : { ...session, phase: "complete" as const, finishedAt: new Date().toISOString(),
+      ...(offline && { traveledMeters: offline.traveledMeters }) };
   const finishedAt = finished.finishedAt ?? new Date().toISOString();
   const distanceKm = finished.traveledMeters === undefined ? session.schedule.distanceKm : finished.traveledMeters / 1000;
-  completedHikes = [{ id: record ? String(record.hikeRecordId) : crypto.randomUUID(), ...hikeTargetIds(finished),
+  completedHikes = [{ id: finished.hikeRecordId !== undefined ? String(finished.hikeRecordId) : crypto.randomUUID(), ...hikeTargetIds(finished),
     courseName: session.schedule.courseName, distanceKm, finishedAt }, ...completedHikes];
   update({ ...finished, phase: "complete", finishedAt });
+}
+
+/**
+ * 통신이 끊긴 동안 화면에서 먼저 종료한 등산을 나중에 서버가 종료하면(hikeOfflineSync),
+ * 서버가 계산한 이동 거리·소요 시간으로 완료 화면 값을 바꾼다.
+ */
+export function applyFinishedHikeRecord(record: HikeRecord) {
+  if (session?.hikeRecordId !== record.hikeRecordId || session.phase !== "complete") return;
+  const traveledMeters = record.traveledDistanceMeters ?? session.traveledMeters;
+  const durationSeconds = record.actualDurationSeconds ?? session.durationSeconds;
+  completedHikes = completedHikes.map(hike => hike.id === String(record.hikeRecordId) && traveledMeters !== undefined
+    ? { ...hike, distanceKm: traveledMeters / 1000 } : hike);
+  update({ ...session, traveledMeters, durationSeconds, finishedAt: record.endedAt ?? session.finishedAt });
 }
 
 /** 새로고침 후 서버의 진행 중 기록으로 다시 만든 상태 (hikeSessionRestore). 이미 진행 중인 상태가 있으면 그대로 둔다. */
