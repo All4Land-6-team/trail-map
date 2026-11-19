@@ -7,7 +7,7 @@ import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
 import { activeHikeFor } from "../../utils/activeHike";
 import { HikeEndConfirm, HikeProgressPanel, HikeRouteMap, HikeShareSheet, HikeSunsetNotice, SpotFilterChips, SunArc, type SpotFilter } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
-import { MapAction } from "../../components/map";
+import { MapAction, MapCompassAction } from "../../components/map";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
 import { useSunTimes } from "../../hooks/useSunTimes";
 import { useHikeControls } from "../HikeActivePage/useHikeControls";
@@ -50,6 +50,8 @@ export function HikeDescentPage() {
           <TopBar title="하산 중" subtitle={hike.courseName} showAction={false}
             onBack={() => navigate(hikePaths.active(alertsOn))} />
           <SpotFilterChips value={filter} onChange={setFilter} />
+          {/* 일몰 알림은 지도 한가운데를 가리지 않게 필터 바로 아래에 둔다 */}
+          <HikeSunsetNotice sun={sun} />
         </div>
         <div className="hike-map-page__tools">
           <MapAction iconName="3D" dimensionMode={dimension} onDimensionModeChange={setDimension}
@@ -58,9 +60,9 @@ export function HikeDescentPage() {
           <MapAction iconName={alertsOn ? "Bell" : "BellOff"} aria-pressed={alertsOn}
             aria-label={alertsOn ? "일몰 알림 끄기" : "일몰 알림 켜기"} onClick={() => setHikeAlerts(!alertsOn)} />
           <MapAction variant="brand" aria-label="공유" onClick={() => setOverlay("share")} />
+          <MapCompassAction />
         </div>
         <div className="hike-active-page__sun">
-          <HikeSunsetNotice sun={sun} />
           <SunArc sun={sun} variant="compact" />
         </div>
       </div>

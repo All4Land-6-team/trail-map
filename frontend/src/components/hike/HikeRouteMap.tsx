@@ -11,6 +11,8 @@ import { cameraForTwoPoints, chaikinSmooth, NAVIGATION_FAR_METERS, navigationFix
 import { NavigationArrowMarker } from "./NavigationArrowMarker";
 import { installTerrainFallback } from "./terrainFallback";
 import "./hike.css";
+// 출발·도착 표시는 코스 목록 지도와 같은 모양을 쓴다.
+import "../map/course-route-map.css";
 
 export type SpotFilter = "all" | HikeSpot["kind"] | "other";
 
@@ -50,6 +52,10 @@ export type HikeRouteMapProps = {
    * 지도를 손으로 움직이면 따라가기를 멈추고, recenterKey가 바뀌거나 3D로 바꾸면 다시 따라간다.
    */
   navigation?: boolean;
+  /** false면 손으로 지도를 움직일 수 없다 (등산 기록 상세의 요약 지도) */
+  interactive?: boolean;
+  /** 정상 대신 코스 목록 지도처럼 출발·도착을 표시한다 (등산 기록 상세) */
+  endpointLabels?: boolean;
 };
 
 const GPS_SOURCE_ID = "hike-gps-path";
@@ -122,7 +128,7 @@ function prefersReducedMotion() {
 export function HikeRouteMap({
   route, label, mountainName, peak = route[route.length - 1], currentIndex, position, traveledPath = NO_PATH, alwaysShowTraveledPath = false, traveledKm,
   progressMeters, stage = "ascent", spots = NO_SPOTS, filter = "all", dimension = "2D", recenterKey = 0,
-  padding = DEFAULT_PADDING, navigation = false,
+  padding = DEFAULT_PADDING, navigation = false, interactive = true, endpointLabels = false,
 }: HikeRouteMapProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<MapLibreMap | null>(null);
@@ -139,6 +145,8 @@ export function HikeRouteMap({
     current: document.createElement("div"),
     bubble: document.createElement("div"),
     peak: document.createElement("div"),
+    start: document.createElement("div"),
+    finish: document.createElement("div"),
   }));
   spots.forEach(spot => { if (!nodes.spots.has(spot.id)) nodes.spots.set(spot.id, document.createElement("div")); });
 
@@ -375,11 +383,13 @@ export function HikeRouteMap({
     if (!map) return;
     const markers = [
       ...spots.map(spot => new Marker({ element: nodes.spots.get(spot.id)! }).setLngLat(spot.position)),
-      ...(peak ? [new Marker({ element: nodes.peak, anchor: "left", offset: [-5, 0] }).setLngLat(peak)] : []),
+      ...(endpointLabels
+        ? [new Marker({ element: nodes.start }).setLngLat(route[0]), new Marker({ element: nodes.finish }).setLngLat(route[route.length - 1])]
+        : peak ? [new Marker({ element: nodes.peak, anchor: "left", offset: [-5, 0] }).setLngLat(peak)] : []),
     ];
     markers.forEach(marker => marker.addTo(map));
     return () => markers.forEach(marker => marker.remove());
-  }, [map, spots, peak, nodes]);
+  }, [map, spots, peak, nodes, endpointLabels, route]);
 
   useEffect(() => {
     if (!map) return;
@@ -437,12 +447,17 @@ export function HikeRouteMap({
 
   return <div ref={shellRef} className="hike-route-map">
     <BaseMap className="hike-route-map__base" ariaLabel={label} bounds={bounds} routes={routes}
-      showNavigationControl={false} onMapReady={handleMapReady}
+      showNavigationControl={false} interactive={interactive} onMapReady={handleMapReady}
       terrainMode={terrainEnabled ? dimension : undefined} terrainCameraManaged={navigationActive}
       onTerrainStatusChange={handleTerrainStatus} />
     {visibleSpots.map(spot => createPortal(
       <SpotMarker kind={spot.kind} aria-label={spot.name} />, nodes.spots.get(spot.id)!, spot.id))}
-    {createPortal(<span className="hike-route-map__peak"><span aria-hidden="true" />정상</span>, nodes.peak)}
+    {endpointLabels ? <>
+      {createPortal(<div className="course-route-endpoint course-route-endpoint--start" aria-label="출발">
+        <span className="course-route-endpoint__symbol" /><span className="course-route-endpoint__label">출발</span></div>, nodes.start)}
+      {createPortal(<div className="course-route-endpoint course-route-endpoint--finish" aria-label="도착">
+        <span className="course-route-endpoint__symbol">⚑</span><span className="course-route-endpoint__label">도착</span></div>, nodes.finish)}
+    </> : createPortal(<span className="hike-route-map__peak"><span aria-hidden="true" />정상</span>, nodes.peak)}
     {current && createPortal(navigationActive ? <NavigationArrowMarker /> : <CurrentLocationMarker />, nodes.current)}
     {current && traveledKm !== undefined && createPortal(<DistanceBubble label={`${traveledKm.toFixed(1)} km`}
       aria-label={`지금까지 ${traveledKm.toFixed(1)} km 이동`} />, nodes.bubble)}

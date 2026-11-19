@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Chip } from "../../../components/common/Chip";
 import { BottomNavigation, TopBar, type BottomDestination } from "../../../components/layout";
-import { BaseMap, MapAction, SpotMarker, type MapRoute } from "../../../components/map";
+import { BaseMap, MapAction, MapCompassAction, SpotMarker, type MapRoute } from "../../../components/map";
 
 type HikeMapSceneProps = {
   title: string;
@@ -48,6 +48,7 @@ export function HikeMapScene({
       <div className="hike-map-actions">
         <MapAction iconName="3D" defaultDimensionMode="3D" />
         <MapAction iconName="Locate" />
+        <MapCompassAction />
       </div>
       <div className="hike-demo-spots" aria-label="코스 주변 시설">
         <SpotMarker kind="photo" className="hike-demo-spot hike-demo-spot--photo-one" />

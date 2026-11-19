@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { compassStore, isRotated, resetNorth } from './compassStore'
+import { CompassNeedle } from './MapCompassAction'
 import {
   MapLibreMap,
   NavigationControl,
@@ -36,6 +38,10 @@ export type BaseMapProps = {
   routes?: readonly MapRoute[]
   enableRouteHover?: boolean
   showNavigationControl?: boolean
+  /** false면 끌기·확대·회전 등 손으로 지도를 움직일 수 없다 (요약용 지도). */
+  interactive?: boolean
+  /** 지도가 돌아가 있을 때 정북으로 되돌리는 나침반 버튼을 보여 준다. */
+  showCompass?: boolean
   terrainBeforeLayerId?: string
   terrainMode?: MapDimension
   terrainCameraManaged?: boolean
@@ -71,6 +77,8 @@ function BaseMap({
   routes = EMPTY_ROUTES,
   enableRouteHover = false,
   showNavigationControl = true,
+  interactive = true,
+  showCompass = true,
   terrainBeforeLayerId,
   terrainMode,
   terrainCameraManaged,
@@ -92,6 +100,11 @@ function BaseMap({
   const [terrainRetryVersion, setTerrainRetryVersion] = useState(0)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [hasStaticCacheMiss, setHasStaticCacheMiss] = useState(false)
+  // 오른쪽 지도 도구에 나침반 버튼이 없는 화면(홈·커뮤니티 등)만 지도 위에 나침반을 그린다.
+  const compassOwner = useId()
+  const compass = useSyncExternalStore(compassStore.subscribe, compassStore.get, compassStore.get)
+  const showOverlayCompass = interactive && showCompass && compass.slots === 0
+    && compass.owner === compassOwner && isRotated(compass.bearing)
   const terrainEnabled = terrainMode !== undefined
 
   useEffect(() => { onMapReadyRef.current = onMapReady }, [onMapReady])
@@ -144,12 +157,20 @@ function BaseMap({
             ? { center, zoom: zoom ?? 13 }
             : { bounds: SOUTH_KOREA_BOUNDS }),
       }
-      map = new MapLibreMap(mapOptions)
+      map = new MapLibreMap({ ...mapOptions, interactive })
       // 커뮤니티 화면의 터치 제스처에서도 회전·기울기 입력을 유지한다.
-      map.dragRotate.enable()
-      map.touchZoomRotate.enable()
-      map.touchZoomRotate.enableRotation()
-      map.touchPitch.enable()
+      if (interactive) {
+        map.dragRotate.enable()
+        map.touchZoomRotate.enable()
+        map.touchZoomRotate.enableRotation()
+        map.touchPitch.enable()
+      }
+      // 정북 맞춤 버튼(오른쪽 지도 도구의 MapCompassAction 또는 지도 위 나침반)에 방위를 알린다.
+      if (interactive && showCompass) {
+        const created = map
+        compassStore.attach(created, compassOwner)
+        created.on('rotate', () => compassStore.setBearing(created, created.getBearing()))
+      }
       map.on('style.load', () => guardNullableRoadShieldFilter(map))
       if (!bounds && !center) map.jumpTo({ center: SOUTH_KOREA_MAINLAND_CENTER })
     } catch {
@@ -196,9 +217,10 @@ function BaseMap({
       onMapReadyRef.current?.(null)
       mapRef.current = null
       renderedRouteIdsRef.current = []
+      compassStore.detach(map)
       map.remove()
     }
-  }, [bounds, center, fitBoundsPadding, showNavigationControl, zoom])
+  }, [bounds, center, compassOwner, fitBoundsPadding, interactive, showCompass, showNavigationControl, zoom])
 
   useEffect(() => {
     const map = mapRef.current
@@ -354,6 +376,12 @@ function BaseMap({
 
   return <div className={["base-map-shell", className].filter(Boolean).join(' ')}>
     <div ref={containerRef} className="base-map" aria-label={ariaLabel} />
+    {/* 지도가 돌아가 있으면 정북으로 되돌린다. 오른쪽 지도 도구가 없는 화면에서만 지도 위에 띄운다. */}
+    {showOverlayCompass && <button type="button" className="af-map-action af-map-action--neutral af-map-compass base-map__compass"
+      aria-label="지도를 정북 방향으로 맞추기" title="정북 방향으로"
+      onClick={(event) => resetNorth(compass.map, event.nativeEvent)}>
+      <CompassNeedle bearing={compass.bearing} />
+    </button>}
     {(isOffline || hasLoadError || hasStaticCacheMiss || (hasTerrainError && terrainEnabled)) && <div className="base-map__notices" aria-live="polite">
       {isOffline && <div className="base-map__notice">
         오프라인입니다. 앱 화면과 저장된 정적 정보는 계속 사용할 수 있지만, 배경지도는 브라우저에 남은 부분만 보일 수 있습니다. 실시간 정보는 연결 후 다시 확인해 주세요.

@@ -41,6 +41,8 @@ export type CommunityPageProps = {
   initialSpotTargetType?: CommunitySpotTargetType
   initialSpotId?: string
   initialCourseId?: string
+  /** 다른 화면(등산 기록 상세 REC-03)에서 고른 후기 종류. 산 정보를 불러온 뒤 그 후기 작성 흐름을 연다. */
+  initialReviewKind?: ReviewKind
   spotRegistrationMode?: 'active' | 'postHike'
   activeHike?: { hikeRecordId?: number; courseId: string; currentPosition?: Coordinate; startedAt: string }
   onSpotRegistered?: () => void
@@ -212,7 +214,7 @@ function ReviewEligibilityInfo() {
   </span>
 }
 
-export function CommunityPage({ initialScreen = 'mountainSelect', initialMountainId, initialSpotId, initialSpotTargetType, initialCourseId,
+export function CommunityPage({ initialScreen = 'mountainSelect', initialMountainId, initialSpotId, initialSpotTargetType, initialCourseId, initialReviewKind,
   spotRegistrationMode = 'postHike', activeHike, onSpotRegistered, readOnly = false, onExit, onNavigateOutside }: CommunityPageProps) {
   const [screens, setScreens] = useState<CommunityScreen[]>([initialScreen])
   const screen = screens.at(-1)!
@@ -889,6 +891,13 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       notify(error instanceof Error ? error.message : '최근 산행 정보를 불러오지 못했어요.')
     }
   }
+  // 등산 기록 상세에서 후기 종류를 골라 들어오면, 산의 코스를 불러온 뒤 한 번만 기존 후기 작성 흐름을 연다.
+  const initialReviewStarted = useRef(false)
+  useEffect(() => {
+    if (!initialReviewKind || initialReviewStarted.current || !mountainId || communityLoading || courses.length === 0) return
+    initialReviewStarted.current = true
+    void startMapReview(initialReviewKind)
+  })
   const updateDraft = (patch: Partial<ReviewDraft>) => {
     setDraft(current => ({ ...current, ...patch }))
     setErrors(current => { const next = { ...current }; for (const key of Object.keys(patch)) delete next[key]; return next })

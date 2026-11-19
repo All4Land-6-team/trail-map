@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { LngLatBounds, type FilterSpecification, type GeoJSONSource, type GeoJSONSourceSpecification, type MapLayerMouseEvent, type MapLibreMap } from "maplibre-gl";
 import BaseMap from "./BaseMap";
 import { MapAction, type MapDimension } from "./MapAction";
+import { MapCompassAction } from "./MapCompassAction";
 import { supportsTerrain, type TerrainStatus } from "./terrain";
 import type { Course } from "../../types/course";
 import type { CourseProfileSample, CourseSpot } from "../../types/courseDetail";
@@ -305,6 +306,7 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
         disabled={!map || !enhancedRoute.metrics.valid}
         onClick={() => { preview.finish(false); enhancedRoute.fitWhole(); }} />}
       {extraMapAction}
+      <MapCompassAction />
     </div>
     {enhanced && dimension === "3D" && <div className="course-map__preview" data-preview-state={preview.state}>
       {preview.state === "idle" ? <button type="button" disabled={!preview.available} onClick={preview.play}>코스 미리보기</button>

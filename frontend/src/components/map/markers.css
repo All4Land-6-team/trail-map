@@ -110,3 +110,10 @@
   white-space: nowrap;
   font: 700 12px/14px "Noto Sans KR", sans-serif;
 }
+/* 정북 맞춤 버튼 (Figma 지도 나침반 · 지도 버튼 스타일). 지도가 돌아가 있을 때만 오른쪽 지도 도구 맨 아래에 나타난다. */
+/* 크기·모서리는 같은 도구 묶음의 다른 지도 버튼(.af-map-action)을 따른다. */
+.af-map-compass { border-color: var(--af-line); color: var(--af-green); background: #fff; }
+.base-map__compass.af-map-compass { width: 44px; height: 44px; border-radius: 14px; box-shadow: 0 5px 10px rgb(23 71 54 / 10%); }
+.af-map-compass__needle { display: inline-flex; flex-direction: column; align-items: center; }
+.af-map-compass__needle svg { display: block; transition: transform .1s linear; }
+.af-map-compass__needle span { margin-top: -1px; font: 700 8px/9px "Noto Sans KR", sans-serif; }
