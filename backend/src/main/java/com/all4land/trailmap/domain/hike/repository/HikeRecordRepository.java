@@ -79,6 +79,15 @@ public class HikeRecordRepository {
 
     /** 진행 중(등산 중·하산 중) 기록이 있는 일정이 하나라도 있는지 */
     public boolean existsActiveBySchedules(Collection<Long> scheduleIds) {
+        return existsBySchedules(scheduleIds, List.of("IN_PROGRESS", "DESCENDING"));
+    }
+
+    /** 종료한 기록이 있는 일정인지 (일정을 바꾸거나 지우면 기록이 다른 코스·날짜에 붙거나 캘린더에서 사라진다) */
+    public boolean existsCompletedBySchedules(Collection<Long> scheduleIds) {
+        return existsBySchedules(scheduleIds, List.of("COMPLETED"));
+    }
+
+    private boolean existsBySchedules(Collection<Long> scheduleIds, Collection<String> statuses) {
         if (scheduleIds.isEmpty()) {
             return false;
         }
@@ -86,9 +95,9 @@ public class HikeRecordRepository {
                 SELECT EXISTS (
                     SELECT 1 FROM hike_record
                     WHERE schedule_id IN (:scheduleIds) AND deleted_at IS NULL
-                      AND hike_status IN ('IN_PROGRESS', 'DESCENDING')
+                      AND hike_status IN (:statuses)
                 )
-                """, new MapSqlParameterSource("scheduleIds", scheduleIds), Boolean.class);
+                """, new MapSqlParameterSource("scheduleIds", scheduleIds).addValue("statuses", statuses), Boolean.class);
         return Boolean.TRUE.equals(exists);
     }
 
