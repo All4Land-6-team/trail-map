@@ -29,7 +29,7 @@ class HikeScheduleControllerTest {
 
     private static final HikeScheduleResponse RESPONSE = new HikeScheduleResponse(
             1L, LocalDate.of(2026, 11, 1), LocalTime.of(7, 30),
-            10L, "백운대 코스", 3L, "북한산", 4200.0, 10800
+            10L, "백운대 코스", 3L, "북한산", 4200.0, 10800, null
     );
 
     @Autowired
