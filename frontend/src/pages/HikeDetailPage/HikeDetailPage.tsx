@@ -6,10 +6,13 @@ import { Toast } from "../../components/feedback";
 import { ConfirmOverlay, HikeRouteMap, ScheduleSheet } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
+import { useCourseMetrics } from "../../hooks/useCourseMetrics";
 import { useScheduleCourse } from "../../hooks/useScheduleCourse";
 import { useToastMessage } from "../../hooks/useToastMessage";
 import { HikeScheduleApiError } from "../../api/hikeScheduleApi";
 import { deleteSchedule, useHikeSchedules } from "../../store/hikeScheduleStore";
+import { useHikeSession } from "../../store/hikeSessionStore";
+import { useScheduleRecord } from "../../store/scheduleRecord";
 import { formatDateTitle, formatDuration, formatKoreanTime, parseDateKey } from "../../utils/hikeFormat";
 import { hikePaths, navigateTab } from "../hikeRoutes";
 import "../hikePages.css";
@@ -25,6 +28,13 @@ export function HikeDetailPage() {
   const [date] = useState(() => readHashParams().get("date") ?? "");
   const schedule = useHikeSchedules().find(item => item.date === date);
   const course = useScheduleCourse(schedule);
+  // 서버 코스는 DEM 분석의 최대 고도·급경사 비율, 예시 코스는 예시 값을 쓴다.
+  const metrics = useCourseMetrics(course && !courseFixtures.some(item => item.id === schedule?.courseId) ? schedule?.serverCourseId : undefined);
+  const maxAltitudeM = metrics?.maxElevationMeters ?? course?.maxAltitudeM ?? null;
+  const steepPercent = metrics?.steepSectionRatioPercent ?? null;
+  // 등산을 시작했거나 마친 일정은 바꾸거나 지우지 않는다 (기록과 일정의 코스·날짜가 어긋나지 않게).
+  const record = useScheduleRecord(schedule);
+  const session = useHikeSession();
   const [overlay, setOverlay] = useState<"edit" | "cancel" | null>(null);
   const toast = useToastMessage();
   const backToCalendar = () => navigate(hikePaths.calendar(date || undefined));
@@ -58,8 +68,8 @@ export function HikeDetailPage() {
           <dl className="hike-detail-page__info">
             <div><dt>거리</dt><dd>{schedule.distanceKm.toFixed(1)} km</dd></div>
             <div><dt>예상 시간</dt><dd>{course.durationMinutes == null ? "—" : formatDuration(course.durationMinutes)}</dd></div>
-            <div><dt>최대 고도</dt><dd>{course.maxAltitudeM == null ? "—" : `${course.maxAltitudeM} m`}</dd></div>
-            <div><dt>평균 경사도</dt><dd>{course.averageSlopePercent == null ? "—" : `약 ${course.averageSlopePercent}% (시안)`}</dd></div>
+            <div><dt>최대 고도</dt><dd>{maxAltitudeM == null ? "—" : `${Math.round(maxAltitudeM)} m`}</dd></div>
+            <div><dt>급경사 비율</dt><dd>{steepPercent == null ? "—" : `${Math.round(steepPercent)}%`}</dd></div>
           </dl>
         </section>
 
@@ -71,9 +81,18 @@ export function HikeDetailPage() {
               const link = fixture ? { mountainId: fixture.mountainId, courseId: fixture.id } : course.courseLink;
               if (link) navigate(`${coursePaths.detail(link)}?returnTo=${encodeURIComponent(hikePaths.detail(date))}`);
             }} />
-          <Button fullWidth label="일정 수정" onClick={() => setOverlay("edit")} />
+          {record?.status === "COMPLETED"
+            ? <Button fullWidth label="등산 기록 보기" onClick={() => navigate(hikePaths.record(schedule.date))} />
+            : record
+              // 진행 중·하산 중: 마지막 진행 상태 화면으로 돌아간다.
+              ? <Button fullWidth label={record.status === "DESCENDING" ? "하산중 화면 보기" : "등산중 화면 보기"}
+                onClick={() => navigate(record.status === "DESCENDING" ? hikePaths.downhill(session?.alertsOn ?? false)
+                  : hikePaths.active(session?.alertsOn ?? false))} />
+              : <Button fullWidth label="일정 수정" onClick={() => setOverlay("edit")} />}
         </div>
-        <button type="button" className="hike-detail-page__cancel" onClick={() => setOverlay("cancel")}>일정 취소</button>
+        {record ? <p className="hike-detail-page__locked">{record.status === "COMPLETED"
+          ? "등산을 마친 일정은 바꾸거나 취소할 수 없어요." : "진행 중인 등산이 있는 일정은 바꾸거나 취소할 수 없어요."}</p>
+          : <button type="button" className="hike-detail-page__cancel" onClick={() => setOverlay("cancel")}>일정 취소</button>}
       </> : <p className="hike-detail-page__empty">일정을 찾을 수 없어요. 삭제되었거나 날짜가 바뀌었을 수 있어요.</p>}
       {toast.message && <Toast className="hike-page__toast hike-detail-page__toast" message={toast.message} />}
     </main>
