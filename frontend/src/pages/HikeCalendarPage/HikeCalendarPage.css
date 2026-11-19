@@ -2,6 +2,10 @@
 .hike-calendar-page > .af-top-bar { flex: none; width: auto; margin: 16px 16px 0; }
 .hike-calendar-page__body { display: flex; flex-direction: column; padding: 0 16px 24px; }
 .hike-calendar-page__calendar { flex: none; margin-top: 16px; }
+/* 주(줄) 사이 세로 간격을 줄인다. 가로 폭은 그대로 둔다. */
+.hike-calendar-page__calendar.af-calendar { min-height: 0; }
+.hike-calendar-page__calendar .af-calendar__grid { grid-auto-rows: 38px; margin-top: 12px; }
+.hike-calendar-page__calendar .af-calendar__day { width: min(38px, 100%); height: 38px; }
 
 /* 닉네임 (후기 작성자 이름) */
 .hike-nickname-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 12px 14px 12px 16px; border: 1px solid var(--af-line); border-radius: 16px; background: #fff; }
@@ -45,3 +49,8 @@
 .hike-record-card__distances dt { color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-record-card__distances dd { margin: 0; color: var(--af-ink); font: 700 14px/20px "Noto Sans KR", sans-serif; }
 .hike-calendar-page__record-button.af-button { min-height: 48px; border-radius: 10px; }
+/* 날짜가 지났는데 등산하지 않은 일정: 일정 상세로 들어가지 않는다. */
+.hike-plan-card--past { cursor: default; }
+.hike-plan-card--past .hike-plan-card__time { color: #8a978f; background: #eef1ee; }
+.hike-plan-card--past .hike-plan-card__title { color: #617b6c; }
+.hike-plan-card__past { flex: none; align-self: flex-start; color: #8a978f; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }

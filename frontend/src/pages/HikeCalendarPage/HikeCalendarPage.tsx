@@ -56,7 +56,9 @@ export function HikeCalendarPage() {
               : hikePaths.active(session?.alertsOn ?? false))} />
         </>
         : schedule
-          ? <PlanCard schedule={schedule} onOpen={() => navigate(hikePaths.detail(schedule.date))} />
+          // 날짜가 지났는데 등산하지 않은 일정은 일정 상세로 들어가지 않는다.
+          ? <PlanCard schedule={schedule}
+            onOpen={selectedKey < toDateKey(new Date()) ? undefined : () => navigate(hikePaths.detail(schedule.date))} />
           : <p className="hike-calendar-page__empty">선택한 날짜에 등록된 등산 일정이 없어요.</p>}
       </section>
     </main>
