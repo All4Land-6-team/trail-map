@@ -24,7 +24,6 @@ import { CourseSpots } from "./components/CourseSpots";
 import { useCourseDetail } from "./hooks/useCourseDetail";
 import { useParkControl } from "./hooks/useParkControl";
 import { useCourseFacilities } from "../../hooks/useCourseFacilities";
-import { useCourseNearbyPlaces } from "../../hooks/useCourseNearbyPlaces";
 import { useCoursePhotoSpots } from "./hooks/useCoursePhotoSpots";
 import { coursePhotoSpotDisplay } from "../../utils/coursePhotoSpotDisplay";
 import { withCourseFacilities } from "../../utils/courseFacilities";
@@ -55,9 +54,15 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const [selection, setSelection] = useState<{ key: string; index: number } | null>(null);
   const [communityCourse, setCommunityCourse] = useState<CommunityCourseDto | null>(null);
   const [communityReviews, setCommunityReviews] = useState<CommunityReviewDto[]>([]);
+  const [osmFoodSelection, setOsmFoodSelection] = useState<{ courseKey: string; spot: CourseSpot } | null>(null);
   const savedIds = useSavedCourseIds();
   const saved = savedIds.includes(courseId);
   const data = state.status === "success" ? state.data : null;
+  const courseKey = `${mountainId}/${courseId}`;
+  const storedFoodSpot = osmFoodSelection?.courseKey === courseKey ? osmFoodSelection.spot : null;
+  const routedFoodSpot = view.foodPlace ? { ...view.foodPlace, courseId } : null;
+  const osmFoodSpot = routedFoodSpot?.id === view.spotId ? routedFoodSpot
+    : storedFoodSpot?.id === view.spotId ? storedFoodSpot : null;
   const control = useParkControl(data?.course.routeSource ? data.course.backendCourseId : undefined, mountainId,
     view.tab === "spots" && view.category === "control");
   const examplePhotos = import.meta.env.DEV && import.meta.env.VITE_COURSE_PHOTO_SPOTS_SOURCE === "mock"
@@ -79,9 +84,6 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const shelters = useCourseFacilities(courseId, data?.course.backendCourseId,
     view.tab === "spots" && (view.category === "all" || view.category === "shelter"), "SHELTER");
   const shelterSpots = shelters.state.status === "success" ? shelters.state.spots : EMPTY_SPOTS;
-  const nearby = useCourseNearbyPlaces(courseId, data?.course.backendCourseId,
-    view.tab === "spots" && view.category === "food", data?.course.routeCoordinates[0]);
-  const nearbySpots = nearby.state.status === "success" ? nearby.state.spots : EMPTY_SPOTS;
   const reviewExcerpts: CommunityReview[] = communityReviews.map(review => ({
     id: String(review.reviewId), kind: "course" as const, targetId: String(review.targetId), content: review.content,
     photos: review.photoUrls, rating: review.rating ?? undefined, author: review.author, createdAt: review.createdAt,
@@ -91,8 +93,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const courses = useMemo(() => mapCourse && mapCourse.routeCoordinates.length > 1 ? [mapCourse] : [], [mapCourse]);
   const allSpots = useMemo(() => withCourseFacilities(photoSpots, [...restroomSpots, ...waterSpots, ...shelterSpots]),
     [photoSpots, restroomSpots, waterSpots, shelterSpots]);
-  const spots = useMemo(() => view.category === "food" ? nearbySpots : selectCourseSpots(allSpots, view.category),
-    [allSpots, nearbySpots, view.category]);
+  const spots = useMemo(() => view.category === "food" ? osmFoodSpot ? [osmFoodSpot] : EMPTY_SPOTS
+    : selectCourseSpots(allSpots, view.category), [allSpots, osmFoodSpot, view.category]);
   const summitCoordinate = useMemo(() => samples.reduce<(typeof samples)[number] | null>((highest, point) =>
     point.elevationMeters !== null && (!highest || point.elevationMeters > highest.elevationMeters!) ? point : highest, null)?.coordinate, [samples]);
   const selectedIndex = samples.length ? Math.max(0, Math.min(selection?.key === selectionKey ? selection.index : 0, samples.length - 1)) : -1;
@@ -143,7 +145,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   }
   function openSpot(spot: CourseSpot) {
     const next = { ...view, spotId: spot.id };
-    if (isFoodSpot(spot)) { changeView(next); return; }
+    if (isFoodSpot(spot)) return;
     const action = courseSpotAction(spot, view.spotId);
     if (action === "focus") { changeView(next); return; }
     if (action === "unavailable") {
@@ -173,8 +175,17 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
           center={data.course.routeCoordinates[0]}
           onSelect={() => {}} onNotify={notify} summitCoordinate={summitCoordinate} summitLabel="최고 고도"
           dataLabel={detailRouteLabel(data.course, analysisState, analysisView)}
-          profileSample={view.tab === "analysis" ? sample : null} spots={view.tab === "spots" ? spots : undefined}
-          selectedSpotId={view.spotId} focusSpotId={view.spotId} showSpotLabels={view.category !== "all"}
+          profileSample={view.tab === "analysis" ? sample : null}
+          spots={view.tab === "spots" && view.category !== "food" ? spots : undefined}
+          selectedSpotId={view.category === "food" ? osmFoodSpot?.id : view.spotId}
+          focusSpotId={view.category === "food" ? undefined : view.spotId} showSpotLabels={view.category !== "all"}
+          osmFoodEnabled={view.tab === "spots" && view.category === "food"}
+          selectedOsmFood={view.tab === "spots" && view.category === "food" ? osmFoodSpot : null}
+          onOsmFoodSelect={poi => {
+            const spot = { ...poi, courseId };
+            setOsmFoodSelection({ courseKey, spot });
+            changeView({ tab: "spots", category: "food", spotId: poi.id, foodPlace: poi });
+          }}
           onSpotSelect={spotId => {
             const spot = spots.find(item => item.id === spotId);
             if (spot) openSpot(spot);
@@ -190,12 +201,12 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
           ? <CourseAnalysis data={data} analysisState={analysisState} analysisView={analysisView} onRetryAnalysis={retryAnalysis}
             reviews={reviewExcerpts} reviewTotal={reviewTotal} visibility={visibility} selectedIndex={selectedIndex}
             onSelect={index => setSelection({ key: selectionKey, index })} onToggle={toggleMetric} onReviewsOpen={onReviewsOpen ? () => onReviewsOpen(request) : undefined} />
-          : <CourseSpots control={control} spots={spots} category={view.category} selectedId={view.spotId}
+          : <CourseSpots control={control} spots={spots} category={view.category}
+            selectedId={view.category === "food" ? osmFoodSpot?.id : view.spotId}
             photos={photoState} onRetryPhotos={photos.retry}
             restrooms={restrooms.state} onRetryRestrooms={restrooms.retry}
             water={water.state} onRetryWater={water.retry}
             shelters={shelters.state} onRetryShelters={shelters.retry}
-            nearby={nearby.state} onRetryNearby={nearby.retry}
             onCategory={category => changeView({ tab: "spots", category })} onOpen={openSpot} />}
         footer={<div className="course-detail-actions">
           <Button variant="secondary" aria-pressed={saved} onClick={save}

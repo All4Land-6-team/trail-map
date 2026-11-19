@@ -6,7 +6,9 @@ export const SPOT_CATEGORIES: readonly { value: SpotCategory; label: string }[] 
   { value: "photo", label: "사진 스팟" }, { value: "food", label: "음식점" },
   { value: "control", label: "통제정보" },
 ];
-export function spotCategoryLabel(category: SpotCategory) {
+export function spotCategoryLabel(category: SpotCategory | CourseSpot["kind"]) {
+  if (category === "restaurant") return "음식점";
+  if (category === "cafe") return "카페";
   return SPOT_CATEGORIES.find(item => item.value === category)?.label ?? "전체";
 }
 export function isFoodSpot(spot: Pick<CourseSpot, "kind">) {

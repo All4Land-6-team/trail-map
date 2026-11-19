@@ -24,25 +24,6 @@ Java 21, Spring Boot, PostgreSQL/PostGIS 기반 백엔드입니다.
 검증 절차를 따릅니다. `application-secret.properties.example`에는 안전한
 자리표시자만 있으며 실제 비밀번호는 커밋하지 않습니다.
 
-Kakao Local API를 사용하는 코스 주변 장소 조회에는 서버 전용 REST API 키가
-필요합니다. 실제 키는 `application-secret.properties`에 아래처럼 추가하거나
-`KAKAO_REST_API_KEY` 환경 변수로 주입합니다. 프론트엔드 환경 변수에는 넣지 않습니다.
-
-```properties
-kakao.local.rest-api-key=<KAKAO_REST_API_KEY>
-```
-
-코스 주변 편의점·음식점·카페는 `GET /api/v1/courses/{courseId}/nearby-places`로
-조회합니다. 서버가 코스 경로를 최대 8개 검색 지점으로 나눠 Kakao Local API를 호출하고,
-Kakao 장소 ID 중복을 제거한 뒤 코스 500m 이내 결과만 반환합니다. 결과는 10분간
-메모리에 캐시하며 Kakao API 오류는 `PLACE_502_*`, 검색 범위 제한은 `PLACE_422_1`,
-키 미설정은 `PLACE_503_1`로 응답합니다. 외부 호출은 제한된 스레드에서 병렬 실행하고
-전체 요청 제한시간을 적용합니다. 검색 반경·코스 거리·샘플 간격·최대 지점 및 페이지·캐시 시간은 각각
-`KAKAO_LOCAL_SEARCH_RADIUS_METERS`, `KAKAO_LOCAL_MAX_DISTANCE_METERS`,
-`KAKAO_LOCAL_SAMPLE_INTERVAL_METERS`, `KAKAO_LOCAL_MAX_SAMPLE_POINTS`,
-`KAKAO_LOCAL_MAX_PAGES`, `KAKAO_LOCAL_CACHE_TTL`로 조정할 수 있으며, 전체 제한시간과
-동시 호출 수는 `KAKAO_LOCAL_REQUEST_TIMEOUT`, `KAKAO_LOCAL_MAX_CONCURRENT_REQUESTS`로 조정합니다.
-
 ## 개발용 시드 데이터
 
 등산 일정 API를 화면과 함께 확인하려면 빈 개발 DB에 `docs/dev-seed-hike-courses.sql`을 실행합니다. 프론트 임시 코스 데이터와 같은 산 5개·코스 11개와 임시 사용자(1번)를 넣습니다. Flyway 마이그레이션이 아니므로 운영 DB에는 실행하지 않습니다.
