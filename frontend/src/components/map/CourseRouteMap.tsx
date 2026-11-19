@@ -9,7 +9,9 @@ import type { CourseProfileSample, CourseSpot } from "../../types/courseDetail";
 import { SpotMarker } from "./SpotMarker";
 import { useEnhancedCourseRoute, reducedRouteMotion } from "./useEnhancedCourseRoute";
 import { useCourseRoutePreview } from "./useCourseRoutePreview";
-import { recoverRouteTerrain } from "./routeMapCamera";
+import { recoverRouteTerrain, spotFocusZoom } from "./routeMapCamera";
+import { isFoodSpot } from "../../utils/courseProfile.ts";
+import { fetchOsmFoodPois, foodPoiLayerIds, foodPoiSources, nearestOsmFoodPois, toOsmFoodPoi, type OsmFoodPoi } from "./osmFoodPoi";
 import "./course-route-map.css";
 
 const summitAsset = new URL("../../assets/icons/course-summit.svg", import.meta.url).href;
@@ -42,10 +44,14 @@ export type CourseRouteMapProps = {
   showSpotLabels?: boolean;
   extraMapAction?: ReactNode;
   onSpotSelect?: (id: string) => void;
+  osmFoodEnabled?: boolean;
+  onOsmFoodSelect?: (poi: OsmFoodPoi) => void;
+  selectedOsmFood?: Pick<OsmFoodPoi, "id" | "name" | "coordinate"> | null;
 };
 
 export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewStart, onPreviewEnd, mountainId, center, mapBottomInset = 0, onSelect, onNotify, variant = "list", profileSample,
-  summitCoordinate, summitLabel = "정상", dataLabel, spots, selectedSpotId, focusSpotId, showSpotLabels = false, extraMapAction, onSpotSelect }: CourseRouteMapProps) {
+  summitCoordinate, summitLabel = "정상", dataLabel, spots, selectedSpotId, focusSpotId, showSpotLabels = false, extraMapAction, onSpotSelect,
+  osmFoodEnabled = false, onOsmFoodSelect, selectedOsmFood }: CourseRouteMapProps) {
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [readyInput, setReadyInput] = useState<{ map: MapLibreMap; courses: readonly Course[] } | null>(null);
   const routesReady = readyInput?.map === map && readyInput?.courses === courses;
@@ -54,6 +60,8 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
   const [summit, setSummit] = useState<{ x: number; y: number } | null>(null);
   const [profilePoint, setProfilePoint] = useState<{ x: number; y: number } | null>(null);
   const [spotPoints, setSpotPoints] = useState<readonly { spot: CourseSpot; x: number; y: number }[]>([]);
+  const [osmFoodPois, setOsmFoodPois] = useState<readonly OsmFoodPoi[]>([]);
+  const [osmFoodMarkerPoints, setOsmFoodMarkerPoints] = useState<readonly { poi: OsmFoodPoi; x: number; y: number }[]>([]);
   const [locating, setLocating] = useState(false);
   const alive = useRef(true);
   const terrainEnabled = supportsTerrain(mountainId ?? selected?.mountainId ?? courses[0]?.mountainId);
@@ -105,7 +113,9 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
       const padding = { top: Math.min(110, visibleHeight * 0.35), bottom: inset + Math.min(36, visibleHeight * 0.15), left: 35, right: 82 };
       const focusedSpot = spots?.find(spot => spot.id === focusSpotId);
       if (focusedSpot) {
-        map.easeTo({ center: focusedSpot.coordinate, padding, offset: [0, 20], duration: 200 });
+        map.easeTo({ center: focusedSpot.coordinate,
+          ...(isFoodSpot(focusedSpot) ? { zoom: spotFocusZoom(map.getZoom()) } : {}), padding,
+          offset: [0, 20], duration: 200 });
       } else if (selected?.routeCoordinates.length) {
         const bounds = new LngLatBounds();
         selected.routeCoordinates.forEach(point => bounds.extend(point));
@@ -136,6 +146,72 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
   }, [map, onSelect]);
 
   useEffect(() => {
+    if (!map || !osmFoodEnabled || !onOsmFoodSelect) return;
+    const canvas = map.getCanvas();
+    const foodAt = (event: MapLayerMouseEvent) => {
+      const layers = foodPoiLayerIds(map.getStyle().layers);
+      if (!layers.length) return null;
+      return map.queryRenderedFeatures(event.point, { layers })
+        .map(feature => toOsmFoodPoi(feature, [event.lngLat.lng, event.lngLat.lat]))
+        .find((poi): poi is OsmFoodPoi => poi !== null) ?? null;
+    };
+    const selectFood = (event: MapLayerMouseEvent) => {
+      const poi = foodAt(event);
+      if (!poi) return;
+      event.preventDefault();
+      onOsmFoodSelect(poi);
+    };
+    const updateCursor = (event: MapLayerMouseEvent) => {
+      const food = foodAt(event);
+      if (food) {
+        canvas.dataset.osmFoodCursor = "true";
+        canvas.style.cursor = "pointer";
+      } else if (canvas.dataset.osmFoodCursor) {
+        delete canvas.dataset.osmFoodCursor;
+        canvas.style.cursor = "";
+      }
+    };
+    map.on("click", selectFood);
+    map.on("mousemove", updateCursor);
+    return () => {
+      map.off("click", selectFood);
+      map.off("mousemove", updateCursor);
+      if (canvas.dataset.osmFoodCursor) {
+        delete canvas.dataset.osmFoodCursor;
+        canvas.style.cursor = "";
+      }
+    };
+  }, [map, osmFoodEnabled, onOsmFoodSelect]);
+
+  useEffect(() => {
+    if (!map || !osmFoodEnabled) return;
+    const controller = new AbortController();
+    let remoteLoaded = false;
+    const updateFoodPois = () => {
+      if (remoteLoaded || !map.isStyleLoaded()) return;
+      const features = foodPoiSources(map.getStyle().layers).flatMap(({ source, sourceLayer }) => {
+        try { return map.querySourceFeatures(source, { sourceLayer }); }
+        catch { return []; }
+      });
+      const origin = selected?.routeCoordinates[0] ?? center;
+      const next = nearestOsmFoodPois(features, origin, 8);
+      setOsmFoodPois(current => current.length === next.length
+        && current.every((poi, index) => poi.id === next[index]?.id) ? current : next);
+    };
+    map.on("idle", updateFoodPois);
+    updateFoodPois();
+    const origin = selected?.routeCoordinates[0] ?? center;
+    void fetchOsmFoodPois(origin, controller.signal).then(pois => {
+      remoteLoaded = true;
+      if (pois.length) setOsmFoodPois(pois);
+    }).catch(() => { /* 외부 OSM 조회 실패 시 로드된 타일 POI를 유지한다. */ });
+    return () => {
+      controller.abort();
+      map.off("idle", updateFoodPois);
+    };
+  }, [map, osmFoodEnabled, selected, center]);
+
+  useEffect(() => {
     if (!map) return;
     const observer = new ResizeObserver(() => map.resize());
     observer.observe(map.getContainer());
@@ -144,19 +220,21 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
 
   useEffect(() => {
     if (!map) return;
-    if (enhanced && !profileSample && !spots?.length) return;
+    if (enhanced && !profileSample && !spots?.length && !osmFoodPois.length) return;
     const update = () => {
       const point = summitCoordinate ?? selected?.routeCoordinates.at(-1);
       if (!enhanced) setSummit(point ? map.project(point) : null);
       setProfilePoint(profileSample ? map.project(profileSample.coordinate) : null);
       if (spots?.length) setSpotPoints(spots.map(spot => ({ spot, ...map.project(spot.coordinate) })));
       else setSpotPoints(current => current.length ? [] : current);
+      setOsmFoodMarkerPoints(osmFoodEnabled
+        ? osmFoodPois.map(poi => ({ poi, ...map.project(poi.coordinate) })) : []);
     };
     map.on("move", update);
     map.on("resize", update);
     update();
     return () => { map.off("move", update); map.off("resize", update); };
-  }, [map, selected, summitCoordinate, profileSample, spots, enhanced]);
+  }, [map, selected, summitCoordinate, profileSample, spots, osmFoodEnabled, osmFoodPois, enhanced]);
 
   useEffect(() => {
     if (!terrainEnabled && !enhanced) map?.easeTo({ pitch: dimension === "3D" ? 50 : 0, duration: 350 });
@@ -178,6 +256,18 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
     }, { timeout: 10000, maximumAge: 60000 });
   }
 
+  const visibleSpotPoints = spotPoints.filter(({ spot }) => spot.courseId === selected?.id);
+  const renderSpot = ({ spot, x, y }: { spot: CourseSpot; x: number; y: number }) => {
+    if (spot.kind === "restaurant" || spot.kind === "cafe") return null;
+    return <SpotMarker key={spot.id} kind={spot.kind} compact
+      className="course-map__spot"
+      style={{ left: x, top: y }} data-spot-id={spot.id}
+      aria-label={`${spot.name} ${spot.communityTarget && spot.id === selectedSpotId ? '커뮤니티 상세 보기' : '지도에서 선택'}`}
+      aria-pressed={spot.id === selectedSpotId}
+      label={showSpotLabels ? spot.name : undefined}
+      onClick={event => { event.stopPropagation(); onSpotSelect?.(spot.id); }} />;
+  };
+
   return <div className={`course-map course-map--${variant}`} data-selected-course={selected?.id ?? ""} data-map-mode={dimension} data-route-ready={routesReady}
     data-route-count={courses.length} data-route-coordinate-count={courses.reduce((total, course) => total + course.routeCoordinates.length, 0)}
     aria-label={selected ? `지도 경로: ${selected.name}` : "코스 지도"}>
@@ -194,10 +284,17 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
       style={{ left: profilePoint.x, top: profilePoint.y }} aria-label={`그래프 선택 위치 ${profileSample.distanceKm.toFixed(1)} km`}>
       <img src={profilePositionAsset} alt="" />
     </span>}
-    {spots?.length ? spotPoints.filter(({ spot }) => spot.courseId === selected?.id).map(({ spot, x, y }) => <SpotMarker key={spot.id} kind={spot.kind} compact
-      className="course-map__spot" style={{ left: x, top: y }} data-spot-id={spot.id}
-      aria-label={`${spot.name} ${spot.communityTarget && spot.id === selectedSpotId ? '커뮤니티 상세 보기' : '지도에서 선택'}`} aria-pressed={spot.id === selectedSpotId}
-      label={showSpotLabels ? spot.name : undefined} onClick={() => onSpotSelect?.(spot.id)} />) : null}
+    {spots?.length ? visibleSpotPoints.map(point => renderSpot(point)) : null}
+    {osmFoodEnabled && osmFoodMarkerPoints.map(({ poi, x, y }) => {
+      const selectedFood = poi.id === selectedOsmFood?.id;
+      return <SpotMarker key={poi.id} kind={poi.kind} compact
+        className={["course-map__spot", "course-map__osm-food-marker", selectedFood && "course-map__osm-food-marker--selected"]
+          .filter(Boolean).join(" ")}
+        style={{ left: x, top: y }} data-osm-food-id={poi.id}
+        aria-label={`${poi.name} ${selectedFood ? "선택됨" : "지도에서 선택"}`} aria-pressed={selectedFood}
+        label={selectedFood ? poi.name : undefined}
+        onClick={event => { event.stopPropagation(); onOsmFoodSelect?.(poi); }} />;
+    })}
     <div className="course-map__actions">
       <MapAction dimensionMode={dimension === "2D" ? "3D" : "2D"} aria-label={`${dimension === "2D" ? "3D" : "2D"} 지도 보기`}
         aria-busy={terrainEnabled && terrainStatus === "loading"}

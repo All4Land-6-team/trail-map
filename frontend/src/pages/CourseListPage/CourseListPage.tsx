@@ -8,6 +8,7 @@ import { EmptyState, Toast } from "../../components/feedback";
 import { BottomSheet } from "../../components/overlay";
 import { useSnappingMapSheet } from "../../hooks/useSnappingMapSheet";
 import { coursePaths } from "../../routes/courseRoutes";
+import { courseFoodDetailPath } from "../../routes/courseDetailRoutes";
 import { canScheduleCourse } from "../../utils/courseIdentity";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
@@ -18,6 +19,7 @@ import { useHikeSchedules } from "../../store/hikeScheduleStore";
 import { CourseFilterSheet } from "./components/CourseFilterSheet";
 import { CourseMap } from "./components/CourseMap";
 import { supportsTerrain } from "../../components/map/terrain";
+import type { OsmFoodPoi } from "../../components/map/osmFoodPoi";
 import { hasRouteCatalog } from "../../api/courseRoutes";
 import { useCourseDiscovery } from "./hooks/useCourseDiscovery";
 import "./course-list.css";
@@ -79,6 +81,14 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
       navigateFromHome(coursePaths.schedule(request));
     }
   }
+  function openFood(poi: OsmFoodPoi) {
+    if (!selectedCourse?.detailAvailable) {
+      notify("이 코스의 상세 정보를 준비 중이에요.");
+      return;
+    }
+    const request = { mountainId, courseId: selectedCourse.id };
+    navigateFromHome(courseFoodDetailPath(request, poi, coursePaths.list(mountainId, selectedCourse.id)));
+  }
   function navigateTab(destination: BottomDestination) {
     if (destination === "home") onBack();
     else navigateFromHome(homePaths[destination]);
@@ -109,7 +119,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
           mapBottomInset={mapBottomInset}
           enhanced={enhancedMap}
           onPreviewStart={previewControls.begin} onPreviewEnd={previewControls.end}
-          onSelect={selectExplicitly} onNotify={notify} />
+          onSelect={selectExplicitly} onNotify={notify} onOsmFoodOpen={openFood} />
         <TopBar title={mountain.name} onBack={onBack} showAction={false} className="course-page__top" />
       </div>
       <BottomSheet title={`${mountain.name} 코스 ${courses.length}개`} showClose={false} showDescription={false}

@@ -72,6 +72,8 @@
 .course-spots__list { position: relative; display: flex; flex: 1 1 0; min-height: 0; flex-direction: column; gap: 8px; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: thin; }
 .course-spot-card { display: flex; flex: none; width: 100%; min-height: 58px; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 13px; border: 1px solid var(--af-line); border-radius: 12px; color: var(--af-ink); background: #f6f9f4; text-align: left; font-family: inherit; cursor: pointer; }
 .course-spot-card[aria-pressed="true"] { border-color: var(--af-green); background: #eef6ed; }
+.course-spots[data-category="food"] .course-spot-card { transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease; }
+.course-spots[data-category="food"] .course-spot-card[aria-pressed="true"] { box-shadow: inset 3px 0 0 var(--af-green); }
 .course-spot-card > span { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .course-spot-card strong { font-size: 12px; line-height: 18px; font-weight: 500; }
 .course-spot-card > span > span { color: #617b6c; font-size: 11px; line-height: 16px; }
@@ -110,6 +112,18 @@
 .course-spots__status { flex: none; margin: 0 0 10px; padding: 10px 0; color: #617b6c; font-size: 12px; line-height: 19px; }
 .course-spots__status p { margin: 0 0 8px; }
 .course-spots__status .af-button { min-height: 34px; font-size: 12px; }
+.course-place-detail { flex: none; margin: 0 0 10px; padding: 12px 14px; border: 1px solid #d9e7d8; border-radius: 14px; background: linear-gradient(145deg, #f5faf2, #fff); }
+.course-place-detail__kind { display: inline-flex; margin-bottom: 4px; padding: 2px 7px; border-radius: 999px; color: var(--af-green); background: #e8f4e5; font-size: 10px; line-height: 16px; font-weight: 700; }
+.course-place-detail h3 { margin: 0 0 8px; color: var(--af-ink); font-size: 15px; line-height: 22px; }
+.course-place-detail dl { display: grid; gap: 4px; margin: 0; }
+.course-place-detail dl > div { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 6px; font-size: 11px; line-height: 17px; }
+.course-place-detail dt { color: #809286; }
+.course-place-detail dd { margin: 0; color: #435d4e; overflow-wrap: anywhere; }
+.course-place-detail a { display: inline-flex; margin-top: 9px; color: var(--af-green); font-size: 11px; line-height: 17px; font-weight: 700; text-decoration: none; }
+.course-place-detail a:focus-visible { outline: 2px solid var(--af-green); outline-offset: 3px; border-radius: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .course-spots[data-category="food"] .course-spot-card { transition: none; }
+}
 
 /* Official office notices: scroll within the existing sheet. */
 .course-control { min-width: 0; padding-bottom: 16px; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
