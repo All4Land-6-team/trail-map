@@ -74,7 +74,8 @@ export function syncPendingHikeActions(): Promise<void> {
         write(read().filter(other => other.hikeRecordId !== item.hikeRecordId));
       } catch (error) {
         // 서버가 거절한 동작(4xx)은 다시 보내도 같으므로 버린다. 통신 끊김·서버 오류는 남겨 두고 다음에 다시 보낸다.
-        if (isHikeNetworkError(error) || !(error instanceof HikeRecordApiError) || error.status >= 500) break;
+        // 로그인 만료(401)는 다시 로그인하면 같은 요청이 성공하므로 남겨 둔다 (위치 대기열과 같은 기준).
+        if (isHikeNetworkError(error) || !(error instanceof HikeRecordApiError) || error.status >= 500 || error.status === 401) break;
         write(read().filter(other => other.hikeRecordId !== item.hikeRecordId));
       }
     }
