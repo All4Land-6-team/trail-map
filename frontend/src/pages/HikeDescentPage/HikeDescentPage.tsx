@@ -7,7 +7,7 @@ import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
 import { activeHikeFor } from "../../utils/activeHike";
 import { HikeEndConfirm, HikeProgressPanel, HikeRouteMap, HikeShareSheet, HikeSunsetNotice, SpotFilterChips, SunArc, type SpotFilter } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
-import { MapAction } from "../../components/map";
+import { MapAction, MapCompassAction } from "../../components/map";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
 import { useSunTimes } from "../../hooks/useSunTimes";
 import { useHikeControls } from "../HikeActivePage/useHikeControls";
@@ -58,6 +58,7 @@ export function HikeDescentPage() {
           <MapAction iconName={alertsOn ? "Bell" : "BellOff"} aria-pressed={alertsOn}
             aria-label={alertsOn ? "일몰 알림 끄기" : "일몰 알림 켜기"} onClick={() => setHikeAlerts(!alertsOn)} />
           <MapAction variant="brand" aria-label="공유" onClick={() => setOverlay("share")} />
+          <MapCompassAction />
         </div>
         <div className="hike-active-page__sun">
           <HikeSunsetNotice sun={sun} />

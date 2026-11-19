@@ -67,3 +67,11 @@ body {
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* 오른쪽 지도 도구가 없는 화면에서만 지도 위에 띄우는 정북 맞춤 버튼 (모양은 .af-map-compass) */
+.base-map__compass {
+  position: absolute;
+  z-index: 2;
+  top: 42%;
+  right: 12px;
+}
