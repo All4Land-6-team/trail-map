@@ -75,10 +75,21 @@ export function scheduleFor(course: HikeCourse, date: string, startTime: string)
 }
 
 // 언제 열어도 일정이 보이도록 오늘 기준 날짜를 쓴다.
+// 지난 일정 두 건은 등산을 마친 기록이 있다 (REC-01·03 확인용).
 export const sampleSchedules: HikeSchedule[] = [
+  completedSchedule(sampleCourses[1], -14, "08:00", 5.3, 172),
+  completedSchedule(sampleCourses[0], -7, "07:30", 4.5, 130),
   scheduleFor(sampleCourses[0], daysFromToday(0), "07:30"),
   scheduleFor(sampleCourses[1], daysFromToday(4), "08:00"),
 ];
+
+function completedSchedule(course: HikeCourse, offset: number, startTime: string, traveledKm: number, durationMinutes: number): HikeSchedule {
+  const date = daysFromToday(offset);
+  const startedAt = new Date(`${date}T${startTime}:00`);
+  const endedAt = new Date(startedAt.getTime() + durationMinutes * 60_000);
+  return { ...scheduleFor(course, date, startTime),
+    record: { status: "COMPLETED", startedAt: startedAt.toISOString(), endedAt: endedAt.toISOString(), traveledKm, durationMinutes } };
+}
 
 const baegundae = sampleCourses[0];
 

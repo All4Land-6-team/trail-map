@@ -40,6 +40,20 @@ export type HikeSchedule = {
   mountainName: string;
   courseName: string;
   distanceKm: number;
+  /** 이 일정으로 시작한 등산 기록. 시작하지 않은 일정은 없다. */
+  record?: HikeScheduleRecord;
+};
+
+/** 일정에 연결된 등산 기록 요약 (REC-01·02 캘린더 카드, REC-03 기록 상세) */
+export type HikeScheduleRecord = {
+  /** 등산 기록 API의 기록 번호. 예시 데이터는 없다. */
+  hikeRecordId?: number;
+  status: "IN_PROGRESS" | "DESCENDING" | "COMPLETED";
+  /** ISO 시각 */
+  startedAt?: string;
+  endedAt?: string;
+  traveledKm?: number;
+  durationMinutes?: number;
 };
 
 /** 등산 중·하산 중 화면에 필요한 코스·진행 정보 */
