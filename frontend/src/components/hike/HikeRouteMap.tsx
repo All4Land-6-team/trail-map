@@ -9,7 +9,6 @@ import { buildHikeRouteSegments, hikeRouteColors } from "./hikeRouteSegments";
 import { distanceToCourseMeters, OFF_COURSE_METERS } from "../../utils/hikeTracking";
 import { cameraForTwoPoints, chaikinSmooth, NAVIGATION_FAR_METERS, navigationFix, progressOnSmoothRoute, smoothLine, splitRouteAt } from "../../utils/hikeNavigation";
 import { NavigationArrowMarker } from "./NavigationArrowMarker";
-import { installTerrainFallback } from "./terrainFallback";
 import "./hike.css";
 // 출발·도착 표시는 코스 목록 지도와 같은 모양을 쓴다.
 import "../map/course-route-map.css";
@@ -208,8 +207,6 @@ export function HikeRouteMap({
   const handleMapReady = useCallback((next: MapLibreMap | null) => {
     setMap(next);
     if (!next) return;
-    // 범위 안의 빈 지형 타일 때문에 3D 지형 전체가 꺼지지 않도록 평평한 타일로 채운다.
-    installTerrainFallback(next);
     next.once("load", () => {
       if (!next.getSource(NAV_AHEAD_SOURCE_ID)) {
         // 내비 모드에서 앞으로 갈 경로: 흰 테두리 위에 굵은 선. 내비 모드가 아니면 숨긴다.
