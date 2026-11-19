@@ -17,7 +17,8 @@ import { hikePaths, navigateTab } from "../hikeRoutes";
 import "../hikePages.css";
 import "./HikeRecordPage.css";
 
-const MAP_PADDING = { top: 28, bottom: 28, left: 28, right: 28 };
+// 출발·도착 이름표가 잘리지 않게 좌우 여백을 넉넉히 둔다.
+const MAP_PADDING = { top: 32, bottom: 32, left: 48, right: 48 };
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 /** 10월 11일 (일) */
@@ -117,8 +118,9 @@ export function HikeRecordPage() {
         {hikeRecordId !== undefined && !loaded
           ? <p className="hike-record-page__map-status" role="status">경로를 불러오는 중이에요.</p>
           : coursePath.length > 1
-            // 요약용 2D 지도라 3D 지형(mountainName)은 불러오지 않는다.
-            ? <HikeRouteMap route={coursePath} traveledPath={traveledPath} alwaysShowTraveledPath dimension="2D" padding={MAP_PADDING} label={`${title} 등산 기록 지도`} />
+            // 코스 목록 지도처럼 지형 음영을 위에서 내려다보고 출발·도착을 표시한다. 요약 지도라 손으로 움직이지 않게 고정한다.
+            ? <HikeRouteMap route={coursePath} traveledPath={traveledPath} alwaysShowTraveledPath dimension="2D" endpointLabels
+              mountainName={schedule.mountainName} interactive={false} padding={MAP_PADDING} label={`${title} 등산 기록 지도`} />
             : <p className="hike-record-page__map-status" role="status">경로를 불러오지 못했어요.</p>}
       </section>
       <ul className="hike-record-page__legend">
@@ -134,7 +136,6 @@ export function HikeRecordPage() {
 
       <div className="hike-record-page__actions">
         <Button fullWidth label="후기 작성" onClick={() => setPickingReview(true)} />
-        <Button fullWidth variant="secondary" label="내 등산으로" onClick={backToCalendar} />
       </div>
 
       {writtenReviews.length > 0 && <section className="hike-record-page__reviews" aria-labelledby="hike-record-reviews-title">

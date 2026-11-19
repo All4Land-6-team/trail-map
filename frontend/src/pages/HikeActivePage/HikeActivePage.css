@@ -2,7 +2,6 @@
 .hike-active-page__sun { position: absolute; z-index: 3; right: 0; bottom: calc(var(--hike-sheet-inset, 0px) + 25px); left: 0; display: flex; flex-direction: column; align-items: center; padding: 48px 0 4px; background: linear-gradient(to bottom, transparent 0 40%, rgb(237 244 235 / 40%) 70%, rgb(237 244 235 / 80%) 100%); pointer-events: none; transition: bottom .28s cubic-bezier(.2, .8, .2, 1); }
 .hike-active-page__sun > * { pointer-events: auto; }
 .hike-active-page__sun > .af-sun-arc { min-height: 0; }
-.hike-active-page__sun > .af-hike-sunset-notice { position: relative; z-index: 2; margin-bottom: -16px; }
 .hike-active-page .hike-map-page__tools, .hike-descent-page .hike-map-page__tools { top: 120px; }
 .hike-active-page .hike-route-map__base .base-map__notices,
 .hike-descent-page .hike-route-map__base .base-map__notices { right: 72px; bottom: calc(var(--hike-sheet-inset, 0px) + 200px); }
@@ -15,3 +14,6 @@
 @media (prefers-reduced-motion: reduce) {
   .hike-active-page__sun { transition: none; }
 }
+
+/* 일몰 알림: 필터 칩 아래 왼쪽. 오른쪽 지도 도구(약 56px)와 겹치지 않게 폭을 줄인다. */
+.hike-map-page__top > .af-hike-sunset-notice { align-self: flex-start; max-width: calc(100% - 32px - 56px); margin: -3px 0 0 16px; }
