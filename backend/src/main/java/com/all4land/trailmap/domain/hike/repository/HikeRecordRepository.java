@@ -24,6 +24,7 @@ public class HikeRecordRepository {
                    traveled_distance_meters, actual_duration_seconds,
                    ST_X(ST_EndPoint(traveled_path)) AS last_longitude,
                    ST_Y(ST_EndPoint(traveled_path)) AS last_latitude,
+                   last_position_recorded_at,
                    ST_Length(recorded_course_geometry::geography) AS course_distance_meters
             FROM hike_record
             """;
@@ -39,6 +40,7 @@ public class HikeRecordRepository {
             resultSet.getObject("actual_duration_seconds", Integer.class),
             resultSet.getObject("last_longitude", Double.class),
             resultSet.getObject("last_latitude", Double.class),
+            resultSet.getObject("last_position_recorded_at", OffsetDateTime.class),
             resultSet.getObject("course_distance_meters", Double.class)
     );
 
@@ -157,12 +159,14 @@ public class HikeRecordRepository {
     /**
      * 이동 경로 뒤에 선분을 이어 붙이고 이동 거리를 경로 길이(구면 거리)로 갱신한다.
      * 경로가 비어 있으면 그 선분이 경로가 된다. 이어 붙인 지점의 중복 점은 지운다.
+     * 마지막으로 붙인 위치의 측정 시각을 함께 저장해 같은 위치를 다시 받으면 거른다.
      */
-    public void appendPath(Long hikeRecordId, String lineStringWkt, OffsetDateTime updatedAt) {
+    public void appendPath(Long hikeRecordId, String lineStringWkt, OffsetDateTime lastRecordedAt, OffsetDateTime updatedAt) {
         jdbcTemplate.update("""
                 UPDATE hike_record record
                 SET traveled_path = next.path,
                     traveled_distance_meters = ST_Length(next.path::geography),
+                    last_position_recorded_at = :lastRecordedAt,
                     updated_at = :updatedAt
                 FROM (
                     SELECT ST_RemoveRepeatedPoints(
@@ -176,6 +180,7 @@ public class HikeRecordRepository {
                 """, new MapSqlParameterSource()
                 .addValue("hikeRecordId", hikeRecordId)
                 .addValue("line", lineStringWkt)
+                .addValue("lastRecordedAt", lastRecordedAt)
                 .addValue("updatedAt", updatedAt));
     }
 

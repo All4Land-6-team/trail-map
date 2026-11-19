@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { findCourse } from "../../api/hikeMock";
 import { Button } from "../../components/common/Button";
-import { Toast } from "../../components/feedback";
+import { NearbyAlert, Toast } from "../../components/feedback";
 import { hikeTargetIds, setHikeAlerts, useHikeSession } from "../../store/hikeSessionStore";
 import { useRestoreActiveHike } from "../../store/hikeSessionRestore";
 import { activeHikeFor } from "../../utils/activeHike";
@@ -12,6 +12,7 @@ import { navigate } from "../../hooks/useHashRoute";
 import { useSunTimes } from "../../hooks/useSunTimes";
 import { hikePaths, navigateTab } from "../hikeRoutes";
 import { useHikeControls } from "./useHikeControls";
+import { useHikeFacilities, useNearbyFacility } from "./useHikeFacilities";
 import "../hikePages.css";
 import "./HikeActivePage.css";
 
@@ -29,6 +30,8 @@ export function HikeActivePage() {
   const alertsOn = session?.alertsOn ?? false;
   const [overlay, setOverlay] = useState<"share" | "end" | null>(null);
   const controls = useHikeControls(session, hike);
+  const facilities = useHikeFacilities(session, hike);
+  const nearby = useNearbyFacility(session?.currentPosition, facilities);
   const routeCenter = controls.route[Math.floor(controls.route.length / 2)];
   const sun = useSunTimes(session?.currentPosition ?? routeCenter);
   const finish = () => controls.finish();
@@ -42,7 +45,7 @@ export function HikeActivePage() {
         <HikeRouteMap route={controls.route} peak={controls.peak} mountainName={hike.mountainName} traveledKm={controls.traveledKm ?? hike.traveledKm}
           {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
           progressMeters={controls.progressMeters} stage={session.phase === "downhill" ? "descent" : "ascent"}
-          spots={hike.spots} filter={filter} dimension={dimension} recenterKey={recenterKey} navigation
+          spots={facilities} filter={filter} dimension={dimension} recenterKey={recenterKey} navigation
           padding={{ top: 150, bottom: 320, left: 40, right: 72 }}
           label={`${hike.courseName} 등산 경로 지도`} />
         <div className="hike-map-page__top">
@@ -51,6 +54,8 @@ export function HikeActivePage() {
           <SpotFilterChips value={filter} onChange={setFilter} />
           {/* 일몰 알림은 지도 한가운데를 가리지 않게 필터 바로 아래에 둔다 */}
           <HikeSunsetNotice sun={sun} />
+          {/* 코스 시설 접근 알림: 휴대폰 안에서 거리만 계산해 통신이 끊겨도 동작한다 */}
+          {nearby && <NearbyAlert className="hike-map-page__nearby" title={nearby.title} detail={nearby.detail} onClose={nearby.dismiss} />}
         </div>
         <div className="hike-map-page__tools">
           <MapAction iconName="3D" dimensionMode={dimension} onDimensionModeChange={setDimension}

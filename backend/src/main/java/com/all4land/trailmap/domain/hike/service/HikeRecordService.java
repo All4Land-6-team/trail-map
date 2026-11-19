@@ -108,7 +108,8 @@ public class HikeRecordService {
         if (accepted.isEmpty()) {
             return new HikePositionsResponse(hikeRecordId, 0, record.traveledDistanceMeters());
         }
-        recordRepository.appendPath(hikeRecordId, toLineStringWkt(accepted), OffsetDateTime.now(SCHEDULE_ZONE));
+        recordRepository.appendPath(hikeRecordId, toLineStringWkt(accepted),
+                accepted.get(accepted.size() - 1).recordedAt(), OffsetDateTime.now(SCHEDULE_ZONE));
         return new HikePositionsResponse(
                 hikeRecordId, accepted.size(), getOwnedRecord(userId, hikeRecordId).traveledDistanceMeters()
         );
@@ -128,16 +129,31 @@ public class HikeRecordService {
 
     /** 등산 종료. 이미 종료된 기록이면 다시 계산하지 않고 그 기록을 돌려준다 (재시도 대비). */
     @Transactional
-    public HikeRecordResponse finish(Long userId, Long hikeRecordId) {
+    public HikeRecordResponse finish(Long userId, Long hikeRecordId, OffsetDateTime requestedEndedAt) {
         validateUser(userId);
         HikeRecordRow record = getOwnedRecord(userId, hikeRecordId);
         if (!record.isCompleted()) {
-            recordRepository.finish(hikeRecordId, OffsetDateTime.now(SCHEDULE_ZONE));
+            recordRepository.finish(hikeRecordId, endedAt(record, requestedEndedAt));
         }
         return toResponse(getOwnedRecord(userId, hikeRecordId));
     }
 
-    /** 측정 시각 순으로 정렬한 뒤 정확도가 낮은 위치와 직전 위치에서 거의 움직이지 않은 위치를 뺀다. */
+    /**
+     * 기기가 보낸 종료 시각(오프라인에서 누른 종료)은 시작 시각과 지금 사이일 때만 쓴다. 없거나 범위 밖이면 지금.
+     * 미래 시각이나 시작 전 시각으로 소요 시간이 음수가 되거나 늘어나지 않게 한다.
+     */
+    private static OffsetDateTime endedAt(HikeRecordRow record, OffsetDateTime requested) {
+        OffsetDateTime now = OffsetDateTime.now(SCHEDULE_ZONE);
+        if (requested == null || requested.isAfter(now) || requested.isBefore(record.startedAt())) {
+            return now;
+        }
+        return requested;
+    }
+
+    /**
+     * 측정 시각 순으로 정렬한 뒤 이미 받은 위치(마지막으로 붙인 위치의 측정 시각 이전), 정확도가 낮은 위치,
+     * 직전 위치에서 거의 움직이지 않은 위치를 뺀다. 응답을 못 받은 기기가 같은 위치를 다시 보내도 경로에 두 번 붙지 않는다.
+     */
     private static List<HikePositionsRequest.Position> acceptPositions(
             HikeRecordRow record, List<HikePositionsRequest.Position> positions
     ) {
@@ -148,6 +164,9 @@ public class HikeRecordService {
                 .sorted(Comparator.comparing(HikePositionsRequest.Position::recordedAt))
                 .toList();
         for (HikePositionsRequest.Position position : ordered) {
+            if (record.lastPositionRecordedAt() != null && !position.recordedAt().isAfter(record.lastPositionRecordedAt())) {
+                continue;
+            }
             if (position.accuracyMeters() != null && position.accuracyMeters() > MAX_ACCURACY_METERS) {
                 continue;
             }
