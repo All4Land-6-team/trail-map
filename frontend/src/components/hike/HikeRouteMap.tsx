@@ -54,8 +54,8 @@ export type HikeRouteMapProps = {
   navigation?: boolean;
   /** false면 손으로 지도를 움직일 수 없다 (등산 기록 상세의 요약 지도) */
   interactive?: boolean;
-  /** 정상 대신 코스 목록 지도처럼 출발·도착을 표시한다 (등산 기록 상세) */
-  endpointLabels?: boolean;
+  /** 정상 대신 코스 목록 지도처럼 출발·도착을 표시한다 (등산 기록 상세 · 일정 상세). 문구를 바꾸려면 { start, finish } */
+  endpointLabels?: boolean | { start: string; finish: string };
 };
 
 const GPS_SOURCE_ID = "hike-gps-path";
@@ -130,6 +130,7 @@ export function HikeRouteMap({
   progressMeters, stage = "ascent", spots = NO_SPOTS, filter = "all", dimension = "2D", recenterKey = 0,
   padding = DEFAULT_PADDING, navigation = false, interactive = true, endpointLabels = false,
 }: HikeRouteMapProps) {
+  const endpointNames = typeof endpointLabels === "object" ? endpointLabels : { start: "출발", finish: "도착" };
   const shellRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<MapLibreMap | null>(null);
   // 지도는 경로가 바뀔 때만 새로 만든다. 여백·현재 위치는 최신 값을 ref로 읽는다.
@@ -379,6 +380,14 @@ export function HikeRouteMap({
     wasNavigatingRef.current = navigationActive;
   }, [map, navigationActive, fitRoute]);
 
+  // 지도를 만든 뒤 컨테이너 크기가 바뀌면(화면 CSS가 늦게 적용되는 등) 지도 그림 크기도 맞춘다.
+  useEffect(() => {
+    if (!map || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => map.resize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+
   useEffect(() => {
     if (!map) return;
     const markers = [
@@ -453,10 +462,10 @@ export function HikeRouteMap({
     {visibleSpots.map(spot => createPortal(
       <SpotMarker kind={spot.kind} aria-label={spot.name} />, nodes.spots.get(spot.id)!, spot.id))}
     {endpointLabels ? <>
-      {createPortal(<div className="course-route-endpoint course-route-endpoint--start" aria-label="출발">
-        <span className="course-route-endpoint__symbol" /><span className="course-route-endpoint__label">출발</span></div>, nodes.start)}
-      {createPortal(<div className="course-route-endpoint course-route-endpoint--finish" aria-label="도착">
-        <span className="course-route-endpoint__symbol">⚑</span><span className="course-route-endpoint__label">도착</span></div>, nodes.finish)}
+      {createPortal(<div className="course-route-endpoint course-route-endpoint--start" aria-label={endpointNames.start}>
+        <span className="course-route-endpoint__symbol" /><span className="course-route-endpoint__label">{endpointNames.start}</span></div>, nodes.start)}
+      {createPortal(<div className="course-route-endpoint course-route-endpoint--finish" aria-label={endpointNames.finish}>
+        <span className="course-route-endpoint__symbol">⚑</span><span className="course-route-endpoint__label">{endpointNames.finish}</span></div>, nodes.finish)}
     </> : createPortal(<span className="hike-route-map__peak"><span aria-hidden="true" />정상</span>, nodes.peak)}
     {current && createPortal(navigationActive ? <NavigationArrowMarker /> : <CurrentLocationMarker />, nodes.current)}
     {current && traveledKm !== undefined && createPortal(<DistanceBubble label={`${traveledKm.toFixed(1)} km`}

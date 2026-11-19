@@ -1,10 +1,34 @@
-.hike-detail-page__sheet { padding-bottom: 16px; }
-.hike-detail-page__info { margin: 20px 0 0; border-top: 1px solid #e3ece2; }
-.hike-detail-page__info > div { display: flex; align-items: center; justify-content: space-between; min-height: 36px; border-bottom: 1px solid #e3ece2; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+/* HIKE-02 일정 상세: 제목 → 날짜·출발 → 코스 지도 → 코스 정보 → 코스 보기 · 일정 수정 → 일정 취소 */
+.hike-detail-page > .af-top-bar { flex: none; width: auto; margin: 16px 16px 0; }
+.hike-detail-page__body { display: flex; flex-direction: column; padding: 13px 18px 24px; }
+.hike-detail-page__empty { margin: 0; padding: 24px 16px; border: 1px solid var(--af-line); border-radius: 16px; color: #617b6c; background: #fff; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: center; }
+
+.hike-detail-page__title { margin: 0; color: var(--af-ink); font: 700 24px/34px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.hike-detail-page__when { display: grid; grid-template-columns: 191px 1fr; align-items: center; min-height: 76px; margin: 14px 0 0; padding: 12px 14px 12px 14px; border-radius: 14px; background: #eef5ed; }
+.hike-detail-page__when > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.hike-detail-page__when > div + div { justify-content: center; min-height: 42px; padding-left: 16px; border-left: 1px solid #d7e6d7; }
+.hike-detail-page__when dt { color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-detail-page__when dd { margin: 0; color: var(--af-ink); font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.hike-detail-page__section { margin-top: 16px; }
+.hike-detail-page__section + .hike-detail-page__section { margin-top: 21px; }
+.hike-detail-page__section h3 { margin: 0 0 6px; color: var(--af-ink); font: 700 16px/24px "Noto Sans KR", sans-serif; }
+
+.hike-detail-page__map { position: relative; height: 204px; overflow: hidden; border-radius: 16px; background: #eef5eb; }
+/* 지도 이름표: 흰 바탕 · 연한 테두리 (출발점 · 도착점) */
+.hike-detail-page__map .course-route-endpoint__label { top: -4px; padding: 3px 7px; border: 1px solid #c6dacd; border-radius: 6px; color: var(--af-ink); background: #fff; font: 500 11px/16px "Noto Sans KR", sans-serif; }
+.hike-detail-page__map-status { display: grid; height: 100%; margin: 0; place-items: center; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.hike-detail-page__info { margin: 0; border-top: 1px solid #e3ece2; }
+.hike-detail-page__info > div { display: flex; align-items: center; justify-content: space-between; min-height: 31px; border-bottom: 1px solid #e3ece2; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-detail-page__info dt { color: #617b6c; }
 .hike-detail-page__info dd { margin: 0; color: var(--af-ink); font-weight: 500; }
-.hike-detail-page__actions { display: flex; gap: 10px; margin-top: 22px; }
-.hike-detail-page__actions .af-button { min-height: 40px; border: 0; border-radius: 10px; color: var(--af-green); background: #e5efe3; }
-.hike-detail-page__cancel { display: block; min-height: 36px; margin: 12px auto 0; padding: 0 12px; border: 0; color: var(--af-muted); background: transparent; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; cursor: pointer; }
+
+.hike-detail-page__actions { display: flex; gap: 10px; margin-top: 19px; }
+.hike-detail-page__actions .af-button { min-height: 44px; border: 0; border-radius: 10px; }
+.hike-detail-page__actions .af-button--secondary { color: var(--af-green); background: #e5efe3; }
+.hike-detail-page__actions .af-button--primary { color: #fff; background: var(--af-green); }
+.hike-detail-page__cancel { display: block; min-height: 36px; margin: 4px auto 0; padding: 0 12px; border: 0; color: #607b6c; background: transparent; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; cursor: pointer; }
 .hike-detail-page__cancel:focus-visible { outline: 2px solid var(--af-green); outline-offset: 2px; border-radius: 6px; }
-.hike-detail-page__toast { bottom: 300px; }
+.hike-detail-page__toast { bottom: 96px; }
