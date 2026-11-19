@@ -1,4 +1,3 @@
-import { findCourse } from "../../api/hikeMock";
 import { hikeTargetIds, useHikeSession } from "../../store/hikeSessionStore";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
@@ -20,8 +19,7 @@ export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId
   const result = { ...session.schedule, mountainId: hikeTargetIds(session).mountainId,
     // 기록 API로 종료했으면 서버가 계산한 소요 시간을 쓴다.
     durationMinutes: session.durationSeconds !== undefined ? Math.floor(session.durationSeconds / 60)
-      : Math.max(0, Math.floor((Date.parse(finishedAt) - Date.parse(session.startedAt)) / 60_000)),
-    sunset: findCourse(session.schedule.courseId)?.sunset ?? "정보 없음" };
+      : Math.max(0, Math.floor((Date.parse(finishedAt) - Date.parse(session.startedAt)) / 60_000)) };
 
   return <div className="hike-page hike-complete-page">
     <main className="hike-page__body hike-complete-page__body">
@@ -43,12 +41,9 @@ export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId
         <div><dt>소요 시간</dt><dd>{formatDuration(result.durationMinutes)}</dd></div>
       </dl>
 
-      <div className="hike-complete-page__sunset">
-        <p className="hike-complete-page__sunset-time">일몰 {result.sunset}</p>
-        {session.hikeRecordId === undefined && <p className="hike-complete-page__sunset-note">
-          예시 일정으로 진행해 GPS 이동 기록이 저장되지 않았어요.
-        </p>}
-      </div>
+      {session.hikeRecordId === undefined && <div className="hike-complete-page__sunset">
+        <p className="hike-complete-page__sunset-note">예시 일정으로 진행해 GPS 이동 기록이 저장되지 않았어요.</p>
+      </div>}
 
       <section className="hike-complete-page__review" aria-labelledby="hike-review-question">
         <h2 id="hike-review-question" className="hike-complete-page__question">산 후기를 작성하시겠어요?</h2>
