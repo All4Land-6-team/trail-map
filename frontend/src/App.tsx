@@ -69,6 +69,8 @@ function AuthenticatedApp({ route }: { route: string }) {
         initialSpotTargetType={query.get('targetType') === 'USER_SPOT' ? 'USER_SPOT'
           : query.get('targetType') === 'FACILITY' ? 'FACILITY' : undefined}
         initialCourseId={query.get('course') ?? undefined}
+        initialReviewKind={query.get('review') === 'mountain' || query.get('review') === 'course' || query.get('review') === 'spot'
+          ? query.get('review') as 'mountain' | 'course' | 'spot' : undefined}
         spotRegistrationMode={query.get('mode') === 'active' ? 'active' : 'postHike'}
         activeHike={query.get('mode') === 'active' && hikeSession && hikeSession.phase !== 'complete' ? {
           hikeRecordId: hikeSession.hikeRecordId, courseId: hikeTargetIds(hikeSession).courseId,
