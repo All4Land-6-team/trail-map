@@ -126,8 +126,14 @@ export async function refreshScheduleOn(date: string) {
   return fresh;
 }
 
-export async function deleteSchedule(date: string) {
-  const target = findSchedule(date);
-  if (state.mode === "api" && target?.scheduleId !== undefined) await deleteHikeSchedule(target.scheduleId);
-  setState({ schedules: state.schedules.filter(schedule => schedule.date !== date) });
+export async function deleteSchedule(target: HikeSchedule) {
+  if (target.scheduleId === undefined) {
+    if (!state.schedules.includes(target)) return "alreadyDeleted";
+    setState({ schedules: state.schedules.filter(schedule => schedule !== target) });
+    return "deleted";
+  }
+
+  const result = await deleteHikeSchedule(target.scheduleId);
+  setState({ schedules: state.schedules.filter(schedule => schedule.scheduleId !== target.scheduleId) });
+  return result;
 }

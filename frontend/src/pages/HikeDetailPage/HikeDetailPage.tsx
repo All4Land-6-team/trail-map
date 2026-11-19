@@ -9,11 +9,11 @@ import { navigate, readHashParams } from "../../hooks/useHashRoute";
 import { useCourseMetrics } from "../../hooks/useCourseMetrics";
 import { useScheduleCourse } from "../../hooks/useScheduleCourse";
 import { useToastMessage } from "../../hooks/useToastMessage";
-import { HikeScheduleApiError } from "../../api/hikeScheduleApi";
 import { deleteSchedule, useHikeSchedules } from "../../store/hikeScheduleStore";
 import { useHikeSession } from "../../store/hikeSessionStore";
 import { useScheduleRecord } from "../../store/scheduleRecord";
 import { formatDateTitle, formatDuration, formatKoreanTime, parseDateKey } from "../../utils/hikeFormat";
+import { ALREADY_DELETED_SCHEDULE_MESSAGE, scheduleErrorMessage } from "../../utils/hikeSchedule";
 import { hikePaths, navigateTab } from "../hikeRoutes";
 import "../hikePages.css";
 import "./HikeDetailPage.css";
@@ -111,12 +111,16 @@ export function HikeDetailPage() {
       cancelLabel="닫기" confirmLabel="일정 취소" onCancel={() => setOverlay(null)}
       onConfirm={async () => {
         try {
-          await deleteSchedule(schedule.date);
+          const result = await deleteSchedule(schedule);
+          setOverlay(null);
+          if (result === "alreadyDeleted") {
+            toast.show(ALREADY_DELETED_SCHEDULE_MESSAGE);
+            return;
+          }
           navigate(hikePaths.calendar(schedule.date));
         } catch (error) {
           setOverlay(null);
-          toast.show(error instanceof HikeScheduleApiError && error.kind === "activeHike" ? error.message
-            : "일정을 취소하지 못했어요. 잠시 후 다시 시도해 주세요.");
+          toast.show(scheduleErrorMessage(error, "취소"));
         }
       }} />}
   </div>;
