@@ -227,14 +227,33 @@ class HikeScheduleApiIntegrationTest {
                 SELECT course_id = ? AND deleted_at IS NULL FROM hike_schedule WHERE schedule_id = ?
                 """, Boolean.class, courseId, scheduleId)).isTrue();
 
-        // 종료한 기록만 남으면 기존처럼 바꿀 수 있다.
+    }
+
+    @Test
+    void 등산을_마친_일정은_수정_삭제_대체할_수_없다() throws Exception {
+        long scheduleId = createSchedule(userId, courseId, "2026-11-12", "07:00", false)
+                .andReturn().getResponse().getContentAsString().transform(this::scheduleId);
+        long recordId = insertRecord(scheduleId, "IN_PROGRESS");
         jdbcTemplate.update("UPDATE hike_record SET hike_status = 'COMPLETED', ended_at = now() WHERE hike_record_id = ?", recordId);
+
         mockMvc.perform(asUser(userId, patch("/v1/hike-schedules/" + scheduleId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"startTime": "08:00"}
                                 """))
-                .andExpect(status().isOk());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("HIKE_409_7"));
+        mockMvc.perform(asUser(userId, delete("/v1/hike-schedules/" + scheduleId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("HIKE_409_7"));
+        createSchedule(userId, otherCourseId, "2026-11-12", "09:00", true)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("HIKE_409_7"));
+
+        // 일정과 기록은 그대로 남는다.
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT course_id = ? AND deleted_at IS NULL FROM hike_schedule WHERE schedule_id = ?
+                """, Boolean.class, courseId, scheduleId)).isTrue();
     }
 
     @Test

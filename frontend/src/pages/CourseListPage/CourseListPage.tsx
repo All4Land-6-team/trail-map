@@ -16,6 +16,8 @@ import type { Course, CourseDifficulty, CourseFilters, CourseRequest, DetailedCo
 import { COURSE_DIFFICULTY_LABELS, DEFAULT_COURSE_FILTERS, getCourseFilterChips, hasCourseFilters, hasDetailedCourseFilters, removeCourseFilter } from "../../utils/courseDiscovery";
 import { CourseCarousel } from "./components/CourseCarousel";
 import { useHikeSchedules } from "../../store/hikeScheduleStore";
+import { useHikeSession } from "../../store/hikeSessionStore";
+import { scheduleRecordView } from "../../store/scheduleRecord";
 import { CourseFilterSheet } from "./components/CourseFilterSheet";
 import { CourseMap } from "./components/CourseMap";
 import { supportsTerrain } from "../../components/map/terrain";
@@ -34,6 +36,9 @@ export type CourseListPageProps = {
 
 export function CourseListPage({ mountainId, initialCourseId, onBack = () => navigateFromHome(homePaths.home), onCourseOpen, onScheduleOpen }: CourseListPageProps) {
   const schedules = useHikeSchedules();
+  const session = useHikeSession();
+  // 일정 아이콘은 아직 시작하지 않은(바꿀 수 있는) 일정만 표시한다. 마친 코스는 다시 새 일정으로 등록한다.
+  const scheduledIds = schedules.filter(item => !scheduleRecordView(item, session)).map(item => item.courseId);
   const enhancedMap = supportsTerrain(mountainId);
   const { rootRef, style, peek, mapBottomInset, handleProps, previewControls } = useSnappingMapSheet({ navigationSelector: ".course-page__nav",
     label: "코스 목록 바텀시트", trackSettledInset: enhancedMap, sheetSelector: ".course-list-sheet" });
@@ -143,7 +148,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
           {selectedCourse ? <>
             <CourseCarousel key={courses.map(course => course.id).join(",")} courses={courses} selectedId={selectedCourse.id}
               selectionRevision={selectionRevision}
-              savedIds={savedIds} scheduledIds={schedules.map(item => item.courseId)} onSelect={discovery.setSelectedId} onSave={saveCourse} onSchedule={openSchedule} onOpen={openCourse} />
+              savedIds={savedIds} scheduledIds={scheduledIds} onSelect={discovery.setSelectedId} onSave={saveCourse} onSchedule={openSchedule} onOpen={openCourse} />
             <PageIndicator count={courses.length} activeIndex={activeIndex} className="course-list-sheet__pages"
               onPageChange={index => selectExplicitly(courses[index].id)} />
           </> : <EmptyState title={allCourses.length ? "조건에 맞는 코스가 없어요." : "아직 등록된 코스가 없어요."}
