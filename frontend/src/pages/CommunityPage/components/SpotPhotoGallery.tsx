@@ -1,6 +1,8 @@
 import { useRef, type KeyboardEvent, type PointerEvent, type ReactNode, type RefObject } from 'react'
 import { Icon } from '../../../components/common/Icon'
-import type { CommunityReview, ReviewKind } from '../../../types/community'
+import { ReviewEnvironmentBadge } from '../../../components/review/ReviewEnvironmentBadge'
+import { ReviewRating } from '../../../components/review/ReviewRating'
+import type { CommunityReview, ReviewEnvironment, ReviewKind } from '../../../types/community'
 
 export type CommunityGalleryPhoto = {
   id: string
@@ -10,6 +12,7 @@ export type CommunityGalleryPhoto = {
   exampleRating?: number
   exampleDate?: string
   author?: string
+  environment?: ReviewEnvironment
   source: 'review' | 'spot' | 'example'
 }
 
@@ -93,7 +96,10 @@ export function CommunityPhotoReview({ photo, kind, index, total, onPrevious, on
     <div className="community-gallery-review__top"><h2>사진 후기</h2><span aria-live="polite">{index + 1} / {total}</span></div>
     <div className="community-gallery-review__image"><PhotoContent photo={photo} /></div>
     <article className="community-gallery-review__text">
-      <div className="community-gallery-review__meta"><strong>{nickname}</strong>{kind === 'course' && <span>{rating != null ? `★ ${rating.toFixed(1)}` : '평점 없음'}</span>}<time dateTime={photo.review?.createdAt}>{date}</time></div>
+      <div className="community-gallery-review__record"><time dateTime={photo.review?.createdAt}>{date}</time>
+        <ReviewEnvironmentBadge environment={photo.environment ?? photo.review?.environment} /></div>
+      <div className="community-gallery-review__author-row"><strong>{nickname}</strong>
+        {kind === 'course' && (rating != null ? <ReviewRating value={rating} /> : <span>평점 없음</span>)}</div>
       <p>{content}</p>
     </article>
   </section>

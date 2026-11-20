@@ -4,6 +4,7 @@ import com.all4land.trailmap.domain.community.dto.request.CommunityPhotoConfirmR
 import com.all4land.trailmap.domain.community.dto.request.CommunityPhotoUploadUrlRequest;
 import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoUploadUrlResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityReviewEnvironmentResponse;
 import com.all4land.trailmap.domain.community.entity.CommunityPhotoTargetType;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.entity.Photo;
@@ -18,6 +19,9 @@ import com.all4land.trailmap.domain.community.repository.result.CommunityPhotoTa
 import com.all4land.trailmap.domain.community.repository.review.CommunityReviewQueryRepository;
 import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotQueryRepository;
 import com.all4land.trailmap.domain.community.storage.R2PhotoStorage;
+import com.all4land.trailmap.domain.community.weather.ReviewEnvironment;
+import com.all4land.trailmap.domain.community.weather.WeatherCode;
+import com.all4land.trailmap.domain.community.weather.WeatherStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -221,7 +225,33 @@ public class CommunityPhotoService {
                 photo.author(),
                 photo.reviewContent(),
                 photo.createdAt(),
-                photo.reviewRating()
+                photo.reviewRating(),
+                toEnvironmentResponse(photo.environment())
+        );
+    }
+
+    public static CommunityReviewEnvironmentResponse toEnvironmentResponse(
+            com.all4land.trailmap.domain.community.repository.result.CommunityReviewEnvironmentQueryResult environment
+    ) {
+        if (environment == null || environment.referenceAt() == null || environment.utcOffsetMinutes() == null
+                || environment.longitude() == null || environment.latitude() == null) return null;
+        WeatherCode weatherCode = environment.weatherCode() == null ? null : WeatherCode.valueOf(environment.weatherCode());
+        return new CommunityReviewEnvironmentResponse(
+                environment.referenceAt(),
+                environment.utcOffsetMinutes(),
+                environment.longitude(),
+                environment.latitude(),
+                WeatherStatus.valueOf(environment.weatherStatus()),
+                environment.temperatureC(),
+                weatherCode
+        );
+    }
+
+    public static CommunityReviewEnvironmentResponse toEnvironmentResponse(ReviewEnvironment environment) {
+        if (environment == null) return null;
+        return new CommunityReviewEnvironmentResponse(
+                environment.referenceAt(), environment.utcOffsetMinutes(), environment.longitude(), environment.latitude(),
+                environment.weatherStatus(), environment.temperatureC(), environment.weatherCode()
         );
     }
 }

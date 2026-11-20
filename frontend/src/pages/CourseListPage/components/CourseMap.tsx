@@ -43,9 +43,10 @@ export function CourseMap({ onOsmFoodOpen, ...props }: CourseMapProps) {
 
   return <>
     <CourseRouteMap {...props} extraMapAction={serverId !== undefined && <MapAction
-      className="course-facility-toggle" aria-label="시설 표시" aria-pressed={visible}
-      variant={visible ? "neutral" : "brand"} onClick={() => setVisible(value => !value)}
-      icon={<span>시설<strong>{visible ? "ON" : "OFF"}</strong></span>} />}
+      className="course-facility-toggle" aria-label={visible ? "코스 시설 숨기기" : "코스 시설 표시하기"} aria-pressed={visible}
+      style={{ color: visible ? "#fff" : "#849d89", backgroundColor: visible ? "#19765b" : "#fff" }}
+      onClick={() => setVisible(value => !value)}
+      icon={<span className="course-facility-toggle__icon" aria-hidden="true" />} />}
       spots={visible ? filtered : EMPTY} osmFoodEnabled={visible && foodSelected}
       selectedOsmFood={visible && foodSelected ? selectedOsmFood : null}
       onOsmFoodSelect={poi => {

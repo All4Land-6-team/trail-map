@@ -288,6 +288,7 @@ test('커뮤니티 목데이터 없이 API와 R2 업로드 절차를 사용한�
       ['POST', 'http://localhost:8080/api/v1/community/photos'],
     ]);
     assert.equal('X-User-Id' in calls[0].init.headers, false);
+    assert.equal('environmentCapturedAt' in JSON.parse(calls[2].init.body), false);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -578,10 +579,83 @@ test('산·코스·스팟 상세 후기는 공통 가로 캐러셀을 사용한�
   assert.match(courseSource, /<ReviewCarousel type="course"/);
   assert.match(carouselSource, /MoreReviewsCard/);
   assert.match(carouselSource, /scrollIntoView/);
-  assert.match(cardSource, /'☆'\.repeat\(5 - rating\)/);
-  assert.match(cardSource, /review\.rating != null && <> \{review\.rating\.toFixed\(1\)\}<\/>/);
+  assert.match(cardSource, /<ReviewRating value=\{review\.rating\}/);
   assert.match(cardSource, /community-review-card__photo--placeholder/);
   assert.match(cardSource, /아직 등록된 후기가 없어요\./);
+});
+
+test('전체 후기의 다중 사진은 장수를 표시하고 같은 후기 안에서 탐색한다', () => {
+  const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const cssSource = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
+  assert.match(pageSource, /community-quote__photo-count/);
+  assert.match(pageSource, /aria-hidden="true">\+\{reviewPhotos\.length\}<\/span>/);
+  assert.match(pageSource, /lightboxReviewPhotos = lightboxPhoto[\s\S]*photo\.review\?\.id === lightboxPhoto\.review\?\.id/);
+  assert.match(pageSource, /community-photo-lightbox__nav--previous/);
+  assert.match(pageSource, /community-photo-lightbox__nav--next/);
+  assert.match(pageSource, /event\.key === 'ArrowLeft'/);
+  assert.match(pageSource, /event\.key === 'ArrowRight'/);
+  assert.match(cssSource, /community-quote__photo-count/);
+  assert.match(cssSource, /community-photo-lightbox__count/);
+});
+
+test('후기 환경정보는 공통 팝오버로 표시하고 카드 클릭과 분리한다', () => {
+  const badgeSource = readFileSync(new URL('../src/components/review/ReviewEnvironmentBadge.tsx', import.meta.url), 'utf8');
+  const iconSource = readFileSync(new URL('../src/components/common/Icon/Icon.tsx', import.meta.url), 'utf8');
+  const cssSource = readFileSync(new URL('../src/components/review/review-environment.css', import.meta.url), 'utf8');
+  const cardSource = readFileSync(new URL('../src/components/review/ReviewCarouselCards.tsx', import.meta.url), 'utf8');
+  const cardCssSource = readFileSync(new URL('../src/components/review/review-carousel.css', import.meta.url), 'utf8');
+  const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const gallerySource = readFileSync(new URL('../src/pages/CommunityPage/components/SpotPhotoGallery.tsx', import.meta.url), 'utf8');
+  assert.match(badgeSource, /if \(!weather && !phase\) return null/);
+  assert.match(badgeSource, /role="img"[\s\S]*aria-label=\{`날씨/);
+  assert.doesNotMatch(badgeSource, /!compact && <span aria-hidden="true">\{weatherDescription\}<\/span>/);
+  assert.equal((badgeSource.match(/<span>\{phase\.label\}<\/span>/g) ?? []).length, 1);
+  assert.match(badgeSource, /createPortal\(/);
+  assert.match(badgeSource, /aria-haspopup="dialog"/);
+  assert.match(badgeSource, /aria-expanded=\{open\}/);
+  assert.match(badgeSource, /role="dialog" aria-label="등산 당시 환경"/);
+  assert.match(badgeSource, /document\.addEventListener\('pointerdown', closeOutside\)/);
+  assert.match(badgeSource, /event\.key !== 'Escape'/);
+  assert.match(badgeSource, /onPointerDown=\{stopPointer\} onClick=\{toggle\}/);
+  assert.match(badgeSource, /<span>\{weatherDescription\}<\/span>/);
+  assert.match(cssSource, /photo-environment-popover \{ position:fixed/);
+  assert.match(cssSource, /photo-environment__separator \{ width:1px; height:14px/);
+  assert.match(cssSource, /photo-environment__item \.af-icon__glyph, \.photo-environment-popover \.af-icon__glyph \{ mask-size:contain; -webkit-mask-size:contain/);
+  assert.match(cssSource, /photo-environment__trigger::before \{[^}]*inset:-10px -6px/);
+  assert.match(badgeSource, /photo-environment__weather--\$\{weatherCode\?\.toLowerCase\(\)\.replace\('_', '-'\)\}/);
+  for (const code of ['sunny', 'partly-cloudy', 'cloudy', 'rain', 'snow', 'fog', 'thunderstorm']) {
+    assert.match(cssSource, new RegExp(`photo-environment__weather--${code}`));
+  }
+  assert.match(cssSource, /photo-environment__weather--partly-cloudy[^}]*transform:scaleX\(1\.08\)/);
+  for (const phase of ['sunrise', 'daytime', 'sunset', 'night']) {
+    assert.match(cssSource, new RegExp(`photo-environment__time--${phase}`));
+  }
+  assert.match(cssSource, /photo-environment__time--night \{[^}]*transform:scale\(\.76\)/);
+  assert.match(iconSource, /WeatherNight:[\s\S]*defaultColor: "#52647C"/);
+  assert.match(iconSource, /WeatherRain:[\s\S]*defaultColor: "#2F78B7"/);
+  assert.doesNotMatch(badgeSource, /duplicateSunnyDay/);
+  assert.match(iconSource, /WeatherDaytime:[\s\S]*time-daytime\.svg/);
+  assert.doesNotMatch(cardCssSource, /@container \(max-width: 340px\)/);
+  assert.match(cardCssSource, /community-review-card__record \{[^}]*white-space:nowrap/);
+  assert.match(cardCssSource, /community-review-card__author-row strong \{[^}]*flex:1/);
+  assert.match(cardCssSource, /community-review-card__content \{[^}]*-webkit-line-clamp: 2/);
+  assert.match(cardSource, /community-review-card__open/);
+  assert.match(cardSource, /community-review-card__record[\s\S]*ReviewEnvironmentBadge/);
+  assert.match(cardSource, /community-review-card__author-row[\s\S]*Rating/);
+  assert.match(pageSource, /community-quote__record-row[\s\S]*ReviewEnvironmentBadge/);
+  assert.match(pageSource, /community-quote__author-row/);
+  assert.match(gallerySource, /community-gallery-review__record[\s\S]*ReviewEnvironmentBadge/);
+  assert.match(gallerySource, /community-gallery-review__author-row/);
+  assert.match(pageSource, /weatherStatus === 'PENDING'[\s\S]*setPhotoPageRetry/);
+  assert.equal(existsSync(new URL('../src/assets/icons/weather/time-daytime.svg', import.meta.url)), true);
+});
+
+test('환경정보 기준은 후기 등록에 전달하고 사진 확정에서는 다시 저장하지 않는다', () => {
+  const apiSource = readFileSync(new URL('../src/api/community.ts', import.meta.url), 'utf8');
+  const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(pageSource, /environmentCapturedAt: representativePhoto\?\.capturedAt/);
+  assert.match(pageSource, /environmentUtcOffsetMinutes:/);
+  assert.doesNotMatch(apiSource.slice(apiSource.indexOf('async function uploadPhotos')), /captureUtcOffsetMinutes|environmentCapturedAt/);
 });
 
 test('이미 작성한 스팟 후기와 새 스팟 등록 지도 클릭을 구분한다', () => {

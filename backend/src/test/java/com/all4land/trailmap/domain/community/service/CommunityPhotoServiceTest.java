@@ -11,12 +11,14 @@ import com.all4land.trailmap.domain.community.repository.photo.CommunityPhotoQue
 import com.all4land.trailmap.domain.community.repository.photo.CommunityPhotoTargetRepository;
 import com.all4land.trailmap.domain.community.repository.photo.PhotoRepository;
 import com.all4land.trailmap.domain.community.repository.result.CommunityPhotoQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunityReviewEnvironmentQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.CommunityPhotoTargetQueryResult;
 import com.all4land.trailmap.domain.community.repository.review.CommunityReviewQueryRepository;
 import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotQueryRepository;
 import com.all4land.trailmap.domain.community.storage.R2ObjectMetadata;
 import com.all4land.trailmap.domain.community.storage.R2PhotoStorage;
 import com.all4land.trailmap.domain.community.storage.R2UploadUrl;
+import com.all4land.trailmap.domain.community.weather.WeatherCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -149,6 +151,7 @@ class CommunityPhotoServiceTest {
     @Test
     void R2_업로드를_확인한_뒤_사진_메타데이터를_저장한다() {
         String objectKey = objectKey();
+        var capturedAt = OffsetDateTime.parse("2026-10-25T10:00:00+09:00");
         given(targetRepository.lockTarget(CommunityPhotoTargetType.MOUNTAIN_REVIEW, REVIEW_ID))
                 .willReturn(Optional.of(mountainReviewTarget(USER_ID)));
         given(r2PhotoStorage.findMetadata(objectKey))
@@ -161,7 +164,11 @@ class CommunityPhotoServiceTest {
         var createdAt = OffsetDateTime.parse("2026-10-25T10:00:00+09:00");
         given(photoQueryRepository.findPhoto(31L)).willReturn(Optional.of(new CommunityPhotoQueryResult(
                 31L, objectKey, "북한산.jpg", "image/jpeg", 1024L, 0,
-                "산길친구", "전망이 좋아요", createdAt, null
+                "산길친구", "전망이 좋아요", createdAt, null,
+                new CommunityReviewEnvironmentQueryResult(
+                        capturedAt, (short) 540, 126.9780, 37.5665,
+                        "SUCCESS", 12.4, "PARTLY_CLOUDY"
+                )
         )));
         given(r2PhotoStorage.createReadUrl(objectKey)).willReturn("https://read.test/photo");
 
@@ -170,6 +177,7 @@ class CommunityPhotoServiceTest {
         assertThat(response.photoId()).isEqualTo(31L);
         assertThat(response.url()).isEqualTo("https://read.test/photo");
         assertThat(response.reviewContent()).isEqualTo("전망이 좋아요");
+        assertThat(response.environment().weatherCode()).isEqualTo(WeatherCode.PARTLY_CLOUDY);
     }
 
     private static CommunityPhotoUploadUrlRequest uploadRequest() {
