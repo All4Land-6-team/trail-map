@@ -3,6 +3,7 @@ import { readCourseRoute, coursePaths } from "../../routes/courseRoutes";
 import { courseDetailNavigationSource, readCourseDetailView } from "../../routes/courseDetailRoutes";
 import { courseReviewPath, internalReturnPath, spotReviewPath } from "../../routes/communityRoutes";
 import { useHikeSchedules } from "../../store/hikeScheduleStore";
+import { useEditableCourseSchedule } from "../../store/scheduleRecord";
 import type { CourseRequest } from "../../types/course";
 import { CourseListPage } from "../CourseListPage/CourseListPage";
 import { CourseDetailPage } from "./CourseDetailPage";
@@ -17,7 +18,8 @@ export function CourseFlow({ route }: { route: string }) {
     ? coursePaths.detail({ mountainId: request.mountainId, courseId: request.courseId }) : coursePaths.list(request.mountainId));
   const background = isSchedule ? returnTo : route;
   const viewRequest = readCourseRoute(background) ?? request;
-  const schedule = schedules.find(item => item.courseId === request.courseId);
+  // 등산을 시작했거나 마친 일정은 「일정 수정」 대상이 아니다 (새 일정 등록으로 연다).
+  const schedule = useEditableCourseSchedule(schedules, request.courseId);
   const openSchedule = (selected: CourseRequest) => navigate(`${coursePaths.schedule(selected)}?returnTo=${encodeURIComponent(route)}`);
   return <>
     {viewRequest.courseId ? <CourseDetailPage key={`${viewRequest.mountainId}/${viewRequest.courseId}`}

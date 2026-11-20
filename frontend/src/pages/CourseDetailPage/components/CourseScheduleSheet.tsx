@@ -5,6 +5,7 @@ import { OverlayLayer } from "../../../components/hike/OverlayLayer";
 import { BottomSheet } from "../../../components/overlay";
 import { navigate } from "../../../hooks/useHashRoute";
 import { useHikeScheduleMode, useHikeSchedules } from "../../../store/hikeScheduleStore";
+import { useEditableCourseSchedule } from "../../../store/scheduleRecord";
 import type { CourseRequest } from "../../../types/course";
 import { canScheduleCourse } from "../../../utils/courseIdentity";
 import { hikePaths } from "../../hikeRoutes";
@@ -17,12 +18,14 @@ export function CourseScheduleSheet({ request, returnTo }: { request: CourseRequ
   const mode = useHikeScheduleMode();
   const close = () => navigate(returnTo);
   const course = state.status === "success" ? state.data.course : null;
+  // 등산을 시작했거나 마친 일정은 수정·삭제하지 않고 새 일정 등록으로 연다.
+  const editable = useEditableCourseSchedule(schedules, course?.id);
   const loading = state.status === "loading" || mode === "checking";
 
   if (!loading && course && canScheduleCourse(course)) return <ScheduleSheet key={course.id}
     course={{ courseId: course.id, courseName: course.name, distanceKm: course.distanceKm,
       mountainName: mountains.find(item => item.id === course.mountainId)?.name ?? "산" }}
-    schedule={schedules.find(item => item.courseId === course.id)} onClose={close}
+    schedule={editable} onClose={close}
     onSaved={saved => navigate(hikePaths.calendar(saved.date))} onDeleted={close} />;
 
   return <OverlayLayer placement="bottom" aboveNav onDismiss={close}>

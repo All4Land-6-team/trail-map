@@ -156,6 +156,42 @@ test('기존 일정 수정은 원래 scheduleId로 PATCH하며 성공한 날짜�
   assert.equal(schedules.findSchedule('2099-03-18').scheduleId, 70);
 });
 
+test('서버에서 이미 삭제된 일정은 목록에서 제거하고 완료 및 일반 404 실패는 유지한다', async () => {
+  let response = () => fail(409, 'HIKE_409_7');
+  globalThis.fetch = async (_url, options) => options.method === 'DELETE' ? response() : ok([saved()]);
+  const schedules = await store();
+  await schedules.whenScheduleModeReady();
+  const target = schedules.findSchedule(date);
+
+  await assert.rejects(schedules.deleteSchedule(target), error => error.kind === 'completedHike');
+  response = () => fail(404);
+  await assert.rejects(schedules.deleteSchedule(target), error => error.kind === 'notFound');
+  assert.equal(schedules.findSchedule(date), target);
+
+  response = () => fail(404, 'HIKE_404_3');
+  assert.equal(await schedules.deleteSchedule(target), 'alreadyDeleted');
+  assert.equal(schedules.findSchedule(date), undefined);
+});
+
+test('오래된 일정의 삭제 요청은 확인한 ID를 사용하고 같은 날짜의 새 일정을 보존한다', async () => {
+  let result = [saved()];
+  const deletedUrls = [];
+  globalThis.fetch = async (url, options) => {
+    if (options.method !== 'DELETE') return ok(result);
+    deletedUrls.push(url);
+    return fail(404, 'HIKE_404_3');
+  };
+  const schedules = await store();
+  await schedules.whenScheduleModeReady();
+  const target = schedules.findSchedule(date);
+
+  result = [saved({ scheduleId: 92 })];
+  await schedules.refreshScheduleOn(date);
+  assert.equal(await schedules.deleteSchedule(target), 'alreadyDeleted');
+  assert.match(deletedUrls[0], /\/hike-schedules\/91$/);
+  assert.equal(schedules.findSchedule(date).scheduleId, 92);
+});
+
 test('진행 중인 등산의 대체·수정 거절은 재확인 대상이 아니며 기존 일정을 유지한다', async () => {
   for (const change of [{ replaceExisting: true }, { previousDate: date }]) {
     globalThis.fetch = async (_url, options) => ['POST', 'PATCH'].includes(options.method) ? fail(409, 'HIKE_409_6') : ok([saved()]);

@@ -61,3 +61,16 @@ export function useScheduleDateStatus(schedules: readonly HikeSchedule[]) {
   }
   return { completed, inProgress };
 }
+
+/**
+ * 코스의 일정 중 바꾸거나 지울 수 있는 것 (등산을 시작하지 않은 일정). 시작·완료한 일정은 기록을 지키려고 고르지 않는다.
+ * 없으면 undefined → 코스 화면에서는 새 일정 등록으로 연다.
+ */
+export function editableCourseSchedule(schedules: readonly HikeSchedule[], courseId: string, session: HikeSession | null) {
+  return schedules.find(schedule => schedule.courseId === courseId && !scheduleRecordView(schedule, session));
+}
+
+export function useEditableCourseSchedule(schedules: readonly HikeSchedule[], courseId: string | undefined) {
+  const session = useHikeSession();
+  return courseId ? editableCourseSchedule(schedules, courseId, session) : undefined;
+}

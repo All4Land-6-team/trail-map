@@ -4,7 +4,7 @@ import { toDateKey } from "../../api/hikeMock";
 import { useSingleFlight } from "../../hooks/useSingleFlight";
 import { deleteSchedule, findSchedule, refreshScheduleOn, saveSchedule } from "../../store/hikeScheduleStore";
 import type { HikeSchedule } from "../../types/hike";
-import { scheduleErrorMessage as saveErrorMessage } from "../../utils/hikeSchedule";
+import { ALREADY_DELETED_SCHEDULE_MESSAGE, scheduleErrorMessage } from "../../utils/hikeSchedule";
 import { Button } from "../common/Button";
 import { DateTimePicker, formatTimeValue, getNextAvailableTime, isTimeAtOrAfter, type DateTimeValue } from "../common/DateTimePicker";
 import { BottomSheet } from "../overlay";
@@ -63,7 +63,7 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
   const feedbackId = useId();
   const [today] = useState(() => toDateKey(new Date()));
   // 버튼 구성은 연 시점 기준이다. 새로 등록한 직후에도 Figma처럼 일정 확정 버튼을 유지한다.
-  const [openedWithSchedule] = useState(schedule !== undefined);
+  const [openedWithSchedule, setOpenedWithSchedule] = useState(schedule !== undefined);
   // 이 시트에서 저장한 뒤에는 저장한 일정을 기준으로 다시 수정한다.
   const [current, setCurrent] = useState(schedule);
   const [value, setValue] = useState<DateTimeValue>({ date: schedule?.date ?? "", time: schedule?.startTime ?? "" });
@@ -98,7 +98,7 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
         setPendingReplace(next);
         return;
       }
-      setFeedback({ tone: "error", message: saveErrorMessage(error) });
+      setFeedback({ tone: "error", message: scheduleErrorMessage(error) });
     }
   };
 
@@ -168,12 +168,19 @@ export function ScheduleSheet({ course, schedule, variant = "register", onClose,
       cancelLabel="취소" confirmLabel="삭제" onCancel={() => setConfirmingDelete(false)}
       onConfirm={async () => {
         try {
-          await deleteSchedule(current.date);
+          const result = await deleteSchedule(current);
           setConfirmingDelete(false);
+          if (result === "alreadyDeleted") {
+            setCurrent(undefined);
+            setOpenedWithSchedule(false);
+            setValue({ date: "", time: "" });
+            setFeedback({ tone: "success", message: ALREADY_DELETED_SCHEDULE_MESSAGE });
+            return;
+          }
           onDeleted?.(current);
         } catch (error) {
           setConfirmingDelete(false);
-          setFeedback({ tone: "error", message: saveErrorMessage(error, "삭제") });
+          setFeedback({ tone: "error", message: scheduleErrorMessage(error, "삭제") });
         }
       }} />}
   </>;

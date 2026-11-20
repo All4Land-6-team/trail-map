@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { loadHomeDiscoveryData } from "../../../api/homeApi";
 import { useHikeSchedules } from "../../../store/hikeScheduleStore";
 import { useHikeSession } from "../../../store/hikeSessionStore";
+import { scheduleRecordView } from "../../../store/scheduleRecord";
 import type { TodayHikeSchedule } from "../../../types/home";
 import {
   HOME_TIME_ZONE, HOME_TOAST_DURATION_MS, RECENT_MOUNTAIN_LIMIT, RECENT_MOUNTAIN_STORAGE_KEY,
@@ -96,7 +97,8 @@ export function useHomeDiscovery() {
     recommendedMountains: byIds(data?.recommendedMountainIds ?? []),
     todaySchedule: session && session.phase !== "complete"
       ? { ...session.schedule, phase: "active" as const }
-      : findTodaySchedule(schedules.filter(item => !(session?.phase === "complete" && session.schedule.date === item.date && session.schedule.courseId === item.courseId))
+      // 이미 마친 일정(이 기기에서 마쳤거나 서버 기록이 완료)은 홈 상단에 띄우지 않는다.
+      : findTodaySchedule(schedules.filter(item => scheduleRecordView(item, session)?.status !== "COMPLETED")
         .map((item): TodayHikeSchedule => ({ ...item, phase: "planned" })), toHomeDateKey(new Date(), HOME_TIME_ZONE)),
     setQuery, openSearch: () => setIsSearching(true), closeSearch, resetHome,
     selectMountain, searchMountain, retry: () => {

@@ -64,6 +64,16 @@ const iconDefinitions = {
     defaultColor: "#7755AD",
     layers: [],
   },
+  Restaurant: {
+    asset: new URL("../../../assets/icons/restaurant.svg", import.meta.url).href,
+    defaultColor: "#E8754E",
+    layers: [],
+  },
+  Cafe: {
+    asset: new URL("../../../assets/icons/cafe.svg", import.meta.url).href,
+    defaultColor: "#E8754E",
+    layers: [],
+  },
   Water: {
     asset: new URL("../../../assets/icons/water.svg", import.meta.url).href,
     defaultColor: "#1876AB",
