@@ -16,7 +16,7 @@
 }
 
 .auth-login__art {
-  --login-motion-time: 4.3s;
+  --login-motion-time: 2.8s;
   inset: 0;
   z-index: -1;
 }
@@ -140,40 +140,19 @@
 }
 
 @keyframes login-hiker-climb {
-  0% { transform: translate(calc(-44.625 * var(--login-art-unit)), calc(108.5 * var(--login-art-unit))); }
-  3.488% { transform: translate(calc(-44.625 * var(--login-art-unit)), calc(108.5 * var(--login-art-unit))); }
-  9.594% { transform: translate(calc(-37.296295 * var(--login-art-unit)), calc(102.814812 * var(--login-art-unit))); }
-  15.588% { transform: translate(calc(-32.078705 * var(--login-art-unit)), calc(95.351852 * var(--login-art-unit))); }
-  23.061% { transform: translate(calc(-32 * var(--login-art-unit)), calc(84 * var(--login-art-unit))); }
-  32.954% { transform: translate(calc(-33.310184 * var(--login-art-unit)), calc(69.027779 * var(--login-art-unit))); }
-  41.637% { transform: translate(calc(-30.148148 * var(--login-art-unit)), calc(56.222221 * var(--login-art-unit))); }
-  50.534% { transform: translate(calc(-23.875 * var(--login-art-unit)), calc(44.25 * var(--login-art-unit))); }
-  60.296% { transform: translate(calc(-15.851851 * var(--login-art-unit)), calc(31.777779 * var(--login-art-unit))); }
-  71.22% { transform: translate(calc(-7.439815 * var(--login-art-unit)), calc(17.472221 * var(--login-art-unit))); }
-  83.721% { transform: translate(calc(0 * var(--login-art-unit)), calc(0 * var(--login-art-unit))); }
-  100% { transform: translate(calc(0 * var(--login-art-unit)), calc(0 * var(--login-art-unit))); }
+  0% { transform: translate(calc(-30.148148 * var(--login-art-unit)), calc(56.222221 * var(--login-art-unit))); }
+  17.7% { transform: translate(calc(-23.875 * var(--login-art-unit)), calc(44.25 * var(--login-art-unit))); }
+  37.12% { transform: translate(calc(-15.851851 * var(--login-art-unit)), calc(31.777779 * var(--login-art-unit))); }
+  58.852% { transform: translate(calc(-7.439815 * var(--login-art-unit)), calc(17.472221 * var(--login-art-unit))); }
+  83.721%, 100% { transform: translate(0, 0); }
 }
 
 @keyframes login-hiker-stride {
-  0% { transform: rotate(0deg); }
-  3.488% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
-  8.503% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-start)); }
-  13.517% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
-  18.532% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-end)); }
-  23.547% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
-  28.561% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-start)); }
-  33.576% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
-  38.59% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-end)); }
-  43.605% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
-  48.619% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-start)); }
-  53.634% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
-  58.648% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-end)); }
-  63.663% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
-  68.677% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-start)); }
-  73.692% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
-  78.706% { animation-timing-function: ease-in-out; transform: rotate(var(--login-last-step)); }
-  83.721% { transform: rotate(0deg); }
-  100% { transform: rotate(0deg); }
+  0%, 14%, 28%, 42%, 56%, 70% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
+  7%, 35%, 63% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-start)); }
+  21%, 49% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-end)); }
+  77% { animation-timing-function: ease-in-out; transform: rotate(var(--login-last-step)); }
+  83.721%, 100% { transform: rotate(0deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -94,7 +94,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   return <AuthLayout mode={mode}>
       <header className="auth-panel__header">
         <h1 id="auth-heading">{isSignup ? "회원가입" : "로그인"}</h1>
-        <p>{isSignup ? "나만의 산행 기록을 시작해 보세요." : "정상회담과 다시 산길을 이어가세요."}</p>
+        <p>{isSignup ? "나만의 산행 기록을 시작해 보세요." : "오늘 회담 장소는 정상입니다."}</p>
       </header>
       <form className="auth-form" onSubmit={submit} noValidate aria-busy={submitting}>
         <div className="auth-form__fields">
