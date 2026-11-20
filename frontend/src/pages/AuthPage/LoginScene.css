@@ -1,0 +1,188 @@
+.auth-login__scene {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  aspect-ratio: 390 / 844;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.auth-login__art,
+.auth-login__art img,
+.auth-login__glow,
+.auth-login__hiker,
+.auth-login__filters {
+  position: absolute;
+}
+
+.auth-login__art {
+  --login-motion-time: 4.3s;
+  inset: 0;
+  z-index: -1;
+}
+
+.auth-login__art img {
+  display: block;
+  height: auto;
+}
+
+.auth-login__mountains {
+  inset: 0 auto auto 0;
+  width: calc(390 * var(--login-art-unit));
+}
+
+.auth-login__wordmark {
+  margin: calc(40 * var(--login-art-unit)) 0 0 calc(24 * var(--login-art-unit));
+  color: var(--af-green-dark);
+  font-size: 29px;
+  font-weight: 700;
+  line-height: 39px;
+}
+
+.auth-login__wordmark span {
+  color: #fbf9f5;
+}
+
+.auth-login__glow {
+  top: calc(147 * var(--login-art-unit));
+  left: calc(198 * var(--login-art-unit));
+  width: calc(56 * var(--login-art-unit));
+  aspect-ratio: 1;
+  opacity: .22;
+  animation: login-glow-scale var(--login-motion-time) linear infinite,
+    login-glow-opacity var(--login-motion-time) linear infinite;
+}
+
+.auth-login__glow img {
+  width: calc(56 * var(--login-art-unit));
+}
+
+.auth-login__pin {
+  top: calc(152 * var(--login-art-unit));
+  left: calc(210 * var(--login-art-unit));
+  width: calc(32 * var(--login-art-unit));
+  animation: login-pin-scale var(--login-motion-time) linear infinite,
+    login-pin-opacity var(--login-motion-time) linear infinite;
+}
+
+.auth-login__hiker {
+  top: calc(173 * var(--login-art-unit));
+  left: calc(185 * var(--login-art-unit));
+  width: calc(35 * var(--login-art-unit));
+  height: calc(39 * var(--login-art-unit));
+  overflow: hidden;
+  animation: login-hiker-climb var(--login-motion-time) linear infinite;
+}
+
+.auth-login__back-leg,
+.auth-login__front-leg {
+  top: calc(6 * var(--login-art-unit));
+  width: calc(32 * var(--login-art-unit));
+}
+
+.auth-login__back-leg {
+  --login-step-start: -.331613rad;
+  --login-step-end: .331613rad;
+  --login-last-step: .248709rad;
+  left: calc(-2 * var(--login-art-unit));
+}
+
+.auth-login__front-leg {
+  --login-step-start: .366519rad;
+  --login-step-end: -.366519rad;
+  --login-last-step: -.274889rad;
+  left: 0;
+}
+
+.auth-login__hiker-body {
+  inset: 0 auto auto 0;
+  width: calc(35 * var(--login-art-unit));
+}
+
+.auth-login__hiker-arm {
+  --login-step-start: .20944rad;
+  --login-step-end: -.20944rad;
+  --login-last-step: -.15708rad;
+  top: calc(-9 * var(--login-art-unit));
+  left: 0;
+  width: calc(34 * var(--login-art-unit));
+}
+
+.auth-login__back-leg,
+.auth-login__front-leg,
+.auth-login__hiker-arm {
+  animation: login-hiker-stride var(--login-motion-time) linear infinite;
+}
+
+@keyframes login-glow-scale {
+  0% { transform: scale(.68); }
+  83.721% { animation-timing-function: ease-out; transform: scale(.68); }
+  94.884%, 100% { transform: scale(1.05); }
+}
+
+@keyframes login-glow-opacity {
+  0% { opacity: 0; }
+  83.721% { animation-timing-function: ease-out; opacity: 0; }
+  86.279% { animation-timing-function: ease-in-out; opacity: .6; }
+  94.884%, 100% { opacity: .22; }
+}
+
+@keyframes login-pin-scale {
+  0% { transform: scale(.78); }
+  83.721% { animation-timing-function: ease-out; transform: scale(.78); }
+  87.907% { animation-timing-function: ease-in-out; transform: scale(1.1); }
+  93.256%, 100% { transform: scale(1); }
+}
+
+@keyframes login-pin-opacity {
+  0% { animation-timing-function: step-end; opacity: 0; }
+  83.721%, 100% { opacity: 1; }
+}
+
+@keyframes login-hiker-climb {
+  0% { transform: translate(calc(-44.625 * var(--login-art-unit)), calc(108.5 * var(--login-art-unit))); }
+  3.488% { transform: translate(calc(-44.625 * var(--login-art-unit)), calc(108.5 * var(--login-art-unit))); }
+  9.594% { transform: translate(calc(-37.296295 * var(--login-art-unit)), calc(102.814812 * var(--login-art-unit))); }
+  15.588% { transform: translate(calc(-32.078705 * var(--login-art-unit)), calc(95.351852 * var(--login-art-unit))); }
+  23.061% { transform: translate(calc(-32 * var(--login-art-unit)), calc(84 * var(--login-art-unit))); }
+  32.954% { transform: translate(calc(-33.310184 * var(--login-art-unit)), calc(69.027779 * var(--login-art-unit))); }
+  41.637% { transform: translate(calc(-30.148148 * var(--login-art-unit)), calc(56.222221 * var(--login-art-unit))); }
+  50.534% { transform: translate(calc(-23.875 * var(--login-art-unit)), calc(44.25 * var(--login-art-unit))); }
+  60.296% { transform: translate(calc(-15.851851 * var(--login-art-unit)), calc(31.777779 * var(--login-art-unit))); }
+  71.22% { transform: translate(calc(-7.439815 * var(--login-art-unit)), calc(17.472221 * var(--login-art-unit))); }
+  83.721% { transform: translate(calc(0 * var(--login-art-unit)), calc(0 * var(--login-art-unit))); }
+  100% { transform: translate(calc(0 * var(--login-art-unit)), calc(0 * var(--login-art-unit))); }
+}
+
+@keyframes login-hiker-stride {
+  0% { transform: rotate(0deg); }
+  3.488% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
+  8.503% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-start)); }
+  13.517% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
+  18.532% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-end)); }
+  23.547% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
+  28.561% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-start)); }
+  33.576% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
+  38.59% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-end)); }
+  43.605% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
+  48.619% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-start)); }
+  53.634% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
+  58.648% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-end)); }
+  63.663% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
+  68.677% { animation-timing-function: ease-in-out; transform: rotate(var(--login-step-start)); }
+  73.692% { animation-timing-function: ease-in-out; transform: rotate(0deg); }
+  78.706% { animation-timing-function: ease-in-out; transform: rotate(var(--login-last-step)); }
+  83.721% { transform: rotate(0deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-login__glow,
+  .auth-login__pin,
+  .auth-login__hiker,
+  .auth-login__back-leg,
+  .auth-login__front-leg,
+  .auth-login__hiker-arm {
+    animation: none;
+  }
+}

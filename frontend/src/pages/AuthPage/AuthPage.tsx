@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { AuthApiError, login, signup } from "../../api/auth";
+import passwordEye from "../../assets/images/login/password-eye.svg?no-inline";
 import { Button } from "../../components/common/Button";
 import { Field } from "../../components/common/Field";
 import { Icon } from "../../components/common/Icon";
@@ -40,7 +41,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const formReady = (!isSignup || !validateNickname(nickname))
+  const signupReady = !validateNickname(nickname)
     && !validateEmail(email) && !validatePassword(password);
 
   function updateField(name: keyof FieldErrors, value: string, setter: (next: string) => void) {
@@ -92,27 +93,28 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
 
   return <AuthLayout mode={mode}>
       <header className="auth-panel__header">
-        <h2>{isSignup ? "회원가입" : "로그인"}</h2>
-        <p>{isSignup ? "나만의 산행 기록을 시작해 보세요." : "트레일맵과 다시 산길을 이어가세요."}</p>
+        <h1 id="auth-heading">{isSignup ? "회원가입" : "로그인"}</h1>
+        <p>{isSignup ? "나만의 산행 기록을 시작해 보세요." : "정상회담과 다시 산길을 이어가세요."}</p>
       </header>
       <form className="auth-form" onSubmit={submit} noValidate aria-busy={submitting}>
-        {isSignup && <Field id="auth-nickname" label="닉네임" showIcon={false} autoComplete="nickname"
+        <div className="auth-form__fields">
+          {isSignup && <Field id="auth-nickname" label="닉네임" showIcon={false} autoComplete="nickname"
           maxLength={12} placeholder="최대 12자" value={nickname}
           state={fieldErrors.nickname ? "error" : nickname ? "value" : "empty"}
           helper={fieldErrors.nickname ?? "한글, 영문, 숫자를 포함해 최대 12자"} showHelper
           onBlur={() => validateField("nickname")}
           onChange={event => updateField("nickname", event.target.value, setNickname)} />}
-        <Field id="auth-email" label="이메일" showIcon={false} type="email" inputMode="email"
+          <Field id="auth-email" label="이메일" showIcon={false} type="email" inputMode="email"
           autoComplete="email" autoCapitalize="none" spellCheck={false} required
-          placeholder="name@example.com" value={email}
+          placeholder={isSignup ? "name@example.com" : "이메일 주소 입력"} value={email}
           state={fieldErrors.email ? "error" : email ? "value" : "empty"}
           helper={fieldErrors.email ?? ""} showHelper={Boolean(fieldErrors.email)}
           onBlur={() => validateField("email")}
           onChange={event => updateField("email", event.target.value, setEmail)} />
-        <Field id="auth-password" label="비밀번호" showIcon={false}
+          <Field id="auth-password" label="비밀번호" showIcon={false}
           type={passwordVisible ? "text" : "password"}
           autoComplete={isSignup ? "new-password" : "current-password"} required minLength={8} maxLength={72}
-          placeholder="8자 이상 입력" value={password}
+          placeholder={isSignup ? "8자 이상 입력" : "비밀번호 입력"} value={password}
           state={fieldErrors.password ? "error" : password ? "value" : "empty"}
           helper={fieldErrors.password ?? (isSignup ? "8~72자로 입력해 주세요." : "")}
           showHelper={Boolean(fieldErrors.password) || isSignup}
@@ -121,10 +123,13 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           trailingControl={<button type="button" className="auth-form__password-toggle"
             aria-label={passwordVisible ? "비밀번호 숨기기" : "비밀번호 보기"}
             aria-pressed={passwordVisible} onClick={() => setPasswordVisible(current => !current)}>
-            <Icon name={passwordVisible ? "EyeOff" : "Eye"} size={20} color="currentColor" />
+            {!isSignup && !passwordVisible
+              ? <img src={passwordEye} alt="" width={22} height={20} />
+              : <Icon name={passwordVisible ? "EyeOff" : "Eye"} size={20} color="currentColor" />}
           </button>} />
+        </div>
         {formError && <p className="auth-form__error" role="alert">{formError}</p>}
-        <Button type="submit" fullWidth disabled={submitting || !formReady}>
+        <Button type="submit" fullWidth disabled={submitting || (isSignup && !signupReady)}>
           {submitting && <span className="auth-form__spinner" aria-hidden="true" />}
           {submitting ? (isSignup ? "가입하는 중" : "로그인 중") : isSignup ? "가입하기" : "로그인"}
         </Button>
