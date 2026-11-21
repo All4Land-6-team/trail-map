@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Checkbox } from "../../../components/common/Checkbox";
 import { CourseProfileChart } from "../../../components/chart/CourseProfileChart";
 import { ReviewCarousel } from "../../../components/review/ReviewCarousel";
@@ -5,10 +6,10 @@ import { EmptyState } from "../../../components/feedback";
 import type { CourseDetailData, ProfileVisibility } from "../../../types/courseDetail";
 import type { CourseAnalysisState } from "../../../types/courseAnalysis";
 import type { CommunityReview } from "../../../types/community";
-import { detailAnalysisView, formatProfileValue } from "../../../utils/courseDetailAnalysis";
+import { detailAnalysisView, formatProfileValue, profileSlopeDirection, profileSlopeSectionAt, summarizeProfileSlope } from "../../../utils/courseDetailAnalysis";
 import { CourseAnalysisStatus } from "./CourseAnalysisStatus";
 import { CourseBasicInfo } from "./CourseBasicInfo";
-import { analysisSteepNotice } from "../../../utils/courseComparison";
+import { analysisSteepNotice, steepSlopeThreshold } from "../../../utils/courseComparison";
 
 type Props = {
   data: CourseDetailData;
@@ -30,6 +31,10 @@ export function CourseAnalysis({ data, analysisState, analysisView, onRetryAnaly
   const metrics = analysis?.metrics;
   const sample = samples[selectedIndex];
   const steepNotice = analysisSteepNotice(analysis);
+  const [slopeMode, setSlopeMode] = useState<'summary' | 'raw'>('summary');
+  const slopeSections = useMemo(() => summarizeProfileSlope(samples), [samples]);
+  const selectedSection = sample ? profileSlopeSectionAt(slopeSections, sample.distanceKm) : null;
+  const threshold = steepSlopeThreshold(analysis);
   return <div className="course-analysis" role="tabpanel" id="course-analysis-panel" aria-label="코스 상세">
     <header className="course-analysis__intro">
       <h1>{course.name}</h1>
@@ -50,9 +55,32 @@ export function CourseAnalysis({ data, analysisState, analysisView, onRetryAnaly
         <dl className="course-profile-readout" aria-label="그래프 선택 위치 값">
           <div><dt>거리</dt><dd>{formatProfileValue(sample.distanceKm, "km", 2)}</dd></div>
           {visibility.elevation && <div><dt>고도</dt><dd>{formatProfileValue(sample.elevationMeters, "m")}</dd></div>}
-          {visibility.slope && <div className="course-profile-readout__slope"><dt>경사도</dt><dd>{formatProfileValue(sample.slopePercent, "%")}</dd></div>}
+          {visibility.slope && <div className="course-profile-readout__slope"><dt>선택 위치 원본 경사</dt><dd>{formatProfileValue(sample.slopePercent, "%")}</dd></div>}
         </dl>
-        <CourseProfileChart samples={samples} selectedIndex={selectedIndex} visibility={visibility} onSelect={onSelect} />
+        {visibility.slope && <>
+          <div className="course-profile-slope-controls" role="group" aria-label="경사 표시 방식">
+            <span>경사 표시</span>
+            <button type="button" aria-pressed={slopeMode === 'summary'} onClick={() => setSlopeMode('summary')}>50m 평균</button>
+            <button type="button" aria-pressed={slopeMode === 'raw'} onClick={() => setSlopeMode('raw')}>원본</button>
+          </div>
+          <p className="course-profile-selection" aria-live="polite" aria-atomic="true">
+            {slopeMode === 'summary' ? selectedSection
+              ? <>{formatProfileValue(selectedSection.startKm, 'km', 2)}–{formatProfileValue(selectedSection.endKm, 'km', 2)} 평균 {formatProfileValue(selectedSection.slopePercent, '%')} · {profileSlopeDirection(selectedSection.slopePercent)}</>
+              : '이 위치는 평균 경사 정보가 없어요.'
+              : <>선택 위치 원본 · {profileSlopeDirection(sample.slopePercent)}</>}
+          </p>
+        </>}
+        <CourseProfileChart samples={samples} selectedIndex={selectedIndex} visibility={visibility} onSelect={onSelect}
+          slopeMode={slopeMode} slopeSections={slopeSections} steepThreshold={threshold} />
+        {visibility.slope && <div className="course-profile-guide">
+          <p className="course-profile-legend"><span className="course-profile-legend__up">+ 오르막</span><span className="course-profile-legend__down">− 내리막</span><span>0% 평지</span></p>
+          <details><summary>경사 그래프 읽는 법</summary>
+          <p>경사 20%는 수평으로 100m 갈 때 높이가 20m 변하는 기울기예요. 각도 20°와 달라요.</p>
+          {threshold !== null && <p>점선 ±{threshold.toLocaleString('ko-KR', { maximumSignificantDigits: 6 })}%는 이 분석의 급경사 기준이에요.</p>}
+          <p>{slopeMode === 'summary' ? '50m 평균은 구간 길이로 가중한 경사예요. 결측 앞뒤는 합치지 않으며 마지막·결측 주변 구간은 50m보다 짧을 수 있어요. 짧은 급경사는 원본으로 확인해 주세요.' : '원본은 선택 위치 직전 구간의 경사예요. 짧은 거리의 고도 차이로 값이 크게 변할 수 있어요.'}</p>
+          <p>코스 진행 방향 기준이에요. 빈 구간은 정보 없음이며, 경사만으로 전체 난이도를 판단할 수 없어요.</p>
+          </details>
+        </div>}
         {!samples.some(point => point.elevationMeters !== null || point.slopePercent !== null)
           && <p className="course-analysis-status">유효한 고도·경사 값이 없어 그래프 선을 표시하지 않아요.</p>}
       </> : <EmptyState title="표시할 분석 프로필이 없어요." description="분석 조회 상태를 확인해 주세요." showIcon={false} className="course-detail-empty" />}

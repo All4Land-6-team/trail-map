@@ -26,6 +26,9 @@ const route = (overrides = {}) => ({
 });
 const envelope = data => ({ success: true, data });
 const json = value => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
+const mountains = () => envelope(['bukhansan', 'dobongsan'].map((externalId, index) => ({
+  mountainId: index + 1, externalId, name: externalId === 'bukhansan' ? '북한산' : '도봉산', longitude: 127, latitude: 37.6,
+})));
 
 test('공식 안내를 필터와 기본 상세에 연결하고 경로 길이와 안내 거리를 구분한다', () => {
   const guide = { officialCourseId: '121500V001', routeLabel: '탐방지원센터~백운대', difficultyGrade: '중', checkedOn: '2026-11-01',
@@ -76,24 +79,27 @@ test('실제 목록·직접 상세 주소가 API를 읽고 분석·예시 스팟
   const urls = [];
   globalThis.fetch = async url => {
     urls.push(url);
+    if (url.endsWith('/mountains')) return json(mountains());
     return json(envelope(url.includes('course-routes?') ? [route()] : route()));
   };
   const list = await api.loadCourseDiscoveryData('bukhansan', signal());
   assert.equal(list.courses.length, 1); assert.equal(list.courses[0].id, 'db-101');
   const detail = await api.loadCourseDetailData({ mountainId: 'bukhansan', courseId: 'db-101' }, signal());
   assert.equal(detail.course.name, '북한산성코스'); assert.deepEqual(detail.spots, []);
-  assert.match(urls[0], /\/api\/v1\/course-routes\?mountainKey=bukhansan$/);
-  assert.match(urls[1], /\/api\/v1\/courses\/101\/route$/);
+  assert.match(urls[0], /\/api\/v1\/mountains$/);
+  assert.match(urls[1], /\/api\/v1\/course-routes\?mountainKey=bukhansan$/);
+  assert.match(urls[2], /\/api\/v1\/courses\/101\/route$/);
   assert.equal(await api.loadCourseDetailData({ mountainId: 'bukhansan', courseId: 'bukhansan-baegundae' }, signal()), null);
 });
 
 test('빈 목록과 404 상세를 구분하고 실패 시 예시 경로로 대체하지 않는다', async () => {
-  globalThis.fetch = async () => json(envelope([]));
+  globalThis.fetch = async url => json(url.endsWith('/mountains') ? mountains() : envelope([]));
   assert.deepEqual((await api.loadCourseDiscoveryData('dobongsan', signal())).courses, []);
   globalThis.fetch = async () => new Response('', { status: 404 });
   assert.equal(await api.loadCourseDetailData({ mountainId: 'bukhansan', courseId: 'db-101' }, signal()), null);
+  globalThis.fetch = async url => url.endsWith('/mountains') ? json(mountains()) : new Response('', { status: 404 });
   await assert.rejects(api.loadCourseDiscoveryData('bukhansan', signal()), /HTTP 404/);
-  globalThis.fetch = async () => new Response('', { status: 500 });
+  globalThis.fetch = async url => url.endsWith('/mountains') ? json(mountains()) : new Response('', { status: 500 });
   await assert.rejects(api.loadCourseDiscoveryData('bukhansan', signal()), /HTTP 500/);
 });
 

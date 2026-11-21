@@ -86,7 +86,7 @@ export function steepSlopeThreshold(analysis: CourseAnalysis | null): number | n
 export function analysisSteepNotice(analysis: CourseAnalysis | null): string | null {
   const threshold = steepSlopeThreshold(analysis);
   return threshold === null ? null
-    : `급경사 비율은 오르막·내리막 경사 절댓값 ${threshold.toLocaleString('ko-KR', { maximumSignificantDigits: 6 })}% 이상인 구간의 거리 비율이에요. 경사를 계산할 수 없는 구간은 제외해요.`;
+    : `급경사 비율은 경사를 계산한 거리 중 오르막·내리막 경사 절댓값 ${threshold.toLocaleString('ko-KR', { maximumSignificantDigits: 6 })}% 이상인 구간의 거리 비율이에요. 경사를 계산할 수 없는 구간은 제외해요. 전체 난이도나 위험도를 뜻하지 않아요.`;
 }
 
 /** 결측은 축 범위에서만 제외하고 series에는 남겨 선을 끊는다. 큰 프로필도 spread 없이 처리한다. */
