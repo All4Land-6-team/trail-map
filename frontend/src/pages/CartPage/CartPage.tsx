@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo } from "react";
 import type { BottomDestination } from "../../components/layout";
 import { useSavedCourseIds } from "../../store/courseSelectionStore";
-import { navigate } from "../../hooks/useHashRoute";
+import { leaveCart, navigate } from "../../hooks/useHashRoute";
 import { cartCourseDetailPath } from "../../routes/courseDetailRoutes";
 import { getSavedCartCourses } from "./catalog";
 import { CartHomeScreen } from "./components/CartHomeScreen";
@@ -65,7 +65,7 @@ export function CartPage({ route, onNavigateOutsideCart, plannedHikes, onPlanHik
   const metricsPath = `cart/metrics?${context}`;
   const nav = onNavigateOutsideCart;
   const home = <CartHomeScreen courses={path === "cart/empty" ? [] : saved} onBrowseMountains={() => nav("home")}
-    onNavigate={nav} onSelectMountain={id => navigate(`cart/mountain/${id}`)} />;
+    onBack={leaveCart} onNavigate={nav} onSelectMountain={id => navigate(`cart/mountain/${id}`)} />;
   const detail = (id: string, from = "selection") => navigate(cartCourseDetailPath(
     { mountainId, courseId: id }, from === "metrics" ? metricsPath : selectionPath,
   ));

@@ -78,6 +78,8 @@ npm run dev
 
 `src/store/courseSelectionStore.ts`의 `useSavedCourseIds`, `getSavedCourseIds`, `setCourseSaved`, `subscribeSavedCourses`가 코스 목록·상세·등산 담기 화면의 공통 접점입니다. 담기·해제 시 Toast를 표시하며 같은 탭의 화면 이동 동안 유지하고 새로고침하면 초기화합니다. 등산 담기는 이 저장소의 코스를 산별로 묶어서 표시합니다.
 
+등산 담기 첫 화면은 공용 `TopBar`의 뒤로 가기로 진입 전 앱 화면(검색 조건 포함)에 복귀합니다. `useHashRoute.ts`에서 진입을 기록하며 담기·비교·담기에서 연 상세 화면의 왕복은 진입 화면을 바꾸지 않습니다. 직접 주소 진입이나 새로고침으로 진입 화면을 알 수 없으면 홈으로 이동합니다. 브라우저의 외부 방문 기록은 사용하지 않으며 담기 상태는 그대로 유지합니다.
+
 `CourseListPage`의 `onCourseOpen`·`onScheduleOpen`은 `{ mountainId, courseId }`를 전달합니다. `CourseFlow`가 상세·일정 경로를 연결하며 기존 `ScheduleSheet`로 등록·수정합니다. 저장 후 해당 날짜가 선택된 캘린더로 이동합니다.
 
 | 선택 | 경로 | 통합 작업 |
