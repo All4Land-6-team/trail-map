@@ -259,7 +259,7 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
   const visibleSpotPoints = spotPoints.filter(({ spot }) => spot.courseId === selected?.id);
   const renderSpot = ({ spot, x, y }: { spot: CourseSpot; x: number; y: number }) => {
     if (spot.kind === "restaurant" || spot.kind === "cafe") return null;
-    return <SpotMarker key={spot.id} kind={spot.kind} compact
+    return <SpotMarker key={spot.id} kind={spot.kind} source={spot.communityTarget?.targetType === "USER_SPOT" ? "user" : "official"} compact
       className="course-map__spot"
       style={{ left: x, top: y }} data-spot-id={spot.id}
       aria-label={`${spot.name} ${spot.communityTarget && spot.id === selectedSpotId ? '커뮤니티 상세 보기' : '지도에서 선택'}`}

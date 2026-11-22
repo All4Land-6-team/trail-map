@@ -28,7 +28,7 @@
 .course-map--detail .course-map__peak { position: absolute; bottom: 9px; left: -12px; }
 .course-map__profile-point { position: absolute; z-index: 3; pointer-events: none; transform: translate(-9px, -7px); }
 .course-map__profile-point img { display: block; }
-.course-map__spot { position: absolute; z-index: 4; transform: translate(-50%, -50%); }
+.course-map .course-map__spot { position: absolute; z-index: 4; transform: translate(-50%, -50%); }
 .course-map__spot[aria-pressed="true"] { z-index: 5; box-shadow: 0 0 0 2px rgb(77 77 77 / 22%); }
 .course-map__osm-food-marker { width: 38px; height: 38px; border: 0; background: transparent; }
 .course-map__osm-food-marker .af-spot-marker__symbol { width: 28px; height: 28px; border: 1.5px solid #e8754e; background: #fff8f3; box-shadow: 0 2px 7px rgb(65 45 35 / 16%); transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }

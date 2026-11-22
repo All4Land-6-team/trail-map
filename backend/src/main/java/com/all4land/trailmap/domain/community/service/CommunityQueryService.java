@@ -138,6 +138,15 @@ public class CommunityQueryService {
                 .map(this::toSpotResponse).toList();
     }
 
+    public List<CommunitySpotResponse> getCourseUserSpots(Long userId, Long courseId) {
+        validateUser(userId);
+        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
+        return spotQueryRepository.findCourseUserSpots(userId, mountainId, courseId,
+                        List.of("REST_AREA", "DRINKING_FOUNTAIN", "RESTROOM", "PHOTO_SPOT")).stream()
+                .map(this::toSpotResponse).toList();
+    }
+
     public CommunitySpotDetailResponse getSpot(
             Long userId,
             Long mountainId,

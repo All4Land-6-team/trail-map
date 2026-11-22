@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadCoursePhotoSpots } from '../src/api/coursePhotoSpots.ts';
+import { loadCoursePhotoSpots, loadCourseUserSpots } from '../src/api/coursePhotoSpots.ts';
 import { spotReviewPath } from '../src/routes/communityRoutes.ts';
 import { communitySpotKey, communitySpotTargetId, resolveSpotSelection } from '../src/utils/communitySpotIdentity.ts';
 import { courseSpotAction } from '../src/utils/courseProfile.ts';
@@ -126,4 +126,21 @@ test('개발 화면의 예시 2개를 보존하고 로컬 적재 외부 ID로 �
     assert.equal(await loadDevelopmentSpots({ mountainId: 'bukhansan', courseId: 'bukhansan-baegundae' }, new AbortController().signal), null);
     assert.equal(calls.length, 1);
   } finally { globalThis.fetch = original; await server.close(); }
+});
+
+test('코스의 사용자 스팟 네 종류를 공식 시설과 같은 번호여도 구분한다', async () => {
+  const original = globalThis.fetch;
+  const types = ['RESTROOM', 'DRINKING_FOUNTAIN', 'REST_AREA', 'PHOTO_SPOT'];
+  globalThis.fetch = async url => {
+    assert.ok(String(url).endsWith('/courses/23/user-spots'));
+    return Response.json({ data: types.map((type, i) => ({ ...spot, type, targetId: i + 1 })) });
+  };
+  try {
+    const result = await loadCourseUserSpots({ mountainId: '7', courseId: 'db-23' }, new AbortController().signal, 7);
+    const { withCourseFacilities } = await import('../src/utils/courseFacilities.ts');
+    const combined = withCourseFacilities(result, [{ id: 'facility-1', kind: 'restroom' }]);
+    assert.deepEqual(combined.map(item => item.kind), ['restroom', 'water', 'shelter', 'photo', 'restroom']);
+    assert.equal(new Set(combined.map(item => item.id)).size, 5);
+    assert.equal(courseSpotAction(result[0], result[0].id), 'open');
+  } finally { globalThis.fetch = original; }
 });

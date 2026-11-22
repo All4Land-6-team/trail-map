@@ -53,6 +53,10 @@
   border-radius: 50%;
   background: #fff;
 }
+.af-spot-marker { position: relative; }
+.af-spot-marker[data-source="user"]:not([data-kind="photo"]) { border-color: transparent; }
+.af-spot-marker__border { position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); pointer-events: none; }
+.af-spot-marker__border rect { width: calc(100% - 1px); height: calc(100% - 1px); }
 .af-spot-marker[data-kind="photo"] { color: #b34d6a; }
 .af-spot-marker[data-kind="shelter"] { color: #b06428; }
 .af-spot-marker[data-kind="water"] { color: #1876ab; }

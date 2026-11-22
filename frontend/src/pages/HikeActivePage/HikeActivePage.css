@@ -17,3 +17,6 @@
 
 /* 일몰 알림: 필터 칩 아래 왼쪽. 오른쪽 지도 도구(약 56px)와 겹치지 않게 폭을 줄인다. */
 .hike-map-page__top > .af-hike-sunset-notice { align-self: flex-start; max-width: calc(100% - 32px - 56px); margin: -3px 0 0 16px; }
+
+.hike-active-page__spot-status:not(:empty) { align-self: flex-start; margin: 4px 12px; padding: 4px 8px; border-radius: 8px; background: #fff; color: var(--af-ink); font-size: 12px; pointer-events: auto; }
+.hike-active-page__spot-status button { color: var(--af-green-dark); }

@@ -14,13 +14,14 @@ const filters: readonly { id: SpotFilter; label: string }[] = [
 export type SpotFilterChipsProps = {
   value: SpotFilter;
   onChange: (filter: SpotFilter) => void;
+  showOther?: boolean;
   className?: string;
 };
 
 /** 지도 위 스팟 필터 (HIKE-03·05). 선택한 종류의 스팟만 지도에 표시한다. */
-export function SpotFilterChips({ value, onChange, className }: SpotFilterChipsProps) {
+export function SpotFilterChips({ value, onChange, className, showOther = true }: SpotFilterChipsProps) {
   return <div className={["af-spot-filters", className].filter(Boolean).join(" ")} role="group" aria-label="스팟 필터">
-    {filters.map(item => <Chip key={item.id} label={item.label} selected={value === item.id}
+    {filters.filter(item => showOther || item.id !== "other").map(item => <Chip key={item.id} label={item.label} selected={value === item.id}
       onClick={event => { event.preventDefault(); onChange(item.id); }} />)}
   </div>;
 }

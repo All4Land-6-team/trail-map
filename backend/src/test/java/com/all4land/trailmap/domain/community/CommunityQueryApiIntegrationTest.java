@@ -363,6 +363,9 @@ class CommunityQueryApiIntegrationTest {
         long first = insertPhotoSpot(firstHike, "PHOTO_SPOT", "PENDING");
         long second = insertPhotoSpot(secondHike, "PHOTO_SPOT", "PENDING");
         insertPhotoSpot(firstHike, "REST_AREA", "PENDING");
+        insertPhotoSpot(firstHike, "RESTROOM", "PENDING");
+        insertPhotoSpot(firstHike, "DRINKING_FOUNTAIN", "PENDING");
+        insertPhotoSpot(firstHike, "OTHER", "PENDING");
         insertPhotoSpot(firstHike, "PHOTO_SPOT", "HIDDEN");
         insertPhotoSpot(null, "PHOTO_SPOT", "PENDING");
         long deleted = insertPhotoSpot(firstHike, "PHOTO_SPOT", "PENDING");
@@ -371,6 +374,14 @@ class CommunityQueryApiIntegrationTest {
                 INSERT INTO spot_review (user_id, spot_id, hike_record_id, review_content)
                 VALUES (?, ?, ?, '다른 코스에서 방문')
                 """, userId, first, secondHike);
+        mockMvc.perform(asUser(get("/v1/community/courses/" + firstCourse + "/user-spots")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].type", org.hamcrest.Matchers.containsInAnyOrder(
+                        "PHOTO_SPOT", "REST_AREA", "RESTROOM", "DRINKING_FOUNTAIN")))
+                .andExpect(jsonPath("$.data[0].targetId").value(first));
+        mockMvc.perform(asUser(get("/v1/community/courses/" + courseId + "/user-spots")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].targetId").value(second));
         for (long[] pair : new long[][]{{firstCourse, first}, {courseId, second}}) {
             mockMvc.perform(asUser(get("/v1/community/courses/" + pair[0] + "/photo-spots")))
                     .andExpect(status().isOk())

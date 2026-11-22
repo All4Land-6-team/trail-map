@@ -19,7 +19,7 @@ function render(overrides = {}) {
   return renderToStaticMarkup(createElement(CourseSpots, {
     spots: [], category: 'water', restrooms: { status: 'success', spots: [] },
     shelters: { status: 'success', spots: [] }, onRetryShelters() {},
-    photos: { status: 'success', spots: [] }, onRetryPhotos() {},
+    userSpots: { status: 'success', spots: [] }, onRetryUserSpots() {},
     water: { status: 'success', spots: [] }, onRetryRestrooms() {}, onRetryWater() {}, onCategory() {}, onOpen() {},
     ...overrides,
   }));
@@ -52,17 +52,17 @@ test('선택한 OSM 음식점·카페의 지도 출처와 위치를 표시한다
 });
 
 test('사진 스팟은 조회 상태와 실제 이름·사진 수를 표시한다', () => {
-  for (const [photos, text] of [
-    [{ status: 'loading' }, /사진 스팟을 불러오는 중/],
-    [{ status: 'error', message: '연결 실패' }, /사진 스팟 다시 조회/],
-    [{ status: 'unavailable' }, /사진 스팟 조회를 준비 중/],
+  for (const [userSpots, text] of [
+    [{ status: 'loading' }, /사용자 스팟을 불러오는 중/],
+    [{ status: 'error', message: '연결 실패' }, /사용자 스팟 다시 조회/],
+    [{ status: 'unavailable' }, /사용자 스팟 조회를 준비 중/],
   ]) {
-    const html = render({ category: 'photo', photos });
+    const html = render({ category: 'photo', userSpots });
     assert.match(html, text);
     assert.doesNotMatch(html, /사진 스팟 · 0곳|아직 등록된 스팟/);
   }
   const spot = { id: 'USER_SPOT:7', name: '전망 바위', kind: 'photo', photoCount: 3, reviewCount: 2 };
-  const html = render({ category: 'photo', spots: [spot], photos: { status: 'success', spots: [spot] } });
+  const html = render({ category: 'photo', spots: [spot], userSpots: { status: 'success', spots: [spot] } });
   assert.match(html, /사진 스팟 · 1곳/);
   assert.match(html, /전망 바위/);
   assert.match(html, /사진 3장 · 후기 2개/);
@@ -72,13 +72,13 @@ test('사진 스팟은 조회 상태와 실제 이름·사진 수를 표시한�
 test('예시가 있어도 실제 빈 결과는 0곳이며 오류 화면에 예시 목록이 섞이지 않는다', () => {
   const examples = [{ id: 'example', name: '사진 스팟 1', kind: 'photo', example: true }];
   for (const actual of [{ status: 'success', spots: [] }, { status: 'error', message: '조회 실패' }]) {
-    const photos = coursePhotoSpotDisplay(actual, examples, false);
-    const html = render({ category: 'photo', photos, spots: photos.status === 'success' ? photos.spots : [] });
+    const userSpots = coursePhotoSpotDisplay(actual, examples, false);
+    const html = render({ category: 'photo', userSpots, spots: userSpots.status === 'success' ? userSpots.spots : [] });
     assert.doesNotMatch(html, /사진 스팟 1|course-spot-card/);
-    assert.match(html, actual.status === 'success' ? /사진 스팟 · 0곳/ : /사진 스팟 다시 조회/);
+    assert.match(html, actual.status === 'success' ? /사진 스팟 · 0곳/ : /사용자 스팟 다시 조회/);
   }
-  const photos = coursePhotoSpotDisplay({ status: 'loading' }, examples, true);
-  const html = render({ category: 'photo', photos, spots: photos.spots });
+  const userSpots = coursePhotoSpotDisplay({ status: 'loading' }, examples, true);
+  const html = render({ category: 'photo', userSpots, spots: userSpots.spots });
   assert.match(html, /사진 스팟 1/);
   assert.match(html, /지도 표시 위치는 화면 예시입니다/);
 });

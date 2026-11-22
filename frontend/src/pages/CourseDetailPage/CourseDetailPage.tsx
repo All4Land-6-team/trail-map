@@ -24,7 +24,7 @@ import { CourseSpots } from "./components/CourseSpots";
 import { useCourseDetail } from "./hooks/useCourseDetail";
 import { useParkControl } from "./hooks/useParkControl";
 import { useCourseFacilities } from "../../hooks/useCourseFacilities";
-import { useCoursePhotoSpots } from "./hooks/useCoursePhotoSpots";
+import { useCourseUserSpots } from "../../hooks/useCourseUserSpots";
 import { coursePhotoSpotDisplay } from "../../utils/coursePhotoSpotDisplay";
 import { withCourseFacilities } from "../../utils/courseFacilities";
 import { useDetailSheet } from "./hooks/useDetailSheet";
@@ -67,10 +67,10 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
     view.tab === "spots" && view.category === "control");
   const examplePhotos = import.meta.env.DEV && import.meta.env.VITE_COURSE_PHOTO_SPOTS_SOURCE === "mock"
     && mountainId === "bukhansan" && courseId === "bukhansan-baegundae";
-  const photos = useCoursePhotoSpots(mountainId, courseId, !examplePhotos && !!data && view.tab === "spots"
-    && (view.category === "all" || view.category === "photo"), data?.course.analysisReference?.mountainId);
-  const photoState = coursePhotoSpotDisplay(photos.state, data?.spots ?? EMPTY_SPOTS, examplePhotos);
-  const photoSpots = photoState.status === "success" ? photoState.spots : EMPTY_SPOTS;
+  const userRequest = useCourseUserSpots(mountainId, courseId, !examplePhotos && !!data && view.tab === "spots"
+    && view.category !== "control", data?.course.analysisReference?.mountainId);
+  const userState = coursePhotoSpotDisplay(userRequest.state, data?.spots ?? EMPTY_SPOTS, examplePhotos);
+  const userSpots = userState.status === "success" ? userState.spots : EMPTY_SPOTS;
   const { state: analysisState, retry: retryAnalysis } = useCourseAnalysis(data?.course ?? null);
   const analysisView = useMemo(() => detailAnalysisView(data?.course ?? null, analysisState), [data, analysisState]);
   const { samples } = analysisView;
@@ -91,8 +91,8 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const reviewTotal = communityCourse?.reviewCount ?? communityReviews.length;
   const mapCourse = useMemo(() => data ? { ...data.course, routeCoordinates: analysisView.routeCoordinates } : null, [data, analysisView]);
   const courses = useMemo(() => mapCourse && mapCourse.routeCoordinates.length > 1 ? [mapCourse] : [], [mapCourse]);
-  const allSpots = useMemo(() => withCourseFacilities(photoSpots, [...restroomSpots, ...waterSpots, ...shelterSpots]),
-    [photoSpots, restroomSpots, waterSpots, shelterSpots]);
+  const allSpots = useMemo(() => withCourseFacilities(userSpots, [...restroomSpots, ...waterSpots, ...shelterSpots]),
+    [userSpots, restroomSpots, waterSpots, shelterSpots]);
   const spots = useMemo(() => view.category === "food" ? osmFoodSpot ? [osmFoodSpot] : EMPTY_SPOTS
     : selectCourseSpots(allSpots, view.category), [allSpots, osmFoodSpot, view.category]);
   const summitCoordinate = useMemo(() => samples.reduce<(typeof samples)[number] | null>((highest, point) =>
@@ -203,7 +203,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
             onSelect={index => setSelection({ key: selectionKey, index })} onToggle={toggleMetric} onReviewsOpen={onReviewsOpen ? () => onReviewsOpen(request) : undefined} />
           : <CourseSpots control={control} spots={spots} category={view.category}
             selectedId={view.category === "food" ? osmFoodSpot?.id : view.spotId}
-            photos={photoState} onRetryPhotos={photos.retry}
+            userSpots={userState} onRetryUserSpots={userRequest.retry}
             restrooms={restrooms.state} onRetryRestrooms={restrooms.retry}
             water={water.state} onRetryWater={water.retry}
             shelters={shelters.state} onRetryShelters={shelters.retry}

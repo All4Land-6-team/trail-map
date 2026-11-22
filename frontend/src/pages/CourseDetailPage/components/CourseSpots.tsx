@@ -20,13 +20,13 @@ type Props = {
   onRetryShelters: () => void;
   water: CourseFacilitiesState;
   onRetryWater: () => void;
-  photos: CourseFacilitiesState;
-  onRetryPhotos: () => void;
+  userSpots: CourseFacilitiesState;
+  onRetryUserSpots: () => void;
   onCategory: (category: SpotCategory) => void;
   onOpen: (spot: CourseSpot) => void;
 };
 
-export function CourseSpots({ control, spots, category, selectedId, restrooms, onRetryRestrooms, water, onRetryWater, shelters, onRetryShelters, photos, onRetryPhotos, onCategory, onOpen }: Props) {
+export function CourseSpots({ control, spots, category, selectedId, restrooms, onRetryRestrooms, water, onRetryWater, shelters, onRetryShelters, userSpots, onRetryUserSpots, onCategory, onOpen }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const lastAutoScrolledFoodId = useRef<string | undefined>(undefined);
   const facilityGroups = [
@@ -35,10 +35,10 @@ export function CourseSpots({ control, spots, category, selectedId, restrooms, o
     { kind: "water", label: "음수대", state: water, retry: onRetryWater },
   ].filter(group => category === "all" || category === group.kind);
   const includesFacilities = facilityGroups.length > 0;
-  const includesPhotos = category === 'all' || category === 'photo';
   const includesNearby = category === 'food';
+  const includesUserSpots = category !== 'control' && !includesNearby;
   const countReady = !includesNearby && facilityGroups.every(group => group.state.status === "success")
-    && (!includesPhotos || photos.status === 'success');
+    && (!includesUserSpots || userSpots.status === 'success');
   const selectedPlace = includesNearby ? spots.find(spot => spot.id === selectedId) : undefined;
   useEffect(() => {
     listRef.current?.scrollTo({ top: 0 });
@@ -64,13 +64,13 @@ export function CourseSpots({ control, spots, category, selectedId, restrooms, o
       onValueChange={value => onCategory(value as SpotCategory)} />
     <h2>{spotCategoryLabel(category)}{category !== "control" && countReady ? ` · ${spots.length}곳` : ""}</h2>
     {includesFacilities && facilityGroups.some(group => group.state.status !== "unavailable") && <p className="course-spots__notice">
-      시설은 코스 경로에서 {COURSE_FACILITY_RADIUS_METERS}m 이내입니다.
+      공식 시설은 코스 경로에서 {COURSE_FACILITY_RADIUS_METERS}m 이내입니다.
     </p>}
     {(category === "water" || (category === "all" && water.status === "success" && water.spots.length > 0)) && <p className="course-spots__notice">
       음수대는 샘터·약수터를 포함합니다. 현재 이용 가능 여부와 음용 적합 여부는 확인되지 않았어요.
     </p>}
     <div id="course-spots-content" className="course-spots__body" role="tabpanel" tabIndex={0} aria-label={spotCategoryLabel(category)}
-      aria-busy={(category === "control" && control.state.status === "loading") || facilityGroups.some(group => group.state.status === "loading") || (includesPhotos && photos.status === 'loading')}>
+      aria-busy={(category === "control" && control.state.status === "loading") || facilityGroups.some(group => group.state.status === "loading") || (includesUserSpots && userSpots.status === 'loading')}>
       {includesNearby && !selectedPlace && <p className="course-spots__status" role="status">선택한 장소 정보가 여기에 표시됩니다.</p>}
       {selectedPlace && <article className="course-place-detail" aria-label={`${selectedPlace.name} 상세 정보`}>
         <span className="course-place-detail__kind">{selectedPlace.kind === 'cafe' ? '카페' : '음식점'}</span>
@@ -80,10 +80,10 @@ export function CourseSpots({ control, spots, category, selectedId, restrooms, o
           <div><dt>위치</dt><dd>{selectedPlace.coordinate.join(', ')}</dd></div>
         </dl>
       </article>}
-      {includesPhotos && photos.status === 'loading' && <p role="status">사진 스팟을 불러오는 중이에요.</p>}
-      {includesPhotos && photos.status === 'unavailable' && <p role="status">이 코스의 사진 스팟 조회를 준비 중이에요.</p>}
-      {includesPhotos && photos.status === 'error' && <div className="course-spots__status">
-        <p role="alert">{photos.message}</p><Button variant="secondary" onClick={onRetryPhotos}>사진 스팟 다시 조회</Button>
+      {includesUserSpots && userSpots.status === 'loading' && <p role="status">사용자 스팟을 불러오는 중이에요.</p>}
+      {includesUserSpots && userSpots.status === 'unavailable' && <p role="status">이 코스의 사용자 스팟 조회를 준비 중이에요.</p>}
+      {includesUserSpots && userSpots.status === 'error' && <div className="course-spots__status">
+        <p role="alert">{userSpots.message}</p><Button variant="secondary" onClick={onRetryUserSpots}>사용자 스팟 다시 조회</Button>
       </div>}
       {facilityGroups.map(({ kind, label, state, retry }) => <div key={kind}>
         {state.status === "loading" && <p className="course-spots__status" role="status">주변 {label}{kind === "restroom" ? "을" : "를"} 불러오는 중이에요.</p>}
@@ -91,15 +91,13 @@ export function CourseSpots({ control, spots, category, selectedId, restrooms, o
           <p role="alert">{state.message}</p><Button variant="secondary" onClick={retry}>{label} 다시 조회</Button>
         </div>}
         {state.status === "unavailable" && <p className="course-spots__status" role="status">이 코스의 {label} 조회를 준비 중이에요.</p>}
-        {category !== "all" && state.status === "success" && state.spots.length === 0 && <p className="course-spots__status" role="status">
-          코스에서 {COURSE_FACILITY_RADIUS_METERS}m 이내에 조회된 {label}{kind === "restroom" ? "이" : "가"} 없어요.
-        </p>}
       </div>)}
       {category === "control" ? <CourseControl {...control} /> : category === "food" ? null : spots.length ? <div className="course-spots__list" ref={listRef}>
         {spots.map(spot => <button key={spot.id} type="button" className="course-spot-card" data-spot-id={spot.id}
           aria-label={spot.communityTarget && spot.id === selectedId ? `${spot.name} 커뮤니티 상세 보기` : `${spot.name} 지도에서 보기`}
           aria-pressed={spot.id === selectedId} onClick={() => onOpen(spot)}>
           <span><strong>{category === "all" ? `${spotCategoryLabel(spot.kind)} · ${spot.name}` : spot.name}</strong>
+            {spot.communityTarget && <span>{spot.communityTarget.targetType === "USER_SPOT" ? "사용자 등록" : "공식 시설"}</span>}
             {isFoodSpot(spot) ? <>
               <span>{spot.kind === 'cafe' ? '카페' : '음식점'} · OpenStreetMap 지도 정보</span>
             </> : spot.facilityId !== undefined ? <>
@@ -109,7 +107,8 @@ export function CourseSpots({ control, spots, category, selectedId, restrooms, o
               : <span>사진 {spot.photoCount ?? 0}장 · 후기 {spot.reviewCount ?? 0}개</span>}
           </span><Icon name={spot.communityTarget ? "ChevronRight" : "Locate"} size={16} color="currentColor" />
         </button>)}
-      </div> : (category === 'all' || category === 'photo') && countReady && <EmptyState title="아직 등록된 스팟이 없어요." description="" showIcon={false} className="course-detail-empty" />}
+      </div> : countReady && <EmptyState title={includesFacilities && category !== "all"
+        ? `조회된 ${spotCategoryLabel(category)}${category === "restroom" ? "이" : "가"} 없어요.` : "아직 등록된 스팟이 없어요."} description="" showIcon={false} className="course-detail-empty" />}
       {facilityGroups.some(group => group.state.status === "success" && group.state.spots.length > 0) && <p className="course-spots__distance-note">
         경로까지의 최단거리로, 도보 이동거리와는 다릅니다.
       </p>}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useCourseUserSpots } from "../../hooks/useCourseUserSpots";
 import { findCourse } from "../../api/hikeMock";
 import { Button } from "../../components/common/Button";
 import { NearbyAlert, Toast } from "../../components/feedback";
@@ -24,6 +25,13 @@ export function HikeActivePage() {
   const hike = useMemo(() => activeHikeFor(course, session?.schedule, session?.coursePath, session?.phase === "downhill"),
     [course, session?.schedule, session?.coursePath, session?.phase]);
   const [filter, setFilter] = useState<SpotFilter>("all");
+  const serverId = session?.schedule.serverCourseId;
+  const mountainId = session?.schedule.serverMountainId ?? Number(session?.mountainId);
+  // 공식 시설은 useHikeFacilities(오프라인 저장 포함), 사용자 등록 스팟은 코스별 사용자 스팟 API에서 받는다.
+  const userRequest = useCourseUserSpots(String(mountainId), `db-${serverId}`, serverId !== undefined, mountainId);
+  const userSpots = useMemo(() => userRequest.state.status === "success" ? userRequest.state.spots.map(spot => ({
+    id: spot.id, kind: spot.kind, name: spot.name, position: spot.coordinate, source: "user" as const,
+  })) : [], [userRequest.state]);
   // 등산을 시작하면 3D 내비 모드(현재 위치를 따라가며 진행 방향을 위로)로 보여 준다. 2D는 경로 전체 보기다.
   const [dimension, setDimension] = useState<"2D" | "3D">("3D");
   const [recenterKey, setRecenterKey] = useState(0);
@@ -31,6 +39,7 @@ export function HikeActivePage() {
   const [overlay, setOverlay] = useState<"share" | "end" | null>(null);
   const controls = useHikeControls(session, hike);
   const facilities = useHikeFacilities(session, hike);
+  const mapSpots = useMemo(() => [...facilities, ...userSpots], [facilities, userSpots]);
   const nearby = useNearbyFacility(session?.currentPosition, facilities);
   const routeCenter = controls.route[Math.floor(controls.route.length / 2)];
   const sun = useSunTimes(session?.currentPosition ?? routeCenter);
@@ -45,13 +54,16 @@ export function HikeActivePage() {
         <HikeRouteMap route={controls.route} peak={controls.peak} mountainName={hike.mountainName} traveledKm={controls.traveledKm ?? hike.traveledKm}
           {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
           progressMeters={controls.progressMeters} stage={session.phase === "downhill" ? "descent" : "ascent"}
-          spots={facilities} filter={filter} dimension={dimension} recenterKey={recenterKey} navigation
+          spots={mapSpots} filter={filter} dimension={dimension} recenterKey={recenterKey} navigation
           padding={{ top: 150, bottom: 320, left: 40, right: 72 }}
           label={`${hike.courseName} 등산 경로 지도`} />
         <div className="hike-map-page__top">
           <TopBar title={session.phase === "downhill" ? "하산 중" : "등산 중"} subtitle={hike.courseName} showAction={false}
             onBack={() => navigate(hikePaths.calendar())} />
-          <SpotFilterChips value={filter} onChange={setFilter} />
+          <SpotFilterChips value={filter} onChange={setFilter} showOther={serverId === undefined} />
+          {serverId !== undefined && userRequest.state.status === "error" && <div className="hike-active-page__spot-status" role="status">
+            사용자 스팟 조회 실패 <button type="button" onClick={userRequest.retry}>다시 시도</button>
+          </div>}
           {/* 일몰 알림은 지도 한가운데를 가리지 않게 필터 바로 아래에 둔다 */}
           <HikeSunsetNotice sun={sun} />
           {/* 코스 시설 접근 알림: 휴대폰 안에서 거리만 계산해 통신이 끊겨도 동작한다 */}

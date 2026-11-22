@@ -80,6 +80,14 @@ public class CommunityQueryController {
         return response(SuccessResponse.ok(queryService.getCoursePhotoSpots(userId, courseId)));
     }
 
+    @GetMapping("/courses/{courseId}/user-spots")
+    public ResponseEntity<SuccessResponse<List<CommunitySpotResponse>>> getCourseUserSpots(
+            @CurrentUserId Long userId,
+            @Positive @PathVariable Long courseId
+    ) {
+        return response(SuccessResponse.ok(queryService.getCourseUserSpots(userId, courseId)));
+    }
+
     @GetMapping("/mountains/{mountainId}/spots/{targetType}/{targetId}")
     public ResponseEntity<SuccessResponse<CommunitySpotDetailResponse>> getSpot(
             @CurrentUserId Long userId,

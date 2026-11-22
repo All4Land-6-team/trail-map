@@ -457,7 +457,7 @@ export function HikeRouteMap({
       terrainMode={terrainEnabled ? dimension : undefined} terrainCameraManaged={navigationActive}
       onTerrainStatusChange={handleTerrainStatus} />
     {visibleSpots.map(spot => createPortal(
-      <SpotMarker kind={spot.kind} aria-label={spot.name} />, nodes.spots.get(spot.id)!, spot.id))}
+      <SpotMarker kind={spot.kind} source={spot.source} aria-label={spot.name} />, nodes.spots.get(spot.id)!, spot.id))}
     {endpointLabels ? <>
       {createPortal(<div className="course-route-endpoint course-route-endpoint--start" aria-label={endpointNames.start}>
         <span className="course-route-endpoint__symbol" /><span className="course-route-endpoint__label">{endpointNames.start}</span></div>, nodes.start)}

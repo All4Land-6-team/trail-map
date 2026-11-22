@@ -189,9 +189,9 @@ public class CommunitySpotQueryRepository {
               AND spot.target_id = :targetId
             """;
 
-    private static final String COURSE_PHOTO_SPOTS_SQL = SPOT_CTE + SPOT_SELECT + """
+    private static final String COURSE_USER_SPOTS_SQL = SPOT_CTE + SPOT_SELECT + """
             WHERE spot.target_type = 'USER_SPOT'
-              AND spot.spot_type = 'PHOTO_SPOT'
+              AND spot.spot_type IN (:spotTypes)
               AND EXISTS (
                   SELECT 1
                   FROM spot_course link
@@ -225,8 +225,12 @@ public class CommunitySpotQueryRepository {
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     public List<CommunitySpotQueryResult> findCoursePhotoSpots(Long userId, Long mountainId, Long courseId) {
-        return jdbcTemplate.query(COURSE_PHOTO_SPOTS_SQL,
-                spotParameters(userId, mountainId).addValue("courseId", courseId), SPOT_ROW_MAPPER);
+        return findCourseUserSpots(userId, mountainId, courseId, List.of("PHOTO_SPOT"));
+    }
+
+    public List<CommunitySpotQueryResult> findCourseUserSpots(Long userId, Long mountainId, Long courseId, List<String> types) {
+        return jdbcTemplate.query(COURSE_USER_SPOTS_SQL,
+                spotParameters(userId, mountainId).addValue("courseId", courseId).addValue("spotTypes", types), SPOT_ROW_MAPPER);
     }
 
     public List<CommunitySpotQueryResult> findSpots(
