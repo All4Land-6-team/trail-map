@@ -1,11 +1,12 @@
 import { Button } from "../../../components/common/Button";
 import { Typography } from "../../../components/common/Typography";
 import { SavedMountainCard } from "../../../components/content";
-import { BottomNavigation, type BottomDestination } from "../../../components/layout";
+import { BottomNavigation, TopBar, type BottomDestination } from "../../../components/layout";
 import type { CartCourse } from "../types";
 
 type CartHomeScreenProps = {
   courses: readonly CartCourse[];
+  onBack: () => void;
   onBrowseMountains: () => void;
   onNavigate: (destination: BottomDestination) => void;
   onSelectMountain: (mountainId: string) => void;
@@ -13,6 +14,7 @@ type CartHomeScreenProps = {
 
 export function CartHomeScreen({
   courses,
+  onBack,
   onBrowseMountains,
   onNavigate,
   onSelectMountain,
@@ -23,10 +25,10 @@ export function CartHomeScreen({
 
   return (
     <main className="cart-screen cart-home-screen">
-      <header className="cart-home-header">
-        <Typography as="h1" variant="headingPage">등산 담기</Typography>
+      <div className="cart-home-header">
+        <TopBar title="등산 담기" onBack={onBack} showAction={false} />
         <Typography as="p" variant="bodySmall">담아둔 코스를 모아보고 비교해요</Typography>
-      </header>
+      </div>
 
       <section className="cart-saved-section" aria-labelledby="saved-mountains-title">
         <div className="cart-section-heading">
