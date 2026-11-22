@@ -13,6 +13,7 @@ import { HikeCalendarPage } from './pages/HikeCalendarPage/HikeCalendarPage'
 import { HikeCompletePage } from './pages/HikeCompletePage/HikeCompletePage'
 import { HikeDescentPage } from './pages/HikeDescentPage/HikeDescentPage'
 import { HikeDetailPage } from './pages/HikeDetailPage/HikeDetailPage'
+import { HikeRecordPage } from './pages/HikeRecordPage/HikeRecordPage'
 import { HikeTodayPage } from './pages/HikeTodayPage/HikeTodayPage'
 import { AuthPage } from './pages/AuthPage/AuthPage'
 import { fetchCurrentUser } from './api/auth'
@@ -35,6 +36,7 @@ const FacilityPreviewPage = import.meta.env.DEV
 const hikeRoutes: Record<string, ComponentType> = {
   'hikes/calendar': HikeCalendarPage,
   'hikes/detail': HikeDetailPage,
+  'hikes/record': HikeRecordPage,
   'hikes/today': HikeTodayPage,
   'hikes/active': HikeActivePage,
   'hikes/downhill': HikeDescentPage,
@@ -67,6 +69,8 @@ function AuthenticatedApp({ route }: { route: string }) {
         initialSpotTargetType={query.get('targetType') === 'USER_SPOT' ? 'USER_SPOT'
           : query.get('targetType') === 'FACILITY' ? 'FACILITY' : undefined}
         initialCourseId={query.get('course') ?? undefined}
+        initialReviewKind={query.get('review') === 'mountain' || query.get('review') === 'course' || query.get('review') === 'spot'
+          ? query.get('review') as 'mountain' | 'course' | 'spot' : undefined}
         spotRegistrationMode={query.get('mode') === 'active' ? 'active' : 'postHike'}
         activeHike={query.get('mode') === 'active' && hikeSession && hikeSession.phase !== 'complete' ? {
           hikeRecordId: hikeSession.hikeRecordId, courseId: hikeTargetIds(hikeSession).courseId,
@@ -101,9 +105,8 @@ function AuthenticatedApp({ route }: { route: string }) {
       />
     </Suspense>
   }
-  if (path === 'hikes/complete') return <HikeCompletePage onWriteReview={() => {
-    window.location.hash = 'community?from=hikes/complete'
-  }} />
+  // 등산 완료 화면이 후기 유형 선택 창을 띄우고 커뮤니티 작성 화면으로 직접 이동한다.
+  if (path === 'hikes/complete') return <HikeCompletePage />
   const HikeRoutePage = hikeRoutes[path]
   // 주소의 ?값이 바뀌어도 화면을 새로 그리도록 전체 주소를 key로 쓴다.
   if (HikeRoutePage) return <HikeRoutePage key={route} />

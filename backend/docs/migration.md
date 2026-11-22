@@ -25,6 +25,14 @@ DB 스키마 변경은 Flyway migration SQL 파일로만 수행합니다.
 - `V9__add_email_authentication.sql`: 기존 익명 사용자 행을 보존하면서 이메일·비밀번호 해시를 추가하고, 만료·폐기를 지원하는 로그인 세션 테이블을 생성합니다.
 - `V10__store_course_analysis_document.sql`: 기존 `course_analysis`에 NULL 허용 `analysis_document JSONB`와 문서 버전·ID·지문·크기 검증 제약을 추가합니다. 새 샘플 테이블은 생성하지 않으며 기존 파일 문서를 자동 이전하지 않습니다.
 - `V11__add_park_access_control.sql`: 사무소별 통제정보 및 첨부 테이블을 생성하고, 미수집 상태의 북한산·북한산도봉 사무소 식별자 두 행을 추가합니다.
+- `V12__move_rating_to_course_review.sql`: 산 후기 평점을 코스 후기로 이동합니다.
+- `V13__link_spots_to_courses.sql`: 공식 시설과 사용자 스팟을 여러 코스에 연결하는 관계 테이블을 추가합니다.
+- `V14__add_photo_environment.sql`: 사진 촬영 환경정보와 기상 관측소 구조를 추가합니다.
+- `V15__move_environment_to_review.sql`: 촬영 환경정보를 사진에서 후기 단위로 이동합니다.
+- `V16__simplify_review_weather.sql`: 산별 ASOS 지점번호와 후기 날씨 처리 상태를 추가하고 관측소 테이블을 제거합니다.
+- `V17__assign_asos_stations.sql`: 북한산과 도봉산을 가장 가까운 서울 ASOS 관측소(STN 108)에 연결합니다.
+- `V18__retry_fog_weather.sql`: 시정 단위 오류로 안개로 저장된 후기 날씨를 재조회 대상으로 변경합니다.
+- `V19__add_hike_record_last_position_time.sql`: 오프라인 위치 재전송의 중복 반영을 막기 위해 등산 기록에 마지막 위치 측정 시각을 추가합니다.
 
 기존 `app_user` 행은 `email`과 `password_hash`가 모두 NULL인 레거시 사용자로 보존됩니다. 신규 가입자는 정규화한 고유 이메일과 BCrypt 비밀번호 해시를 함께 저장합니다. 닉네임은 중복을 허용합니다.
 

@@ -12,6 +12,7 @@ after(() => server.close());
 const api = await server.ssrLoadModule('/src/api/courseRoutes.ts');
 const { CourseCarousel } = await server.ssrLoadModule('/src/pages/CourseListPage/components/CourseCarousel.tsx');
 const { CourseBasicInfo } = await server.ssrLoadModule('/src/pages/CourseDetailPage/components/CourseBasicInfo.tsx');
+const { CartHomeScreen } = await server.ssrLoadModule('/src/pages/CartPage/components/CartHomeScreen.tsx');
 const nativeFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = nativeFetch; });
 const signal = () => new AbortController().signal;
@@ -26,6 +27,9 @@ const route = (overrides = {}) => ({
 });
 const envelope = data => ({ success: true, data });
 const json = value => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
+const mountains = () => envelope(['bukhansan', 'dobongsan'].map((externalId, index) => ({
+  mountainId: index + 1, externalId, name: externalId === 'bukhansan' ? '북한산' : '도봉산', longitude: 127, latitude: 37.6,
+})));
 
 test('공식 안내를 필터와 기본 상세에 연결하고 경로 길이와 안내 거리를 구분한다', () => {
   const guide = { officialCourseId: '121500V001', routeLabel: '탐방지원센터~백운대', difficultyGrade: '중', checkedOn: '2026-11-01',
@@ -76,24 +80,27 @@ test('실제 목록·직접 상세 주소가 API를 읽고 분석·예시 스팟
   const urls = [];
   globalThis.fetch = async url => {
     urls.push(url);
+    if (url.endsWith('/mountains')) return json(mountains());
     return json(envelope(url.includes('course-routes?') ? [route()] : route()));
   };
   const list = await api.loadCourseDiscoveryData('bukhansan', signal());
   assert.equal(list.courses.length, 1); assert.equal(list.courses[0].id, 'db-101');
   const detail = await api.loadCourseDetailData({ mountainId: 'bukhansan', courseId: 'db-101' }, signal());
   assert.equal(detail.course.name, '북한산성코스'); assert.deepEqual(detail.spots, []);
-  assert.match(urls[0], /\/api\/v1\/course-routes\?mountainKey=bukhansan$/);
-  assert.match(urls[1], /\/api\/v1\/courses\/101\/route$/);
+  assert.match(urls[0], /\/api\/v1\/mountains$/);
+  assert.match(urls[1], /\/api\/v1\/course-routes\?mountainKey=bukhansan$/);
+  assert.match(urls[2], /\/api\/v1\/courses\/101\/route$/);
   assert.equal(await api.loadCourseDetailData({ mountainId: 'bukhansan', courseId: 'bukhansan-baegundae' }, signal()), null);
 });
 
 test('빈 목록과 404 상세를 구분하고 실패 시 예시 경로로 대체하지 않는다', async () => {
-  globalThis.fetch = async () => json(envelope([]));
+  globalThis.fetch = async url => json(url.endsWith('/mountains') ? mountains() : envelope([]));
   assert.deepEqual((await api.loadCourseDiscoveryData('dobongsan', signal())).courses, []);
   globalThis.fetch = async () => new Response('', { status: 404 });
   assert.equal(await api.loadCourseDetailData({ mountainId: 'bukhansan', courseId: 'db-101' }, signal()), null);
+  globalThis.fetch = async url => url.endsWith('/mountains') ? json(mountains()) : new Response('', { status: 404 });
   await assert.rejects(api.loadCourseDiscoveryData('bukhansan', signal()), /HTTP 404/);
-  globalThis.fetch = async () => new Response('', { status: 500 });
+  globalThis.fetch = async url => url.endsWith('/mountains') ? json(mountains()) : new Response('', { status: 500 });
   await assert.rejects(api.loadCourseDiscoveryData('bukhansan', signal()), /HTTP 500/);
 });
 
@@ -205,4 +212,57 @@ test('DEM 지원 산 목록은 개선된 지도와 시트 미리보기 생명주
   assert.match(list, /enhanced=\{enhancedMap\}/);
   assert.match(list, /onPreviewStart=\{previewControls.begin\}/);
   assert.match(list, /onPreviewEnd=\{previewControls.end\}/);
+});
+
+test('담기 첫 화면과 빈 화면은 공용 뒤로 가기 버튼과 기존 탐색·담기 내용을 제공한다', () => {
+  for (const courses of [[], [{ id: 'db-1', mountainId: 'bukhansan', mountain: '북한산' }]]) {
+    const html = renderToStaticMarkup(createElement(CartHomeScreen, {
+      courses, onBack() {}, onBrowseMountains() {}, onNavigate() {}, onSelectMountain() {},
+    }));
+    assert.match(html, /class="af-top-bar"/);
+    assert.equal((html.match(/aria-label="뒤로 가기"/g) ?? []).length, 1);
+    assert.match(html, /담아둔 코스를 모아보고 비교해요/);
+    assert.match(html, courses.length ? /북한산/ : /아직 담은 코스가 없어요/);
+    assert.match(html, /aria-current="page"/);
+  }
+});
+
+test('담기 뒤로 가기는 직접 진입 시 홈, 내부 왕복 후에는 진입 전 화면이며 담기 상태를 유지한다', async () => {
+  const previousWindow = globalThis.window;
+  const fakeWindow = new EventTarget();
+  fakeWindow.location = { hash: '#cart' };
+  globalThis.window = fakeWindow;
+  const store = await import('../src/store/courseSelectionStore.ts');
+  store.setCourseSaved('db-137', true);
+  try {
+    const { leaveCart } = await import('../src/hooks/useHashRoute.ts?cart-navigation-test');
+    leaveCart();
+    assert.equal(fakeWindow.location.hash, '');
+    const change = (from, to) => {
+      fakeWindow.location.hash = `#${to}`;
+      const event = new Event('hashchange');
+      Object.assign(event, { oldURL: `https://trail.test/#${from}`, newURL: `https://trail.test/#${to}` });
+      fakeWindow.dispatchEvent(event);
+    };
+    const entry = 'mountains/bukhansan/courses?selected=db-137';
+    change(entry, 'cart');
+    change('cart', 'cart/mountain/bukhansan');
+    const detail = 'mountains/bukhansan/courses/db-137?returnTo=cart%2Fmetrics%3Fselected%3Ddb-137';
+    change('cart/metrics?selected=db-137', detail);
+    change(detail, 'cart/metrics?selected=db-137');
+    change('cart/metrics?selected=db-137', 'cart');
+    leaveCart();
+    assert.equal(fakeWindow.location.hash, entry);
+    assert.ok(store.getSavedCourseIds().includes('db-137'));
+    change('community?tab=mine', 'cart/empty');
+    leaveCart();
+    assert.equal(fakeWindow.location.hash, 'community?tab=mine');
+    change('', 'cart');
+    leaveCart();
+    assert.equal(fakeWindow.location.hash, '');
+  } finally {
+    store.setCourseSaved('db-137', false);
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
 });

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { safeMapPadding, pointsFitSafeArea, createPreviewClock, shouldFitCourse, routeFadeOpacity, recoverRouteTerrain } from '../src/components/map/routeMapCamera.ts';
+import { safeMapPadding, pointsFitSafeArea, createPreviewClock, shouldFitCourse, routeFadeOpacity, recoverRouteTerrain, spotFocusZoom } from '../src/components/map/routeMapCamera.ts';
 
 test('terrain failure cancels playback before starting the final 2D recovery camera', () => {
   const events = [];
@@ -19,6 +19,11 @@ test('explicit whole-course fit does not mistake a country-wide overview for a f
   assert.equal(shouldFitCourse(true, true, true), true);
   assert.equal(shouldFitCourse(false, true, true), false);
   assert.equal(shouldFitCourse(false, true, false), true);
+});
+
+test('selected spot camera leaves the country overview and preserves a closer user zoom', () => {
+  assert.equal(spotFocusZoom(5), 15);
+  assert.equal(spotFocusZoom(16), 16);
 });
 
 test('measured overlays reserve title, buttons and sheet without an invalid viewport', () => {

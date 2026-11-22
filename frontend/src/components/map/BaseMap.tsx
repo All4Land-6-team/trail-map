@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { compassStore, isRotated, resetNorth } from './compassStore'
+import { CompassNeedle } from './MapCompassAction'
 import {
   MapLibreMap,
   NavigationControl,
   setWorkerUrl,
   type FilterSpecification,
+  type GeoJSONSource,
   type LngLatBoundsLike,
+  type MapMouseEvent,
   type MapOptions,
   type PaddingOptions,
 } from 'maplibre-gl'
@@ -21,6 +25,7 @@ import {
 } from '../../constants/map'
 import type { MapDimension } from './MapAction'
 import { applyTerrainMode, installTerrainLayers, isTerrainSourceError, removeTerrainLayers, type TerrainStatus } from './terrain'
+import { registerTerrainTileFallbackProtocol, transformTerrainTileRequest } from './terrainTileFallback'
 
 // MapLibre 6은 워커 파일이 분리되어 있어 Vite가 번들한 주소를 직접 지정한다
 setWorkerUrl(workerUrl)
@@ -32,7 +37,14 @@ export type BaseMapProps = {
   className?: string
   fitBoundsPadding?: number | PaddingOptions
   routes?: readonly MapRoute[]
+  enableRouteHover?: boolean
   showNavigationControl?: boolean
+  /** false면 끌기·확대·회전 등 손으로 지도를 움직일 수 없다 (요약용 지도). */
+  interactive?: boolean
+  /** 지도가 돌아가 있을 때 정북으로 되돌리는 나침반 버튼을 보여 준다. */
+  showCompass?: boolean
+  /** 회전 여부와 관계없이 나침반 버튼을 항상 보여 준다. */
+  alwaysShowCompass?: boolean
   terrainBeforeLayerId?: string
   terrainMode?: MapDimension
   terrainCameraManaged?: boolean
@@ -54,6 +66,10 @@ export type MapRoute = {
 }
 
 const EMPTY_ROUTES: readonly MapRoute[] = []
+const ROUTE_HOVER_SOURCE = 'base-map-route-hover'
+const ROUTE_HOVER_OUTLINE = 'base-map-route-hover-outline'
+const ROUTE_HOVER_LINE = 'base-map-route-hover-line'
+const EMPTY_ROUTE_FILTER: FilterSpecification = ['==', ['get', 'routeId'], '']
 
 function BaseMap({
   ariaLabel = '남한 배경지도',
@@ -62,7 +78,11 @@ function BaseMap({
   className,
   fitBoundsPadding,
   routes = EMPTY_ROUTES,
+  enableRouteHover = false,
   showNavigationControl = true,
+  interactive = true,
+  showCompass = true,
+  alwaysShowCompass = false,
   terrainBeforeLayerId,
   terrainMode,
   terrainCameraManaged,
@@ -84,6 +104,11 @@ function BaseMap({
   const [terrainRetryVersion, setTerrainRetryVersion] = useState(0)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [hasStaticCacheMiss, setHasStaticCacheMiss] = useState(false)
+  // 오른쪽 지도 도구에 나침반 버튼이 없는 화면(홈·커뮤니티 등)만 지도 위에 나침반을 그린다.
+  const compassOwner = useId()
+  const compass = useSyncExternalStore(compassStore.subscribe, compassStore.get, compassStore.get)
+  const showOverlayCompass = interactive && showCompass && compass.slots === 0
+    && compass.owner === compassOwner && (alwaysShowCompass || isRotated(compass.bearing))
   const terrainEnabled = terrainMode !== undefined
 
   useEffect(() => { onMapReadyRef.current = onMapReady }, [onMapReady])
@@ -122,6 +147,7 @@ function BaseMap({
 
     let map: MapLibreMap
     try {
+      registerTerrainTileFallbackProtocol()
       const mapOptions: MapOptions = {
         container: containerRef.current,
         style: BASE_MAP_STYLE_URL,
@@ -129,6 +155,7 @@ function BaseMap({
         maxZoom: MAP_MAX_ZOOM,
         // 지도 위에는 출처 표시를 넣지 않는다 (팀 결정 전 임시. OSM 데이터는 ODbL상 출처 표시가 필요하다).
         attributionControl: false,
+        transformRequest: transformTerrainTileRequest,
         fitBoundsOptions: fitBoundsPadding ? { padding: fitBoundsPadding } : undefined,
         ...(bounds
           ? { bounds }
@@ -136,7 +163,20 @@ function BaseMap({
             ? { center, zoom: zoom ?? 13 }
             : { bounds: SOUTH_KOREA_BOUNDS }),
       }
-      map = new MapLibreMap(mapOptions)
+      map = new MapLibreMap({ ...mapOptions, interactive })
+      // 커뮤니티 화면의 터치 제스처에서도 회전·기울기 입력을 유지한다.
+      if (interactive) {
+        map.dragRotate.enable()
+        map.touchZoomRotate.enable()
+        map.touchZoomRotate.enableRotation()
+        map.touchPitch.enable()
+      }
+      // 정북 맞춤 버튼(오른쪽 지도 도구의 MapCompassAction 또는 지도 위 나침반)에 방위를 알린다.
+      if (interactive && showCompass) {
+        const created = map
+        compassStore.attach(created, compassOwner)
+        created.on('rotate', () => compassStore.setBearing(created, created.getBearing()))
+      }
       map.on('style.load', () => guardNullableRoadShieldFilter(map))
       if (!bounds && !center) map.jumpTo({ center: SOUTH_KOREA_MAINLAND_CENTER })
     } catch {
@@ -183,9 +223,10 @@ function BaseMap({
       onMapReadyRef.current?.(null)
       mapRef.current = null
       renderedRouteIdsRef.current = []
+      compassStore.detach(map)
       map.remove()
     }
-  }, [bounds, center, fitBoundsPadding, showNavigationControl, zoom])
+  }, [bounds, center, compassOwner, fitBoundsPadding, interactive, showCompass, showNavigationControl, zoom])
 
   useEffect(() => {
     const map = mapRef.current
@@ -239,8 +280,114 @@ function BaseMap({
     }
   }, [routes])
 
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !enableRouteHover || mapLoadVersion === 0) return
+    const routeIds = renderedRouteIdsRef.current.map(routeId => `${routeId}-hit`)
+    const hoverRoutes = routes.filter(route => route.coordinates.length > 1)
+    if (routeIds.length < 2 || hoverRoutes.length < 2) return
+    const data = {
+      type: 'FeatureCollection' as const,
+      features: hoverRoutes.map(route => ({
+        type: 'Feature' as const,
+        properties: {
+          routeId: `course-route-${route.id}`,
+          color: route.color,
+          opacity: route.opacity ?? 0.95,
+          width: (route.width ?? 4) + 2,
+          outlineColor: route.outlineColor ?? route.color,
+          outlineOpacity: 1,
+          outlineWidth: (route.outlineWidth ?? (route.width ?? 4) + 3) + 2,
+        },
+        geometry: { type: 'LineString' as const, coordinates: route.coordinates },
+      })),
+    }
+    const source = map.getSource(ROUTE_HOVER_SOURCE) as GeoJSONSource | undefined
+    if (source) source.setData(data)
+    else {
+      map.addSource(ROUTE_HOVER_SOURCE, { type: 'geojson', data })
+      map.addLayer({ id: ROUTE_HOVER_OUTLINE, type: 'line', source: ROUTE_HOVER_SOURCE, filter: EMPTY_ROUTE_FILTER,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'outlineColor'], 'line-opacity': ['get', 'outlineOpacity'], 'line-width': ['get', 'outlineWidth'] } })
+      map.addLayer({ id: ROUTE_HOVER_LINE, type: 'line', source: ROUTE_HOVER_SOURCE, filter: EMPTY_ROUTE_FILTER,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'color'], 'line-opacity': ['get', 'opacity'], 'line-width': ['get', 'width'] } })
+    }
+    const clearHoveredRoute = () => {
+      if (map.getLayer(ROUTE_HOVER_OUTLINE)) map.setFilter(ROUTE_HOVER_OUTLINE, EMPTY_ROUTE_FILTER)
+      if (map.getLayer(ROUTE_HOVER_LINE)) map.setFilter(ROUTE_HOVER_LINE, EMPTY_ROUTE_FILTER)
+      map.getCanvas().style.cursor = ''
+    }
+    const highlightRoute = (routeId: string) => {
+      const filter: FilterSpecification = ['==', ['get', 'routeId'], routeId]
+      map.setFilter(ROUTE_HOVER_OUTLINE, filter)
+      map.setFilter(ROUTE_HOVER_LINE, filter)
+      map.getCanvas().style.cursor = 'pointer'
+    }
+    const sourceIdFromHitLayer = (layerId: string) => layerId.slice(0, -'-hit'.length)
+    const updateHoveredRoute = (event: MapMouseEvent) => {
+      const feature = map.queryRenderedFeatures(event.point, { layers: routeIds })[0]
+      const routeId = typeof feature?.layer?.id === 'string' ? sourceIdFromHitLayer(feature.layer.id) : null
+      if (routeId) highlightRoute(routeId)
+      else clearHoveredRoute()
+    }
+    const highlightTouchedRoute = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch') return
+      const rect = map.getCanvas().getBoundingClientRect()
+      const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top]
+      const feature = map.queryRenderedFeatures(point, { layers: routeIds })[0]
+      const routeId = typeof feature?.layer?.id === 'string' ? sourceIdFromHitLayer(feature.layer.id) : null
+      if (routeId) {
+        highlightRoute(routeId)
+      } else clearHoveredRoute()
+    }
+    const clearTouchedRoute = () => {
+      clearHoveredRoute()
+    }
+    const clearTouchState = () => clearTouchedRoute()
+    const layerHandlers = routeIds.map(routeId => {
+      const enter = () => highlightRoute(sourceIdFromHitLayer(routeId))
+      const leave = () => clearHoveredRoute()
+      map.on('mouseenter', routeId, enter)
+      map.on('mouseleave', routeId, leave)
+      return { routeId, enter, leave }
+    })
+    map.on('mousemove', updateHoveredRoute)
+    map.on('mouseout', clearHoveredRoute)
+    map.on('click', clearTouchState)
+    map.getCanvas().addEventListener('pointerdown', highlightTouchedRoute)
+    window.addEventListener('pointerup', clearTouchState)
+    window.addEventListener('pointercancel', clearTouchState)
+    window.addEventListener('blur', clearTouchState)
+    document.addEventListener('visibilitychange', clearTouchState)
+    return () => {
+      layerHandlers.forEach(({ routeId, enter, leave }) => {
+        map.off('mouseenter', routeId, enter)
+        map.off('mouseleave', routeId, leave)
+      })
+      map.off('mousemove', updateHoveredRoute)
+      map.off('mouseout', clearHoveredRoute)
+      map.off('click', clearTouchState)
+      map.getCanvas().removeEventListener('pointerdown', highlightTouchedRoute)
+      window.removeEventListener('pointerup', clearTouchState)
+      window.removeEventListener('pointercancel', clearTouchState)
+      window.removeEventListener('blur', clearTouchState)
+      document.removeEventListener('visibilitychange', clearTouchState)
+      clearHoveredRoute()
+      if (map.getLayer(ROUTE_HOVER_LINE)) map.removeLayer(ROUTE_HOVER_LINE)
+      if (map.getLayer(ROUTE_HOVER_OUTLINE)) map.removeLayer(ROUTE_HOVER_OUTLINE)
+      if (map.getSource(ROUTE_HOVER_SOURCE)) map.removeSource(ROUTE_HOVER_SOURCE)
+    }
+  }, [enableRouteHover, mapLoadVersion, routes])
+
   return <div className={["base-map-shell", className].filter(Boolean).join(' ')}>
     <div ref={containerRef} className="base-map" aria-label={ariaLabel} />
+    {/* 지도가 돌아가 있으면 정북으로 되돌린다. 오른쪽 지도 도구가 없는 화면에서만 지도 위에 띄운다. */}
+    {showOverlayCompass && <button type="button" className="af-map-action af-map-action--neutral af-map-compass base-map__compass"
+      aria-label="지도를 정북 방향으로 맞추기" title="정북 방향으로"
+      onClick={(event) => resetNorth(compass.map, event.nativeEvent)}>
+      <CompassNeedle bearing={compass.bearing} />
+    </button>}
     {(isOffline || hasLoadError || hasStaticCacheMiss || (hasTerrainError && terrainEnabled)) && <div className="base-map__notices" aria-live="polite">
       {isOffline && <div className="base-map__notice">
         오프라인입니다. 앱 화면과 저장된 정적 정보는 계속 사용할 수 있지만, 배경지도는 브라우저에 남은 부분만 보일 수 있습니다. 실시간 정보는 연결 후 다시 확인해 주세요.
@@ -274,7 +421,9 @@ function replaceMapRoutes(
 ) {
   renderedRouteIds.forEach((sourceId) => {
     const endpointLayerId = `${sourceId}-endpoint`
+    const hitLayerId = `${sourceId}-hit`
     const outlineLayerId = `${sourceId}-outline`
+    if (map.getLayer(hitLayerId)) map.removeLayer(hitLayerId)
     if (map.getLayer(endpointLayerId)) map.removeLayer(endpointLayerId)
     if (map.getLayer(sourceId)) map.removeLayer(sourceId)
     if (map.getLayer(outlineLayerId)) map.removeLayer(outlineLayerId)
@@ -340,6 +489,18 @@ function replaceMapRoutes(
         },
       })
     }
+    map.addLayer({
+      id: `${sourceId}-hit`,
+      type: 'line',
+      source: sourceId,
+      filter: ['==', ['get', 'kind'], 'route'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': route.color,
+        'line-opacity': 0,
+        'line-width': (route.width ?? 4) + 4,
+      },
+    })
     return sourceId
   })
 }

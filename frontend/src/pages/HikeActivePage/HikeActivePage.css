@@ -1,19 +1,22 @@
-.hike-active-page__bottom { position: absolute; z-index: 3; right: 0; bottom: 0; left: 0; display: flex; box-sizing: border-box; flex-direction: column; align-items: center; padding: 70px 16px max(8px, env(safe-area-inset-bottom)); background: linear-gradient(to bottom, transparent 0 56%, rgb(237 244 235 / 30%) 72%, rgb(237 244 235 / 86%) 90%, #edf4eb 100%); pointer-events: none; }
-.hike-active-page__bottom > * { pointer-events: auto; }
-.hike-active-page__bottom > .af-hike-status,
-.hike-active-page__bottom > .af-hike-sunset-notice { position: relative; z-index: 2; transform: translateY(40px); }
-.hike-active-page .hike-map-page__tools { top: 120px; }
-.hike-descent-page .hike-map-page__tools { top: 80px; }
+/* HIKE-05·07 지도 위 일출·일몰. 진행 시트를 끌어 내리면 --hike-sheet-inset만큼 같이 내려간다. */
+.hike-active-page__sun { position: absolute; z-index: 3; right: 0; bottom: calc(var(--hike-sheet-inset, 0px) + 25px); left: 0; display: flex; flex-direction: column; align-items: center; padding: 48px 0 4px; background: linear-gradient(to bottom, transparent 0 40%, rgb(237 244 235 / 40%) 70%, rgb(237 244 235 / 80%) 100%); pointer-events: none; transition: bottom .28s cubic-bezier(.2, .8, .2, 1); }
+.hike-active-page__sun > * { pointer-events: auto; }
+.hike-active-page__sun > .af-sun-arc { min-height: 0; }
+.hike-active-page .hike-map-page__tools, .hike-descent-page .hike-map-page__tools { top: 120px; }
 .hike-active-page .hike-route-map__base .base-map__notices,
-.hike-descent-page .hike-route-map__base .base-map__notices { right: 72px; bottom: 262px; }
+.hike-descent-page .hike-route-map__base .base-map__notices { right: 72px; bottom: calc(var(--hike-sheet-inset, 0px) + 200px); }
 .hike-active-page .hike-page__toast, .hike-descent-page .hike-page__toast { z-index: 6; bottom: 274px; }
 @media (max-height: 650px) {
-  .hike-active-page__bottom { padding-top: 44px; padding-bottom: 4px; }
-  .hike-active-page .hike-map-page__tools { top: 112px; }
-  .hike-active-page .hike-route-map__base .base-map__notices,
-  .hike-descent-page .hike-route-map__base .base-map__notices { bottom: 226px; }
+  .hike-active-page__sun { padding-top: 24px; }
+  .hike-active-page__sun > .af-sun-arc { width: 82%; }
   .hike-active-page .hike-page__toast, .hike-descent-page .hike-page__toast { bottom: 236px; }
 }
+@media (prefers-reduced-motion: reduce) {
+  .hike-active-page__sun { transition: none; }
+}
+
+/* 일몰 알림: 필터 칩 아래 왼쪽. 오른쪽 지도 도구(약 56px)와 겹치지 않게 폭을 줄인다. */
+.hike-map-page__top > .af-hike-sunset-notice { align-self: flex-start; max-width: calc(100% - 32px - 56px); margin: -3px 0 0 16px; }
 
 .hike-active-page__spot-status:not(:empty) { align-self: flex-start; margin: 4px 12px; padding: 4px 8px; border-radius: 8px; background: #fff; color: var(--af-ink); font-size: 12px; pointer-events: auto; }
 .hike-active-page__spot-status button { color: var(--af-green-dark); }

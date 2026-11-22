@@ -6,6 +6,20 @@ export type Coordinate = [longitude: number, latitude: number]
 export type PendingPhoto = {
   file: File
   previewUrl: string
+  capturedAt?: string
+  captureUtcOffsetMinutes?: number
+}
+
+export type PhotoWeatherCode = 'SUNNY' | 'PARTLY_CLOUDY' | 'CLOUDY' | 'RAIN' | 'SNOW' | 'FOG' | 'THUNDERSTORM'
+
+export type ReviewEnvironment = {
+  referenceAt: string
+  utcOffsetMinutes: number
+  longitude: number
+  latitude: number
+  weatherStatus: 'PENDING' | 'SUCCESS' | 'FAILED'
+  temperatureC?: number
+  weatherCode?: PhotoWeatherCode
 }
 
 export type CommunitySpot = {
@@ -48,6 +62,7 @@ export type CommunityReview = {
   /** 작성자 닉네임 (내 등산에서 설정, 기본 익명{userId}). 이 칸이 생기기 전 후기는 '나'로 보여 준다 */
   author?: string
   createdAt: string
+  environment?: ReviewEnvironment
 }
 
 export type ReviewDraft = {

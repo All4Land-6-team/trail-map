@@ -4,7 +4,6 @@ import com.all4land.trailmap.domain.community.dto.request.CommunityReviewPageReq
 import com.all4land.trailmap.domain.community.dto.request.CommunitySpotMapRequest;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityCourseResponse;
-import com.all4land.trailmap.domain.community.dto.response.CommunityMountainResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotDetailResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotPageResponse;
@@ -35,13 +34,6 @@ import java.util.List;
 public class CommunityQueryController {
 
     private final CommunityQueryService queryService;
-
-    @GetMapping("/mountains")
-    public ResponseEntity<SuccessResponse<List<CommunityMountainResponse>>> getMountains(
-            @CurrentUserId Long userId
-    ) {
-        return response(SuccessResponse.ok(queryService.getMountains(userId)));
-    }
 
     @GetMapping("/mountains/{mountainId}/courses")
     public ResponseEntity<SuccessResponse<List<CommunityCourseResponse>>> getCourses(

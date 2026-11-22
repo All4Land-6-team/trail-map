@@ -232,7 +232,7 @@ test('분석 예상 시간과 담은 코스의 시간이 있어도 공식 안내
   const html = render(ready(), values), card = timeCard(html);
   assert.match(card, /1시간 30분/);
   assert.doesNotMatch(card, />10분<|9999/);
-  assert.match(html, /급경사 비율 비교/);
+  assert.match(html, /급경사 거리 비율 비교/);
   assert.match(html, /12\.3%/);
   assert.match(html, /1\.5 km/);
 });

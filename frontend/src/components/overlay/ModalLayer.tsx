@@ -3,6 +3,7 @@ import {
   useRef,
   type HTMLAttributes,
   type KeyboardEvent,
+  type PointerEvent,
   type ReactNode,
 } from "react";
 import "./overlay.css";
@@ -21,7 +22,7 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(",");
 
-export function ModalLayer({ children, onDismiss, className, onKeyDown, ...rest }: ModalLayerProps) {
+export function ModalLayer({ children, onDismiss, className, onKeyDown, onPointerDown, ...rest }: ModalLayerProps) {
   const layerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,6 +80,11 @@ export function ModalLayer({ children, onDismiss, className, onKeyDown, ...rest 
     }
   }
 
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    onPointerDown?.(event);
+    if (!event.defaultPrevented && event.target === event.currentTarget) onDismiss?.();
+  }
+
   return (
     <div
       {...rest}
@@ -87,6 +93,7 @@ export function ModalLayer({ children, onDismiss, className, onKeyDown, ...rest 
       role="presentation"
       tabIndex={-1}
       onKeyDown={handleKeyDown}
+      onPointerDown={handlePointerDown}
     >
       {children}
     </div>

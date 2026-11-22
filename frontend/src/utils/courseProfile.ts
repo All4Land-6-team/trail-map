@@ -3,13 +3,20 @@ import type { CourseProfileSample, CourseSpot, ProfileVisibility, SpotCategory }
 export const SPOT_CATEGORIES: readonly { value: SpotCategory; label: string }[] = [
   { value: "all", label: "전체" }, { value: "shelter", label: "쉼터" },
   { value: "water", label: "음수대" }, { value: "restroom", label: "화장실" },
-  { value: "photo", label: "사진 스팟" }, { value: "control", label: "통제정보" },
+  { value: "photo", label: "사진 스팟" }, { value: "food", label: "음식점" },
+  { value: "control", label: "통제정보" },
 ];
-export function spotCategoryLabel(category: SpotCategory) {
+export function spotCategoryLabel(category: SpotCategory | CourseSpot["kind"]) {
+  if (category === "restaurant") return "음식점";
+  if (category === "cafe") return "카페";
   return SPOT_CATEGORIES.find(item => item.value === category)?.label ?? "전체";
 }
+export function isFoodSpot(spot: Pick<CourseSpot, "kind">) {
+  return spot.kind === "restaurant" || spot.kind === "cafe";
+}
 export function selectCourseSpots(spots: readonly CourseSpot[], category: SpotCategory) {
-  return spots.filter(spot => category === "all" || spot.kind === category);
+  return spots.filter(spot => category === "all" || spot.kind === category
+    || (category === "food" && isFoodSpot(spot)));
 }
 
 export function courseSpotAction(spot: CourseSpot, focusedSpotId?: string): "focus" | "open" | "unavailable" {

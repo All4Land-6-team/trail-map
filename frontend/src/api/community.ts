@@ -1,18 +1,10 @@
-import type { CommunitySpotTargetType, Coordinate, PendingPhoto, ReviewKind, SpotType } from '../types/community'
+import type { CommunitySpotTargetType, Coordinate, PendingPhoto, ReviewEnvironment, ReviewKind, SpotType } from '../types/community'
 import { authHeaders } from '../store/authStore.ts'
 
 const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
 
 type SuccessResponse<T> = { data: T }
 type ApiErrorResponse = { message?: string }
-
-export type CommunityMountainDto = {
-  mountainId: number
-  externalId: string | null
-  name: string
-  longitude: number
-  latitude: number
-}
 
 export type CommunityCourseDto = {
   courseId: number
@@ -59,6 +51,7 @@ export type CommunityReviewDto = {
   visitedDate: string | null
   createdAt: string
   photoUrls: string[]
+  environment: ReviewEnvironment | null
 }
 
 export type CommunityMountainReviewSummaryDto = { reviewCount: number; averageRating: number | null; photoCount: number }
@@ -90,6 +83,7 @@ export type CommunityPhotoDto = {
   reviewContent: string | null
   createdAt: string
   reviewRating: number | null
+  environment: ReviewEnvironment | null
 }
 
 export type CreatedSpotDto = {
@@ -137,14 +131,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const communityApi = {
-  mountains: (signal?: AbortSignal) => request<CommunityMountainDto[]>('/mountains', { signal }),
   courses: (mountainId: string, signal?: AbortSignal) =>
     request<CommunityCourseDto[]>(`/mountains/${mountainId}/courses`, { signal }),
-  spots: (mountainId: string, bounds: CommunitySpotBounds, signal?: AbortSignal, type?: CommunitySpotDto['type']) => {
+  spots: (mountainId: string, bounds: CommunitySpotBounds, signal?: AbortSignal, type?: CommunitySpotDto['type'], courseId?: string) => {
     const query = new URLSearchParams({
       west: String(bounds.west), south: String(bounds.south), east: String(bounds.east), north: String(bounds.north),
     })
     if (type) query.set('type', type)
+    if (courseId) query.set('courseId', courseId)
     return request<CommunityMapSpotDto[]>(`/mountains/${mountainId}/spots/map?${query}`, { signal })
   },
   spotList: (mountainId: string, signal?: AbortSignal, type?: CommunitySpotDto['type'], cursor?: string) => {
@@ -184,13 +178,13 @@ export const communityApi = {
   spotEligibility: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal, hikeRecordId?: number) =>
     request<CommunityEligibilityDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/review-eligibility${hikeRecordId ? `?hikeRecordId=${hikeRecordId}` : ''}`, { signal }),
   createReview: (kind: ReviewKind, mountainId: string, targetId: string, targetType: CommunitySpotDto['targetType'] | undefined,
-    body: { hikeRecordId: number; content: string; rating?: number }) => {
+    body: { hikeRecordId: number; content: string; rating?: number; environmentCapturedAt?: string; environmentUtcOffsetMinutes: number }) => {
     const path = kind === 'mountain' ? `/mountains/${mountainId}/reviews`
       : kind === 'course' ? `/courses/${targetId}/reviews`
         : `/mountains/${mountainId}/spots/${targetType}/${targetId}/reviews`
     return request<CommunityReviewDto>(path, { method: 'POST', body: JSON.stringify(body) })
   },
-  createSpot: (mountainId: string, body: { clientRequestId: string; hikeRecordId: number; type: SpotType; name: string; coordinate: Coordinate; confirmDistinct: boolean; reviewContent: string }) =>
+  createSpot: (mountainId: string, body: { clientRequestId: string; hikeRecordId: number; type: SpotType; name: string; coordinate: Coordinate; confirmDistinct: boolean; reviewContent: string; environmentCapturedAt?: string; environmentUtcOffsetMinutes: number }) =>
     request<CreatedSpotDto>(`/mountains/${mountainId}/spots`, {
       method: 'POST',
       body: JSON.stringify({
@@ -202,6 +196,8 @@ export const communityApi = {
         latitude: body.coordinate[1],
         confirmDistinct: body.confirmDistinct,
         reviewContent: body.reviewContent,
+        environmentCapturedAt: body.environmentCapturedAt,
+        environmentUtcOffsetMinutes: body.environmentUtcOffsetMinutes,
       }),
     }),
   vote: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, vote: 'yes' | 'no') =>
@@ -238,7 +234,10 @@ async function uploadPhotos(
     })
     if (!r2Response.ok) throw new CommunityApiError('R2 사진 업로드에 실패했습니다.', r2Response.status)
     uploaded.push(await request<CommunityPhotoDto>('/photos', {
-      method: 'POST', body: JSON.stringify({ ...metadata, objectKey: upload.objectKey }),
+      method: 'POST', body: JSON.stringify({
+        ...metadata,
+        objectKey: upload.objectKey,
+      }),
     }))
   }
   return uploaded

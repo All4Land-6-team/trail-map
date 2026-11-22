@@ -7,6 +7,7 @@ import java.time.OffsetDateTime;
 /**
  * @param lastLongitude 이동 경로의 마지막 점 경도. 아직 위치를 받지 않았으면 null
  * @param lastLatitude  이동 경로의 마지막 점 위도. 아직 위치를 받지 않았으면 null
+ * @param lastPositionRecordedAt 이동 경로에 마지막으로 붙인 위치의 측정 시각. 아직 위치를 받지 않았으면 null
  * @param courseDistanceMeters 기록 시작 시 저장한 코스 경로의 길이(구면 거리)
  */
 public record HikeRecordRow(
@@ -20,6 +21,7 @@ public record HikeRecordRow(
         Integer actualDurationSeconds,
         Double lastLongitude,
         Double lastLatitude,
+        OffsetDateTime lastPositionRecordedAt,
         Double courseDistanceMeters
 ) {
 

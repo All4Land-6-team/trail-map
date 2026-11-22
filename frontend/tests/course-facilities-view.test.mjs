@@ -33,6 +33,24 @@ test('음수대 빈 결과는 0곳과 범위 안내를 표시한다', () => {
   assert.doesNotMatch(html, /음수대 1|course-spot-card/);
 });
 
+test('선택한 OSM 음식점·카페의 지도 출처와 위치를 표시한다', () => {
+  const place = {
+    id: 'osm-poi-101', courseId: 'db-7', kind: 'cafe', name: '능선 카페',
+    coordinate: [126.9846, 37.6599],
+  };
+  const html = render({ category: 'food', spots: [place], selectedId: place.id });
+  assert.match(html, /음식점/);
+  assert.match(html, /data-category="food"/);
+  assert.match(html, /aria-label="능선 카페 상세 정보"/);
+  assert.match(html, /카페/);
+  assert.match(html, /능선 카페/);
+  assert.match(html, /OpenStreetMap/);
+  assert.match(html, /126\.9846, 37\.6599/);
+  assert.doesNotMatch(html, /course-spot-card/);
+  assert.doesNotMatch(html, /지도에 표시된 음식점이나 카페 아이콘/);
+  assert.doesNotMatch(html, /카카오맵|전화번호|주소 정보 없음/);
+});
+
 test('사진 스팟은 조회 상태와 실제 이름·사진 수를 표시한다', () => {
   for (const [userSpots, text] of [
     [{ status: 'loading' }, /사용자 스팟을 불러오는 중/],

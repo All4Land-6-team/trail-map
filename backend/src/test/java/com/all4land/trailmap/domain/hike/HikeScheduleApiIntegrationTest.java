@@ -102,6 +102,51 @@ class HikeScheduleApiIntegrationTest {
     }
 
     @Test
+    void 일정_조회에_등산_기록_요약을_함께_반환한다() throws Exception {
+        long completedId = createSchedule(userId, courseId, "2026-10-11", "07:30", false)
+                .andReturn().getResponse().getContentAsString().transform(this::scheduleId);
+        long unfinishedId = createSchedule(userId, courseId, "2026-10-18", "08:00", false)
+                .andReturn().getResponse().getContentAsString().transform(this::scheduleId);
+        long plannedId = createSchedule(userId, otherCourseId, "2026-10-25", "08:00", false)
+                .andExpect(jsonPath("$.data.hikeRecord").isEmpty())
+                .andReturn().getResponse().getContentAsString().transform(this::scheduleId);
+
+        long completedRecordId = insertRecord(completedId, "IN_PROGRESS");
+        jdbcTemplate.update("""
+                UPDATE hike_record
+                SET hike_status = 'COMPLETED', started_at = '2026-10-11T07:30:00+09:00',
+                    ended_at = '2026-10-11T09:40:00+09:00', traveled_distance_meters = 4500,
+                    actual_duration_seconds = 7800
+                WHERE hike_record_id = ?
+                """, completedRecordId);
+        long unfinishedRecordId = insertRecord(unfinishedId, "DESCENDING");
+
+        mockMvc.perform(asUser(userId, get("/v1/hike-schedules").param("from", "2026-10-01").param("to", "2026-10-31")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[0].scheduleId").value(completedId))
+                .andExpect(jsonPath("$.data[0].hikeRecord.hikeRecordId").value(completedRecordId))
+                .andExpect(jsonPath("$.data[0].hikeRecord.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data[0].hikeRecord.endedAt").isNotEmpty())
+                .andExpect(jsonPath("$.data[0].hikeRecord.traveledDistanceMeters").value(4500.0))
+                .andExpect(jsonPath("$.data[0].hikeRecord.actualDurationSeconds").value(7800))
+                .andExpect(jsonPath("$.data[1].hikeRecord.hikeRecordId").value(unfinishedRecordId))
+                .andExpect(jsonPath("$.data[1].hikeRecord.status").value("DESCENDING"))
+                .andExpect(jsonPath("$.data[1].hikeRecord.endedAt").isEmpty())
+                .andExpect(jsonPath("$.data[2].scheduleId").value(plannedId))
+                .andExpect(jsonPath("$.data[2].hikeRecord").isEmpty());
+
+        mockMvc.perform(asUser(userId, get("/v1/hike-schedules/" + completedId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hikeRecord.hikeRecordId").value(completedRecordId));
+
+        // 삭제한 기록은 요약에 나오지 않는다.
+        jdbcTemplate.update("UPDATE hike_record SET deleted_at = now() WHERE hike_record_id = ?", completedRecordId);
+        mockMvc.perform(asUser(userId, get("/v1/hike-schedules/" + completedId)))
+                .andExpect(jsonPath("$.data.hikeRecord").isEmpty());
+    }
+
+    @Test
     void 같은_날짜에_일정이_있으면_충돌하고_대체를_요청하면_기존_일정을_삭제한다() throws Exception {
         long firstId = createSchedule(userId, courseId, "2026-11-03", "06:00", false)
                 .andReturn().getResponse().getContentAsString().transform(this::scheduleId);
@@ -182,14 +227,33 @@ class HikeScheduleApiIntegrationTest {
                 SELECT course_id = ? AND deleted_at IS NULL FROM hike_schedule WHERE schedule_id = ?
                 """, Boolean.class, courseId, scheduleId)).isTrue();
 
-        // 종료한 기록만 남으면 기존처럼 바꿀 수 있다.
+    }
+
+    @Test
+    void 등산을_마친_일정은_수정_삭제_대체할_수_없다() throws Exception {
+        long scheduleId = createSchedule(userId, courseId, "2026-11-12", "07:00", false)
+                .andReturn().getResponse().getContentAsString().transform(this::scheduleId);
+        long recordId = insertRecord(scheduleId, "IN_PROGRESS");
         jdbcTemplate.update("UPDATE hike_record SET hike_status = 'COMPLETED', ended_at = now() WHERE hike_record_id = ?", recordId);
+
         mockMvc.perform(asUser(userId, patch("/v1/hike-schedules/" + scheduleId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"startTime": "08:00"}
                                 """))
-                .andExpect(status().isOk());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("HIKE_409_7"));
+        mockMvc.perform(asUser(userId, delete("/v1/hike-schedules/" + scheduleId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("HIKE_409_7"));
+        createSchedule(userId, otherCourseId, "2026-11-12", "09:00", true)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("HIKE_409_7"));
+
+        // 일정과 기록은 그대로 남는다.
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT course_id = ? AND deleted_at IS NULL FROM hike_schedule WHERE schedule_id = ?
+                """, Boolean.class, courseId, scheduleId)).isTrue();
     }
 
     @Test

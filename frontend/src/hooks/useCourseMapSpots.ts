@@ -19,7 +19,8 @@ export function useCourseMapSpots(courseId: string, mountainId: string, serverId
     [restroomSpots, waterSpots, shelterSpots, userSpots]);
   const filtered = useMemo(() => filter === "all" ? spots : spots.filter(spot => spot.kind === filter), [filter, spots]);
   const byKind = { restroom: restrooms, water, shelter: shelters };
-  const official = filter === "all" ? Object.values(byKind) : filter === "photo" ? [] : [byKind[filter]];
+  const official = filter === "all" ? Object.values(byKind)
+    : filter in byKind ? [byKind[filter as keyof typeof byKind]] : [];
   const requests = [...official, users];
   const failed = requests.filter(request => request.state.status === "error");
   const loading = requests.some(request => request.state.status === "loading");

@@ -1,0 +1,10 @@
+/* 후기 유형 선택 창 (커뮤니티 후기 유형 창과 같은 모양) */
+.af-review-kind-picker { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 20px; background: #173d3259; }
+.af-review-kind-picker__dialog { width: 100%; max-width: 350px; padding: 20px; border: 1px solid var(--af-line); border-radius: 20px; background: #fff; box-shadow: 0 12px 36px #173d3226; }
+.af-review-kind-picker__dialog h2 { margin: 0; color: var(--af-ink); font: 700 18px/26px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.af-review-kind-picker__dialog p { margin: 4px 0 14px; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; }
+.af-review-kind-picker__dialog button { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: space-between; margin-top: 8px; padding: 10px 14px; border: 1px solid var(--af-line); border-radius: 11px; color: var(--af-green-dark, var(--af-green)); background: #f2f7f1; font: 600 13px/20px "Noto Sans KR", sans-serif; text-align: left; cursor: pointer; }
+.af-review-kind-picker__dialog button:active { background: #e9f1e6; }
+.af-review-kind-picker__dialog button:disabled { color: #9aa79f; background: #f4f5f3; cursor: not-allowed; }
+.af-review-kind-picker__done { color: #9aa79f; font: 400 11px/16px "Noto Sans KR", sans-serif; }
+.af-review-kind-picker__dialog .af-review-kind-picker__cancel { justify-content: center; border-color: transparent; background: #fff; }

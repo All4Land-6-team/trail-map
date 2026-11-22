@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.util.UUID;
+import java.time.OffsetDateTime;
 
 public record CommunitySpotCreateRequest(
         @NotNull UUID clientRequestId,
@@ -18,6 +19,9 @@ public record CommunitySpotCreateRequest(
         @NotNull @DecimalMin("-180.0") @DecimalMax("180.0") Double longitude,
         @NotNull @DecimalMin("-90.0") @DecimalMax("90.0") Double latitude,
         boolean confirmDistinct,
-        @NotBlank @Size(max = 1000) String reviewContent
+        @NotBlank @Size(max = 1000) String reviewContent,
+        OffsetDateTime environmentCapturedAt,
+        @jakarta.validation.constraints.Min(-1080) @jakarta.validation.constraints.Max(1080)
+        Integer environmentUtcOffsetMinutes
 ) {
 }

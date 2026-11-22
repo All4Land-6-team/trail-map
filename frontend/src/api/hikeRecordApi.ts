@@ -109,6 +109,38 @@ export async function fetchActiveHikeRecord() {
   return record ? toRecord(record) : null;
 }
 
+/** 기록 한 건 (REC-03 등산 기록 상세) */
+export async function fetchHikeRecord(hikeRecordId: number) {
+  return toRecord(await request<HikeRecordBody>(`/${hikeRecordId}`));
+}
+
+/** 등산 기록으로 작성한 후기 한 건. 산 후기 → 코스 후기 → 스팟 후기 순서로 온다. */
+export type HikeRecordReview = {
+  kind: "MOUNTAIN" | "COURSE" | "SPOT";
+  reviewId: number;
+  targetType: "MOUNTAIN" | "COURSE" | "USER_SPOT" | "FACILITY";
+  targetId: number;
+  targetName: string | null;
+  /** 코스 후기 평점 (1~5). 다른 후기는 null */
+  rating: number | null;
+  content: string;
+  visitedDate: string | null;
+  createdAt: string;
+  photoIds: number[];
+};
+
+export type HikeRecordReviews = {
+  /** 산·코스 후기는 기록마다 하나라 이미 썼으면 후기 유형 선택에서 막는다. */
+  mountainReviewed: boolean;
+  courseReviewed: boolean;
+  reviews: HikeRecordReview[];
+};
+
+/** REC-03 등산 기록 상세 아래에 보여 줄 작성한 후기 */
+export function fetchHikeRecordReviews(hikeRecordId: number) {
+  return request<HikeRecordReviews>(`/${hikeRecordId}/reviews`);
+}
+
 export function sendHikePositions(hikeRecordId: number, positions: HikePosition[]) {
   return post<HikePositionsResult>(`/${hikeRecordId}/positions`, { positions });
 }
@@ -117,9 +149,17 @@ export async function descendHikeRecord(hikeRecordId: number) {
   return toRecord(await post(`/${hikeRecordId}/descend`));
 }
 
-/** 이미 종료한 기록이면 서버는 그 기록을 그대로 돌려준다 */
-export async function finishHikeRecord(hikeRecordId: number) {
-  return toRecord(await post(`/${hikeRecordId}/finish`));
+/**
+ * 이미 종료한 기록이면 서버는 그 기록을 그대로 돌려준다.
+ * endedAt: 통신이 끊긴 동안 누른 종료를 나중에 보낼 때 기기에서 누른 시각 (소요 시간을 그 시각으로 계산)
+ */
+export async function finishHikeRecord(hikeRecordId: number, endedAt?: string) {
+  return toRecord(await post(`/${hikeRecordId}/finish`, endedAt ? { endedAt } : undefined));
+}
+
+/** 서버에 닿지 못한 실패(통신 끊김·시간 초과)인지. 이때는 화면에 먼저 반영하고 나중에 다시 보낸다. */
+export function isHikeNetworkError(error: unknown) {
+  return error instanceof HikeRecordApiError && error.code === "NETWORK";
 }
 
 /** 기록을 시작한다. 같은 일정의 기록이 이미 진행 중이면(다른 탭·재시도) 그 기록을 이어 간다. */

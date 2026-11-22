@@ -1,4 +1,5 @@
 import { communityApi, fromSpotType } from './community.ts';
+import { mountainApi } from './mountainApi.ts';
 import { databaseCourseId } from '../utils/courseIdentity.ts';
 import type { CourseRequest } from '../types/course';
 import type { CourseSpot } from '../types/courseDetail';
@@ -19,7 +20,7 @@ async function loadCourseSpots({ mountainId, courseId }: CourseRequest, signal: 
     if (!routeMountainId) return null;
     return fetchSpots(routeId, routeMountainId, courseId, requestSignal, photosOnly);
   }
-  const mountains = await communityApi.mountains(requestSignal);
+  const mountains = await mountainApi.list(requestSignal);
   // 다른 산을 순회하며 코스를 추측하지 않는다.
   const candidates = mountains.filter(item => String(item.mountainId) === mountainId || item.externalId === mountainId);
   if (candidates.length !== 1) return null;

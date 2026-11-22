@@ -15,6 +15,8 @@ export type SunTimes = {
   sunset: Date;
 };
 
+export type PhotoTimePhase = "NIGHT" | "SUNRISE" | "DAYTIME" | "SUNSET";
+
 function validDate(value: Date | null | undefined): value is Date {
   return value instanceof Date && Number.isFinite(value.getTime());
 }
@@ -67,4 +69,16 @@ const clockFormatter = new Intl.DateTimeFormat("ko-KR", {
 
 export function formatSunClock(value: Date) {
   return clockFormatter.format(value);
+}
+
+/** 촬영 시각을 일출·일몰 전후 30분과 낮·밤으로 구분한다. */
+export function photoTimePhase(capturedAt: string, coordinate: LngLat): PhotoTimePhase | null {
+  const captured = new Date(capturedAt);
+  const times = sunTimesForCoordinate(captured, coordinate);
+  if (!times) return null;
+  const window = 30 * 60_000;
+  const time = captured.getTime();
+  if (Math.abs(time - times.sunrise.getTime()) <= window) return "SUNRISE";
+  if (Math.abs(time - times.sunset.getTime()) <= window) return "SUNSET";
+  return time > times.sunrise.getTime() && time < times.sunset.getTime() ? "DAYTIME" : "NIGHT";
 }

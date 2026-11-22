@@ -1,0 +1,3 @@
+.review-rating { display:inline-flex; flex:none; align-items:center; gap:4px; color:#956f00; font-size:13px; font-weight:700; line-height:20px; white-space:nowrap; }
+.review-rating svg { display:block; width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.review-rating > span { color:var(--af-ink); }

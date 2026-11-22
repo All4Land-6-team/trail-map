@@ -7,6 +7,9 @@ public record EligibleHikeQueryResult(
         Long courseId,
         String courseName,
         Long mountainId,
-        OffsetDateTime endedAt
+        OffsetDateTime startedAt,
+        OffsetDateTime endedAt,
+        double routeLongitude,
+        double routeLatitude
 ) {
 }

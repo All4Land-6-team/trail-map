@@ -34,3 +34,7 @@ export type { SpotFilterChipsProps } from "./SpotFilterChips";
 export { SheetHandle } from "./SheetHandle";
 export type { SheetHandleProps } from "./SheetHandle";
 export { useDraggableSheet } from "./useDraggableSheet";
+export { HikeProgressPanel } from "./HikeProgressPanel";
+export type { HikeProgressPanelProps } from "./HikeProgressPanel";
+export { ReviewKindPicker, openReviewWriting, useRecordReviews } from "./ReviewKindPicker";
+export type { RecordReviewKind, ReviewKindPickerProps } from "./ReviewKindPicker";

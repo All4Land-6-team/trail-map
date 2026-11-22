@@ -23,7 +23,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -59,16 +62,18 @@ class HikeRecordApiIntegrationTest {
     long userId;
     long otherUserId;
     long courseId;
+    long mountainId;
+    long sourceId;
 
     @BeforeEach
     void setUp() {
         userId = insertUser();
         otherUserId = insertUser();
-        long sourceId = jdbcTemplate.queryForObject(
+        sourceId = jdbcTemplate.queryForObject(
                 "INSERT INTO data_source (source_name, source_format) VALUES ('test', 'GEOJSON') RETURNING source_id",
                 Long.class
         );
-        long mountainId = jdbcTemplate.queryForObject("""
+        mountainId = jdbcTemplate.queryForObject("""
                 INSERT INTO mountain (mountain_name, mountain_display_location, source_id, source_hash, imported_at)
                 VALUES ('북한산', ST_SetSRID(ST_MakePoint(126.98, 37.66), 4326), ?, ?, now())
                 RETURNING mountain_id
@@ -177,6 +182,53 @@ class HikeRecordApiIntegrationTest {
     }
 
     @Test
+    void 응답을_못_받아_같은_위치를_다시_보내도_경로에_두_번_붙지_않는다() throws Exception {
+        long recordId = startedRecord(userId);
+        String first = position(126.9700, 37.6500, "06:00:00", 5);
+        String second = position(126.9700, 37.6510, "06:01:00", 5);
+
+        sendPositions(userId, recordId, first, second)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.acceptedCount").value(2));
+        // 오프라인에서 쌓아 둔 위치를 보낸 뒤 응답을 받기 전에 끊기면 기기는 같은 위치를 다시 보낸다.
+        sendPositions(userId, recordId, first, second, position(126.9700, 37.6520, "06:02:00", 5))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.acceptedCount").value(1))
+                .andExpect(jsonPath("$.data.traveledDistanceMeters").value(closeTo(222.0, 2.0)));
+
+        Integer points = jdbcTemplate.queryForObject(
+                "SELECT ST_NPoints(traveled_path) FROM hike_record WHERE hike_record_id = ?", Integer.class, recordId);
+        assertThat(points).isEqualTo(3);
+    }
+
+    @Test
+    void 오프라인에서_누른_종료는_기기가_보낸_종료_시각으로_소요_시간을_계산한다() throws Exception {
+        long recordId = startedRecord(userId);
+        jdbcTemplate.update("UPDATE hike_record SET started_at = now() - interval '2 hours' WHERE hike_record_id = ?", recordId);
+        String endedAt = java.time.OffsetDateTime.now().minusHours(1).toString();
+
+        mockMvc.perform(asUser(userId, post("/v1/hike-records/" + recordId + "/finish"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"endedAt\": \"%s\"}".formatted(endedAt)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.actualDurationSeconds", allOf(greaterThanOrEqualTo(3595), lessThanOrEqualTo(3605))));
+    }
+
+    @Test
+    void 기기가_보낸_종료_시각이_미래면_지금으로_종료한다() throws Exception {
+        long recordId = startedRecord(userId);
+        jdbcTemplate.update("UPDATE hike_record SET started_at = now() - interval '30 minutes' WHERE hike_record_id = ?", recordId);
+        String future = java.time.OffsetDateTime.now().plusHours(3).toString();
+
+        mockMvc.perform(asUser(userId, post("/v1/hike-records/" + recordId + "/finish"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"endedAt\": \"%s\"}".formatted(future)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.actualDurationSeconds", allOf(greaterThanOrEqualTo(1795), lessThanOrEqualTo(1810))));
+    }
+
+    @Test
     void 진행_중_기록을_조회하고_오늘이_아니거나_이미_시작한_일정은_시작할_수_없다() throws Exception {
         long recordId = startedRecord(userId);
 
@@ -239,6 +291,68 @@ class HikeRecordApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"positions\": []}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 기록으로_작성한_산_코스_스팟_후기를_순서대로_반환한다() throws Exception {
+        long recordId = startedRecord(userId);
+        mockMvc.perform(asUser(userId, post("/v1/hike-records/" + recordId + "/finish")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(asUser(userId, get("/v1/hike-records/" + recordId + "/reviews")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.mountainReviewed").value(false))
+                .andExpect(jsonPath("$.data.courseReviewed").value(false))
+                .andExpect(jsonPath("$.data.reviews.length()").value(0));
+
+        long spotId = jdbcTemplate.queryForObject("""
+                INSERT INTO user_spot (user_id, mountain_id, spot_type, spot_location, spot_name)
+                VALUES (?, ?, 'PHOTO_SPOT', ST_SetSRID(ST_MakePoint(126.975, 37.655), 4326), '전망 바위')
+                RETURNING spot_id
+                """, Long.class, userId, mountainId);
+        long spotReviewId = jdbcTemplate.queryForObject("""
+                INSERT INTO spot_review (user_id, spot_id, review_content, hike_record_id)
+                VALUES (?, ?, '사진 찍기 좋아요', ?) RETURNING review_id
+                """, Long.class, userId, spotId, recordId);
+        jdbcTemplate.update("""
+                INSERT INTO course_review (user_id, course_id, review_content, rating, hike_record_id)
+                VALUES (?, ?, '계단이 많아요', 4.5, ?)
+                """, userId, courseId, recordId);
+        jdbcTemplate.update("""
+                INSERT INTO mountain_review (user_id, mountain_id, review_content, hike_record_id)
+                VALUES (?, ?, '정상 풍경이 좋아요', ?)
+                """, userId, mountainId, recordId);
+        long photoId = jdbcTemplate.queryForObject("""
+                INSERT INTO photo (user_id, spot_review_id, object_key, original_file_name, media_type, file_size_bytes)
+                VALUES (?, ?, 'test/spot.jpg', 'spot.jpg', 'image/jpeg', 1024) RETURNING photo_id
+                """, Long.class, userId, spotReviewId);
+        // 삭제한 후기는 나오지 않는다.
+        jdbcTemplate.update("""
+                INSERT INTO spot_review (user_id, spot_id, review_content, hike_record_id, deleted_at)
+                VALUES (?, ?, '지운 후기', ?, now())
+                """, userId, spotId, recordId);
+
+        mockMvc.perform(asUser(userId, get("/v1/hike-records/" + recordId + "/reviews")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.mountainReviewed").value(true))
+                .andExpect(jsonPath("$.data.courseReviewed").value(true))
+                .andExpect(jsonPath("$.data.reviews.length()").value(3))
+                .andExpect(jsonPath("$.data.reviews[0].kind").value("MOUNTAIN"))
+                .andExpect(jsonPath("$.data.reviews[0].targetName").value("북한산"))
+                .andExpect(jsonPath("$.data.reviews[0].rating").isEmpty())
+                .andExpect(jsonPath("$.data.reviews[1].kind").value("COURSE"))
+                .andExpect(jsonPath("$.data.reviews[1].targetName").value("백운대 코스"))
+                .andExpect(jsonPath("$.data.reviews[1].rating").value(4.5))
+                .andExpect(jsonPath("$.data.reviews[2].kind").value("SPOT"))
+                .andExpect(jsonPath("$.data.reviews[2].targetType").value("USER_SPOT"))
+                .andExpect(jsonPath("$.data.reviews[2].targetId").value(spotId))
+                .andExpect(jsonPath("$.data.reviews[2].targetName").value("전망 바위"))
+                .andExpect(jsonPath("$.data.reviews[2].content").value("사진 찍기 좋아요"))
+                .andExpect(jsonPath("$.data.reviews[2].photoIds[0]").value(photoId));
+
+        mockMvc.perform(asUser(otherUserId, get("/v1/hike-records/" + recordId + "/reviews")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("HIKE_404_4"));
     }
 
     private long startedRecord(long requestUserId) throws Exception {

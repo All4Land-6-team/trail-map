@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { MapLibreMap } from "maplibre-gl";
 import { Typography } from "../../../components/common/Typography";
 import { BottomNavigation, TopBar, type BottomDestination } from "../../../components/layout";
-import { BaseMap, MapAction, supportsTerrain, type MapDimension, type MapRoute, type TerrainStatus } from "../../../components/map";
+import { BaseMap, MapAction, MapCompassAction, supportsTerrain, type MapDimension, type MapRoute, type TerrainStatus } from "../../../components/map";
 import { BottomSheet } from "../../../components/overlay";
 import { BUKHANSAN_CENTER } from "../data";
 import type { CartCourse, ElevationChartSeries } from "../types";
@@ -92,6 +92,7 @@ export function CourseCompareScreen({
           disabled={terrainEnabled && terrainStatus !== "ready"}
           onDimensionModeChange={() => setDimension(current => current === "2D" ? "3D" : "2D")} />
         <MapAction iconName="Locate" />
+        <MapCompassAction />
       </div>
 
       <BottomSheet

@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { ReviewPhotoPicker } from '../../../components/review/ReviewPhotoPicker'
 import type { PendingPhoto } from '../../../types/community'
+import { readPhotoCaptureMetadata } from '../../../utils/photoExif'
 
 type Props = {
   photos: readonly PendingPhoto[]
@@ -11,7 +12,7 @@ type Props = {
 
 export function PhotoField({ photos, onChange, onError, label = '사진 추가' }: Props) {
   const input = useRef<HTMLInputElement>(null)
-  function add(files: FileList | null) {
+  async function add(files: FileList | null) {
     if (!files) return
     const incoming = Array.from(files)
     if (incoming.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
@@ -22,7 +23,12 @@ export function PhotoField({ photos, onChange, onError, label = '사진 추가' 
       onError('사진은 최대 3장까지 추가할 수 있어요.')
       return
     }
-    onChange([...photos, ...incoming.map(file => ({ file, previewUrl: URL.createObjectURL(file) }))])
+    const added = await Promise.all(incoming.map(async file => {
+      const capture = await readPhotoCaptureMetadata(file)
+      return { file, previewUrl: URL.createObjectURL(file),
+        capturedAt: capture?.capturedAt, captureUtcOffsetMinutes: capture?.utcOffsetMinutes }
+    }))
+    onChange([...photos, ...added])
   }
   return <div className={`community-photo-field${photos.length >= 3 ? ' community-photo-field--full' : ''}`}>
     <span className="community-field-label">{label} <small>선택 · 최대 3장</small></span>
@@ -32,6 +38,6 @@ export function PhotoField({ photos, onChange, onError, label = '사진 추가' 
         onChange(photos.filter((_, photoIndex) => photoIndex !== index))
       }} />
     <input ref={input} type="file" accept="image/*" multiple hidden aria-label={label}
-      onChange={event => { add(event.target.files); event.currentTarget.value = '' }} />
+      onChange={event => { void add(event.target.files); event.currentTarget.value = '' }} />
   </div>
 }

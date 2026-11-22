@@ -15,11 +15,14 @@ test('홈 지도는 초기 전국 줌과 카메라를 유지하며 2D Hillshade�
   assert.match(homeMap, /<BaseMap[^>]*zoom=\{6\.1\}[^>]*terrainMode="2D"[^>]*terrainCameraManaged/);
 });
 
-test('홈 산 탐색은 정적 mock 대신 커뮤니티 DB API를 사용한다', () => {
+test('홈 산 탐색은 정적 mock 대신 공용 산 API를 사용한다', () => {
   const discovery = readFileSync(new URL('../src/pages/HomePage/hooks/useHomeDiscovery.ts', import.meta.url), 'utf8');
   const api = readFileSync(new URL('../src/api/homeApi.ts', import.meta.url), 'utf8');
+  const mountainApi = readFileSync(new URL('../src/api/mountainApi.ts', import.meta.url), 'utf8');
   assert.match(discovery, /from "\.\.\/\.\.\/\.\.\/api\/homeApi"/);
-  assert.match(api, /communityApi\.mountains\(signal\)/);
+  assert.match(api, /mountainApi\.list\(signal\)/);
+  assert.match(mountainApi, /\/api\/v1\/mountains/);
+  assert.doesNotMatch(mountainApi, /\/api\/v1\/community\/mountains/);
   assert.doesNotMatch(discovery, /from "\.\.\/\.\.\/\.\.\/api\/homeMock"/);
 });
 

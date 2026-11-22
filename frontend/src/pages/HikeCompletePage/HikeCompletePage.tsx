@@ -1,5 +1,6 @@
-import { findCourse } from "../../api/hikeMock";
+import { useState } from "react";
 import { hikeTargetIds, useHikeSession } from "../../store/hikeSessionStore";
+import { ReviewKindPicker, openReviewWriting, useRecordReviews } from "../../components/hike";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
 import { BottomNavigation } from "../../components/layout";
@@ -9,9 +10,12 @@ import { hikePaths, navigateTab } from "../hikeRoutes";
 import "../hikePages.css";
 import "./HikeCompletePage.css";
 
-/** HIKE-08 등산 완료 (`#hikes/complete`) */
-export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId: string | undefined, finishedAt: string) => void }) {
+/** HIKE-08 등산 완료 (`#hikes/complete`). 후기 작성은 등산 기록 상세(REC-03)와 같은 후기 유형 선택 창을 띄운다. */
+export function HikeCompletePage() {
   const session = useHikeSession();
+  // 이 기록으로 이미 쓴 산·코스 후기는 유형 선택에서 막는다 (작성 후 돌아왔을 때).
+  const recordReviews = useRecordReviews(session?.finishedAt ? session.hikeRecordId : undefined);
+  const [pickingReview, setPickingReview] = useState(false);
   // 나중에 → 오늘 날짜가 선택된 HIKE-01 캘린더
   const backToCalendar = () => navigate(hikePaths.calendar());
   if (!session?.finishedAt) return <main className="hike-page__empty-state"><p>완료된 등산 기록이 없어요.</p>
@@ -20,8 +24,7 @@ export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId
   const result = { ...session.schedule, mountainId: hikeTargetIds(session).mountainId,
     // 기록 API로 종료했으면 서버가 계산한 소요 시간을 쓴다.
     durationMinutes: session.durationSeconds !== undefined ? Math.floor(session.durationSeconds / 60)
-      : Math.max(0, Math.floor((Date.parse(finishedAt) - Date.parse(session.startedAt)) / 60_000)),
-    sunset: findCourse(session.schedule.courseId)?.sunset ?? "정보 없음" };
+      : Math.max(0, Math.floor((Date.parse(finishedAt) - Date.parse(session.startedAt)) / 60_000)) };
 
   return <div className="hike-page hike-complete-page">
     <main className="hike-page__body hike-complete-page__body">
@@ -43,21 +46,22 @@ export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId
         <div><dt>소요 시간</dt><dd>{formatDuration(result.durationMinutes)}</dd></div>
       </dl>
 
-      <div className="hike-complete-page__sunset">
-        <p className="hike-complete-page__sunset-time">일몰 {result.sunset}</p>
-        {session.hikeRecordId === undefined && <p className="hike-complete-page__sunset-note">
-          예시 일정으로 진행해 GPS 이동 기록이 저장되지 않았어요.
-        </p>}
-      </div>
+      {session.hikeRecordId === undefined && <div className="hike-complete-page__sunset">
+        <p className="hike-complete-page__sunset-note">예시 일정으로 진행해 GPS 이동 기록이 저장되지 않았어요.</p>
+      </div>}
 
       <section className="hike-complete-page__review" aria-labelledby="hike-review-question">
-        <h2 id="hike-review-question" className="hike-complete-page__question">산 후기를 작성하시겠어요?</h2>
+        <h2 id="hike-review-question" className="hike-complete-page__question">후기를 작성하시겠어요?</h2>
         <div className="hike-complete-page__actions">
-          <Button fullWidth label="산 후기 작성" onClick={() => onWriteReview(result.mountainId, finishedAt)} />
+          <Button fullWidth label="후기 작성" onClick={() => setPickingReview(true)} />
           <Button fullWidth variant="secondary" label="나중에" onClick={backToCalendar} />
         </div>
       </section>
     </main>
     <BottomNavigation className="hike-page__nav" active="myHikes" onNavigate={navigateTab} />
+
+    {pickingReview && <ReviewKindPicker onClose={() => setPickingReview(false)}
+      reviewed={{ mountain: recordReviews?.data?.mountainReviewed ?? false, course: recordReviews?.data?.courseReviewed ?? false }}
+      onSelect={kind => { setPickingReview(false); openReviewWriting(kind, result.mountainId, hikePaths.complete); }} />}
   </div>;
 }

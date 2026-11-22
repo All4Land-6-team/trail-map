@@ -1,0 +1,39 @@
+/* REC-03 등산 기록 상세 */
+.hike-record-page > .af-top-bar { flex: none; width: auto; margin: 16px 16px 0; }
+.hike-record-page__body { display: flex; flex-direction: column; padding: 16px 16px 24px; }
+.hike-record-page__empty { margin: 0; padding: 24px 16px; border: 1px solid var(--af-line); border-radius: 16px; color: #617b6c; background: #fff; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: center; }
+
+.hike-record-page__summary { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px; border: 1px solid var(--af-line); border-radius: 16px; color: var(--af-green); background: #fff; }
+.hike-record-page__summary h2 { margin: 6px 0 0; color: var(--af-ink); font: 700 20px/28px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-record-page__summary p { margin: 0; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.hike-record-page__map { position: relative; height: 200px; margin-top: 14px; overflow: hidden; border-radius: 16px; background: #e2eedf; }
+.hike-record-page__map-status { display: grid; height: 100%; margin: 0; place-items: center; color: #617b6c; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-record-page__legend { display: flex; gap: 14px; margin: 8px 0 0; padding: 0 2px; list-style: none; color: #617b6c; font: 400 10px/15px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-record-page__legend li { display: inline-flex; align-items: center; gap: 5px; }
+.hike-record-page__legend span { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+.hike-record-page__notice { margin: 6px 0 0; color: var(--af-muted); font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.hike-record-page__stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0 0; }
+.hike-record-page__stats > div { display: flex; flex-direction: column-reverse; gap: 2px; }
+.hike-record-page__stats dt { color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-record-page__stats dd { margin: 0; color: var(--af-ink); font: 700 22px/30px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+
+.hike-record-page__actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.hike-record-page__actions .af-button { min-height: 48px; border-radius: 10px; }
+
+/* 내가 쓴 후기 (산 → 코스 → 스팟) */
+.hike-record-page__reviews { margin-top: 24px; }
+.hike-record-page__reviews h3 { margin: 0 0 10px; color: var(--af-ink); font: 700 15px/22px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-record-page__reviews ul { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.hike-record-page__review { padding: 14px 16px; border: 1px solid var(--af-line); border-radius: 14px; background: #fff; }
+.hike-record-page__review-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; font: 400 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
+.hike-record-page__review-head span { padding: 1px 8px; border-radius: 999px; color: var(--af-green); background: #eef5ec; font-weight: 600; }
+.hike-record-page__review-head strong { color: var(--af-ink); font-weight: 700; }
+.hike-record-page__review-head em { margin-left: auto; color: var(--af-green); font-style: normal; font-weight: 700; }
+.hike-record-page__review-content { margin: 8px 0 0; color: var(--af-ink); font: 400 13px/20px "Noto Sans KR", sans-serif; letter-spacing: -.02em; white-space: pre-wrap; }
+.hike-record-page__review-meta { margin: 6px 0 0; color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; }
+
+
+/* 후기 목록으로 내용이 길어져도 지도·요약이 줄어들지 않고 화면이 스크롤된다. */
+.hike-record-page__body > * { flex-shrink: 0; }

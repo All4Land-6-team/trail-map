@@ -1,5 +1,6 @@
 package com.all4land.trailmap.domain.hike.repository;
 
+import com.all4land.trailmap.domain.hike.dto.response.HikeScheduleRecordResponse;
 import com.all4land.trailmap.domain.hike.entity.HikeRecordStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
@@ -9,7 +10,9 @@ import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -21,6 +24,7 @@ public class HikeRecordRepository {
                    traveled_distance_meters, actual_duration_seconds,
                    ST_X(ST_EndPoint(traveled_path)) AS last_longitude,
                    ST_Y(ST_EndPoint(traveled_path)) AS last_latitude,
+                   last_position_recorded_at,
                    ST_Length(recorded_course_geometry::geography) AS course_distance_meters
             FROM hike_record
             """;
@@ -36,6 +40,7 @@ public class HikeRecordRepository {
             resultSet.getObject("actual_duration_seconds", Integer.class),
             resultSet.getObject("last_longitude", Double.class),
             resultSet.getObject("last_latitude", Double.class),
+            resultSet.getObject("last_position_recorded_at", OffsetDateTime.class),
             resultSet.getObject("course_distance_meters", Double.class)
     );
 
@@ -76,6 +81,15 @@ public class HikeRecordRepository {
 
     /** 진행 중(등산 중·하산 중) 기록이 있는 일정이 하나라도 있는지 */
     public boolean existsActiveBySchedules(Collection<Long> scheduleIds) {
+        return existsBySchedules(scheduleIds, List.of("IN_PROGRESS", "DESCENDING"));
+    }
+
+    /** 종료한 기록이 있는 일정인지 (일정을 바꾸거나 지우면 기록이 다른 코스·날짜에 붙거나 캘린더에서 사라진다) */
+    public boolean existsCompletedBySchedules(Collection<Long> scheduleIds) {
+        return existsBySchedules(scheduleIds, List.of("COMPLETED"));
+    }
+
+    private boolean existsBySchedules(Collection<Long> scheduleIds, Collection<String> statuses) {
         if (scheduleIds.isEmpty()) {
             return false;
         }
@@ -83,10 +97,34 @@ public class HikeRecordRepository {
                 SELECT EXISTS (
                     SELECT 1 FROM hike_record
                     WHERE schedule_id IN (:scheduleIds) AND deleted_at IS NULL
-                      AND hike_status IN ('IN_PROGRESS', 'DESCENDING')
+                      AND hike_status IN (:statuses)
                 )
-                """, new MapSqlParameterSource("scheduleIds", scheduleIds), Boolean.class);
+                """, new MapSqlParameterSource("scheduleIds", scheduleIds).addValue("statuses", statuses), Boolean.class);
         return Boolean.TRUE.equals(exists);
+    }
+
+    /** 일정별 등산 기록 요약. 일정마다 기록은 최대 1개다(uq_hike_record_schedule). */
+    public Map<Long, HikeScheduleRecordResponse> findSummariesBySchedules(Collection<Long> scheduleIds) {
+        if (scheduleIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, HikeScheduleRecordResponse> summaries = new HashMap<>();
+        jdbcTemplate.query("""
+                SELECT schedule_id, hike_record_id, hike_status, started_at, ended_at,
+                       traveled_distance_meters, actual_duration_seconds
+                FROM hike_record
+                WHERE schedule_id IN (:scheduleIds) AND deleted_at IS NULL
+                """, new MapSqlParameterSource("scheduleIds", scheduleIds), resultSet -> {
+            summaries.put(resultSet.getLong("schedule_id"), new HikeScheduleRecordResponse(
+                    resultSet.getLong("hike_record_id"),
+                    HikeRecordStatus.valueOf(resultSet.getString("hike_status")),
+                    resultSet.getObject("started_at", OffsetDateTime.class),
+                    resultSet.getObject("ended_at", OffsetDateTime.class),
+                    resultSet.getObject("traveled_distance_meters", Double.class),
+                    resultSet.getObject("actual_duration_seconds", Integer.class)
+            ));
+        });
+        return summaries;
     }
 
     public Optional<HikeRecordRow> findOwned(Long userId, Long hikeRecordId) {
@@ -130,12 +168,14 @@ public class HikeRecordRepository {
     /**
      * 이동 경로 뒤에 선분을 이어 붙이고 이동 거리를 경로 길이(구면 거리)로 갱신한다.
      * 경로가 비어 있으면 그 선분이 경로가 된다. 이어 붙인 지점의 중복 점은 지운다.
+     * 마지막으로 붙인 위치의 측정 시각을 함께 저장해 같은 위치를 다시 받으면 거른다.
      */
-    public void appendPath(Long hikeRecordId, String lineStringWkt, OffsetDateTime updatedAt) {
+    public void appendPath(Long hikeRecordId, String lineStringWkt, OffsetDateTime lastRecordedAt, OffsetDateTime updatedAt) {
         jdbcTemplate.update("""
                 UPDATE hike_record record
                 SET traveled_path = next.path,
                     traveled_distance_meters = ST_Length(next.path::geography),
+                    last_position_recorded_at = :lastRecordedAt,
                     updated_at = :updatedAt
                 FROM (
                     SELECT ST_RemoveRepeatedPoints(
@@ -149,6 +189,7 @@ public class HikeRecordRepository {
                 """, new MapSqlParameterSource()
                 .addValue("hikeRecordId", hikeRecordId)
                 .addValue("line", lineStringWkt)
+                .addValue("lastRecordedAt", lastRecordedAt)
                 .addValue("updatedAt", updatedAt));
     }
 

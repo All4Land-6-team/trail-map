@@ -1,23 +1,44 @@
 import type { CourseRequest } from "../types/course";
-import type { CourseDetailView } from "../types/courseDetail";
+import type { CourseDetailView, CourseFoodPlace } from "../types/courseDetail";
 import { SPOT_CATEGORIES } from "../utils/courseProfile.ts";
 import { coursePaths } from "./courseRoutes.ts";
 
 export function readCourseDetailView(hash: string): CourseDetailView {
   const params = new URLSearchParams(hash.split("?")[1] ?? "");
   const category = SPOT_CATEGORIES.find(item => item.value === params.get("category"))?.value ?? "all";
-  return { tab: params.get("tab") === "spots" ? "spots" : "analysis", category,
-    ...(params.get("spot") ? { spotId: params.get("spot")! } : {}) };
+  const tab = params.get("tab") === "spots" ? "spots" : "analysis";
+  const spotId = params.get("spot") || undefined;
+  const foodName = params.get("foodName")?.trim();
+  const foodKind = params.get("foodKind");
+  const longitude = Number(params.get("foodLng"));
+  const latitude = Number(params.get("foodLat"));
+  const foodPlace = tab === "spots" && category === "food" && spotId && foodName
+    && (foodKind === "restaurant" || foodKind === "cafe")
+    && Number.isFinite(longitude) && Number.isFinite(latitude)
+    ? { id: spotId, name: foodName, kind: foodKind, coordinate: [longitude, latitude] } satisfies CourseFoodPlace
+    : undefined;
+  return { tab, category, ...(spotId ? { spotId } : {}), ...(foodPlace ? { foodPlace } : {}) };
 }
 export function courseDetailPath(request: CourseRequest, view: CourseDetailView, returnTo?: string | null) {
   const params = new URLSearchParams();
+  const foodPlace = view.foodPlace;
   if (view.tab === "spots") {
     params.set("tab", "spots");
     params.set("category", view.category);
     if (view.spotId) params.set("spot", view.spotId);
+    if (view.category === "food" && foodPlace && foodPlace.id === view.spotId) {
+      params.set("foodName", foodPlace.name);
+      params.set("foodKind", foodPlace.kind);
+      params.set("foodLng", String(foodPlace.coordinate[0]));
+      params.set("foodLat", String(foodPlace.coordinate[1]));
+    }
   }
   if (returnTo) params.set("returnTo", returnTo);
   return `${coursePaths.detail(request)}${params.size ? `?${params}` : ""}`;
+}
+
+export function courseFoodDetailPath(request: CourseRequest, foodPlace: CourseFoodPlace, returnTo?: string | null) {
+  return courseDetailPath(request, { tab: "spots", category: "food", spotId: foodPlace.id, foodPlace }, returnTo);
 }
 
 export function cartCourseDetailPath(request: CourseRequest, returnTo: string) {

@@ -18,10 +18,9 @@
 
 .hike-complete-page__sunset { display: flex; flex-direction: column; gap: 7px; min-height: 72px; margin-top: 16px; padding: 14px; border: 1px solid var(--af-line); border-radius: 14px; }
 .hike-complete-page__sunset p { margin: 0; }
-.hike-complete-page__sunset-time { font: 500 12px/18px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 .hike-complete-page__sunset-note { color: #617b6c; font: 400 11px/16px "Noto Sans KR", sans-serif; letter-spacing: -.02em; }
 
 .hike-complete-page__review { margin-top: 28px; }
 .hike-complete-page__question { margin: 0; font: 700 16px/24px "Noto Sans KR", sans-serif; letter-spacing: -.02em; text-align: center; }
-.hike-complete-page__actions { display: flex; flex-direction: column; gap: 12px; margin-top: 62px; }
+.hike-complete-page__actions { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
 .hike-complete-page__actions .af-button { min-height: 44px; border-radius: 10px; }

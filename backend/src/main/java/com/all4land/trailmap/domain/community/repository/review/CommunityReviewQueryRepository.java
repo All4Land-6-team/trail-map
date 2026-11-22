@@ -3,6 +3,7 @@ package com.all4land.trailmap.domain.community.repository.review;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.dto.response.CommunityMountainReviewSummaryResponse;
 import com.all4land.trailmap.domain.community.repository.result.CommunityReviewQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunityReviewEnvironmentQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.EligibleHikeQueryResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
@@ -26,7 +27,10 @@ public class CommunityReviewQueryRepository {
                    record.course_id,
                    course.course_name,
                    course.mountain_id,
-                   record.ended_at
+                   record.started_at,
+                   record.ended_at,
+                   ST_X(ST_LineInterpolatePoint(record.recorded_course_geometry, 0.5)) AS route_longitude,
+                   ST_Y(ST_LineInterpolatePoint(record.recorded_course_geometry, 0.5)) AS route_latitude
             FROM hike_record record
             JOIN course ON course.course_id = record.course_id
             WHERE record.user_id = :userId
@@ -43,7 +47,10 @@ public class CommunityReviewQueryRepository {
                    record.course_id,
                    course.course_name,
                    course.mountain_id,
-                   COALESCE(record.ended_at, record.started_at) AS ended_at
+                   record.started_at,
+                   COALESCE(record.ended_at, CURRENT_TIMESTAMP) AS ended_at,
+                   ST_X(ST_LineInterpolatePoint(record.recorded_course_geometry, 0.5)) AS route_longitude,
+                   ST_Y(ST_LineInterpolatePoint(record.recorded_course_geometry, 0.5)) AS route_latitude
             FROM hike_record record
             JOIN course ON course.course_id = record.course_id
             WHERE record.user_id = :userId
@@ -65,7 +72,14 @@ public class CommunityReviewQueryRepository {
                    review.rating,
                    review.visited_date,
                    review.created_at,
-                   photos.photo_keys
+                   photos.photo_keys,
+                   environment.reference_at,
+                   environment.utc_offset_minutes,
+                   environment.longitude,
+                   environment.latitude,
+                   environment.weather_status,
+                   environment.weather_temperature_c,
+                   environment.weather_code
             FROM selected_review review
             JOIN app_user ON app_user.user_id = review.user_id
             LEFT JOIN LATERAL (
@@ -77,6 +91,8 @@ public class CommunityReviewQueryRepository {
                 WHERE photo.deleted_at IS NULL
                   AND photo.%s = review.review_id
             ) photos ON TRUE
+            LEFT JOIN review_environment environment
+              ON environment.%s = review.review_id
             ORDER BY review.created_at DESC, review.review_id DESC
             LIMIT :limit OFFSET :offset
             """;
@@ -95,7 +111,7 @@ public class CommunityReviewQueryRepository {
                 WHERE review.mountain_id = :targetId
                   AND review.deleted_at IS NULL
             )
-            """ + REVIEW_SELECT.formatted("mountain_review_id");
+            """ + REVIEW_SELECT.formatted("mountain_review_id", "mountain_review_id");
 
     private static final String COURSE_REVIEW_SQL = """
             WITH selected_review AS (
@@ -111,7 +127,7 @@ public class CommunityReviewQueryRepository {
                 WHERE review.course_id = :targetId
                   AND review.deleted_at IS NULL
             )
-            """ + REVIEW_SELECT.formatted("course_review_id");
+            """ + REVIEW_SELECT.formatted("course_review_id", "course_review_id");
 
     private static final String SPOT_REVIEW_SQL = """
             WITH selected_review AS (
@@ -128,7 +144,7 @@ public class CommunityReviewQueryRepository {
                   AND ((:targetType = 'FACILITY' AND review.facility_id = :targetId)
                     OR (:targetType = 'USER_SPOT' AND review.spot_id = :targetId))
             )
-            """ + REVIEW_SELECT.formatted("spot_review_id");
+            """ + REVIEW_SELECT.formatted("spot_review_id", "spot_review_id");
 
     private static final RowMapper<CommunityReviewQueryResult> REVIEW_ROW_MAPPER = (resultSet, rowNumber) ->
             new CommunityReviewQueryResult(
@@ -140,7 +156,17 @@ public class CommunityReviewQueryRepository {
                     resultSet.getObject("rating", Double.class),
                     resultSet.getObject("visited_date", java.time.LocalDate.class),
                     resultSet.getObject("created_at", java.time.OffsetDateTime.class),
-                    toStringList(resultSet.getArray("photo_keys"))
+                    toStringList(resultSet.getArray("photo_keys")),
+                    resultSet.getObject("reference_at", OffsetDateTime.class) == null ? null
+                            : new CommunityReviewEnvironmentQueryResult(
+                                    resultSet.getObject("reference_at", OffsetDateTime.class),
+                                    resultSet.getObject("utc_offset_minutes", Short.class),
+                                    resultSet.getObject("longitude", Double.class),
+                                    resultSet.getObject("latitude", Double.class),
+                                    resultSet.getString("weather_status"),
+                                    resultSet.getObject("weather_temperature_c", Double.class),
+                                    resultSet.getString("weather_code")
+                            )
             );
 
     private static final RowMapper<EligibleHikeQueryResult> ELIGIBLE_HIKE_ROW_MAPPER = (resultSet, rowNumber) ->
@@ -149,7 +175,10 @@ public class CommunityReviewQueryRepository {
                     resultSet.getLong("course_id"),
                     resultSet.getString("course_name"),
                     resultSet.getLong("mountain_id"),
-                    resultSet.getObject("ended_at", OffsetDateTime.class)
+                    resultSet.getObject("started_at", OffsetDateTime.class),
+                    resultSet.getObject("ended_at", OffsetDateTime.class),
+                    resultSet.getDouble("route_longitude"),
+                    resultSet.getDouble("route_latitude")
             );
 
     private final NamedParameterJdbcTemplate jdbcTemplate;

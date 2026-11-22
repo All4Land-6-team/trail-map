@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { courseAnalysisUrl, loadCourseAnalysis, parseCourseAnalysisProfile } from '../src/api/courseAnalysis.ts';
-import { detailAnalysisView, detailRouteLabel, courseProfileAxes, formatProfileValue } from '../src/utils/courseDetailAnalysis.ts';
+import { detailAnalysisView, detailRouteLabel, courseProfileAxes, formatProfileValue,
+  summarizeProfileSlope, profileSlopeSectionAt, profileSlopeDirection } from '../src/utils/courseDetailAnalysis.ts';
 import { developmentAnalysisReference } from '../src/utils/courseComparison.ts';
 import { analysis, noAnalysis, profile, envelope, fullCoverageAnalysis, fullCoverageProfile } from './fixtures/course-analysis.mjs';
 
@@ -160,4 +161,62 @@ test('운영 빌드는 개발 시드 ID를 연결하지 않으며 개발용 세 
     assert.equal(developmentAnalysisReference(name, 'bukhansan', true).courseId, id);
     assert.equal(developmentAnalysisReference(name, 'bukhansan', false), undefined);
   }
+});
+
+const slopePoints = pairs => pairs.map(([meters, slopePercent], index) => ({
+  distanceKm: meters / 1000, slopePercent, elevationMeters: 100 + index, coordinate: [127, 37],
+}));
+const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-8, `${actual} != ${expected}`);
+
+test('50m 경사는 샘플 개수가 아닌 구간 거리로 가중하며 긴 구간은 경계에서 나눈다', () => {
+  const samples = slopePoints([[0, null], [10, 100], [50, 0], [90, -20], [120, 20]]);
+  const original = structuredClone(samples);
+  const sections = summarizeProfileSlope(samples);
+  assert.equal(sections.length, 3);
+  assert.deepEqual(sections.map(s => [s.startKm, s.endKm]), [[0, .05], [.05, .1], [.1, .12]]);
+  [20, -12, 20].forEach((value, index) => near(sections[index].slopePercent, value));
+  assert.deepEqual(samples, original);
+  const long = summarizeProfileSlope(slopePoints([[0, null], [125, -35]]));
+  assert.deepEqual(long.map(s => s.slopePercent), [-35, -35, -35]);
+  assert.equal(long.at(-1).endKm, .125);
+});
+
+test('같은 50m 구간 안의 결측도 잇거나 0으로 채우지 않고 유효 부분을 별도로 요약한다', () => {
+  const samples = slopePoints([[0, null], [10, 20], [20, null], [30, null], [40, -10]]);
+  samples[2].elevationMeters = null;
+  const sections = summarizeProfileSlope(samples);
+  assert.deepEqual(sections, [
+    { startKm: 0, endKm: .01, slopePercent: 20 },
+    { startKm: .03, endKm: .04, slopePercent: -10 },
+  ]);
+  assert.equal(profileSlopeSectionAt(sections, .02), null);
+  assert.equal(profileSlopeSectionAt(sections, .03), sections[1]);
+  assert.equal(profileSlopeSectionAt(sections, .04), sections[1]);
+  assert.equal(profileSlopeSectionAt(sections, .05), null);
+});
+
+test('선택 경계는 직전 구간이고 0·음수·결측의 방향과 원본 축을 구분한다', () => {
+  const samples = slopePoints([[0, null], [50, 5], [100, -10]]);
+  const sections = summarizeProfileSlope(samples);
+  assert.equal(profileSlopeSectionAt(sections, .05), sections[0]);
+  assert.equal(profileSlopeSectionAt(sections, .05001), sections[1]);
+  assert.equal(profileSlopeSectionAt([], 0), null);
+  assert.deepEqual([null, NaN, 0, -20, 20].map(profileSlopeDirection), ['경사 정보 없음', '경사 정보 없음', '평지', '내리막', '오르막']);
+  samples[1].slopePercent = 1000;
+  assert.ok(courseProfileAxes(samples).slopeMax > 1000);
+  const summaryAxes = courseProfileAxes(samples, [5, -10]);
+  assert.ok(summaryAxes.slopeMax < 1000 && summaryAxes.slopeMin < -10);
+});
+
+test('첫 샘플·전체 결측·길이 0·무효 값은 평균 경사를 만들지 않으며 큰 프로필도 처리한다', () => {
+  for (const points of [[], slopePoints([[0, 123]]), slopePoints([[0, null], [10, null]]),
+    slopePoints([[0, null], [0, 10]]), slopePoints([[0, null], [10, Infinity]])]) {
+    assert.deepEqual(summarizeProfileSlope(points), []);
+  }
+  for (const interval of [0, -1, NaN, Infinity]) assert.throws(() => summarizeProfileSlope([], interval), RangeError);
+  const many = slopePoints(Array.from({ length: 100_000 }, (_, i) => [i * 10, i === 0 ? null : i % 2 ? 10 : -10]));
+  const sections = summarizeProfileSlope(many);
+  assert.equal(sections.length, 20_000);
+  assert.ok(sections.every(s => Number.isFinite(s.slopePercent) && s.endKm > s.startKm));
+  near(sections.reduce((sum, s) => sum + s.endKm - s.startKm, 0), 999.99);
 });

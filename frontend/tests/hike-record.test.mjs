@@ -298,6 +298,13 @@ test("진행 중인 등산이 있는 일정을 지우려 하면 대체 확인 �
   assert.equal((await deleteHikeSchedule(6).catch(caught => caught)).kind, "conflict");
 });
 
+test("등산을 마친 일정을 지우려 하면 대체 확인 없이 안내 문구를 준다", async () => {
+  reset(fail(409, "HIKE_409_7"));
+  const error = await deleteHikeSchedule(6).catch(caught => caught);
+  assert.equal(error.kind, "completedHike");
+  assert.equal(error.message, "등산을 마친 일정은 바꾸거나 지울 수 없어요.");
+});
+
 test("일정 저장용 코스 번호: 예시 코스는 개발 매핑, 실제 경로 코스(db-번호)는 그 번호", async () => {
   const { toBackendCourseId } = await import("../src/api/hikeScheduleApi.ts");
   assert.equal(toBackendCourseId("daenammun"), 2);

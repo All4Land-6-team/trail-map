@@ -37,7 +37,7 @@ class FlywayPostgisMigrationTest {
         var result = flyway.migrate();
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("11");
+        assertThat(result.targetSchemaVersion).isEqualTo("19");
 
         try (var connection = DriverManager.getConnection(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()
@@ -54,7 +54,7 @@ class FlywayPostgisMigrationTest {
                     WHERE table_schema = 'public'
                       AND table_type = 'BASE TABLE'
                       AND table_name NOT IN ('flyway_schema_history', 'spatial_ref_sys')
-            """)).isEqualTo(22);
+            """)).isEqualTo(24);
 
             assertThat(queryForInt(connection, """
                     SELECT count(*)
@@ -62,7 +62,7 @@ class FlywayPostgisMigrationTest {
                     JOIN pg_namespace namespace ON namespace.oid = constraint_definition.connamespace
                     WHERE namespace.nspname = 'public'
                       AND constraint_definition.contype = 'f'
-            """)).isEqualTo(46);
+            """)).isEqualTo(52);
 
             assertThat(queryForSet(connection, """
                     SELECT column_name
@@ -81,6 +81,14 @@ class FlywayPostgisMigrationTest {
                     """)).containsExactlyInAnyOrder(
                     "vote_id", "user_id", "spot_id", "facility_id", "vote_type", "created_at", "updated_at"
             );
+
+            assertThat(queryForSet(connection, """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'hike_record'
+                      AND column_name = 'last_position_recorded_at'
+            """)).containsExactly("last_position_recorded_at");
 
             assertThat(queryForInt(connection, """
                     SELECT count(*)

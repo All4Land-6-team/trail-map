@@ -1,4 +1,7 @@
 .course-map { position: absolute; inset: 0; overflow: hidden; }
+.course-map--list { z-index: 0; }
+.course-map--list .course-map__spot { z-index: 1; }
+.course-map--list .course-map__spot[aria-pressed="true"] { z-index: 2; }
 .course-map__preview button { border: 1px solid #d0e2da; border-radius: 10px; background: #fff; color: #155c4c; padding: 7px 8px; font: inherit; font-size: 10px; cursor: pointer; }
 .course-map__overview { padding: 0; font-size: 10px; white-space: nowrap; }
 .course-map__overview:disabled, .course-map__preview button:disabled { opacity: .5; cursor: default; }
@@ -27,13 +30,23 @@
 .course-map__profile-point img { display: block; }
 .course-map .course-map__spot { position: absolute; z-index: 4; transform: translate(-50%, -50%); }
 .course-map__spot[aria-pressed="true"] { z-index: 5; box-shadow: 0 0 0 2px rgb(77 77 77 / 22%); }
+.course-map__osm-food-marker { width: 38px; height: 38px; border: 0; background: transparent; }
+.course-map__osm-food-marker .af-spot-marker__symbol { width: 28px; height: 28px; border: 1.5px solid #e8754e; background: #fff8f3; box-shadow: 0 2px 7px rgb(65 45 35 / 16%); transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.course-map__osm-food-marker--selected { z-index: 7; box-shadow: none !important; }
+.course-map__osm-food-marker--selected .af-spot-marker__symbol { border-color: var(--af-green); transform: scale(1.12); box-shadow: 0 0 0 3px rgb(25 118 91 / 18%), 0 4px 10px rgb(23 71 54 / 20%); }
+.course-map__osm-food-marker .af-spot-marker__label { top: 50%; left: calc(100% + 3px); max-width: 138px; padding: 3px 8px; transform: translateY(-50%); border: 1px solid rgb(25 118 91 / 14%); border-radius: 999px; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgb(23 71 54 / 14%); pointer-events: none; }
 .af-spot-marker--compact .af-spot-marker__symbol { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; }
 .af-spot-marker--compact[data-kind="shelter"] .af-spot-marker__symbol { background: #fff4e8; }
 .af-spot-marker--compact[data-kind="water"] .af-spot-marker__symbol { background: #e8f5fc; }
 .af-spot-marker--compact[data-kind="photo"] .af-spot-marker__symbol { background: #fff0f5; }
 .af-spot-marker--compact[data-kind="restroom"] .af-spot-marker__symbol { width: 23px; height: 23px; background: #fff; }
 .af-spot-marker--compact[data-kind="restroom"] { width: 33px; height: 33px; }
+.af-spot-marker--compact[data-kind="restaurant"] .af-spot-marker__symbol,
+.af-spot-marker--compact[data-kind="cafe"] .af-spot-marker__symbol { background: #fff8f3; }
 .af-spot-marker__label { position: absolute; top: 3px; left: calc(100% + 4px); padding: 2px 6px; border-radius: 5px; background: #fff; color: var(--af-ink); font-size: 10px; line-height: 16px; white-space: nowrap; box-shadow: 0 1px 5px rgb(23 71 54 / 8%); }
+@media (prefers-reduced-motion: reduce) {
+  .course-map__osm-food-marker .af-spot-marker__symbol { transition: none; }
+}
 @media (max-height: 580px) {
   .course-map--detail .course-map__actions { top: 76px; right: 10px; flex-direction: row; }
   .course-map--detail .af-map-action { width: 32px; height: 32px; }

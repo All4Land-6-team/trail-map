@@ -91,6 +91,27 @@ class FacilityPostgisIntegrationTest {
     }
 
     @Test
+    void repeatedImportSkipsCourseLinkingForExistingFacilities() throws Exception {
+        var seed = importer.importFile(document(List.of()));
+        long mountainId = mountain(seed.sourceId());
+        jdbc.update("""
+                INSERT INTO course (mountain_id, course_name, course_geometry, source_id, source_hash, imported_at)
+                VALUES (?, 'link-test', ST_GeomFromText('LINESTRING(10 10,10.02 10)',4326), ?, ?, now())
+                """, mountainId, seed.sourceId(), "c".repeat(64));
+        var facility = assigned(point("link-once", 10.01, 10.0001, FacilityType.RESTROOM), mountainId);
+        importer.importFile(document(List.of(facility)));
+        long facilityId = jdbc.queryForObject("SELECT facility_id FROM facility WHERE source_id = ? AND source_record_id = 'link-once'",
+                Long.class, seed.sourceId());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM spot_course WHERE facility_id = ?", Integer.class, facilityId)).isEqualTo(1);
+
+        jdbc.update("DELETE FROM spot_course WHERE facility_id = ?", facilityId);
+        var repeated = importer.importFile(document(List.of(facility)));
+
+        assertThat(repeated.skipped()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM spot_course WHERE facility_id = ?", Integer.class, facilityId)).isZero();
+    }
+
+    @Test
     void usesMetersAndEntireCourseLineAndFiltersFacilityType() throws Exception {
         var result = importer.importFile(document(List.of()));
         long mountainId = jdbc.queryForObject("""

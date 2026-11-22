@@ -16,7 +16,7 @@ class FlywayMigrationDefinitionTest {
                 .getResources("classpath*:db/migration/V*__*.sql");
         assertThat(migrations)
                 .extracting(resource -> resource.getFilename().split("__", 2)[0])
-                .containsExactlyInAnyOrder("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12");
+                .containsExactlyInAnyOrder("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18", "V19");
     }
 
     private static final String[] CORE_TABLES = {
@@ -150,5 +150,56 @@ class FlywayMigrationDefinitionTest {
                         "file_hash VARCHAR(64)", "validation_status VARCHAR(100)",
                         "UNIQUE (dataset_key, source_record_id)", "UNIQUE (dataset_key, route_order)")
                 .doesNotContain("UPDATE course", "DELETE FROM", "ALTER TABLE course_analysis");
+    }
+
+    @Test
+    void 열네_번째_마이그레이션은_사진_촬영환경과_기상관측소를_추가한다() throws IOException {
+        assertThat(readMigration("db/migration/V14__add_photo_environment.sql"))
+                .contains("CREATE TABLE weather_station")
+                .contains("ADD COLUMN captured_at TIMESTAMPTZ")
+                .contains("ADD COLUMN weather_code VARCHAR(30)")
+                .contains("fk_photo_weather_station")
+                .contains("chk_photo_capture_metadata");
+    }
+
+    @Test
+    void 열다섯_번째_마이그레이션은_환경정보를_후기_단위로_이동한다() throws IOException {
+        assertThat(readMigration("db/migration/V15__move_environment_to_review.sql"))
+                .contains("CREATE TABLE review_environment")
+                .contains("CHECK (num_nonnulls(mountain_review_id, course_review_id, spot_review_id) = 1)")
+                .contains("'PHOTO_EXIF', 'HIKE_MIDPOINT'")
+                .contains("DROP COLUMN captured_at")
+                .contains("DROP COLUMN weather_code");
+    }
+
+    @Test
+    void 열여섯_번째_마이그레이션은_ASOS를_산에_연결하고_관측소_테이블을_제거한다() throws IOException {
+        assertThat(readMigration("db/migration/V16__simplify_review_weather.sql"))
+                .contains("ADD COLUMN asos_station_id INTEGER")
+                .contains("ADD COLUMN weather_status VARCHAR(20)")
+                .contains("DROP COLUMN weather_observed_at")
+                .contains("DROP COLUMN weather_station_id")
+                .contains("DROP TABLE weather_station");
+    }
+
+    @Test
+    void 열일곱_번째_마이그레이션은_북한산과_도봉산을_서울_ASOS에_연결한다() throws IOException {
+        assertThat(readMigration("db/migration/V17__assign_asos_stations.sql"))
+                .contains("SET asos_station_id = 108")
+                .contains("WHERE source_record_id IN ('bukhansan', 'dobongsan')");
+    }
+
+    @Test
+    void 열여덟_번째_마이그레이션은_잘못_분류된_안개를_재조회_대상으로_변경한다() throws IOException {
+        assertThat(readMigration("db/migration/V18__retry_fog_weather.sql"))
+                .contains("SET weather_status = 'FAILED'")
+                .contains("WHERE weather_code = 'FOG'");
+    }
+
+    @Test
+    void 열아홉_번째_마이그레이션은_등산_기록의_마지막_위치_시각을_추가한다() throws IOException {
+        assertThat(readMigration("db/migration/V19__add_hike_record_last_position_time.sql"))
+                .contains("ALTER TABLE hike_record")
+                .contains("ADD COLUMN last_position_recorded_at TIMESTAMPTZ");
     }
 }

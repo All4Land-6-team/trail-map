@@ -99,18 +99,22 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 이동 거리는 경로 길이를 구면 거리(`geography`)로 계산하며, 위치를 한 번도 받지 않았으면 `null`입니다. 등산 종료는 진행 중 기록의 `hikeRecordId`로 `POST /api/v1/hike-records/{hikeRecordId}/finish`를 호출합니다.
 
-진행 중·하산 중 기록이 있는 일정은 수정(`PATCH /api/v1/hike-schedules/{scheduleId}`)·삭제(`DELETE`)할 수 없고, 같은 날짜 대체 등록(`replaceExisting=true`)으로도 지울 수 없습니다(`HIKE_409_6`). 기록과 일정의 코스가 달라지지 않게 하기 위해서이며, 종료한 기록만 있는 일정은 기존처럼 바꿀 수 있습니다.
+등산 기록이 있는 일정은 수정(`PATCH /api/v1/hike-schedules/{scheduleId}`)·삭제(`DELETE`)할 수 없고, 같은 날짜 대체 등록(`replaceExisting=true`)으로도 지울 수 없습니다. 진행 중·하산 중 기록이면 `HIKE_409_6`, 종료한 기록이면 `HIKE_409_7`입니다. 기록과 일정의 코스·날짜가 어긋나거나 종료한 기록이 캘린더에서 사라지지 않게 하기 위해서입니다.
+
+일정 조회(`GET /api/v1/hike-schedules`, `GET /api/v1/hike-schedules/{scheduleId}`)와 수정 응답에는 그 일정의 등산 기록 요약 `hikeRecord`(`hikeRecordId`, `status`, `startedAt`, `endedAt`, `traveledDistanceMeters`, `actualDurationSeconds`)가 들어갑니다. 아직 등산을 시작하지 않았거나 기록이 삭제됐으면 `null`입니다. 내 등산 캘린더는 이 값으로 완료한 등산(`COMPLETED`)과 끝내지 않은 등산(`IN_PROGRESS`·`DESCENDING`)을 표시하고, 기록 상세는 `hikeRecordId`로 `GET /api/v1/hike-records/{hikeRecordId}`를 호출합니다.
+
+`GET /api/v1/hike-records/{hikeRecordId}/reviews`는 그 기록으로 작성한 후기를 산 후기, 코스 후기, 스팟 후기 순서로 반환합니다(`kind`: `MOUNTAIN`·`COURSE`·`SPOT`, 대상 이름, 산 평점, 내용, 사진 번호 `photoIds`). 산·코스 후기는 기록마다 하나만 쓸 수 있으므로 `mountainReviewed`·`courseReviewed`가 `true`면 후기 유형 선택에서 그 항목을 막습니다. 후기 작성은 커뮤니티 API가 맡고, 이 API는 후기 테이블을 읽기만 합니다. 다른 사용자의 기록은 `HIKE_404_4`입니다.
 
 ## 커뮤니티 API
 
 ### 코스별 사진 스팟 (#99)
 
 `GET /api/v1/community/courses/{courseId}/photo-spots`는 로그인 세션과 양의 정수 코스 ID를 받습니다.
-`user_spot.hike_record_id → hike_record.course_id`가 요청 코스와 일치하고 코스의 소속 산과 일치하는
-`PHOTO_SPOT` 사용자 스팟만 반환합니다. 응답은 기존 스팟 목록 형식이며 API 유형은 `PHOTO_SPOT`, 대상 종류는
+`spot_course.user_spot_id → spot_course.course_id`가 요청 코스와 일치하는 `PHOTO_SPOT` 사용자 스팟만
+반환합니다. 응답은 기존 스팟 목록 형식이며 API 유형은 `PHOTO_SPOT`, 대상 종류는
 `USER_SPOT`입니다. 스팟 ID 오름차순으로 반환하고 삭제·숨김·등록 산행 미연결 스팟은 제외합니다.
 거리 반경, 후기 작성자의 코스, 사진 유무, 현재 후기 작성 가능 기간은 목록 포함 조건이 아닙니다.
-새 DB 컬럼이나 마이그레이션은 필요하지 않습니다.
+코스 연결은 `V13__link_spots_to_courses.sql`에서 생성한 `spot_course` 테이블에 저장합니다.
 
 없는 코스는 기존 `COURSE_NOT_FOUND` 오류, 정상 빈 결과는 `data: []`입니다.
 스팟 사진 API는 직접 사진과 활성 후기 사진을 반환하며 삭제된 후기의 사진은 제외합니다.
@@ -121,7 +125,7 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 등산 종료 시 `POST /api/v1/hike-records/{hikeRecordId}/finish`를 호출해 진행 중 기록을 `COMPLETED`로 변경합니다. 이 기록이 아래 후기 작성 자격에 사용됩니다.
 
-- `GET /api/v1/community/mountains`: 커뮤니티에서 선택할 산과 지도 표시 좌표를 조회합니다.
+- `GET /api/v1/mountains`: 홈과 커뮤니티에서 공통으로 사용할 산과 지도 표시 좌표를 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/courses`: 산에 속한 코스, 거리, 경로 좌표와 후기 수를 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots`: 지도 영역의 공식 시설과 사용자 스팟을 함께 조회합니다. `west`, `south`, `east`, `north`가 필수이며 `type`으로 종류를 선택할 수 있습니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots/map`: 지도 이동 시 현재 화면 영역·유형 조건으로 마커 표시 필드만 조회합니다. 후기·사진 집계는 포함하지 않습니다.
@@ -185,7 +189,18 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 ### 커뮤니티 사진 저장
 
-R2 버킷은 비공개로 유지하고 클라이언트가 presigned PUT URL로 직접 업로드합니다. 파일은 JPEG, PNG, WebP만 허용하며 파일당 최대 5MB, 대상당 최대 3장입니다. 업로드 완료 후 확정 API가 R2 객체의 크기와 MIME을 확인한 뒤 `photo` 테이블에 메타데이터를 저장합니다. 공식 시설 사진은 시설에 직접 올리지 않고 본인이 작성한 스팟 후기에 연결합니다.
+R2 버킷은 비공개로 유지하고 클라이언트가 presigned PUT URL로 직접 업로드합니다. 파일은 JPEG, PNG, WebP만 허용하며 파일당 최대 5MB, 대상당 최대 3장입니다. 업로드 완료 후 확정 API가 R2 객체의 크기와 MIME을 확인한 뒤 `photo` 테이블에는 파일 메타데이터만 저장합니다. 공식 시설 사진은 시설에 직접 올리지 않고 본인이 작성한 스팟 후기에 연결합니다.
+
+날씨·시간대의 기준 정보는 사진이 아니라 후기별 `review_environment`에 한 번 저장합니다. 후기 등록 시 첫 사진의 EXIF 촬영 시각이 있으면 그 시각을 사용하고, 없거나 글 후기라면 산행 시작·종료의 중간 시각을 사용합니다. 산·코스 후기는 해당 산행 경로의 중간 지점, 스팟 후기는 해당 공식 시설 또는 사용자 스팟 위치가 기준입니다. 기상청 500m 고해상도 격자자료의 기온·강수·시정·적설과 가장 가까운 ASOS 관측소의 운량·일기현상을 조합합니다. 후기·사진 화면은 모두 같은 후기 환경정보를 조회합니다.
+
+현재 서비스 대상인 북한산과 도봉산은 공식 지점정보를 기준으로 가장 가까운 서울 ASOS 관측소(STN 108)를 `mountain.asos_station_id`에 저장합니다. 후기 날씨 조회는 저장된 지점번호를 사용하므로 서버 시작 시 지점정보 API를 다시 호출하지 않습니다.
+
+후기 등록 트랜잭션에는 기상청 호출을 포함하지 않습니다. 기준 시각·좌표와 `PENDING` 상태를 먼저 저장하고, 커밋 후 500m 격자와 ASOS를 최대 3초 동안 병렬 조회해 `SUCCESS` 또는 `FAILED`로 갱신합니다. 서버를 다시 시작하면 `PENDING`·`FAILED` 후기 중 최대 100건을 재시도합니다. API 키 미설정이나 기상청 조회 실패는 서버 시작과 후기 등록을 막지 않습니다. 비밀 설정은 아래 환경 변수로 주입하고 실제 인증키는 커밋하지 않습니다.
+
+```text
+KMA_API_BASE_URL=https://apihub.kma.go.kr
+KMA_API_AUTH_KEY=발급받은_APIHub_인증키
+```
 
 ```text
 community/mountain/{mountainId}/{reviewId}/{uuid}.{ext}
