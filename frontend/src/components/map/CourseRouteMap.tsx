@@ -193,7 +193,7 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
       style={{ left: profilePoint.x, top: profilePoint.y }} aria-label={`그래프 선택 위치 ${profileSample.distanceKm.toFixed(1)} km`}>
       <img src={profilePositionAsset} alt="" />
     </span>}
-    {spots?.length ? spotPoints.filter(({ spot }) => spot.courseId === selected?.id).map(({ spot, x, y }) => <SpotMarker key={spot.id} kind={spot.kind} compact
+    {spots?.length ? spotPoints.filter(({ spot }) => spot.courseId === selected?.id).map(({ spot, x, y }) => <SpotMarker key={spot.id} kind={spot.kind} source={spot.communityTarget?.targetType === "USER_SPOT" ? "user" : "official"} compact
       className="course-map__spot" style={{ left: x, top: y }} data-spot-id={spot.id}
       aria-label={`${spot.name} ${spot.communityTarget && spot.id === selectedSpotId ? '커뮤니티 상세 보기' : '지도에서 선택'}`} aria-pressed={spot.id === selectedSpotId}
       label={showSpotLabels ? spot.name : undefined} onClick={() => onSpotSelect?.(spot.id)} />) : null}

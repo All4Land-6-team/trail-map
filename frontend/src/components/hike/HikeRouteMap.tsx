@@ -209,7 +209,7 @@ export function HikeRouteMap({
       showNavigationControl={false} onMapReady={handleMapReady}
       terrainMode={terrainEnabled ? dimension : undefined} />
     {visibleSpots.map(spot => createPortal(
-      <SpotMarker kind={spot.kind} aria-label={spot.name} />, nodes.spots.get(spot.id)!, spot.id))}
+      <SpotMarker kind={spot.kind} source={spot.source} aria-label={spot.name} />, nodes.spots.get(spot.id)!, spot.id))}
     {createPortal(<span className="hike-route-map__peak"><span aria-hidden="true" />정상</span>, nodes.peak)}
     {current && createPortal(<CurrentLocationMarker />, nodes.current)}
     {current && traveledKm !== undefined && createPortal(<DistanceBubble label={`${traveledKm.toFixed(1)} km`}

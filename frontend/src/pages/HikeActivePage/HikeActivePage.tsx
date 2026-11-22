@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useCourseMapSpots } from "../../hooks/useCourseMapSpots";
 import { findCourse } from "../../api/hikeMock";
 import { Button } from "../../components/common/Button";
 import { Toast } from "../../components/feedback";
@@ -23,6 +24,14 @@ export function HikeActivePage() {
   const hike = useMemo(() => activeHikeFor(course, session?.schedule, session?.coursePath, session?.phase === "downhill"),
     [course, session?.schedule, session?.coursePath, session?.phase]);
   const [filter, setFilter] = useState<SpotFilter>("all");
+  const serverId = session?.schedule.serverCourseId;
+  const mountainId = session?.schedule.serverMountainId ?? Number(session?.mountainId);
+  const mapSpots = useCourseMapSpots(`db-${serverId}`, String(mountainId), serverId, mountainId,
+    serverId !== undefined, filter === "other" ? "all" : filter);
+  const liveSpots = useMemo(() => mapSpots.spots.map(spot => ({
+    id: spot.id, kind: spot.kind, name: spot.name, position: spot.coordinate,
+    source: spot.communityTarget?.targetType === "USER_SPOT" ? "user" as const : "official" as const,
+  })), [mapSpots.spots]);
   const [dimension, setDimension] = useState<"2D" | "3D">("2D");
   const [recenterKey, setRecenterKey] = useState(0);
   const alertsOn = session?.alertsOn ?? false;
@@ -41,12 +50,17 @@ export function HikeActivePage() {
         <HikeRouteMap route={controls.route} peak={controls.peak} mountainName={hike.mountainName} traveledKm={controls.traveledKm ?? hike.traveledKm}
           {...controls.tracking ? { position: session.currentPosition, traveledPath: controls.mapPath } : { currentIndex: hike.currentIndex }}
           progressMeters={controls.progressMeters} stage={session.phase === "downhill" ? "descent" : "ascent"}
-          spots={hike.spots} filter={filter} dimension={dimension} recenterKey={recenterKey}
+          spots={serverId !== undefined ? liveSpots : hike.spots} filter={filter} dimension={dimension} recenterKey={recenterKey}
           padding={{ top: 150, bottom: 280, left: 40, right: 72 }}
           label={`${hike.courseName} 등산 경로 지도`} />
         <div className="hike-map-page__top">
           <TopBar title="등산 중" showAction={false} onBack={() => navigate(hikePaths.calendar())} />
-          <SpotFilterChips value={filter} onChange={setFilter} />
+          <SpotFilterChips value={filter} onChange={setFilter} showOther={serverId === undefined} />
+          {serverId !== undefined && <div className="hike-active-page__spot-status" role="status">
+            {mapSpots.failed.length ? <>일부 스팟 조회 실패 <button type="button"
+              onClick={() => mapSpots.failed.forEach(request => request.retry())}>다시 시도</button></>
+              : mapSpots.loading ? "스팟 조회 중" : !liveSpots.length ? "표시할 스팟이 없어요." : ""}
+          </div>}
         </div>
         <div className="hike-map-page__tools">
           <MapAction iconName="3D" dimensionMode={dimension} onDimensionModeChange={setDimension}

@@ -19,5 +19,5 @@ export function toCourseFacilitySpots(facilities: readonly CourseFacility[], cou
 
 /** 조회 실패·빈 결과에서도 합성 화장실·음수대·쉼터를 실제 결과로 대신 표시하지 않는다. */
 export function withCourseFacilities(spots: readonly CourseSpot[], facilities: readonly CourseSpot[]): CourseSpot[] {
-  return [...spots.filter(spot => spot.kind !== 'restroom' && spot.kind !== 'water' && spot.kind !== 'shelter'), ...facilities];
+  return [...spots.filter(spot => spot.kind === 'photo' || spot.communityTarget?.targetType === 'USER_SPOT'), ...facilities];
 }

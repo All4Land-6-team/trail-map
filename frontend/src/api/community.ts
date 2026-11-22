@@ -171,6 +171,8 @@ export const communityApi = {
     request<CommunityPhotoDto[]>(`/courses/${courseId}/photos?limit=${limit}&offset=${offset}`, { signal }),
   spotPhotos: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
     request<CommunityPhotoDto[]>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/photos?limit=${limit}&offset=${offset}`, { signal }),
+  courseUserSpots: (courseId: string, signal?: AbortSignal) =>
+    request<CommunitySpotDto[]>(`/courses/${courseId}/user-spots`, { signal }),
   coursePhotoSpots: (courseId: string, signal?: AbortSignal) =>
     request<CommunitySpotDto[]>(`/courses/${courseId}/photo-spots`, { signal }),
   mountainEligibility: (mountainId: string, signal?: AbortSignal) =>

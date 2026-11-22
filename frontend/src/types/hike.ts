@@ -5,6 +5,7 @@ export type LngLat = [number, number];
 export type HikeSpot = {
   id: string;
   kind: SpotKind;
+  source?: "official" | "user";
   name: string;
   position: LngLat;
 };
