@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { hikeTargetIds, useHikeSession } from "../../store/hikeSessionStore";
+import { ReviewKindPicker, openReviewWriting, useRecordReviews } from "../../components/hike";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
 import { BottomNavigation } from "../../components/layout";
@@ -8,9 +10,12 @@ import { hikePaths, navigateTab } from "../hikeRoutes";
 import "../hikePages.css";
 import "./HikeCompletePage.css";
 
-/** HIKE-08 등산 완료 (`#hikes/complete`) */
-export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId: string | undefined, finishedAt: string) => void }) {
+/** HIKE-08 등산 완료 (`#hikes/complete`). 후기 작성은 등산 기록 상세(REC-03)와 같은 후기 유형 선택 창을 띄운다. */
+export function HikeCompletePage() {
   const session = useHikeSession();
+  // 이 기록으로 이미 쓴 산·코스 후기는 유형 선택에서 막는다 (작성 후 돌아왔을 때).
+  const recordReviews = useRecordReviews(session?.finishedAt ? session.hikeRecordId : undefined);
+  const [pickingReview, setPickingReview] = useState(false);
   // 나중에 → 오늘 날짜가 선택된 HIKE-01 캘린더
   const backToCalendar = () => navigate(hikePaths.calendar());
   if (!session?.finishedAt) return <main className="hike-page__empty-state"><p>완료된 등산 기록이 없어요.</p>
@@ -46,13 +51,17 @@ export function HikeCompletePage({ onWriteReview }: { onWriteReview: (mountainId
       </div>}
 
       <section className="hike-complete-page__review" aria-labelledby="hike-review-question">
-        <h2 id="hike-review-question" className="hike-complete-page__question">산 후기를 작성하시겠어요?</h2>
+        <h2 id="hike-review-question" className="hike-complete-page__question">후기를 작성하시겠어요?</h2>
         <div className="hike-complete-page__actions">
-          <Button fullWidth label="산 후기 작성" onClick={() => onWriteReview(result.mountainId, finishedAt)} />
+          <Button fullWidth label="후기 작성" onClick={() => setPickingReview(true)} />
           <Button fullWidth variant="secondary" label="나중에" onClick={backToCalendar} />
         </div>
       </section>
     </main>
     <BottomNavigation className="hike-page__nav" active="myHikes" onNavigate={navigateTab} />
+
+    {pickingReview && <ReviewKindPicker onClose={() => setPickingReview(false)}
+      reviewed={{ mountain: recordReviews?.data?.mountainReviewed ?? false, course: recordReviews?.data?.courseReviewed ?? false }}
+      onSelect={kind => { setPickingReview(false); openReviewWriting(kind, result.mountainId, hikePaths.complete); }} />}
   </div>;
 }
