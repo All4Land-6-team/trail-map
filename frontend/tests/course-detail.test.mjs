@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { coordinateAlongRoute, nearestProfileIndex, selectCourseSpots, SPOT_CATEGORIES, toggleProfileMetric } from '../src/utils/courseProfile.ts';
-import { courseDetailPath, readCourseDetailView } from '../src/routes/courseDetailRoutes.ts';
+import { courseDetailPath, courseFoodDetailPath, readCourseDetailView } from '../src/routes/courseDetailRoutes.ts';
 import { coursePaths, readCourseRoute } from '../src/routes/courseRoutes.ts';
 
 test('그래프 선택은 가장 가까운 샘플과 양 끝 경계를 사용한다', () => {
@@ -47,15 +47,16 @@ test('고도·경사도는 개별 전환하며 마지막 항목 해제를 거부
   assert.deepEqual(both, { elevation: true, slope: true });
 });
 test('스팟 카테고리와 통제정보의 마커 없는 상태를 구분한다', () => {
-  const spots = ['shelter', 'shelter', 'water', 'restroom', 'photo', 'photo'].map((kind, id) => ({ id, kind }));
-  assert.equal(selectCourseSpots(spots, 'all').length, 6);
+  const spots = ['shelter', 'shelter', 'water', 'restroom', 'photo', 'photo', 'restaurant', 'cafe'].map((kind, id) => ({ id, kind }));
+  assert.equal(selectCourseSpots(spots, 'all').length, 8);
   assert.equal(selectCourseSpots(spots, 'shelter').length, 2);
   assert.equal(selectCourseSpots(spots, 'water').length, 1);
   assert.equal(selectCourseSpots(spots, 'restroom').length, 1);
   assert.equal(selectCourseSpots(spots, 'photo').length, 2);
+  assert.equal(selectCourseSpots(spots, 'food').length, 2);
   assert.equal(selectCourseSpots(spots, 'control').length, 0);
-  assert.equal(spots.length, 6);
-  assert.equal(new Set(SPOT_CATEGORIES.map(item => item.value)).size, 6);
+  assert.equal(spots.length, 8);
+  assert.equal(new Set(SPOT_CATEGORIES.map(item => item.value)).size, 7);
 });
 test('스팟 후기 복귀 주소가 산·코스·카테고리·선택 ID를 보존한다', () => {
   const request = { mountainId: '산/1', courseId: '코스 2' };
@@ -67,4 +68,17 @@ test('스팟 후기 복귀 주소가 산·코스·카테고리·선택 ID를 보
   assert.deepEqual(readCourseDetailView('#x'), { tab: 'analysis', category: 'all' });
   assert.equal(readCourseDetailView(courseDetailPath(request, { tab: 'analysis', category: 'water' })).tab, 'analysis');
   assert.equal(readCourseRoute(coursePaths.list(request.mountainId, request.courseId)).selectedCourseId, request.courseId);
+});
+test('목록에서 선택한 음식점은 코스 상세 음식점 탭과 장소 정보를 주소에 보존한다', () => {
+  const request = { mountainId: 'bukhansan', courseId: 'db-2' };
+  const foodPlace = {
+    id: 'osm-poi-101', name: '산아래 식당', kind: 'restaurant', coordinate: [126.955, 37.636],
+  };
+  const returnTo = coursePaths.list(request.mountainId, request.courseId);
+  const path = courseFoodDetailPath(request, foodPlace, returnTo);
+
+  assert.deepEqual(readCourseDetailView('#' + path), {
+    tab: 'spots', category: 'food', spotId: foodPlace.id, foodPlace,
+  });
+  assert.equal(new URLSearchParams(path.split('?')[1]).get('returnTo'), returnTo);
 });

@@ -25,6 +25,7 @@ import {
 } from '../../constants/map'
 import type { MapDimension } from './MapAction'
 import { applyTerrainMode, installTerrainLayers, isTerrainSourceError, removeTerrainLayers, type TerrainStatus } from './terrain'
+import { registerTerrainTileFallbackProtocol, transformTerrainTileRequest } from './terrainTileFallback'
 
 // MapLibre 6은 워커 파일이 분리되어 있어 Vite가 번들한 주소를 직접 지정한다
 setWorkerUrl(workerUrl)
@@ -143,6 +144,7 @@ function BaseMap({
 
     let map: MapLibreMap
     try {
+      registerTerrainTileFallbackProtocol()
       const mapOptions: MapOptions = {
         container: containerRef.current,
         style: BASE_MAP_STYLE_URL,
@@ -150,6 +152,7 @@ function BaseMap({
         maxZoom: MAP_MAX_ZOOM,
         // 지도 위에는 출처 표시를 넣지 않는다 (팀 결정 전 임시. OSM 데이터는 ODbL상 출처 표시가 필요하다).
         attributionControl: false,
+        transformRequest: transformTerrainTileRequest,
         fitBoundsOptions: fitBoundsPadding ? { padding: fitBoundsPadding } : undefined,
         ...(bounds
           ? { bounds }

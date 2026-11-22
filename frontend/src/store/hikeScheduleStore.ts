@@ -160,9 +160,16 @@ export async function refreshScheduleOn(date: string) {
   return fresh;
 }
 
-export async function deleteSchedule(date: string) {
+export async function deleteSchedule(target: HikeSchedule) {
+  // 통신이 끊겨 저장해 둔 일정을 보여 주는 중이면 먼저 서버에 다시 연결한다 (실패하면 예외로 알린다).
   if (state.mode === "offline") await reconnect();
-  const target = findSchedule(date);
-  if (state.mode === "api" && target?.scheduleId !== undefined) await deleteHikeSchedule(target.scheduleId);
-  setState({ schedules: state.schedules.filter(schedule => schedule.date !== date) });
+  if (target.scheduleId === undefined) {
+    if (!state.schedules.includes(target)) return "alreadyDeleted";
+    setState({ schedules: state.schedules.filter(schedule => schedule !== target) });
+    return "deleted";
+  }
+
+  const result = await deleteHikeSchedule(target.scheduleId);
+  setState({ schedules: state.schedules.filter(schedule => schedule.scheduleId !== target.scheduleId) });
+  return result;
 }

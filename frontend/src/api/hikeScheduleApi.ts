@@ -31,17 +31,24 @@ type ScheduleResponse = {
 type Envelope<T> = { success: boolean; code: string; message: string; data: T };
 
 /** 실패 이유. 화면은 kind로 안내 문구와 다음 동작(대체 확인 등)을 정한다. */
-/** activeHike: 진행 중·하산 중 등산 기록이 있는 일정이라 바꾸거나 지울 수 없다 (HIKE_409_6). 대체 확인 대상이 아니다. */
-export type HikeScheduleApiErrorKind = "conflict" | "activeHike" | "notFound" | "unsupportedCourse" | "network" | "server";
+/**
+ * activeHike: 진행 중·하산 중 등산 기록이 있는 일정이라 바꾸거나 지울 수 없다 (HIKE_409_6).
+ * completedHike: 등산을 마친 일정이라 바꾸거나 지울 수 없다 (HIKE_409_7). 둘 다 대체 확인 대상이 아니다.
+ */
+export type HikeScheduleApiErrorKind = "conflict" | "activeHike" | "completedHike" | "notFound" | "unsupportedCourse" | "network" | "server";
 
 const ACTIVE_HIKE_SCHEDULE_CODE = "HIKE_409_6";
+const COMPLETED_HIKE_SCHEDULE_CODE = "HIKE_409_7";
+const SCHEDULE_NOT_FOUND_CODE = "HIKE_404_3";
 
 export class HikeScheduleApiError extends Error {
   readonly kind: HikeScheduleApiErrorKind;
+  readonly code?: string;
 
-  constructor(kind: HikeScheduleApiErrorKind, message: string) {
+  constructor(kind: HikeScheduleApiErrorKind, message: string, code?: string) {
     super(message);
     this.kind = kind;
+    this.code = code;
   }
 }
 
@@ -103,8 +110,11 @@ async function request<T>(path: string, init: RequestInit = {}, timeoutMs = TIME
   if (response.status === 409 && body?.code === ACTIVE_HIKE_SCHEDULE_CODE) {
     throw new HikeScheduleApiError("activeHike", "진행 중인 등산이 있는 일정은 바꾸거나 지울 수 없어요.");
   }
+  if (response.status === 409 && body?.code === COMPLETED_HIKE_SCHEDULE_CODE) {
+    throw new HikeScheduleApiError("completedHike", "등산을 마친 일정은 바꾸거나 지울 수 없어요.");
+  }
   if (response.status === 409) throw new HikeScheduleApiError("conflict", body?.message ?? "해당 날짜에 이미 등산 일정이 있어요.");
-  if (response.status === 404) throw new HikeScheduleApiError("notFound", body?.message ?? "일정을 찾을 수 없어요.");
+  if (response.status === 404) throw new HikeScheduleApiError("notFound", body?.message ?? "일정을 찾을 수 없어요.", body?.code);
   throw new HikeScheduleApiError("server", body?.message ?? `일정 요청에 실패했어요. (${response.status})`);
 }
 
@@ -131,5 +141,13 @@ export async function updateHikeSchedule(scheduleId: number, schedule: HikeSched
 }
 
 export async function deleteHikeSchedule(scheduleId: number) {
-  await request<null>(`/${scheduleId}`, { method: "DELETE" });
+  try {
+    await request<null>(`/${scheduleId}`, { method: "DELETE" });
+    return "deleted";
+  } catch (error) {
+    if (error instanceof HikeScheduleApiError && error.kind === "notFound" && error.code === SCHEDULE_NOT_FOUND_CODE) {
+      return "alreadyDeleted";
+    }
+    throw error;
+  }
 }

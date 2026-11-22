@@ -3,7 +3,7 @@ import { Icon, type IconName } from "../common/Icon";
 import "../common/controls.css";
 import "./markers.css";
 
-export type SpotKind = "photo" | "shelter" | "water" | "restroom";
+export type SpotKind = "photo" | "shelter" | "water" | "restroom" | "restaurant" | "cafe";
 export type SpotMarkerProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   kind?: SpotKind;
   compact?: boolean;
@@ -15,6 +15,8 @@ const spotDefinitions: Record<SpotKind, { icon: IconName; label: string }> = {
   shelter: { icon: "Shelter", label: "쉼터" },
   water: { icon: "Water", label: "음수대" },
   restroom: { icon: "Restroom", label: "화장실" },
+  restaurant: { icon: "Restaurant", label: "음식점" },
+  cafe: { icon: "Cafe", label: "카페" },
 };
 
 export function SpotMarker({
@@ -26,7 +28,7 @@ export function SpotMarker({
     aria-label={ariaLabel ?? spot.label}
     className={["af-spot-marker", compact && "af-spot-marker--compact", className].filter(Boolean).join(" ")}>
     {compact ? <span className="af-spot-marker__symbol"><Icon name={spot.icon}
-      size={kind === "restroom" ? 19 : 14} color="currentColor" /></span>
+      size={kind === "restroom" ? 19 : kind === "restaurant" || kind === "cafe" ? 16 : 14} color="currentColor" /></span>
       : <Icon name={spot.icon} size={18} color="currentColor" />}
     {label && <span className="af-spot-marker__label">{label}</span>}
   </button>;

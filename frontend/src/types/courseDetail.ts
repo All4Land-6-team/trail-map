@@ -11,7 +11,7 @@ export type ProfileVisibility = { elevation: boolean; slope: boolean };
 export type CourseSpot = {
   id: string;
   courseId: string;
-  kind: SpotKind;
+  kind: SpotKind | "restaurant" | "cafe";
   name: string;
   coordinate: [longitude: number, latitude: number];
   facilityId?: number;
@@ -26,9 +26,20 @@ export type CourseFacilitiesState =
   | { status: "unavailable" | "loading" }
   | { status: "success"; spots: readonly CourseSpot[] }
   | { status: "error"; message: string };
-export type SpotCategory = SpotKind | "all" | "control";
+export type SpotCategory = SpotKind | "all" | "food" | "control";
 export type CourseDetailTab = "analysis" | "spots";
-export type CourseDetailView = { tab: CourseDetailTab; category: SpotCategory; spotId?: string };
+export type CourseFoodPlace = {
+  id: string;
+  name: string;
+  kind: "restaurant" | "cafe";
+  coordinate: [longitude: number, latitude: number];
+};
+export type CourseDetailView = {
+  tab: CourseDetailTab;
+  category: SpotCategory;
+  spotId?: string;
+  foodPlace?: CourseFoodPlace;
+};
 export type CourseSpotRequest = {
   mountainId: string;
   courseId: string;

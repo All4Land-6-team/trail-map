@@ -12,6 +12,10 @@ export function shouldFitCourse(force: boolean, fits: boolean, pitchMatches: boo
   return force || !fits || !pitchMatches;
 }
 
+export function spotFocusZoom(currentZoom: number) {
+  return Math.max(currentZoom, 15);
+}
+
 export function routeFadeOpacity(now: number, started: number, previousOpacity: number) {
   const elapsed = Math.max(0, now - started);
   return { incoming: Math.min(1, elapsed / 300), outgoing: Math.min(1, Math.max(0, previousOpacity)) * Math.max(0, 1 - elapsed / 200) };

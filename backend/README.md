@@ -99,7 +99,11 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 이동 거리는 경로 길이를 구면 거리(`geography`)로 계산하며, 위치를 한 번도 받지 않았으면 `null`입니다. 등산 종료는 진행 중 기록의 `hikeRecordId`로 `POST /api/v1/hike-records/{hikeRecordId}/finish`를 호출합니다.
 
-진행 중·하산 중 기록이 있는 일정은 수정(`PATCH /api/v1/hike-schedules/{scheduleId}`)·삭제(`DELETE`)할 수 없고, 같은 날짜 대체 등록(`replaceExisting=true`)으로도 지울 수 없습니다(`HIKE_409_6`). 기록과 일정의 코스가 달라지지 않게 하기 위해서이며, 종료한 기록만 있는 일정은 기존처럼 바꿀 수 있습니다.
+등산 기록이 있는 일정은 수정(`PATCH /api/v1/hike-schedules/{scheduleId}`)·삭제(`DELETE`)할 수 없고, 같은 날짜 대체 등록(`replaceExisting=true`)으로도 지울 수 없습니다. 진행 중·하산 중 기록이면 `HIKE_409_6`, 종료한 기록이면 `HIKE_409_7`입니다. 기록과 일정의 코스·날짜가 어긋나거나 종료한 기록이 캘린더에서 사라지지 않게 하기 위해서입니다.
+
+일정 조회(`GET /api/v1/hike-schedules`, `GET /api/v1/hike-schedules/{scheduleId}`)와 수정 응답에는 그 일정의 등산 기록 요약 `hikeRecord`(`hikeRecordId`, `status`, `startedAt`, `endedAt`, `traveledDistanceMeters`, `actualDurationSeconds`)가 들어갑니다. 아직 등산을 시작하지 않았거나 기록이 삭제됐으면 `null`입니다. 내 등산 캘린더는 이 값으로 완료한 등산(`COMPLETED`)과 끝내지 않은 등산(`IN_PROGRESS`·`DESCENDING`)을 표시하고, 기록 상세는 `hikeRecordId`로 `GET /api/v1/hike-records/{hikeRecordId}`를 호출합니다.
+
+`GET /api/v1/hike-records/{hikeRecordId}/reviews`는 그 기록으로 작성한 후기를 산 후기, 코스 후기, 스팟 후기 순서로 반환합니다(`kind`: `MOUNTAIN`·`COURSE`·`SPOT`, 대상 이름, 산 평점, 내용, 사진 번호 `photoIds`). 산·코스 후기는 기록마다 하나만 쓸 수 있으므로 `mountainReviewed`·`courseReviewed`가 `true`면 후기 유형 선택에서 그 항목을 막습니다. 후기 작성은 커뮤니티 API가 맡고, 이 API는 후기 테이블을 읽기만 합니다. 다른 사용자의 기록은 `HIKE_404_4`입니다.
 
 ## 커뮤니티 API
 
