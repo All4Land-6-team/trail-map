@@ -2,11 +2,20 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { communityApi } from '../src/api/community.ts';
-import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SPOT_HIDE_NEGATIVE_VOTES, canWriteCourseReview, canWriteReview, castSpotVote, distanceMeters, eligibleCourseCompletions, isSpotHidden, nearbySpotCandidates } from '../src/utils/community.ts';
+import { DUPLICATE_RADIUS_METERS, REVIEW_WINDOW_MS, SPOT_COURSE_WARNING_METERS, SPOT_HIDE_NEGATIVE_VOTES, canWriteCourseReview, canWriteReview, castSpotVote, distanceMeters, eligibleCourseCompletions, isSpotHidden, nearbySpotCandidates, spotCourseDistanceWarning } from '../src/utils/community.ts';
 import { communityMarkerMode } from '../src/pages/CommunityPage/components/communityMapZoom.ts';
 import { groupCommunityMapPoints } from '../src/pages/CommunityPage/components/communityMapClusters.ts';
 import { bufferMapBounds, coversMapBounds, nearestCoordinate } from '../src/pages/CommunityPage/components/communityMapBounds.ts';
+import { communityRouteBearing, communityRouteBounds, communityRouteCameraAdjustment } from '../src/pages/CommunityPage/components/communityRouteCamera.ts';
 import { communityCourseColor } from '../src/constants/community.ts';
+
+test('선택 위치가 코스에서 30m를 초과할 때만 확인 거리를 반환한다', () => {
+  const route = [[127, 37], [127.01, 37]];
+  assert.equal(SPOT_COURSE_WARNING_METERS, 30);
+  assert.equal(spotCourseDistanceWarning(route, [127.005, 37.0001]), null);
+  assert.ok(spotCourseDistanceWarning(route, [127.005, 37.001]) > SPOT_COURSE_WARNING_METERS);
+  assert.equal(spotCourseDistanceWarning([[127, 37]], [127.005, 37.001]), null);
+});
 
 test('커뮤니티 지도 줌 단계는 기본점, 숫자 클러스터, 개별 아이콘 순으로 전환한다', () => {
   assert.equal(communityMarkerMode(9.5), 'overview');
@@ -54,11 +63,12 @@ test('스팟 필터 중심은 빈 중간 지점이 아니라 산과 가장 가�
   assert.deepEqual(nearestCoordinate([], [127, 37.6]), [127, 37.6]);
 });
 
-test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심과 줌을 사용한다', () => {
+test('커뮤니티 필터는 전체·산·코스·스팟 순서와 목적에 맞는 중심·줌을 사용한다', () => {
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   const mapSource = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
   const cssSource = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
   assert.match(source, /all: 12\.5, mountain: MAIN_MAP_ZOOM, spot: 14\.5, course: 11\.99/);
+  assert.match(source, /\['all', 'mountain', 'course', 'spot'\] as const/);
   assert.match(source, /mapFocusCategory === 'spot' \? spotFocusCenter \?\? mountainCenter/);
   assert.match(source, /mapFocusCategory === 'all' \|\| mapFocusCategory === 'course' \? -20 : undefined/);
   assert.match(source, /resetZoom: true, resetOrientation: true/);
@@ -90,6 +100,7 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.match(mapSource, /element\.classList\.add\('community-map__marker--disappearing'\)/);
   assert.match(cssSource, /community-map__marker--appearing \.community-map__pin \{[^}]*animation:community-map-marker-appear 180ms cubic-bezier\(\.22,1,\.36,1\)/);
   assert.match(cssSource, /community-map__marker--disappearing \.community-map__pin \{[^}]*animation:community-map-marker-disappear 120ms ease-in forwards/);
+  assert.match(cssSource, /:is\(\.community-page__map--main,\.community-page__map--detail-course\) \.community-map__marker--appearing/);
   assert.match(cssSource, /@media\(prefers-reduced-motion:reduce\) \{[^}]*community-map__marker--appearing[^}]*community-map__marker--disappearing[^}]*animation:none/);
   assert.match(cssSource, /community-map__pin \.af-spot-marker \{[^}]*width:44px;[^}]*height:44px/);
   assert.match(cssSource, /community-map__pin \.af-spot-marker::before \{[^}]*inset:6px/);
@@ -107,6 +118,19 @@ test('커뮤니티 필터는 전체·산, 스팟, 코스 목적에 맞는 중심
   assert.doesNotMatch(mapSource, /map\.on\('zoomend'/);
   assert.match(cssSource, /community-map__mountain-marker \{[^}]*width:44px;[^}]*height:44px/);
   assert.match(cssSource, /community-map__mountain-marker \.af-mountain-marker__label \{[^}]*position:absolute/);
+});
+
+test('전체 후기 섹션은 산·코스·스팟 순서로 표시한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const mountain = source.indexOf('aria-label="산 평점과 후기"');
+  const course = source.indexOf('aria-label="코스 후기"');
+  const spot = source.indexOf('aria-label="스팟 사진과 후기"');
+  assert.ok(mountain < course && course < spot);
+});
+
+test('후기 유형 선택은 산·코스·스팟 순서로 표시한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /\['mountain', 'course', 'spot'\] as const/);
 });
 
 test('산 선택 직후에도 전체 필터와 같은 지도 위치를 사용한다', () => {
@@ -150,7 +174,9 @@ test('상세 사진 로딩에는 스켈레톤을 적용하고 바텀시트 진�
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   const gallery = readFileSync(new URL('../src/pages/CommunityPage/components/SpotPhotoGallery.tsx', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
-  assert.match(source, /photoPage\.loading && photoPage\.items\.length === 0 && <CommunityPhotoSkeleton/);
+  assert.match(source, /showInitialSkeleton && photoPage\.loading && photoPage\.items\.length === 0 && <CommunityPhotoSkeleton/);
+  assert.match(source, /renderPhotoStatus\(selectedCourse\.baselinePhotos > 0\)/);
+  assert.match(source, /\(!photoPage\.loading \|\| selectedCourse\.baselinePhotos === 0\)/);
   assert.match(gallery, /className="community-gallery-more-card"[\s\S]*사진<br \/>더보기/);
   assert.doesNotMatch(gallery, />전체보기/);
   assert.match(styles, /community-gallery-more-card \{[^}]*flex:0 0 96px;[^}]*height:150px/);
@@ -248,7 +274,7 @@ test('스팟 상세 지도 조회는 메인 지도의 마커 목록을 덮어쓰
   assert.match(source, /if \(screen === 'courseDetail' && !detailCourse\) return/);
   assert.match(source, /const cacheKey = `\$\{screen\}:\$\{mountainId\}:\$\{type \?\? 'all'\}:\$\{courseId \?\? 'all'\}`/);
   assert.match(source, /if \(screen === 'map' \|\| screen === 'courseDetail'\) setMapSpots\(loaded\)/);
-  assert.match(css, /\.community-map__spots-toggle \{[^}]*width:44px; height:44px/);
+  assert.match(css, /\.community-map__spots-toggle\.af-map-action \{[^}]*width:var\(--community-map-control-size\); height:var\(--community-map-control-size\)/);
 });
 
 test('클러스터는 3D 화면 투영이 아니라 줌 단계의 평면 지도 거리로 계산한다', () => {
@@ -280,6 +306,7 @@ test('커뮤니티 목데이터 없이 API와 R2 업로드 절차를 사용한�
       ['POST', 'http://localhost:8080/api/v1/community/photos'],
     ]);
     assert.equal('X-User-Id' in calls[0].init.headers, false);
+    assert.equal('environmentCapturedAt' in JSON.parse(calls[2].init.body), false);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -328,6 +355,7 @@ test('커뮤니티의 스팟 등록 지도는 선택한 산의 최근 완료 코
   const registration = readFileSync(new URL('../src/pages/CommunityPage/components/SpotRegistration.tsx', import.meta.url), 'utf8');
   assert.match(page, /spotRegistrationCourses = useMemo[\s\S]*eligibleCourses\.flatMap/);
   assert.match(registration, /mode === 'postHike'[\s\S]*최근에 다녀온 코스/);
+  assert.match(registration, /mode === 'active' \? '진행 중인 코스에서' : '선택한 코스에서'/);
   assert.match(registration, /highlightedRoutes=\{mode === 'postHike' \? recentRoutes : undefined\}/);
   assert.doesNotMatch(registration, /requestAnimationFrame\(locate\)/);
 });
@@ -344,12 +372,19 @@ test('스팟 등록 지도는 등산 중 현재 위치를 우선하고 실패하
   assert.match(app, /spotRegistrationMode=\{query\.get\('mode'\) === 'active' \? 'active' : 'postHike'\}/);
   assert.match(app, /currentPosition: hikeSession\.currentPosition/);
   assert.match(page, /DEV_COURSE_IDS\[courseId\][\s\S]*course\.id === String\(dbCourseId\)/);
-  assert.match(registration, /initialCoordinate \? \{ coordinate: initialCoordinate/);
+  assert.match(registration, /initialSelection \? \{ coordinate: initialSelection/);
   assert.doesNotMatch(registration, /requestAnimationFrame\(locate\)/);
   assert.doesNotMatch(registration, /cooperativeGestures/);
   assert.match(registration, /ariaLabel="새 스팟 위치 지정" onMapSelect=/);
   assert.match(registration, /center=\{mountainCenter\}[\s\S]*fitHighlightedRoute=\{!locationFocus\}/);
+  assert.match(registration, /mode === 'active' \? '진행 중인 코스에서' : '선택한 코스에서'/);
   assert.match(page, /activePickerPosition[\s\S]*name: '현재 위치'[\s\S]*focusTarget=\{spotPickerFocus \?\? undefined\}[\s\S]*fitHighlightedRoute=\{spotRegistrationMode === 'active' && !spotPickerFocus\}/);
+  assert.match(page, /setScreens\(current => spotRegistrationMode === 'active' \? \[\.\.\.current, 'review'\] : \['mountainSelect', 'map', 'review'\]\)/);
+  assert.match(page, /initialSpot=\{pendingSpot \?\? undefined\}/);
+  assert.match(registration, /initialSelection = initialSpot\?\.coordinate \?\? initialCoordinate/);
+  assert.match(registration, /useState<SpotType \| undefined>\(initialSpot\?\.type\)/);
+  assert.match(registration, /useState\(initialSpot\?\.name \?\? ''\)/);
+  assert.match(registration, /useState\(initialSpot\?\.distinct \?\? false\)/);
   assert.doesNotMatch(registration, /mountainSpots\[0\]\?\.coordinate \?\? mountainCenter/);
   assert.match(map, /fitHighlightedRoute[\s\S]*map\.fitBounds/);
 });
@@ -494,17 +529,54 @@ test('현재 코스와 새 코스는 courseId별로 겹치지 않는 고정 색�
 test('코스 상세 지도는 고정 확대 대신 전체 경로 경계에 맞춘다', () => {
   const mapSource = readFileSync(new URL('../src/pages/CommunityPage/components/CommunityMap.tsx', import.meta.url), 'utf8');
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
-  assert.match(mapSource, /community-page__map--detail-course[\s\S]*map\.fitBounds/);
-  assert.match(mapSource, /bottom: Math\.max\(24, mapHeight - visibleBottom \+ 24\)[\s\S]*maxZoom: 16/);
-  assert.match(mapSource, /courseDetailDimension === '3D'[\s\S]*map\.cameraForBounds\(bounds, \{ padding, offset: \[0, -72\], maxZoom: 16 \}\)/);
-  assert.match(mapSource, /camera\.zoom \?\? map\.getZoom\(\)\) \+ 0\.7, 16/);
+  assert.match(mapSource, /community-page__map--detail-course[\s\S]*map\.cameraForBounds\(bounds, \{ padding, bearing: 0, maxZoom: 16 \}\)/);
+  assert.match(mapSource, /bottom: Math\.max\(24, mapHeight - visibleBottom \+ 24\)[\s\S]*const fittedCamera = \{ \.\.\.camera, bearing: 0, pitch: 0 \}/);
+  assert.match(mapSource, /detailCourse3D[\s\S]*filterCourse3D[\s\S]*map\.cameraForBounds\(bounds, \{ padding, bearing, maxZoom: 15 \}\)/);
+  assert.match(mapSource, /communityRouteCameraAdjustment\(coordinates\.map\(coordinate => map\.project\(coordinate\)\), viewport\)/);
+  assert.match(mapSource, /map\.jumpTo\(initialCamera\)[\s\S]*map\.easeTo\(\{ \.\.\.fittedCamera/);
+  assert.match(pageSource, /fitCourseRoutes3D=\{screen === 'map' && mapCategory === 'course'\}/);
+  assert.match(pageSource, /cameraLayoutReady=\{screen !== 'courseDetail' \|\| sheetDetailReady\}/);
+  assert.match(pageSource, /cameraKey=\{screen === 'courseDetail' \? selectedCourse\.id : undefined\}/);
+  assert.match(mapSource, /if \(!cameraLayoutReady\) return/);
+  assert.match(mapSource, /saved\.modes\[courseDetailDimension\]/);
+  assert.match(mapSource, /courseDetailCameras\.current\.modes\['3D'\] = fittedCamera/);
+  assert.match(mapSource, /courseDetailCameras\.current\.modes\['2D'\] = fittedCamera/);
+  assert.match(mapSource, /right: COURSE_CONTROL_CLEARANCE/);
+  assert.match(mapSource, /map\.once\('idle', settle\)[\s\S]*map\.triggerRepaint\(\)/);
+  assert.match(mapSource, /settledCourse3DKey !== terrainKey\) return/);
+  assert.match(mapSource, /COURSE_CAMERA_CACHE_VERSION/);
+  assert.match(mapSource, /DETAIL_COURSE_3D_ZOOM_BOOST/);
+  assert.match(mapSource, /remainingAdjustment\.zoomDelta > 0[\s\S]*Math\.min\(DETAIL_COURSE_3D_ZOOM_BOOST, remainingAdjustment\.zoomDelta\)/);
+  assert.match(mapSource, /elevation: map\.getCenterElevation\(\)/);
+  assert.match(mapSource, /alwaysShowCompass=\{supportsDimensionToggle\}/);
+  assert.match(mapSource, /showCourseSpotsToggle \? ' community-map__spots-toggle--visible' : ''/);
+  assert.match(mapSource, /disabled=\{!showCourseSpotsToggle\} aria-hidden=\{!showCourseSpotsToggle\}/);
+  const baseMapSource = readFileSync(new URL('../src/components/map/BaseMap.tsx', import.meta.url), 'utf8');
+  assert.match(baseMapSource, /alwaysShowCompass \|\| isRotated\(compass\.bearing\)/);
   assert.match(pageSource, /communityApi\.spotDetail\([\s\S]*setDetailSpotFocus\(current => current[\s\S]*coordinate: spot\.coordinate/);
   assert.match(mapSource, /spotDetail3D = className\?\.includes\('community-page__map--detail-spot'\) && dimension === '3D'/);
   assert.match(mapSource, /if \(spotDetail3D && terrainStatus !== 'ready' && terrainStatus !== 'error'\) return/);
   assert.match(mapSource, /spotDetailTerrainReady = spotDetail3D && terrainStatus === 'ready'/);
   assert.match(mapSource, /if \(spotDetailTerrainReady\) \{[\s\S]*map\.easeTo\(\{ center: focusTarget\.coordinate,[\s\S]*duration: 0 \}\)[\s\S]*map\.panBy\([\s\S]*duration: 0[\s\S]*map\.jumpTo\(initialCamera\)[\s\S]*map\.easeTo\(\{ \.\.\.camera,[\s\S]*duration: reducedMotion \? 0 : 550/);
-  assert.match(mapSource, /\}, \[map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetail3D, spotDetailTerrainReady, terrainStatus, dimension\]\)/);
+  assert.match(mapSource, /\}, \[map, focusTarget, className, highlightedRoute, highlightedRoutes, fitCourseRoutes3D,[^\]]*terrainEnabled, dimension\]\)/);
   assert.doesNotMatch(pageSource, /courseDetailFocus[\s\S]{0,120}zoom: 16/);
+});
+
+test('커뮤니티 3D 코스 카메라는 경로 경계와 진행 방향을 계산한다', () => {
+  assert.deepEqual(communityRouteBounds([[127, 37.2], [126.8, 37.4], [127.1, 37.1]]), [[126.8, 37.1], [127.1, 37.4]]);
+  assert.ok(Math.abs(communityRouteBearing([[127, 37], [127, 38]])) < 0.001);
+  assert.ok(Math.abs(communityRouteBearing([[127, 37], [128, 37]]) - 89.7) < 1);
+  assert.deepEqual(communityRouteCameraAdjustment([{ x: 100, y: 200 }, { x: 300, y: 400 }],
+    { top: 100, right: 500, bottom: 500, left: 100 }), { zoomDelta: 1, offset: [-100, 0] });
+});
+
+test('커뮤니티 지도 도구는 같은 크기와 간격으로 모드·나침반·스팟 순서로 배치한다', () => {
+  const css = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
+  assert.match(css, /--community-map-control-size:44px; --community-map-control-gap:8px/);
+  assert.match(css, /\.community-map \.base-map__compass \{ top:calc\(var\(--community-map-control-top\) \+ var\(--community-map-control-size\) \+ var\(--community-map-control-gap\)\)/);
+  assert.match(css, /\.community-map__spots-toggle\.af-map-action \{[^}]*top:calc\([^}]*community-map-control-size[^}]*community-map-control-size/);
+  assert.match(css, /\.community-map__spots-toggle--visible\.af-map-action \{[^}]*opacity:1;[^}]*transition:opacity 180ms/);
+  assert.match(css, /\.community-map__spots-toggle\.af-map-action \{[^}]*opacity:0;[^}]*transition:opacity 120ms/);
 });
 
 test('부정 평가 3건부터 스팟을 숨기고 후보 조회에서도 제외한다', () => {
@@ -562,10 +634,83 @@ test('산·코스·스팟 상세 후기는 공통 가로 캐러셀을 사용한�
   assert.match(courseSource, /<ReviewCarousel type="course"/);
   assert.match(carouselSource, /MoreReviewsCard/);
   assert.match(carouselSource, /scrollIntoView/);
-  assert.match(cardSource, /'☆'\.repeat\(5 - rating\)/);
-  assert.match(cardSource, /review\.rating != null && <> \{review\.rating\.toFixed\(1\)\}<\/>/);
+  assert.match(cardSource, /<ReviewRating value=\{review\.rating\}/);
   assert.match(cardSource, /community-review-card__photo--placeholder/);
   assert.match(cardSource, /아직 등록된 후기가 없어요\./);
+});
+
+test('전체 후기의 다중 사진은 장수를 표시하고 같은 후기 안에서 탐색한다', () => {
+  const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const cssSource = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
+  assert.match(pageSource, /community-quote__photo-count/);
+  assert.match(pageSource, /aria-hidden="true">\+\{reviewPhotos\.length\}<\/span>/);
+  assert.match(pageSource, /lightboxReviewPhotos = lightboxPhoto[\s\S]*photo\.review\?\.id === lightboxPhoto\.review\?\.id/);
+  assert.match(pageSource, /community-photo-lightbox__nav--previous/);
+  assert.match(pageSource, /community-photo-lightbox__nav--next/);
+  assert.match(pageSource, /event\.key === 'ArrowLeft'/);
+  assert.match(pageSource, /event\.key === 'ArrowRight'/);
+  assert.match(cssSource, /community-quote__photo-count/);
+  assert.match(cssSource, /community-photo-lightbox__count/);
+});
+
+test('후기 환경정보는 공통 팝오버로 표시하고 카드 클릭과 분리한다', () => {
+  const badgeSource = readFileSync(new URL('../src/components/review/ReviewEnvironmentBadge.tsx', import.meta.url), 'utf8');
+  const iconSource = readFileSync(new URL('../src/components/common/Icon/Icon.tsx', import.meta.url), 'utf8');
+  const cssSource = readFileSync(new URL('../src/components/review/review-environment.css', import.meta.url), 'utf8');
+  const cardSource = readFileSync(new URL('../src/components/review/ReviewCarouselCards.tsx', import.meta.url), 'utf8');
+  const cardCssSource = readFileSync(new URL('../src/components/review/review-carousel.css', import.meta.url), 'utf8');
+  const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const gallerySource = readFileSync(new URL('../src/pages/CommunityPage/components/SpotPhotoGallery.tsx', import.meta.url), 'utf8');
+  assert.match(badgeSource, /if \(!weather && !phase\) return null/);
+  assert.match(badgeSource, /role="img"[\s\S]*aria-label=\{`날씨/);
+  assert.doesNotMatch(badgeSource, /!compact && <span aria-hidden="true">\{weatherDescription\}<\/span>/);
+  assert.equal((badgeSource.match(/<span>\{phase\.label\}<\/span>/g) ?? []).length, 1);
+  assert.match(badgeSource, /createPortal\(/);
+  assert.match(badgeSource, /aria-haspopup="dialog"/);
+  assert.match(badgeSource, /aria-expanded=\{open\}/);
+  assert.match(badgeSource, /role="dialog" aria-label="등산 당시 환경"/);
+  assert.match(badgeSource, /document\.addEventListener\('pointerdown', closeOutside\)/);
+  assert.match(badgeSource, /event\.key !== 'Escape'/);
+  assert.match(badgeSource, /onPointerDown=\{stopPointer\} onClick=\{toggle\}/);
+  assert.match(badgeSource, /<span>\{weatherDescription\}<\/span>/);
+  assert.match(cssSource, /photo-environment-popover \{ position:fixed/);
+  assert.match(cssSource, /photo-environment__separator \{ width:1px; height:14px/);
+  assert.match(cssSource, /photo-environment__item \.af-icon__glyph, \.photo-environment-popover \.af-icon__glyph \{ mask-size:contain; -webkit-mask-size:contain/);
+  assert.match(cssSource, /photo-environment__trigger::before \{[^}]*inset:-10px -6px/);
+  assert.match(badgeSource, /photo-environment__weather--\$\{weatherCode\?\.toLowerCase\(\)\.replace\('_', '-'\)\}/);
+  for (const code of ['sunny', 'partly-cloudy', 'cloudy', 'rain', 'snow', 'fog', 'thunderstorm']) {
+    assert.match(cssSource, new RegExp(`photo-environment__weather--${code}`));
+  }
+  assert.match(cssSource, /photo-environment__weather--partly-cloudy[^}]*transform:scaleX\(1\.08\)/);
+  for (const phase of ['sunrise', 'daytime', 'sunset', 'night']) {
+    assert.match(cssSource, new RegExp(`photo-environment__time--${phase}`));
+  }
+  assert.match(cssSource, /photo-environment__time--night \{[^}]*transform:scale\(\.76\)/);
+  assert.match(iconSource, /WeatherNight:[\s\S]*defaultColor: "#52647C"/);
+  assert.match(iconSource, /WeatherRain:[\s\S]*defaultColor: "#2F78B7"/);
+  assert.doesNotMatch(badgeSource, /duplicateSunnyDay/);
+  assert.match(iconSource, /WeatherDaytime:[\s\S]*time-daytime\.svg/);
+  assert.doesNotMatch(cardCssSource, /@container \(max-width: 340px\)/);
+  assert.match(cardCssSource, /community-review-card__record \{[^}]*white-space:nowrap/);
+  assert.match(cardCssSource, /community-review-card__author-row strong \{[^}]*flex:1/);
+  assert.match(cardCssSource, /community-review-card__content \{[^}]*-webkit-line-clamp: 2/);
+  assert.match(cardSource, /community-review-card__open/);
+  assert.match(cardSource, /community-review-card__record[\s\S]*ReviewEnvironmentBadge/);
+  assert.match(cardSource, /community-review-card__author-row[\s\S]*Rating/);
+  assert.match(pageSource, /community-quote__record-row[\s\S]*ReviewEnvironmentBadge/);
+  assert.match(pageSource, /community-quote__author-row/);
+  assert.match(gallerySource, /community-gallery-review__record[\s\S]*ReviewEnvironmentBadge/);
+  assert.match(gallerySource, /community-gallery-review__author-row/);
+  assert.match(pageSource, /weatherStatus === 'PENDING'[\s\S]*setPhotoPageRetry/);
+  assert.equal(existsSync(new URL('../src/assets/icons/weather/time-daytime.svg', import.meta.url)), true);
+});
+
+test('환경정보 기준은 후기 등록에 전달하고 사진 확정에서는 다시 저장하지 않는다', () => {
+  const apiSource = readFileSync(new URL('../src/api/community.ts', import.meta.url), 'utf8');
+  const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(pageSource, /environmentCapturedAt: representativePhoto\?\.capturedAt/);
+  assert.match(pageSource, /environmentUtcOffsetMinutes:/);
+  assert.doesNotMatch(apiSource.slice(apiSource.indexOf('async function uploadPhotos')), /captureUtcOffsetMinutes|environmentCapturedAt/);
 });
 
 test('이미 작성한 스팟 후기와 새 스팟 등록 지도 클릭을 구분한다', () => {

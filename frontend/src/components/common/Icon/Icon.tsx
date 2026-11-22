@@ -15,6 +15,61 @@ type IconDefinition = {
 const green = "#19765B";
 
 const iconDefinitions = {
+  WeatherSunny: {
+    asset: new URL("../../../assets/icons/weather/weather-sunny.svg", import.meta.url).href,
+    defaultColor: "#B56A00",
+    layers: [{ inset: "5%" }],
+  },
+  WeatherPartlyCloudy: {
+    asset: new URL("../../../assets/icons/weather/weather-partly-cloudy.svg", import.meta.url).href,
+    defaultColor: "#956510",
+    layers: [{ inset: "5%" }],
+  },
+  WeatherCloudy: {
+    asset: new URL("../../../assets/icons/weather/weather-cloudy.svg", import.meta.url).href,
+    defaultColor: "#687780",
+    layers: [{ inset: "5%" }],
+  },
+  WeatherRain: {
+    asset: new URL("../../../assets/icons/weather/weather-rain.svg", import.meta.url).href,
+    defaultColor: "#2F78B7",
+    layers: [{ inset: "5%" }],
+  },
+  WeatherSnow: {
+    asset: new URL("../../../assets/icons/weather/weather-snow.svg", import.meta.url).href,
+    defaultColor: "#327A9B",
+    layers: [{ inset: "5%" }],
+  },
+  WeatherFog: {
+    asset: new URL("../../../assets/icons/weather/weather-fog.svg", import.meta.url).href,
+    defaultColor: "#687780",
+    layers: [{ inset: "5%" }],
+  },
+  WeatherThunderstorm: {
+    asset: new URL("../../../assets/icons/weather/weather-thunderstorm.svg", import.meta.url).href,
+    defaultColor: "#6650A4",
+    layers: [{ inset: "5%" }],
+  },
+  WeatherNight: {
+    asset: new URL("../../../assets/icons/weather/weather-night.svg", import.meta.url).href,
+    defaultColor: "#52647C",
+    layers: [{ inset: "5%" }],
+  },
+  WeatherSunrise: {
+    asset: new URL("../../../assets/icons/weather/weather-sunrise.svg", import.meta.url).href,
+    defaultColor: "#A95416",
+    layers: [{ inset: "5%" }],
+  },
+  WeatherDaytime: {
+    asset: new URL("../../../assets/icons/weather/time-daytime.svg", import.meta.url).href,
+    defaultColor: "#B56A00",
+    layers: [{ inset: "5%" }],
+  },
+  WeatherSunset: {
+    asset: new URL("../../../assets/icons/weather/weather-sunset.svg", import.meta.url).href,
+    defaultColor: "#A7464E",
+    layers: [{ inset: "5%" }],
+  },
   Eye: {
     asset: new URL("../../../assets/icons/eye.svg", import.meta.url).href,
     defaultColor: green,

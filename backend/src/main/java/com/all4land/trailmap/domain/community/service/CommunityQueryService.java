@@ -285,7 +285,8 @@ public class CommunityQueryService {
                         review.rating(),
                         review.visitedDate(),
                         review.createdAt(),
-                        review.photoKeys().stream().map(r2PhotoStorage::createReadUrl).toList()
+                        review.photoKeys().stream().map(r2PhotoStorage::createReadUrl).toList(),
+                        CommunityPhotoService.toEnvironmentResponse(review.environment())
                 ))
                 .toList();
     }

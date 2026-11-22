@@ -2,6 +2,7 @@ package com.all4land.trailmap.domain.community.repository.photo;
 
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.repository.result.CommunityPhotoQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunityReviewEnvironmentQueryResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -27,12 +28,23 @@ public class CommunityPhotoQueryRepository {
                             course_review.review_content,
                             spot_review.review_content) AS review_content,
                    photo.created_at,
-                   course_review.rating::double precision AS review_rating
+                   course_review.rating::double precision AS review_rating,
+                   environment.reference_at,
+                   environment.utc_offset_minutes,
+                   environment.longitude,
+                   environment.latitude,
+                   environment.weather_status,
+                   environment.weather_temperature_c,
+                   environment.weather_code
             FROM photo
             JOIN app_user ON app_user.user_id = photo.user_id
             LEFT JOIN mountain_review ON mountain_review.review_id = photo.mountain_review_id
             LEFT JOIN course_review ON course_review.review_id = photo.course_review_id
             LEFT JOIN spot_review ON spot_review.review_id = photo.spot_review_id
+            LEFT JOIN review_environment environment
+              ON environment.mountain_review_id = photo.mountain_review_id
+              OR environment.course_review_id = photo.course_review_id
+              OR environment.spot_review_id = photo.spot_review_id
             """;
 
     private static final RowMapper<CommunityPhotoQueryResult> ROW_MAPPER = (resultSet, rowNumber) ->
@@ -46,7 +58,17 @@ public class CommunityPhotoQueryRepository {
                     resultSet.getString("author"),
                     resultSet.getString("review_content"),
                     resultSet.getObject("created_at", java.time.OffsetDateTime.class),
-                    resultSet.getObject("review_rating", Double.class)
+                    resultSet.getObject("review_rating", Double.class),
+                    resultSet.getObject("reference_at", java.time.OffsetDateTime.class) == null ? null
+                            : new CommunityReviewEnvironmentQueryResult(
+                                    resultSet.getObject("reference_at", java.time.OffsetDateTime.class),
+                                    resultSet.getObject("utc_offset_minutes", Short.class),
+                                    resultSet.getObject("longitude", Double.class),
+                                    resultSet.getObject("latitude", Double.class),
+                                    resultSet.getString("weather_status"),
+                                    resultSet.getObject("weather_temperature_c", Double.class),
+                                    resultSet.getString("weather_code")
+                            )
             );
 
     private final NamedParameterJdbcTemplate jdbcTemplate;

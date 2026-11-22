@@ -16,6 +16,7 @@ public record CommunityReviewResponse(
         Double rating,
         LocalDate visitedDate,
         OffsetDateTime createdAt,
-        List<String> photoUrls
+        List<String> photoUrls,
+        CommunityReviewEnvironmentResponse environment
 ) {
 }

@@ -6,6 +6,7 @@ import com.all4land.trailmap.domain.community.dto.request.CommunitySpotDuplicate
 import com.all4land.trailmap.domain.community.dto.request.CommunitySpotVoteRequest;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewEligibilityCode;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewEligibilityResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityReviewEnvironmentResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotCreatedResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotDuplicateResponse;
@@ -22,17 +23,22 @@ import com.all4land.trailmap.domain.community.error.CommunityErrorCode;
 import com.all4land.trailmap.domain.community.exception.CommunityException;
 import com.all4land.trailmap.domain.community.repository.map.CommunityMapQueryRepository;
 import com.all4land.trailmap.domain.community.repository.result.CommunitySpotDuplicateQueryResult;
+import com.all4land.trailmap.domain.community.repository.result.CommunitySpotQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.CommunityVoteTargetQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.EligibleHikeQueryResult;
 import com.all4land.trailmap.domain.community.repository.result.CreatedUserSpotQueryResult;
 import com.all4land.trailmap.domain.community.repository.review.CourseReviewRepository;
 import com.all4land.trailmap.domain.community.repository.review.CommunityReviewQueryRepository;
+import com.all4land.trailmap.domain.community.repository.review.CommunityReviewEnvironmentRepository;
 import com.all4land.trailmap.domain.community.repository.review.MountainReviewRepository;
 import com.all4land.trailmap.domain.community.repository.review.SpotReviewRepository;
 import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotCommandRepository;
 import com.all4land.trailmap.domain.community.repository.spot.CommunitySpotQueryRepository;
 import com.all4land.trailmap.domain.community.repository.spot.SpotVoteRepository;
+import com.all4land.trailmap.domain.community.weather.ReviewEnvironment;
+import com.all4land.trailmap.domain.community.weather.ReviewEnvironmentWeatherRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +48,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -62,6 +69,8 @@ public class CommunityCommandService {
     private final CourseReviewRepository courseReviewRepository;
     private final SpotReviewRepository spotReviewRepository;
     private final SpotVoteRepository spotVoteRepository;
+    private final CommunityReviewEnvironmentRepository environmentRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public CommunityReviewEligibilityResponse getEligibleHikes(Long userId, Long mountainId) {
@@ -129,9 +138,15 @@ public class CommunityCommandService {
                 request.content().trim(),
                 hike.endedAt().atZoneSameInstant(SERVICE_ZONE).toLocalDate()
         )));
+        ReviewEnvironment environment = saveEnvironment(
+                CommunityReviewKind.MOUNTAIN, review.getReviewId(), hike,
+                hike.routeLongitude(), hike.routeLatitude(), request.environmentCapturedAt(),
+                request.environmentUtcOffsetMinutes()
+        );
         return reviewResponse(
                 review.getReviewId(), CommunityReviewKind.MOUNTAIN, mountainId, hike.hikeRecordId(),
-                userId, review.getContent(), null, review.getVisitedDate(), review.getCreatedAt()
+                userId, review.getContent(), null, review.getVisitedDate(), review.getCreatedAt(),
+                CommunityPhotoService.toEnvironmentResponse(environment)
         );
     }
 
@@ -155,9 +170,15 @@ public class CommunityCommandService {
                 hike.endedAt().atZoneSameInstant(SERVICE_ZONE).toLocalDate(),
                 request.rating()
         )));
+        ReviewEnvironment environment = saveEnvironment(
+                CommunityReviewKind.COURSE, review.getReviewId(), hike,
+                hike.routeLongitude(), hike.routeLatitude(), request.environmentCapturedAt(),
+                request.environmentUtcOffsetMinutes()
+        );
         return reviewResponse(
                 review.getReviewId(), CommunityReviewKind.COURSE, courseId, hike.hikeRecordId(),
-                userId, review.getContent(), review.getRating().doubleValue(), review.getVisitedDate(), review.getCreatedAt()
+                userId, review.getContent(), review.getRating().doubleValue(), review.getVisitedDate(), review.getCreatedAt(),
+                CommunityPhotoService.toEnvironmentResponse(environment)
         );
     }
 
@@ -170,7 +191,7 @@ public class CommunityCommandService {
     ) {
         validateRatingAbsent(request);
         validateUser(userId);
-        validateSpot(userId, mountainId, targetType, targetId);
+        CommunitySpotQueryResult spot = requireSpot(userId, mountainId, targetType, targetId);
         EligibleHikeQueryResult hike = requireSpotReviewEligibleHike(
                 userId, mountainId, request.hikeRecordId(), targetType, targetId
         );
@@ -182,9 +203,14 @@ public class CommunityCommandService {
                 request.content().trim(),
                 hike.endedAt().atZoneSameInstant(SERVICE_ZONE).toLocalDate()
         )));
+        ReviewEnvironment environment = saveEnvironment(
+                CommunityReviewKind.SPOT, review.getReviewId(), hike, spot.longitude(), spot.latitude(),
+                request.environmentCapturedAt(), request.environmentUtcOffsetMinutes()
+        );
         return reviewResponse(
                 review.getReviewId(), CommunityReviewKind.SPOT, targetId, hike.hikeRecordId(),
-                userId, review.getContent(), null, review.getVisitedDate(), review.getCreatedAt()
+                userId, review.getContent(), null, review.getVisitedDate(), review.getCreatedAt(),
+                CommunityPhotoService.toEnvironmentResponse(environment)
         );
     }
 
@@ -248,9 +274,14 @@ public class CommunityCommandService {
                 request.reviewContent().trim(),
                 hike.endedAt().atZoneSameInstant(SERVICE_ZONE).toLocalDate()
         )));
+        ReviewEnvironment environment = saveEnvironment(
+                CommunityReviewKind.SPOT, review.getReviewId(), hike, request.longitude(), request.latitude(),
+                request.environmentCapturedAt(), request.environmentUtcOffsetMinutes()
+        );
         CommunityReviewResponse reviewResponse = reviewResponse(
                 review.getReviewId(), CommunityReviewKind.SPOT, spotId, hike.hikeRecordId(), userId,
-                review.getContent(), null, review.getVisitedDate(), review.getCreatedAt()
+                review.getContent(), null, review.getVisitedDate(), review.getCreatedAt(),
+                CommunityPhotoService.toEnvironmentResponse(environment)
         );
         return new CommunitySpotCreatedResponse(
                 spotId,
@@ -483,7 +514,8 @@ public class CommunityCommandService {
             String content,
             Double rating,
             java.time.LocalDate visitedDate,
-            LocalDateTime createdAt
+            LocalDateTime createdAt,
+            CommunityReviewEnvironmentResponse environment
     ) {
         String author = reviewQueryRepository.findUserDisplayName(userId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.USER_NOT_FOUND));
@@ -497,7 +529,8 @@ public class CommunityCommandService {
                 rating,
                 visitedDate,
                 createdAt.atZone(SERVICE_ZONE).toOffsetDateTime(),
-                List.of()
+                List.of(),
+                environment
         );
     }
 
@@ -508,8 +541,51 @@ public class CommunityCommandService {
         return new CommunitySpotCreatedResponse(
                 spot.spotId(), spot.mountainId(), spot.name(), spot.type(), spot.longitude(), spot.latitude(), spot.status(),
                 reviewResponse(review.getReviewId(), CommunityReviewKind.SPOT, spot.spotId(), spot.hikeRecordId(), userId,
-                        review.getContent(), null, review.getVisitedDate(), review.getCreatedAt())
+                        review.getContent(), null, review.getVisitedDate(), review.getCreatedAt(),
+                        environmentRepository.find(CommunityReviewKind.SPOT, review.getReviewId())
+                                .map(CommunityPhotoService::toEnvironmentResponse).orElse(null))
         );
+    }
+
+    private ReviewEnvironment saveEnvironment(
+            CommunityReviewKind kind,
+            Long reviewId,
+            EligibleHikeQueryResult hike,
+            double longitude,
+            double latitude,
+            OffsetDateTime capturedAt,
+            Integer requestedUtcOffsetMinutes
+    ) {
+        int utcOffsetMinutes = requestedUtcOffsetMinutes != null
+                ? requestedUtcOffsetMinutes
+                : capturedAt != null
+                    ? capturedAt.getOffset().getTotalSeconds() / 60
+                    : SERVICE_ZONE.getRules().getOffset(hike.endedAt().toInstant()).getTotalSeconds() / 60;
+        if (capturedAt != null && capturedAt.getOffset().getTotalSeconds() / 60 != utcOffsetMinutes) {
+            throw new CommunityException(CommunityErrorCode.INVALID_REVIEW_REQUEST);
+        }
+        if (capturedAt != null && capturedAt.toInstant().isAfter(java.time.Instant.now().plus(Duration.ofMinutes(5)))) {
+            throw new CommunityException(CommunityErrorCode.INVALID_REVIEW_REQUEST);
+        }
+        OffsetDateTime referenceAt = capturedAt == null
+                ? midpoint(hike.startedAt(), hike.endedAt(), utcOffsetMinutes)
+                : capturedAt;
+        ReviewEnvironment environment = ReviewEnvironment.pending(
+                referenceAt, (short) utcOffsetMinutes, longitude, latitude
+        );
+        environmentRepository.insert(
+                kind, reviewId, environment, capturedAt == null ? "HIKE_MIDPOINT" : "PHOTO_EXIF"
+        );
+        eventPublisher.publishEvent(new ReviewEnvironmentWeatherRequest(
+                kind, reviewId, hike.mountainId(), referenceAt, (short) utcOffsetMinutes, longitude, latitude
+        ));
+        return environment;
+    }
+
+    private static OffsetDateTime midpoint(OffsetDateTime start, OffsetDateTime end, int utcOffsetMinutes) {
+        var startInstant = start.toInstant();
+        var midpoint = startInstant.plusMillis(Duration.between(startInstant, end.toInstant()).toMillis() / 2);
+        return midpoint.atOffset(ZoneOffset.ofTotalSeconds(utcOffsetMinutes * 60));
     }
 
     private void validateUser(Long userId) {
@@ -524,16 +600,19 @@ public class CommunityCommandService {
         }
     }
 
-    private void validateSpot(
+    private CommunitySpotQueryResult requireSpot(
             Long userId,
             Long mountainId,
             CommunitySpotTargetType targetType,
             Long targetId
     ) {
         validateMountain(mountainId);
-        if (spotQueryRepository.findSpot(userId, mountainId, targetType, targetId).isEmpty()) {
-            throw new CommunityException(CommunityErrorCode.SPOT_NOT_FOUND);
-        }
+        return spotQueryRepository.findSpot(userId, mountainId, targetType, targetId)
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.SPOT_NOT_FOUND));
+    }
+
+    private void validateSpot(Long userId, Long mountainId, CommunitySpotTargetType targetType, Long targetId) {
+        requireSpot(userId, mountainId, targetType, targetId);
     }
 
     private static void validateRatingAbsent(CommunityReviewCreateRequest request) {

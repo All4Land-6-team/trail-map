@@ -13,6 +13,7 @@ public record CommunityReviewQueryResult(
         Double rating,
         LocalDate visitedDate,
         OffsetDateTime createdAt,
-        List<String> photoKeys
+        List<String> photoKeys,
+        CommunityReviewEnvironmentQueryResult environment
 ) {
 }

@@ -119,7 +119,8 @@ class CommunityCommandApiIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.kind").value("MOUNTAIN"))
                 .andExpect(jsonPath("$.data.content").value("경치가 좋아요."))
-                .andExpect(jsonPath("$.data.rating").doesNotExist());
+                .andExpect(jsonPath("$.data.rating").doesNotExist())
+                .andExpect(jsonPath("$.data.environment.referenceAt").exists());
 
         mockMvc.perform(asUser(post("/v1/community/courses/" + courseId + "/reviews"))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -140,6 +141,7 @@ class CommunityCommandApiIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM spot_review WHERE facility_id = ?", Integer.class, facilityId
         )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM review_environment", Integer.class)).isEqualTo(3);
     }
 
     @Test

@@ -36,32 +36,35 @@ public class CommunityPhotoTargetRepository {
     ) {
         String sql = switch (targetType) {
             case MOUNTAIN_REVIEW -> """
-                    SELECT user_id AS owner_user_id, mountain_id AS parent_id
-                    FROM mountain_review
-                    WHERE review_id = :targetId AND deleted_at IS NULL
+                    SELECT target.user_id AS owner_user_id,
+                           target.mountain_id AS parent_id
+                    FROM mountain_review target
+                    WHERE target.review_id = :targetId AND target.deleted_at IS NULL
                     """;
             case COURSE_REVIEW -> """
-                    SELECT user_id AS owner_user_id, course_id AS parent_id
-                    FROM course_review
-                    WHERE review_id = :targetId AND deleted_at IS NULL
+                    SELECT target.user_id AS owner_user_id,
+                           target.course_id AS parent_id
+                    FROM course_review target
+                    WHERE target.review_id = :targetId AND target.deleted_at IS NULL
                     """;
             case SPOT_REVIEW -> """
-                    SELECT user_id AS owner_user_id,
-                           COALESCE(spot_id, facility_id) AS parent_id,
-                           CASE WHEN spot_id IS NOT NULL THEN 'user-spot' ELSE 'facility' END AS parent_type
-                    FROM spot_review
-                    WHERE review_id = :targetId AND deleted_at IS NULL
+                    SELECT target.user_id AS owner_user_id,
+                           COALESCE(target.spot_id, target.facility_id) AS parent_id,
+                           CASE WHEN target.spot_id IS NOT NULL THEN 'user-spot' ELSE 'facility' END AS parent_type
+                    FROM spot_review target
+                    WHERE target.review_id = :targetId AND target.deleted_at IS NULL
                     """;
             case USER_SPOT -> """
-                    SELECT user_id AS owner_user_id, spot_id AS parent_id
-                    FROM user_spot
-                    WHERE spot_id = :targetId
-                      AND deleted_at IS NULL
-                      AND spot_status <> 'HIDDEN'
+                    SELECT target.user_id AS owner_user_id,
+                           target.spot_id AS parent_id
+                    FROM user_spot target
+                    WHERE target.spot_id = :targetId
+                      AND target.deleted_at IS NULL
+                      AND target.spot_status <> 'HIDDEN'
                     """;
         };
         if (lock) {
-            sql += " FOR UPDATE";
+            sql += " FOR UPDATE OF target";
         }
         return jdbcTemplate.query(
                 sql,
