@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { courseFixtures } from "../../api/courseMock";
-import { fetchHikeRecord, fetchHikeRecordReviews, type HikeRecord, type HikeRecordReview, type HikeRecordReviews } from "../../api/hikeRecordApi";
+import { fetchHikeRecord, type HikeRecord, type HikeRecordReview } from "../../api/hikeRecordApi";
 import { findCourse } from "../../api/hikeMock";
 import { Button } from "../../components/common/Button";
 import { Icon } from "../../components/common/Icon";
-import { HikeRouteMap } from "../../components/hike";
+import { HikeRouteMap, ReviewKindPicker, openReviewWriting, useRecordReviews } from "../../components/hike";
 import { COURSE_ROUTE_COLOR, GRAY_ROUTE_COLOR } from "../../components/hike/hikeRouteSegments";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
@@ -60,16 +60,7 @@ export function HikeRecordPage() {
   }, [hikeRecordId]);
   const loaded = detail?.id === hikeRecordId ? detail : undefined;
   // 이 기록으로 작성한 후기. 산·코스 후기를 이미 썼으면 후기 유형 선택에서 막는다.
-  const [reviews, setReviews] = useState<{ id: number; data?: HikeRecordReviews; failed?: boolean }>();
-  useEffect(() => {
-    if (hikeRecordId === undefined) return;
-    let cancelled = false;
-    fetchHikeRecordReviews(hikeRecordId)
-      .then(data => { if (!cancelled) setReviews({ id: hikeRecordId, data }); })
-      .catch(() => { if (!cancelled) setReviews({ id: hikeRecordId, failed: true }); });
-    return () => { cancelled = true; };
-  }, [hikeRecordId]);
-  const recordReviews = reviews?.id === hikeRecordId ? reviews : undefined;
+  const recordReviews = useRecordReviews(hikeRecordId);
   const [pickingReview, setPickingReview] = useState(false);
   const backToCalendar = () => navigate(hikePaths.calendar(date || undefined));
 
@@ -95,14 +86,7 @@ export function HikeRecordPage() {
   const mountainId = schedule.serverMountainId !== undefined ? String(schedule.serverMountainId)
     : courseFixtures.find(item => item.id === schedule.courseId)?.mountainId;
 
-  // 고른 후기 종류로 커뮤니티의 기존 후기 작성 흐름을 연다. 작성을 마치거나 나가면 이 화면으로 돌아온다.
-  const writeReview = (kind: ReviewChoice) => {
-    setPickingReview(false);
-    const query = new URLSearchParams({ screen: "map", review: kind, returnTo: hikePaths.record(date) });
-    if (mountainId) query.set("mountain", mountainId);
-    navigate(`community?${query}`);
-  };
-  const reviewed = { mountain: recordReviews?.data?.mountainReviewed ?? false, course: recordReviews?.data?.courseReviewed ?? false, spot: false };
+  const reviewed = { mountain: recordReviews?.data?.mountainReviewed ?? false, course: recordReviews?.data?.courseReviewed ?? false };
   const writtenReviews = recordReviews?.data?.reviews ?? [];
 
   return <div className="hike-page hike-record-page">
@@ -156,28 +140,9 @@ export function HikeRecordPage() {
     </main>
     <BottomNavigation className="hike-page__nav" active="myHikes" onNavigate={navigateTab} />
 
-    {pickingReview && <div className="hike-record-page__picker-backdrop"
-      onPointerDown={event => { if (event.target === event.currentTarget) setPickingReview(false); }}>
-      <section className="hike-record-page__picker" role="dialog" aria-modal="true" aria-labelledby="hike-record-picker-title"
-        onKeyDown={event => { if (event.key === "Escape") setPickingReview(false); }}>
-        <h2 id="hike-record-picker-title">어떤 후기를 남길까요?</h2>
-        <p>후기 유형을 선택해 주세요.</p>
-        {REVIEW_CHOICES.map(choice => <button type="button" key={choice.kind} disabled={reviewed[choice.kind]}
-          onClick={() => writeReview(choice.kind)}>
-          {choice.label}
-          {reviewed[choice.kind] ? <span className="hike-record-page__picker-done">작성 완료</span> : <Icon name="ChevronRight" size={18} />}
-        </button>)}
-        <button type="button" className="hike-record-page__picker-cancel" onClick={() => setPickingReview(false)}>취소</button>
-      </section>
-    </div>}
+    {pickingReview && <ReviewKindPicker reviewed={reviewed} onClose={() => setPickingReview(false)}
+      onSelect={kind => { setPickingReview(false); openReviewWriting(kind, mountainId, hikePaths.record(date)); }} />}
   </div>;
 }
 
-type ReviewChoice = "mountain" | "course" | "spot";
-/** 후기 유형 선택 순서: 산 후기 → 코스 후기 → 스팟 후기 */
-const REVIEW_CHOICES: { kind: ReviewChoice; label: string }[] = [
-  { kind: "mountain", label: "산 후기" },
-  { kind: "course", label: "코스 후기" },
-  { kind: "spot", label: "스팟 후기" },
-];
 const REVIEW_LABEL: Record<HikeRecordReview["kind"], string> = { MOUNTAIN: "산 후기", COURSE: "코스 후기", SPOT: "스팟 후기" };
