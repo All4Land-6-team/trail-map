@@ -59,12 +59,26 @@ function renderMetrics(thresholds) {
 
 test('비교표는 평균 경사 대신 급경사 비율을 표시하고 미계산 시간과 결측을 유지한다', () => {
   const html = renderMetrics([20, 20, 20]);
-  assert.match(html, /급경사 비율 비교/);
-  assert.doesNotMatch(html, /평균 경사 비교|12\.34567%/);
+  assert.match(html, /급경사 거리 비율 비교/);
+  assert.doesNotMatch(html, /평균 경사 비교|>12\.34567%</);
+  assert.match(html, /width:12\.34567%/);
+  assert.match(html, /막대 전체 길이는 100%/);
   assert.match(html, /0\.0%/);
   assert.match(html, /12\.3%/);
   assert.match(html, /경사 절댓값 20% 이상/);
   assert.equal((html.match(/class="cart-metric-track"/g) ?? []).length, 5);
+});
+
+test('상세는 50m 평균·원본 전환과 방향·퍼센트·결측 해석을 제공하며 원본 선택 값을 보존한다', () => {
+  const value = analysis(), stored = profile(value).data;
+  value.settings.steepSlopeThresholdPercent = 30;
+  value.settings.steepSlopeMethod = 'absolute_slope_gte_distance_weighted';
+  stored.samples[1].slopePercent = -12.3456789;
+  const html = render({ status: 'success', data: { analysis: value, profile: stored, profileError: null } }, 1);
+  for (const label of ['50m 평균', '선택 위치 원본 경사', '경사 그래프 읽는 법', '+ 오르막', '− 내리막', '각도 20°와 달라요', '점선 ±30%', '짧은 급경사는 원본으로']) assert.ok(html.includes(label), label);
+  assert.match(html, /aria-pressed="true"[^>]*>50m 평균/);
+  assert.match(html, /-12\.3%/);
+  assert.match(html, /course-profile-chart--stacked/);
 });
 
 test('서로 다른 급경사 기준은 안내하고 비교 막대로 같은 기준처럼 표시하지 않는다', () => {

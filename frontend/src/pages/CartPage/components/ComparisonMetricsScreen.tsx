@@ -72,7 +72,7 @@ export function ComparisonMetricsScreen({
     { id: 'duration', label: '공식 안내 시간 비교',
       getValue: course => guideFor(course)?.durationSeconds ?? null,
       formatValue: course => formatAnalysisDuration(guideFor(course)?.durationSeconds) },
-    { id: 'steep', label: '급경사 비율 비교',
+    { id: 'steep', label: '급경사 거리 비율 비교',
       getValue: course => course.analysis?.metrics.steepSectionRatioPercent ?? null,
       formatValue: course => formatSteepRatio(course.analysis?.metrics.steepSectionRatioPercent) },
   ];
@@ -102,10 +102,11 @@ export function ComparisonMetricsScreen({
         <Typography as="h2" variant="headingCard" className="cart-metrics-heading">코스별 비교</Typography>
         <div className="cart-metric-cards">
           {metrics.map((metric) => {
-            const maxValue = Math.max(...analysisCourses.map((course) => metric.getValue(course) ?? 0), 1);
+            const maxValue = metric.id === 'steep' ? 100 : Math.max(...analysisCourses.map((course) => metric.getValue(course) ?? 0), 1);
             return (
               <section className="cart-metric-card" key={metric.label} aria-label={metric.label}>
                 <Typography as="h3" variant="buttonLabel">{metric.label}</Typography>
+                {metric.id === 'steep' && <Typography as="p" variant="bodySmall" className="cart-metrics-note">막대 전체 길이는 100%예요.</Typography>}
                 <ul className="cart-metric-rows">
                   {analysisCourses.map((course, index) => {
                     const value = metric.getValue(course);
