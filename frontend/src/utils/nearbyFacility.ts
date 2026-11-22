@@ -6,6 +6,7 @@ export const NEARBY_FACILITY_METERS = 100;
 
 const NEARBY_TITLES: Record<HikeSpot["kind"], string> = {
   restroom: "화장실이 가까워요", water: "음수대가 가까워요", shelter: "쉼터가 가까워요", photo: "사진 스팟이 가까워요",
+  restaurant: "음식점이 가까워요", cafe: "카페가 가까워요",
 };
 
 export type NearbyFacility = { id: string; title: string; detail: string };
