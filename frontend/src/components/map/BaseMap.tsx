@@ -43,6 +43,8 @@ export type BaseMapProps = {
   interactive?: boolean
   /** 지도가 돌아가 있을 때 정북으로 되돌리는 나침반 버튼을 보여 준다. */
   showCompass?: boolean
+  /** 회전 여부와 관계없이 나침반 버튼을 항상 보여 준다. */
+  alwaysShowCompass?: boolean
   terrainBeforeLayerId?: string
   terrainMode?: MapDimension
   terrainCameraManaged?: boolean
@@ -80,6 +82,7 @@ function BaseMap({
   showNavigationControl = true,
   interactive = true,
   showCompass = true,
+  alwaysShowCompass = false,
   terrainBeforeLayerId,
   terrainMode,
   terrainCameraManaged,
@@ -105,7 +108,7 @@ function BaseMap({
   const compassOwner = useId()
   const compass = useSyncExternalStore(compassStore.subscribe, compassStore.get, compassStore.get)
   const showOverlayCompass = interactive && showCompass && compass.slots === 0
-    && compass.owner === compassOwner && isRotated(compass.bearing)
+    && compass.owner === compassOwner && (alwaysShowCompass || isRotated(compass.bearing))
   const terrainEnabled = terrainMode !== undefined
 
   useEffect(() => { onMapReadyRef.current = onMapReady }, [onMapReady])

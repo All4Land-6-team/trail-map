@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Marker, MercatorCoordinate, type LngLatBoundsLike, type MapLibreMap } from 'maplibre-gl'
+import { Marker, MercatorCoordinate, type CameraOptions, type LngLatBoundsLike, type MapLibreMap } from 'maplibre-gl'
 import BaseMap, { type MapRoute } from '../../../components/map/BaseMap'
 import { CurrentLocationMarker, MapAction, MountainMarker, SpotMarker, supportsTerrain, type MapDimension, type TerrainStatus } from '../../../components/map'
 import mountainFlag from '../../../assets/icons/mountain-flag.svg'
 import { Icon } from '../../../components/common/Icon'
 import type { CommunitySpotTargetType, Coordinate, SpotType } from '../../../types/community'
 import { groupCommunityMapPoints } from './communityMapClusters'
+import { communityRouteBearing, communityRouteBounds, communityRouteCameraAdjustment } from './communityRouteCamera'
 import { communityMarkerMode } from './communityMapZoom'
 
 export type CommunityMapBounds = { west: number; south: number; east: number; north: number }
@@ -45,6 +46,9 @@ type Props = {
   fitHighlightedRoute?: boolean
   highlightedRouteColor?: string
   highlightedRoutes?: readonly CommunityMapRoute[]
+  fitCourseRoutes3D?: boolean
+  cameraLayoutReady?: boolean
+  cameraKey?: string
   onMarkerSelect?: (marker: CommunityMapMarker) => void
   onMapSelect?: (coordinate: Coordinate) => void
   onViewportChange?: (bounds: CommunityMapBounds) => void
@@ -58,6 +62,9 @@ type Props = {
 const EMPTY_ROUTES: readonly MapRoute[] = []
 const DEFAULT_CENTER: Coordinate = [126.977, 37.659]
 const MAIN_MAP_3D_PITCH = 50
+const COURSE_CONTROL_CLEARANCE = 104
+const COURSE_CAMERA_CACHE_VERSION = 3
+const DETAIL_COURSE_3D_ZOOM_BOOST = 0.65
 const MARKER_CLUSTER_DISTANCE = 45
 const INDIVIDUAL_OVERLAP_DISTANCE = 20
 const OVERLAP_RELEASE_ZOOM = 16
@@ -91,7 +98,7 @@ function visibleMapArea(map: MapLibreMap) {
 }
 
 export function CommunityMap({ markers = [], overviewMarker, mountainId, center = DEFAULT_CENTER, focusTarget, zoom = 14, showRoute = true, showMountainFlag = false, showMountainLabel = true,
-  highlightedRoute, fitHighlightedRoute = false, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, onViewportChange, courseSpotsOnly, onCourseSpotsOnlyChange, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
+  highlightedRoute, fitHighlightedRoute = false, fitCourseRoutes3D = false, cameraLayoutReady = true, cameraKey, highlightedRouteColor, highlightedRoutes, onMarkerSelect, onMapSelect, onViewportChange, courseSpotsOnly, onCourseSpotsOnlyChange, children, className, ariaLabel = '커뮤니티 예시 지도' }: Props) {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [projected, setProjected] = useState<ProjectedMarker[]>([])
   const [markerMode, setMarkerMode] = useState(() => communityMarkerMode(zoom))
@@ -101,16 +108,21 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   const [mapRetry, setMapRetry] = useState(0)
   const [dimension, setDimension] = useState<MapDimension>('2D')
   const [terrainStatus, setTerrainStatus] = useState<TerrainStatus>('idle')
+  const [settledCourse3DKey, setSettledCourse3DKey] = useState('')
   const mapLibreMarkers = useRef<Map<string, Marker>>(new Map())
   const markerEnterTimers = useRef<Map<string, number>>(new Map())
   const markerExitTimers = useRef<Map<string, number>>(new Map())
   const [markerElements] = useState(() => new Map<string, HTMLDivElement>())
   const isMainMap = className?.includes('community-page__map--main') ?? false
   const courseDetailDimension = className?.includes('community-page__map--detail-course') ? dimension : null
+  const showCourseSpotsToggle = courseDetailDimension !== null && courseSpotsOnly !== undefined
   const supportsDimensionToggle = isMainMap || courseDetailDimension !== null
   const wasMainMap = useRef(isMainMap)
   const mainMapViewport = useRef<{ center: Coordinate; zoom: number; bearing: number; pitch: number } | null>(null)
+  const courseDetailCameras = useRef<{ key: string; width: number; height: number;
+    modes: Partial<Record<MapDimension, CameraOptions>> } | null>(null)
   const terrainEnabled = supportsTerrain(mountainId ?? overviewMarker?.id)
+  const courseCameraKey = `${COURSE_CAMERA_CACHE_VERSION}:${cameraKey ?? highlightedRoute?.map(coordinate => coordinate.join(',')).join(';') ?? ''}`
   const onReady = useCallback((instance: MapLibreMap | null) => { setMap(instance); if (instance) setMapUnavailable(false) }, [])
   const markerSignature = [...markers, ...(overviewMarker ? [overviewMarker] : [])]
     .map(marker => `${markerIdentity(marker)}:${marker.coordinate.join(',')}:${marker.selected}`).join('|')
@@ -180,6 +192,15 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   }, [map, supportsDimensionToggle, dimension, terrainEnabled])
 
   useEffect(() => {
+    if (!map || courseDetailDimension !== '3D' || !cameraLayoutReady || !terrainEnabled || terrainStatus !== 'ready') return
+    const key = `${courseCameraKey}:${map.getContainer().clientWidth}:${map.getContainer().clientHeight}`
+    const settle = () => setSettledCourse3DKey(key)
+    map.once('idle', settle)
+    map.triggerRepaint()
+    return () => { map.off('idle', settle) }
+  }, [map, courseCameraKey, courseDetailDimension, cameraLayoutReady, terrainEnabled, terrainStatus])
+
+  useEffect(() => {
     if (!map || !fitHighlightedRoute) return
     const coordinates = highlightedRoutes?.flatMap(route => route.coordinates) ?? highlightedRoute ?? []
     if (coordinates.length < 2) return
@@ -208,25 +229,81 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
         duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350 })
       return
     }
+    if (!cameraLayoutReady) return
     const { visibleTop, visibleBottom, visibleCenter, mapHeight } = visibleMapArea(map)
-    if (className.includes('community-page__map--detail-course') && highlightedRoute && highlightedRoute.length > 1) {
-      const longitudes = highlightedRoute.map(([longitude]) => longitude)
-      const latitudes = highlightedRoute.map(([, latitude]) => latitude)
-      const bounds: LngLatBoundsLike = [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]]
-      const padding = { top: visibleTop + 24, right: 24, bottom: Math.max(24, mapHeight - visibleBottom + 24), left: 24 }
-      const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550
-      if (courseDetailDimension === '3D') {
-        const camera = map.cameraForBounds(bounds, { padding, offset: [0, -72], maxZoom: 16 })
+    if (courseDetailDimension !== null && highlightedRoute) {
+      const width = map.getContainer().clientWidth
+      let saved = courseDetailCameras.current
+      if (!saved || saved.key !== courseCameraKey || saved.width !== width || saved.height !== mapHeight) {
+        saved = { key: courseCameraKey, width, height: mapHeight, modes: {} }
+        courseDetailCameras.current = saved
+      }
+      const camera = saved.modes[courseDetailDimension]
+      if (camera) {
+        map.easeTo({ ...camera,
+          duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550 })
+        return
+      }
+    }
+    const detailCourse3D = courseDetailDimension === '3D' && highlightedRoute && highlightedRoute.length > 1
+    const filterCourse3D = fitCourseRoutes3D && dimension === '3D' && highlightedRoutes?.length
+    const terrainKey = `${courseCameraKey}:${map.getContainer().clientWidth}:${map.getContainer().clientHeight}`
+    if (detailCourse3D && terrainEnabled && terrainStatus !== 'error' && settledCourse3DKey !== terrainKey) return
+    if (detailCourse3D || filterCourse3D) {
+      if (terrainEnabled && terrainStatus !== 'ready' && terrainStatus !== 'error') return
+      const coordinates = detailCourse3D ? highlightedRoute : highlightedRoutes!.flatMap(route => route.coordinates)
+      const bounds = communityRouteBounds(coordinates)
+      if (bounds) {
+        const padding = { top: visibleTop + 30, right: COURSE_CONTROL_CLEARANCE,
+          bottom: Math.max(30, mapHeight - visibleBottom + 30), left: 30 }
+        const bearing = detailCourse3D ? communityRouteBearing(highlightedRoute) : 0
+        const camera = map.cameraForBounds(bounds, { padding, bearing, maxZoom: 15 })
         if (camera) {
-          map.easeTo({ ...camera, zoom: Math.min((camera.zoom ?? map.getZoom()) + 0.7, 16), duration })
+          const initialCamera = {
+            center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch(),
+            elevation: map.getCenterElevation(),
+          }
+          map.jumpTo({ ...camera, bearing, pitch: MAIN_MAP_3D_PITCH })
+          const viewport = { top: visibleTop + 28,
+            right: map.getContainer().clientWidth - COURSE_CONTROL_CLEARANCE,
+            bottom: visibleBottom - 32, left: 30 }
+          for (let attempt = 0; attempt < 2; attempt += 1) {
+            const adjustment = communityRouteCameraAdjustment(coordinates.map(coordinate => map.project(coordinate)), viewport)
+            if (!adjustment) break
+            map.jumpTo({ zoom: Math.max(map.getMinZoom(), Math.min(15, map.getZoom() + adjustment.zoomDelta)) })
+            const centered = communityRouteCameraAdjustment(coordinates.map(coordinate => map.project(coordinate)), viewport)
+            if (centered) map.panBy(centered.offset, { duration: 0 })
+          }
+          const remainingAdjustment = communityRouteCameraAdjustment(coordinates.map(coordinate => map.project(coordinate)), viewport)
+          if (detailCourse3D && remainingAdjustment?.zoomDelta && remainingAdjustment.zoomDelta > 0) {
+            map.jumpTo({ zoom: Math.min(map.getMaxZoom(), map.getZoom()
+              + Math.min(DETAIL_COURSE_3D_ZOOM_BOOST, remainingAdjustment.zoomDelta)) })
+            const centered = communityRouteCameraAdjustment(coordinates.map(coordinate => map.project(coordinate)), viewport)
+            if (centered) map.panBy(centered.offset, { duration: 0 })
+          }
+          const fittedCamera = {
+            center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch(),
+            elevation: map.getCenterElevation(),
+          }
+          if (detailCourse3D && courseDetailCameras.current) courseDetailCameras.current.modes['3D'] = fittedCamera
+          map.jumpTo(initialCamera)
+          map.easeTo({ ...fittedCamera,
+            duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 650 })
           return
         }
       }
-      map.fitBounds(bounds, {
-        padding,
-        maxZoom: 16,
-        duration,
-      })
+    }
+    if (className.includes('community-page__map--detail-course') && highlightedRoute && highlightedRoute.length > 1) {
+      const bounds: LngLatBoundsLike = communityRouteBounds(highlightedRoute)!
+      const padding = { top: visibleTop + 24, right: COURSE_CONTROL_CLEARANCE,
+        bottom: Math.max(24, mapHeight - visibleBottom + 24), left: 24 }
+      const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550
+      const camera = map.cameraForBounds(bounds, { padding, bearing: 0, maxZoom: 16 })
+      if (camera) {
+        const fittedCamera = { ...camera, bearing: 0, pitch: 0 }
+        if (courseDetailCameras.current) courseDetailCameras.current.modes['2D'] = fittedCamera
+        map.easeTo({ ...fittedCamera, duration })
+      }
       return
     }
     const focusY = className.includes('community-page__map--detail-mountain') || className.includes('community-page__map--mountain-focus')
@@ -263,7 +340,7 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       pitch: focusTarget.resetOrientation ? dimension === '3D' ? MAIN_MAP_3D_PITCH : 0 : undefined,
       duration: reducedMotion ? 0 : 550,
       easing: progress => 1 - (1 - progress) ** 3 })
-  }, [map, focusTarget, className, highlightedRoute, isMainMap, courseDetailDimension, spotDetail3D, spotDetailTerrainReady, terrainStatus, dimension])
+  }, [map, focusTarget, className, highlightedRoute, highlightedRoutes, fitCourseRoutes3D, cameraLayoutReady, courseCameraKey, isMainMap, courseDetailDimension, settledCourse3DKey, spotDetail3D, spotDetailTerrainReady, terrainStatus, terrainEnabled, dimension])
 
   useEffect(() => {
     if (!map || !onMapSelect) return
@@ -441,7 +518,9 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
   return <div className={['community-map', className].filter(Boolean).join(' ')} data-marker-mode={isMainMap ? markerMode : undefined}>
     <BaseMap key={mapRetry} className="community-map__base" ariaLabel={ariaLabel} center={center} zoom={zoom}
       routes={routes} enableRouteHover={Boolean(highlightedRoutes?.length)} showNavigationControl={false} onMapReady={onReady}
-      terrainMode={terrainEnabled ? dimension : undefined} onTerrainStatusChange={setTerrainStatus} />
+      alwaysShowCompass={supportsDimensionToggle}
+      terrainMode={terrainEnabled ? dimension : undefined} terrainCameraManaged={supportsDimensionToggle}
+      onTerrainStatusChange={setTerrainStatus} />
     {mapUnavailable && <div className="community-map__fallback" role="status"><span>지도 배경을 불러오지 못했어요. 목록이나 마커로 후기를 볼 수 있어요.</span>
       <button type="button" onClick={() => { setMapUnavailable(false); setMapRetry(current => current + 1) }}>다시 시도</button></div>}
     {supportsDimensionToggle && <MapAction className="community-map__dimension" dimensionMode={dimension === '2D' ? '3D' : '2D'}
@@ -449,10 +528,12 @@ export function CommunityMap({ markers = [], overviewMarker, mountainId, center 
       aria-busy={terrainEnabled && terrainStatus === 'loading'}
       disabled={!map || mapUnavailable || (terrainEnabled && terrainStatus !== 'ready')}
       onDimensionModeChange={() => setDimension(current => current === '2D' ? '3D' : '2D')} />}
-    {courseDetailDimension !== null && courseSpotsOnly !== undefined && <button type="button" className="community-map__spots-toggle"
-      aria-pressed={courseSpotsOnly} aria-label={courseSpotsOnly ? '코스 스팟만 보기 끄기' : '코스 스팟만 보기 켜기'}
+    <MapAction className={`community-map__spots-toggle${showCourseSpotsToggle ? ' community-map__spots-toggle--visible' : ''}`}
+      disabled={!showCourseSpotsToggle} aria-hidden={!showCourseSpotsToggle}
+      aria-pressed={courseSpotsOnly ?? false} aria-label={courseSpotsOnly ? '코스 스팟만 보기 끄기' : '코스 스팟만 보기 켜기'}
       style={{ '--community-course-color': highlightedRouteColor ?? '#19765b' } as CSSProperties}
-      onClick={() => onCourseSpotsOnlyChange?.(!courseSpotsOnly)}><span className="community-map__spots-icon" aria-hidden="true" /></button>}
+      icon={<span className="community-map__spots-icon" aria-hidden="true" />}
+      onClick={() => { if (courseSpotsOnly !== undefined) onCourseSpotsOnlyChange?.(!courseSpotsOnly) }} />
     {markerPlacements.map(({ key: groupKey, group, element }) => {
       const choiceOpen = visibleClusterChoice?.key === groupKey
       return createPortal(<div

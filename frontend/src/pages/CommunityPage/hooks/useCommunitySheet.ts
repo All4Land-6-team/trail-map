@@ -298,6 +298,7 @@ export function useCommunitySheet(detail = false, mapPreview = false, compactDet
       : `${dragHeight}px` } as CSSProperties,
     peek,
     collapsed,
+    detailReady,
     level: currentLevel,
     reset: () => { stopAnimation(); setDragging(false); setLevel('content'); setDetailLevel('reviews'); setDragHeight(null); setMapHeight(null) },
     handleProps: {

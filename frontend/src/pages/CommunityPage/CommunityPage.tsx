@@ -303,7 +303,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     && !reviews.some(review => review.kind === 'spot' && review.targetId === detailSpotForHeight.id)
   const detailKey = screen === 'spotDetail' ? `spot:${detailSpotId}` : screen === 'courseDetail' ? `course:${detailCourseId}` : `mountain:${mountainId}`
   const mapSheetCanReachLimit = screen === 'map' && !inlineMountainDetail && (mapCategory === 'all' || mapCategory === 'spot' || mapCategory === 'course')
-  const { rootRef, style: sheetStyle, peek: sheetPeek, collapsed: sheetCollapsed, level: sheetLevel, reset: resetSheet, handleProps } = useCommunitySheet(isDetail || inlineMountainDetail, mapSheetCanReachLimit, compactEmptySpot, screen === 'spotDetail' || screen === 'courseDetail', screen === 'spotDetail', detailKey)
+  const { rootRef, style: sheetStyle, peek: sheetPeek, collapsed: sheetCollapsed, detailReady: sheetDetailReady,
+    level: sheetLevel, reset: resetSheet, handleProps } = useCommunitySheet(isDetail || inlineMountainDetail, mapSheetCanReachLimit, compactEmptySpot, screen === 'spotDetail' || screen === 'courseDetail', screen === 'spotDetail', detailKey)
   const hideSheetBody = sheetPeek && !isDetail && !inlineMountainDetail
   useEffect(() => {
     const controller = new AbortController()
@@ -752,8 +753,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const galleryTitle = galleryKind === 'mountain' ? mountain.name : galleryKind === 'course' ? selectedCourse.name : selectedSpot?.name ?? '스팟'
   const selectedGalleryIndex = galleryPhotos.findIndex(photo => photo.id === galleryPhotoId)
   const selectedGalleryPhoto = galleryPhotos[selectedGalleryIndex]
-  const photoStatus = photoPage.key === activePhotoKey && <>
-    {photoPage.loading && photoPage.items.length === 0 && <CommunityPhotoSkeleton />}
+  const renderPhotoStatus = (showInitialSkeleton = true) => photoPage.key === activePhotoKey && <>
+    {showInitialSkeleton && photoPage.loading && photoPage.items.length === 0 && <CommunityPhotoSkeleton />}
     {photoPage.error && <button type="button" className="community-inline-link" onClick={() => {
       if (photoPage.items.length === 0) setPhotoPageRetry(current => current + 1)
       else setPhotoPage(current => ({ ...current, error: false }))
@@ -1088,7 +1089,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     ? <EmptyState showIcon={false} title="아직 등록된 후기가 없어요" description="이 산의 첫 후기를 남겨보세요." className="community-mountain-empty" />
     : <>
       {mountainPhotoTotal > 0 && <div className="community-detail-photos">{mountainGalleryPhotos.length > 0 && <CommunityPhotoStrip kindLabel="산" photos={mountainGalleryPhotos}
-        totalCount={mountainPhotoTotal} endRef={photoStripEnd} onViewAll={() => openGallery('mountain')} onOpen={id => openGalleryPhoto('mountain', id)} />}{photoStatus}</div>}
+        totalCount={mountainPhotoTotal} endRef={photoStripEnd} onViewAll={() => openGallery('mountain')} onOpen={id => openGalleryPhoto('mountain', id)} />}{renderPhotoStatus()}</div>}
       <div className="community-review-heading"><strong>방문자 후기</strong></div>
       <ReviewCarousel type="mountain" reviews={mountainReviews}
         onReviewClick={() => move('mountainReviewList')} onViewAll={() => move('mountainReviewList')} />
@@ -1129,6 +1130,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       highlightedRoute={screen === 'courseDetail' ? selectedCourse.coordinates : undefined}
       highlightedRouteColor={screen === 'courseDetail' ? selectedCourseColor : undefined}
       highlightedRoutes={showAllCourseRoutes ? allCourseRoutes : undefined}
+      fitCourseRoutes3D={screen === 'map' && mapCategory === 'course'}
+      cameraLayoutReady={screen !== 'courseDetail' || sheetDetailReady}
+      cameraKey={screen === 'courseDetail' ? selectedCourse.id : undefined}
       onViewportChange={screen === 'map' || screen === 'spotDetail' || screen === 'courseDetail' ? reportMapBounds : undefined}
       courseSpotsOnly={screen === 'courseDetail' ? courseSpotsOnly : undefined}
       onCourseSpotsOnlyChange={screen === 'courseDetail' ? setCourseSpotsOnly : undefined}
@@ -1150,7 +1154,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         else showDetail('spot', marker.id)
       } : undefined}>
       {screen === 'map' && <div className="community-map-filters" role="group" aria-label="지도와 후기 목록 유형 필터">
-        {(['all', 'mountain', 'spot', 'course'] as const).map(category => <Chip key={category} selected={mapCategory === category}
+        {(['all', 'mountain', 'course', 'spot'] as const).map(category => <Chip key={category} selected={mapCategory === category}
           aria-controls="community-map-results" onClick={() => changeMapCategory(category)}
           label={category === 'all' ? '전체' : category === 'spot' ? '스팟' : category === 'course' ? '코스' : '산'} />)}
       </div>}
@@ -1179,6 +1183,19 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
               <Icon name="ChevronRight" size={18} />
             </button>}
           </section>}
+          {(mapCategory === 'all' || mapCategory === 'course') && <section className="community-map-section" aria-label="코스 후기">
+          {mapCategory === 'all' && <h3>코스 후기 ({visibleCourseTargets.length}개)</h3>}
+          {communityLoading ? <CommunityRowsSkeleton /> : visibleCourseTargets.length > 0 ? visibleCourseTargets.map(course => {
+            return <button key={course.id} type="button" className="community-preview-row" onClick={() => showDetail('course', course.id)}>
+              {course.representativePhotoUrl ? <img className="community-preview-row__photo" src={course.representativePhotoUrl} alt="" loading="lazy" />
+                : <span className="community-preview-row__photo-placeholder" aria-hidden="true"><Icon name="Photo" size={24} /></span>}
+              <span className="community-preview-row__text"><span className="community-preview-row__heading">
+                <span className="community-course-color" style={{ backgroundColor: communityCourseColor(course.id) }} aria-hidden="true" />
+                <strong>{course.name}</strong></span>
+                <small>{course.averageRating !== undefined ? `★ ${course.averageRating.toFixed(1)} · ` : '평점 없음 · '}{course.distanceKm} km · 후기 {course.baselineReviews}</small></span><Icon name="ChevronRight" size={18} /></button>
+          })
+            : <EmptyReviewPreview mountainName={mountain.name} kind="course" />}
+          </section>}
           {(mapCategory === 'all' || mapCategory === 'spot') && <section className="community-map-section" aria-label="스팟 사진과 후기">
             {mapCategory === 'spot' ? <div className="community-spot-filter">
               <SpotTypeDropdown value={spotTypeFilter} onChange={changeSpotTypeFilter} /></div>
@@ -1199,19 +1216,6 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
             else setSpotListFirstRetry(current => current + 1)
           }}>스팟 목록 다시 불러오기</button>}
           </section>}
-          {(mapCategory === 'all' || mapCategory === 'course') && <section className="community-map-section" aria-label="코스 후기">
-          {mapCategory === 'all' && <h3>코스 후기 ({visibleCourseTargets.length}개)</h3>}
-          {communityLoading ? <CommunityRowsSkeleton /> : visibleCourseTargets.length > 0 ? visibleCourseTargets.map(course => {
-            return <button key={course.id} type="button" className="community-preview-row" onClick={() => showDetail('course', course.id)}>
-              {course.representativePhotoUrl ? <img className="community-preview-row__photo" src={course.representativePhotoUrl} alt="" loading="lazy" />
-                : <span className="community-preview-row__photo-placeholder" aria-hidden="true"><Icon name="Photo" size={24} /></span>}
-              <span className="community-preview-row__text"><span className="community-preview-row__heading">
-                <span className="community-course-color" style={{ backgroundColor: communityCourseColor(course.id) }} aria-hidden="true" />
-                <strong>{course.name}</strong></span>
-                <small>{course.averageRating !== undefined ? `★ ${course.averageRating.toFixed(1)} · ` : '평점 없음 · '}{course.distanceKm} km · 후기 {course.baselineReviews}</small></span><Icon name="ChevronRight" size={18} /></button>
-          })
-            : <EmptyReviewPreview mountainName={mountain.name} kind="course" />}
-          </section>}
         </div>}
         showFooter={!readOnly} footer={<Button fullWidth label="후기 등록" onClick={() => registerReview(() => {
           if (mapCategory === 'all') setReviewKindPickerOpen(true)
@@ -1229,7 +1233,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
           }}>
           <h2 id="community-review-kind-title">어떤 후기를 남길까요?</h2>
           <p>후기 유형을 선택해 주세요.</p>
-          {(['mountain', 'spot', 'course'] as const).map(kind => <button type="button" key={kind} onClick={() => void startMapReview(kind)}>
+          {(['mountain', 'course', 'spot'] as const).map(kind => <button type="button" key={kind} onClick={() => void startMapReview(kind)}>
             {kind === 'mountain' ? '산 평점·후기' : kind === 'spot' ? '스팟 사진·후기' : '코스 후기'} <Icon name="ChevronRight" size={18} />
           </button>)}
           <button type="button" className="community-review-kind-dialog__cancel" onClick={() => setReviewKindPickerOpen(false)}>취소</button>
@@ -1250,7 +1254,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
             {votes[selectedSpot.id]?.viewer && <section className="community-vote"><h3>내 평가 변경</h3><div><button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'yes'} onClick={() => castVote('yes')}>맞는 정보예요 <span>{votes[selectedSpot.id]?.yes ?? 0}</span></button><button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'no'} onClick={() => castVote('no')}>맞지 않아요 <span>{votes[selectedSpot.id]?.no ?? 0}</span></button></div></section>}</> : <>
             <p className="community-detail-meta">사진 {Math.max(selectedSpot.baselinePhotos, spotGalleryPhotos.length)}장 · 후기 {Math.max(selectedSpot.baselineReviews, selectedSpotReviews.length)}</p>
             <div className="community-detail-photos">{spotGalleryPhotos.length > 0 && <CommunityPhotoStrip kindLabel="스팟" photos={spotGalleryPhotos}
-              totalCount={selectedSpot.baselinePhotos} endRef={photoStripEnd} onViewAll={() => openGallery('spot')} onOpen={id => openGalleryPhoto('spot', id)} />}{photoStatus}
+              totalCount={selectedSpot.baselinePhotos} endRef={photoStripEnd} onViewAll={() => openGallery('spot')} onOpen={id => openGalleryPhoto('spot', id)} />}{renderPhotoStatus()}
               {spotGalleryPhotos.length === 0 && !photoPage.loading && !photoPage.error && <p className="community-gallery-empty">아직 등록된 사진이 없어요.</p>}</div>
             <div className="community-review-heading"><strong>방문자 후기</strong></div>
             <ReviewCarousel type="spot" reviews={selectedSpotReviews}
@@ -1262,8 +1266,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
           </>) : <>
           <p className="community-detail-meta">{selectedCourse.averageRating !== undefined && `★ ${selectedCourse.averageRating.toFixed(1)} · `}{selectedCourse.distanceKm} km · 후기 {Math.max(selectedCourse.baselineReviews, courseReviews.length)}</p>
           <div className="community-detail-photos">{courseGalleryPhotos.length > 0 && <CommunityPhotoStrip kindLabel="코스" photos={courseGalleryPhotos}
-            totalCount={selectedCourse.baselinePhotos} endRef={photoStripEnd} onViewAll={() => openGallery('course')} onOpen={id => openGalleryPhoto('course', id)} />}{photoStatus}
-            {courseGalleryPhotos.length === 0 && !photoPage.loading && !photoPage.error && <p className="community-gallery-empty">아직 등록된 사진이 없어요.</p>}</div>
+            totalCount={selectedCourse.baselinePhotos} endRef={photoStripEnd} onViewAll={() => openGallery('course')} onOpen={id => openGalleryPhoto('course', id)} />}{renderPhotoStatus(selectedCourse.baselinePhotos > 0)}
+            {courseGalleryPhotos.length === 0 && (!photoPage.loading || selectedCourse.baselinePhotos === 0) && !photoPage.error
+              && <p className="community-gallery-empty">아직 등록된 사진이 없어요.</p>}</div>
           <div className="community-review-heading"><strong>방문자 후기</strong></div>
           <ReviewCarousel type="course" reviews={courseReviews}
             onReviewClick={() => move('courseReviewList')} onViewAll={() => move('courseReviewList')} />
@@ -1278,7 +1283,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
 
     {screen === 'photoAlbum' && <><CommunityPhotoAlbum photos={galleryPhotos} title={galleryTitle} onOpen={id => openGalleryPhoto(galleryKind, id)} />
       {photoPage.hasNext && <div ref={photoAlbumEnd} role="status">{photoPage.loading ? '사진을 더 불러오는 중…' : ''}</div>}
-      {photoStatus}</>}
+      {renderPhotoStatus()}</>}
     {screen === 'spotReviewList' && selectedSpot && <section className="community-gallery-page community-review-list-page" aria-label={`${selectedSpot.name} 후기 목록`}>
       <h2>{selectedSpot.name} 후기</h2>
       {reviewList.key === reviewListKey && (fullReviews.length > 0 || !reviewList.loading) && <ReviewQuotes reviews={fullReviews}
