@@ -32,6 +32,7 @@ DB 스키마 변경은 Flyway migration SQL 파일로만 수행합니다.
 - `V16__simplify_review_weather.sql`: 산별 ASOS 지점번호와 후기 날씨 처리 상태를 추가하고 관측소 테이블을 제거합니다.
 - `V17__assign_asos_stations.sql`: 북한산과 도봉산을 가장 가까운 서울 ASOS 관측소(STN 108)에 연결합니다.
 - `V18__retry_fog_weather.sql`: 시정 단위 오류로 안개로 저장된 후기 날씨를 재조회 대상으로 변경합니다.
+- `V19__add_hike_record_last_position_time.sql`: 오프라인 위치 재전송의 중복 반영을 막기 위해 등산 기록에 마지막 위치 측정 시각을 추가합니다.
 
 기존 `app_user` 행은 `email`과 `password_hash`가 모두 NULL인 레거시 사용자로 보존됩니다. 신규 가입자는 정규화한 고유 이메일과 BCrypt 비밀번호 해시를 함께 저장합니다. 닉네임은 중복을 허용합니다.
 
