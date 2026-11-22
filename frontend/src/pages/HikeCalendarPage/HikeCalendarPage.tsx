@@ -4,7 +4,7 @@ import { Button } from "../../components/common/Button";
 import { Calendar } from "../../components/hike";
 import { BottomNavigation, TopBar } from "../../components/layout";
 import { navigate, readHashParams } from "../../hooks/useHashRoute";
-import { useHikeSchedules } from "../../store/hikeScheduleStore";
+import { useHikeSchedules, useScheduleSavedAt } from "../../store/hikeScheduleStore";
 import { useHikeSession } from "../../store/hikeSessionStore";
 import { useScheduleDateStatus, useScheduleRecord } from "../../store/scheduleRecord";
 import { hikePaths, leaveMyHikes, navigateTab } from "../hikeRoutes";
@@ -14,6 +14,11 @@ import { PlanCard } from "./components/PlanCard";
 import { CompletedRecordCard, InProgressRecordCard } from "./components/RecordCard";
 import "../hikePages.css";
 import "./HikeCalendarPage.css";
+
+/** 오프라인으로 보여 주는 일정을 받은 시각 (예: 11월 19일 오전 7:05) */
+function formatSavedAt(savedAt: string) {
+  return new Date(savedAt).toLocaleString("ko-KR", { month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
 
 /** `?date=YYYY-MM-DD`로 들어오면 그 날짜를, 아니면 오늘을 선택한다. */
 function initialDate() {
@@ -25,6 +30,7 @@ function initialDate() {
 /** HIKE-01 내 등산 캘린더 (`#hikes/calendar`). 지난 날짜를 고르면 REC-01 완료한 등산 · REC-02 진행중 등산 카드를 보여 준다. */
 export function HikeCalendarPage() {
   const schedules = useHikeSchedules();
+  const savedAt = useScheduleSavedAt();
   const [selected, setSelected] = useState(initialDate);
   const [month, setMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
 
@@ -38,6 +44,9 @@ export function HikeCalendarPage() {
     <TopBar title="내 등산" showAction={false} onBack={leaveMyHikes} />
     <main className="hike-page__body hike-calendar-page__body">
       <NicknameCard />
+      {savedAt && <p className="hike-calendar-page__offline" role="status">
+        통신이 끊겨 {formatSavedAt(savedAt)}에 받은 일정을 보여 드려요. 일정 등록·수정은 연결된 뒤에 할 수 있어요.
+      </p>}
       <Calendar className="hike-calendar-page__calendar" month={month} selectedDate={selected}
         scheduledDates={schedules.map(item => item.date)} completedDates={dateStatus.completed}
         inProgressDates={dateStatus.inProgress} onMonthChange={setMonth} onDateSelect={setSelected} />

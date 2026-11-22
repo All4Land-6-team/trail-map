@@ -1,6 +1,7 @@
 package com.all4land.trailmap.domain.hike.controller;
 
 import com.all4land.trailmap.domain.hike.dto.request.HikePositionsRequest;
+import com.all4land.trailmap.domain.hike.dto.request.HikeRecordFinishRequest;
 import com.all4land.trailmap.domain.hike.dto.request.HikeRecordStartRequest;
 import com.all4land.trailmap.domain.hike.dto.response.HikePositionsResponse;
 import com.all4land.trailmap.domain.hike.dto.response.HikeRecordResponse;
@@ -74,9 +75,11 @@ public class HikeRecordController {
     @PostMapping("/{hikeRecordId}/finish")
     public ResponseEntity<SuccessResponse<HikeRecordResponse>> finish(
             @CurrentUserId Long userId,
-            @PathVariable Long hikeRecordId
+            @PathVariable Long hikeRecordId,
+            @RequestBody(required = false) HikeRecordFinishRequest request
     ) {
-        return response(SuccessResponse.ok(hikeRecordService.finish(userId, hikeRecordId)));
+        return response(SuccessResponse.ok(hikeRecordService.finish(
+                userId, hikeRecordId, request == null ? null : request.endedAt())));
     }
 
     private static <T> ResponseEntity<SuccessResponse<T>> response(SuccessResponse<T> body) {
