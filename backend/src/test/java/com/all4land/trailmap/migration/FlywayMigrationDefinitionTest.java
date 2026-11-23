@@ -16,7 +16,7 @@ class FlywayMigrationDefinitionTest {
                 .getResources("classpath*:db/migration/V*__*.sql");
         assertThat(migrations)
                 .extracting(resource -> resource.getFilename().split("__", 2)[0])
-                .containsExactlyInAnyOrder("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18", "V19");
+                .containsExactlyInAnyOrder("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20");
     }
 
     private static final String[] CORE_TABLES = {
@@ -201,5 +201,11 @@ class FlywayMigrationDefinitionTest {
         assertThat(readMigration("db/migration/V19__add_hike_record_last_position_time.sql"))
                 .contains("ALTER TABLE hike_record")
                 .contains("ADD COLUMN last_position_recorded_at TIMESTAMPTZ");
+    }
+
+    @Test
+    void 스무_번째_마이그레이션은_쓰지_않는_시설_제보_테이블을_삭제한다() throws IOException {
+        assertThat(readMigration("db/migration/V20__drop_unused_facility_report.sql"))
+                .contains("DROP TABLE IF EXISTS facility_report");
     }
 }

@@ -216,11 +216,6 @@ class FacilityPostgisIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT source_hash FROM facility WHERE facility_id = ?", String.class, id))
                 .isEqualTo(legacyHash);
         String before = jdbc.queryForObject("SELECT (to_jsonb(f)-'mountain_id')::text FROM facility f WHERE facility_id = ?", String.class, id);
-        long userId = jdbc.queryForObject("INSERT INTO app_user DEFAULT VALUES RETURNING user_id", Long.class);
-        long reportId = jdbc.queryForObject("""
-                INSERT INTO facility_report (facility_id,user_id,report_type,visited_date)
-                VALUES (?,?,'AVAILABLE',CURRENT_DATE) RETURNING facility_report_id
-                """, Long.class, id, userId);
         var inside = document(List.of(assigned(original, mountainId)));
         var changedMembership = importer.importFile(inside);
         assertThat(changedMembership.updated()).isZero();
@@ -234,8 +229,6 @@ class FacilityPostgisIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT mountain_id FROM facility WHERE facility_id = ?", Long.class, id)).isNull();
         assertThat(jdbc.queryForObject("SELECT (to_jsonb(f)-'mountain_id')::text FROM facility f WHERE facility_id = ?", String.class, id))
                 .isEqualTo(before);
-        assertThat(jdbc.queryForObject("SELECT facility_id FROM facility_report WHERE facility_report_id = ?", Long.class, reportId))
-                .isEqualTo(id);
         mvc.perform(get("/v1/facilities/" + id)).andExpect(status().isOk());
     }
 

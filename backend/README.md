@@ -99,6 +99,14 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 
 이동 거리는 경로 길이를 구면 거리(`geography`)로 계산하며, 위치를 한 번도 받지 않았으면 `null`입니다. 등산 종료는 진행 중 기록의 `hikeRecordId`로 `POST /api/v1/hike-records/{hikeRecordId}/finish`를 호출합니다.
 
+### 등산 담기 API
+
+로그인한 계정에 담은 코스를 저장합니다(`saved_course`). 빼면 지우지 않고 `deleted_at`을 남기며, 같은 코스를 두 번 담을 수 없습니다.
+
+- `GET /api/v1/saved-courses`: 내가 담은 코스(`courseId`, `mountainId`, 코스 경로 산 키 `mountainKey`, `savedAt`)를 담은 순서로 조회합니다.
+- `PUT /api/v1/saved-courses/{courseId}`: 코스를 담습니다. 이미 담겨 있으면 그대로 돌려줍니다. 없는 코스는 `SAVED_404_2`입니다.
+- `DELETE /api/v1/saved-courses/{courseId}`: 코스를 뺍니다. 담겨 있지 않아도 성공합니다.
+
 등산 기록이 있는 일정은 수정(`PATCH /api/v1/hike-schedules/{scheduleId}`)·삭제(`DELETE`)할 수 없고, 같은 날짜 대체 등록(`replaceExisting=true`)으로도 지울 수 없습니다. 진행 중·하산 중 기록이면 `HIKE_409_6`, 종료한 기록이면 `HIKE_409_7`입니다. 기록과 일정의 코스·날짜가 어긋나거나 종료한 기록이 캘린더에서 사라지지 않게 하기 위해서입니다.
 
 일정 조회(`GET /api/v1/hike-schedules`, `GET /api/v1/hike-schedules/{scheduleId}`)와 수정 응답에는 그 일정의 등산 기록 요약 `hikeRecord`(`hikeRecordId`, `status`, `startedAt`, `endedAt`, `traveledDistanceMeters`, `actualDurationSeconds`)가 들어갑니다. 아직 등산을 시작하지 않았거나 기록이 삭제됐으면 `null`입니다. 내 등산 캘린더는 이 값으로 완료한 등산(`COMPLETED`)과 끝내지 않은 등산(`IN_PROGRESS`·`DESCENDING`)을 표시하고, 기록 상세는 `hikeRecordId`로 `GET /api/v1/hike-records/{hikeRecordId}`를 호출합니다.
