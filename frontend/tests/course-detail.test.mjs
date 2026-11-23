@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { coordinateAlongRoute, nearestProfileIndex, selectCourseSpots, SPOT_CATEGORIES, toggleProfileMetric } from '../src/utils/courseProfile.ts';
-import { courseDetailPath, courseFoodDetailPath, readCourseDetailView } from '../src/routes/courseDetailRoutes.ts';
+import { courseDetailPath, courseFoodDetailPath, courseSpotDetailPath, readCourseDetailView } from '../src/routes/courseDetailRoutes.ts';
 import { coursePaths, readCourseRoute } from '../src/routes/courseRoutes.ts';
 
 test('그래프 선택은 가장 가까운 샘플과 양 끝 경계를 사용한다', () => {
@@ -81,4 +81,19 @@ test('목록에서 선택한 음식점은 코스 상세 음식점 탭과 장소 
     tab: 'spots', category: 'food', spotId: foodPlace.id, foodPlace,
   });
   assert.equal(new URLSearchParams(path.split('?')[1]).get('returnTo'), returnTo);
+});
+test('목록 지도에서 선택한 스팟은 코스 상세 스팟 탭의 전체 필터와 선택 스팟을 주소에 보존한다', () => {
+  const request = { mountainId: 'bukhansan', courseId: 'db-2' };
+  const returnTo = coursePaths.list(request.mountainId, request.courseId);
+  for (const spot of [
+    { id: 'facility-12', kind: 'restroom' },
+    { id: 'facility-13', kind: 'water' },
+    { id: 'USER_SPOT:7', kind: 'shelter' },
+    { id: 'USER_SPOT:8', kind: 'photo' },
+  ]) {
+    const path = courseSpotDetailPath(request, spot, returnTo);
+    assert.deepEqual(readCourseDetailView('#' + path), { tab: 'spots', category: 'all', spotId: spot.id });
+    assert.equal(new URLSearchParams(path.split('?')[1]).get('returnTo'), returnTo);
+    assert.ok(path.startsWith(coursePaths.detail(request)));
+  }
 });

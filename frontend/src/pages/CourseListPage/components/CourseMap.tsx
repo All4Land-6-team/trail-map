@@ -14,9 +14,12 @@ const FILTERS = [
 type FacilityFilter = typeof FILTERS[number][0];
 const EMPTY: readonly CourseSpot[] = [];
 
-type CourseMapProps = CourseRouteMapProps & { onOsmFoodOpen?: (poi: OsmFoodPoi) => void };
+type CourseMapProps = CourseRouteMapProps & {
+  onOsmFoodOpen?: (poi: OsmFoodPoi) => void;
+  onSpotOpen?: (spot: CourseSpot) => void;
+};
 
-export function CourseMap({ onOsmFoodOpen, ...props }: CourseMapProps) {
+export function CourseMap({ onOsmFoodOpen, onSpotOpen, ...props }: CourseMapProps) {
   const [visible, setVisible] = useState(true);
   const [filter, setFilter] = useState<FacilityFilter>("all");
   const [osmFoodSelection, setOsmFoodSelection] = useState<{ courseId: string; poi: OsmFoodPoi } | null>(null);
@@ -40,7 +43,9 @@ export function CourseMap({ onOsmFoodOpen, ...props }: CourseMapProps) {
         onOsmFoodOpen?.(poi);
       }} onSpotSelect={id => {
       const spot = spots.find(item => item.id === id);
-      if (spot) props.onNotify(spot.name);
+      if (!spot) return;
+      if (onSpotOpen) onSpotOpen(spot);
+      else props.onNotify(spot.name);
     }} />
     {visible && serverId !== undefined && <div className="course-facility-controls">
       <div className="course-facility-filters" role="group" aria-label="스팟 및 주변 장소 종류">
