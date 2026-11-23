@@ -132,7 +132,9 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   }
   function save() {
     if (!data) return;
-    setCourseSaved(courseId, !saved, data.course);
+    // 화면은 바로 바뀌고 계정에 저장한다. 저장하지 못하면 되돌리고 알린다.
+    setCourseSaved(courseId, !saved, data.course)
+      .catch(() => notify(saved ? "장바구니에서 빼지 못했어요. 다시 시도해 주세요." : "장바구니에 담지 못했어요. 다시 시도해 주세요."));
     notify(saved ? "장바구니에서 뺐어요." : "장바구니에 담았어요.");
   }
   function schedule() {

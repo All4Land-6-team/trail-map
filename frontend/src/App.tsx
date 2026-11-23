@@ -18,6 +18,7 @@ import { HikeTodayPage } from './pages/HikeTodayPage/HikeTodayPage'
 import { AuthPage } from './pages/AuthPage/AuthPage'
 import { fetchCurrentUser } from './api/auth'
 import { updateAuthUser, useAuthSession } from './store/authStore'
+import { clearSavedCourses, syncSavedCoursesFromServer } from './store/courseSelectionStore'
 
 const CartPage = lazy(() => import('./pages/CartPage/CartPage').then(({ CartPage: Page }) => ({ default: Page })))
 const CommunityPage = lazy(() => import('./pages/CommunityPage/CommunityPage').then(({ CommunityPage: Page }) => ({ default: Page })))
@@ -132,6 +133,13 @@ function App() {
       .finally(() => { if (!cancelled) setVerifiedAccessToken(accessToken) })
     return () => { cancelled = true }
   }, [accessToken])
+
+  // 등산 담기: 로그인 확인이 끝나면 계정에 담은 코스를 불러오고, 로그아웃하면 비운다.
+  const verified = Boolean(accessToken) && verifiedAccessToken === accessToken
+  useEffect(() => {
+    if (!accessToken) { clearSavedCourses(); return }
+    if (verified) void syncSavedCoursesFromServer().catch(() => undefined)
+  }, [accessToken, verified])
 
   if (HikeStatusPreviewPage && new URLSearchParams(window.location.search).get('preview') === 'hike-status') {
     return <Suspense fallback={null}><HikeStatusPreviewPage /></Suspense>
