@@ -64,6 +64,7 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
   const [osmFoodMarkerPoints, setOsmFoodMarkerPoints] = useState<readonly { poi: OsmFoodPoi; x: number; y: number }[]>([]);
   const [locating, setLocating] = useState(false);
   const alive = useRef(true);
+  const fittedCourse = useRef<{ map: MapLibreMap; courseId: string } | null>(null);
   const terrainEnabled = supportsTerrain(mountainId ?? selected?.mountainId ?? courses[0]?.mountainId);
   const onReady = useCallback((instance: MapLibreMap | null) => setMap(instance), []);
   const enhancedRoute = useEnhancedCourseRoute(map, enhanced, selected, dimension, mapBottomInset);
@@ -112,15 +113,23 @@ export function CourseRouteMap({ courses, selected, enhanced = false, onPreviewS
       const visibleHeight = Math.max(1, height - inset);
       const padding = { top: Math.min(110, visibleHeight * 0.35), bottom: inset + Math.min(36, visibleHeight * 0.15), left: 35, right: 82 };
       const focusedSpot = spots?.find(spot => spot.id === focusSpotId);
+      const routeBounds = selected?.routeCoordinates.length ? new LngLatBounds() : null;
+      if (routeBounds) {
+        selected!.routeCoordinates.forEach(point => routeBounds.extend(point));
+        spots?.forEach(spot => routeBounds.extend(spot.coordinate));
+      }
       if (focusedSpot) {
+        // 스팟이 선택된 채로 진입하면 경로 맞춤을 거치지 않으므로, 경로 전체가 보이는 배율을 먼저 맞춘다.
+        const fitZoom = routeBounds && (fittedCourse.current?.map !== map || fittedCourse.current.courseId !== selected!.id)
+          ? map.cameraForBounds(routeBounds, { padding, maxZoom: 15 })?.zoom : undefined;
+        if (fitZoom !== undefined) fittedCourse.current = { map, courseId: selected!.id };
+        const baseZoom = fitZoom ?? map.getZoom();
         map.easeTo({ center: focusedSpot.coordinate,
-          ...(isFoodSpot(focusedSpot) ? { zoom: spotFocusZoom(map.getZoom()) } : {}), padding,
-          offset: [0, 20], duration: 200 });
-      } else if (selected?.routeCoordinates.length) {
-        const bounds = new LngLatBounds();
-        selected.routeCoordinates.forEach(point => bounds.extend(point));
-        spots?.forEach(spot => bounds.extend(spot.coordinate));
-        map.fitBounds(bounds, { padding, maxZoom: 15, duration: 0 });
+          zoom: isFoodSpot(focusedSpot) ? spotFocusZoom(baseZoom) : baseZoom, padding,
+          offset: [0, 20], duration: fitZoom !== undefined ? 0 : 200 });
+      } else if (routeBounds) {
+        fittedCourse.current = { map, courseId: selected!.id };
+        map.fitBounds(routeBounds, { padding, maxZoom: 15, duration: 0 });
       } else { map.jumpTo({ center, zoom: 12 }); }
     }
     map.on("load", updateRoutes);
