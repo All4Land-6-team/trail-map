@@ -1,5 +1,6 @@
 :root {
   --app-frame-gap: 0px;
+  --app-frame-max-height: 844px;
   --app-frame-radius: 0px;
   --app-frame-shadow: none;
   --app-viewport-height: calc(100dvh - var(--app-frame-gap) * 2);
@@ -20,10 +21,10 @@
   box-shadow: var(--app-frame-shadow);
 }
 
-/* Short windows and installed PWAs retain the full available height. */
+/* Short windows and installed PWAs retain the full available height. Tall desktop frames stop at the design height. */
 @media (min-width: 600px) and (min-height: 720px) and (display-mode: browser) {
   :root {
-    --app-frame-gap: 40px;
+    --app-frame-gap: max(40px, calc((100dvh - var(--app-frame-max-height)) / 2));
     --app-frame-radius: 24px;
     --app-frame-shadow: 0 8px 32px rgb(23 61 50 / 10%), 0 0 0 1px rgb(23 61 50 / 8%);
   }

@@ -5,12 +5,13 @@ import test from 'node:test';
 const read = path => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
 const frame = read('assets/css/app-frame.css');
 
-test('모바일 기본은 전체 높이, 큰 브라우저만 40px 상하 여백을 사용한다', () => {
+test('모바일은 전체 높이, 큰 브라우저는 최소 40px 여백과 최대 844px 높이를 사용한다', () => {
   assert.match(read('main.tsx'), /import '\.\/assets\/css\/app-frame\.css'/);
   assert.match(frame, /--app-frame-gap: 0px/);
+  assert.match(frame, /--app-frame-max-height: 844px/);
   assert.match(frame, /--app-viewport-height: calc\(100dvh - var\(--app-frame-gap\) \* 2\)/);
   assert.match(frame, /@media \(min-width: 600px\) and \(min-height: 720px\) and \(display-mode: browser\)/);
-  assert.match(frame, /--app-frame-gap: 40px/);
+  assert.match(frame, /--app-frame-gap: max\(40px, calc\(\(100dvh - var\(--app-frame-max-height\)\) \/ 2\)\)/);
   assert.match(frame, /min-height: min\(640px, var\(--app-viewport-height\)\)/);
   for (const page of ['home-page', 'course-page', 'course-detail-page', 'community-page', 'cart-screen', 'hike-page', 'hike-screen']) {
     assert.ok(frame.includes(`.${page}`));
