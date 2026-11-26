@@ -5,7 +5,7 @@ import { Chip } from '../../components/common/Chip'
 import { BottomNavigation, TopBar, type BottomDestination } from '../../components/layout'
 import { BottomSheet, ConfirmDialog, ModalLayer } from '../../components/overlay'
 import { EmptyState, Toast } from '../../components/feedback'
-import { CommunityApiError, communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityEligibilityDto, type CommunityMapSpotDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
+import { CommunityApiError, communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityEligibilityDto, type CommunityMapSpotDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityPhotoPreviewDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
 import { mountainApi, type MountainDto } from '../../api/mountainApi'
 import type { CommunityReview, CommunityCourseReviewTarget, CommunitySpotTargetType, Coordinate, ReviewDraft, ReviewKind, SpotType } from '../../types/community'
 import type { CompletedHike } from '../../store/hikeSessionStore'
@@ -123,7 +123,11 @@ function toReview(review: CommunityReviewDto): CommunityReview {
     author: review.author, createdAt: review.createdAt, environment: review.environment ?? undefined }
 }
 
-function toGalleryPhoto(photo: CommunityPhotoDto): CommunityGalleryPhoto {
+function toGalleryPhoto(photo: CommunityPhotoPreviewDto, kind: ReviewKind): CommunityGalleryPhoto {
+  return { id: `photo:${photo.photoId}`, src: photo.url, source: kind === 'spot' ? 'spot' : 'review' }
+}
+
+function toDetailedGalleryPhoto(photo: CommunityPhotoDto): CommunityGalleryPhoto {
   return { id: `photo:${photo.photoId}`, src: photo.url, author: photo.author,
     exampleText: photo.reviewContent ?? undefined, exampleRating: photo.reviewRating ?? undefined,
     exampleDate: new Date(photo.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }),
@@ -132,12 +136,12 @@ function toGalleryPhoto(photo: CommunityPhotoDto): CommunityGalleryPhoto {
 
 function fetchPhotos(kind: ReviewKind, mountainId: string, spotTargetType: CommunitySpotTargetType | undefined, spotTargetId: string | undefined, courseId: string, signal: AbortSignal, offset: number) {
   if (kind === 'mountain') return communityApi.mountainPhotos(mountainId, signal, 11, offset)
-  if (kind === 'course') return communityApi.coursePhotos(courseId, signal, 11, offset)
+  if (kind === 'course') return communityApi.coursePhotos(mountainId, courseId, signal, 11, offset)
   if (!spotTargetType || !spotTargetId) throw new Error('스팟 정보를 찾지 못했습니다.')
   return communityApi.spotPhotos(mountainId, spotTargetType, spotTargetId, signal, 11, offset)
 }
 
-function toVote(spot: CommunityMapSpotDto): SpotVote {
+function toVote(spot: Pick<CommunitySpotDto, 'yesVotes' | 'noVotes' | 'viewerVote'>): SpotVote {
   return { yes: spot.yesVotes, no: spot.noVotes, viewer: normalizeVote(spot.viewerVote) }
 }
 
@@ -169,9 +173,9 @@ function ReviewQuotes({ reviews, scrollable = false, limit, showRating = false, 
       {thumbnail(photos?.filter(photo => photo.review?.id === review.id) ?? [], '내 후기')}
       <div className="community-quote__text"><div className="community-quote__record-row">
         <time dateTime={review.createdAt}>{new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' }).format(new Date(review.createdAt))}</time>
-        <ReviewEnvironmentBadge environment={review.environment} compact /></div>
+        <span className="community-quote__weather"><ReviewEnvironmentBadge environment={review.environment} compact /></span></div>
         <div className="community-quote__author-row"><span className="community-quote__author">{review.author ?? '나'}</span>
-          {showRating && review.rating != null && <ReviewRating value={review.rating} />}</div>
+          {showRating && review.rating != null && <span className="community-quote__rating"><ReviewRating value={review.rating} /></span>}</div>
         <p>{review.content}</p>
         </div>
     </div></div>)}
@@ -198,6 +202,15 @@ function CommunityPhotoSkeleton() {
   return <div className="community-photo-skeleton" role="status" aria-label="사진을 불러오는 중">
     <span className="community-photo-skeleton__heading" aria-hidden="true" />
     <div className="community-photo-skeleton__strip" aria-hidden="true"><span /><span /></div>
+  </div>
+}
+
+function CommunityReviewSkeleton({ count = 3 }: { count?: number }) {
+  return <div className="community-review-skeleton" role="status" aria-label="후기 목록을 불러오는 중">
+    {Array.from({ length: count }, (_, index) => <div key={index} className="community-review-skeleton__card" aria-hidden="true">
+      <span className="community-review-skeleton__photo" />
+      <span className="community-review-skeleton__copy"><span /><span /><span /></span>
+    </div>)}
   </div>
 }
 
@@ -249,6 +262,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const reviewListEnd = useRef<HTMLDivElement>(null)
   const [photoPage, setPhotoPage] = useState<{ key: string; items: CommunityGalleryPhoto[]; hasNext: boolean; loading: boolean; error: boolean }>({ key: '', items: [], hasNext: false, loading: false, error: false })
   const [photoPageRetry, setPhotoPageRetry] = useState(0)
+  const [photoDetail, setPhotoDetail] = useState<{ id: string; photo: CommunityGalleryPhoto | null; error: boolean } | null>(null)
+  const [delayedPhotoDetailId, setDelayedPhotoDetailId] = useState('')
+  const [photoDetailRetry, setPhotoDetailRetry] = useState(0)
   const [spotDetailRetry, setSpotDetailRetry] = useState(0)
   const [spotDetailFailure, setSpotDetailFailure] = useState('')
   const photoPageBusy = useRef(false)
@@ -334,16 +350,16 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     setMountainSummary(null)
     void Promise.all([
       communityApi.courses(mountainId, controller.signal),
-      communityApi.mountainPreview(mountainId, controller.signal),
+      communityApi.mountainDetail(mountainId, controller.signal),
       initialScreen === 'review' ? communityApi.mountainEligibility(mountainId, controller.signal) : Promise.resolve(null),
-    ]).then(([courseResult, mountainPreview, initialReviewEligibility]) => {
+    ]).then(([courseResult, mountainDetail, initialReviewEligibility]) => {
       const loadedCourses = courseResult.map(toCourse)
       if (controller.signal.aborted) return
       setCourses(loadedCourses)
-      setMountainSummary(mountainPreview.summary)
-      setReviews(mountainPreview.reviews.map(toReview))
-      setPhotoPage({ key: `mountain:${mountainId}`, items: mountainPreview.photos.slice(0, 10).map(toGalleryPhoto),
-        hasNext: mountainPreview.photos.length > 10, loading: false, error: false })
+      setMountainSummary(mountainDetail.summary)
+      setReviews(mountainDetail.reviews.map(toReview))
+      setPhotoPage({ key: `mountain:${mountainId}`, items: mountainDetail.photos.slice(0, 10).map(photo => toGalleryPhoto(photo, 'mountain')),
+        hasNext: mountainDetail.photos.length > 10, loading: false, error: false })
       const activeCourse = activeHike?.hikeRecordId && spotRegistrationMode === 'active'
         ? findCommunityCourse(loadedCourses, activeHike.courseId)
         : undefined
@@ -401,7 +417,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     const targetId = kind === 'mountain' ? mountainId : kind === 'spot' ? detailSpotId : detailCourseId
     const request = kind === 'mountain' ? communityApi.mountainReviews(mountainId, controller.signal, 21)
       : kind === 'spot' ? communityApi.spotReviews(mountainId, listSpot!.targetType, listSpot!.targetId, controller.signal, 21)
-        : communityApi.courseReviews(detailCourseId, controller.signal, 21)
+        : communityApi.courseReviews(mountainId, detailCourseId, controller.signal, 21)
     reviewListBusy.current = true
     setReviewList({ key: reviewListKey, items: [], hasNext: false, loading: true, error: false })
     void request.then(result => {
@@ -426,7 +442,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       const offset = reviewList.items.length
       const request = kind === 'mountain' ? communityApi.mountainReviews(mountainId, controller.signal, 21, offset)
         : kind === 'spot' ? communityApi.spotReviews(mountainId, listSpot!.targetType, listSpot!.targetId, controller.signal, 21, offset)
-          : communityApi.courseReviews(detailCourseId, controller.signal, 21, offset)
+          : communityApi.courseReviews(mountainId, detailCourseId, controller.signal, 21, offset)
       setReviewList(current => ({ ...current, loading: true }))
       void request.then(result => {
         if (controller.signal.aborted) return
@@ -463,7 +479,6 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     if (cached && Date.now() - cached.fetchedAt < MAP_SPOT_CACHE_MS && coversMapBounds(cached.bounds, mapBounds)) {
       if ((screen === 'map' || screen === 'courseDetail') && shownMapSpotKey.current !== cacheKey) {
         setMapSpots(cached.spots.map(toMapSpot))
-        setVotes(current => ({ ...Object.fromEntries(cached.spots.map(spot => [`${spot.targetType}:${spot.targetId}`, toVote(spot)])), ...current }))
         shownMapSpotKey.current = cacheKey
       }
       return
@@ -473,7 +488,10 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       shownMapSpotKey.current = cacheKey
     }
     const queryBounds = bufferMapBounds(mapBounds)
-    void communityApi.spots(mountainId, queryBounds, controller.signal, type, courseId).then(result => {
+    const spotRequest = courseId
+      ? communityApi.courseSpots(courseId, controller.signal, type)
+      : communityApi.spots(mountainId, queryBounds, controller.signal, type)
+    void spotRequest.then(result => {
       if (controller.signal.aborted) return
       mapSpotCache.current.set(cacheKey, { bounds: queryBounds, spots: result, fetchedAt: Date.now() })
       const loaded = result.map(toMapSpot)
@@ -483,7 +501,6 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         loaded.forEach(spot => { if (!merged.has(spot.id)) merged.set(spot.id, spot) })
         return [...merged.values()]
       })
-      setVotes(current => ({ ...current, ...Object.fromEntries(result.map(spot => [`${spot.targetType}:${spot.targetId}`, toVote(spot)])) }))
     }).catch(error => {
       if (!controller.signal.aborted) notify(error instanceof Error ? error.message : '주변 스팟을 불러오지 못했습니다.')
     })
@@ -576,6 +593,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     if (!match) return
     const controller = new AbortController()
     setSpotDetailFailure('')
+    setPhotoPage({ key: `spot:${mountainId}:${detailSpotId}`, items: [], hasNext: false, loading: true, error: false })
     void communityApi.spotDetail(mountainId, match[1] as CommunitySpotDto['targetType'], match[2], controller.signal).then(result => {
       if (controller.signal.aborted) return
       const spot = toSpot(result)
@@ -594,7 +612,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       ])
       setPhotoPage({
         key: `spot:${mountainId}:${spot.id}`,
-        items: result.photos.slice(0, 10).map(toGalleryPhoto),
+        items: result.photos.slice(0, 10).map(photo => toGalleryPhoto(photo, 'spot')),
         hasNext: result.photos.length > 10,
         loading: false,
         error: false,
@@ -691,14 +709,31 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const activePhotoKey = activePhotoKind === 'mountain' ? `mountain:${mountainId}`
     : activePhotoKind === 'spot' && selectedSpot ? `spot:${mountainId}:${selectedSpot.id}`
       : activePhotoKind === 'course' && selectedCourse.id ? `course:${selectedCourse.id}` : ''
+  const spotPhotosLoading = screen === 'spotDetail' && !!selectedSpot
+    && (photoPage.key !== activePhotoKey || photoPage.loading)
   useEffect(() => {
-    if (!activePhotoKind || !activePhotoKey || !mountainId) return
+    if (screen !== 'photoAlbum' || !activePhotoKind || !activePhotoKey || !mountainId) return
+    const controller = new AbortController()
+    photoPageBusy.current = true
+    setPhotoPage({ key: activePhotoKey, items: [], hasNext: false, loading: true, error: false })
+    void fetchPhotos(activePhotoKind, mountainId, selectedSpot?.targetType, selectedSpot?.targetId,
+      selectedCourse.id, controller.signal, 0).then(result => {
+      if (!controller.signal.aborted) setPhotoPage({ key: activePhotoKey,
+        items: result.slice(0, 10).map(photo => toGalleryPhoto(photo, activePhotoKind)),
+        hasNext: result.length > 10, loading: false, error: false })
+    }).catch(error => {
+      if (!controller.signal.aborted) { setPhotoPage({ key: activePhotoKey, items: [], hasNext: false, loading: false, error: true }); notify(error instanceof Error ? error.message : '사진을 불러오지 못했습니다.') }
+    }).finally(() => { if (!controller.signal.aborted) photoPageBusy.current = false })
+    return () => { controller.abort(); photoPageBusy.current = false }
+  }, [activePhotoKey, activePhotoKind, mountainId, notify, photoPageRetry, screen, selectedCourse.id, selectedSpot?.targetId, selectedSpot?.targetType])
+  useEffect(() => {
+    if (!activePhotoKind || !activePhotoKey || !mountainId || screen === 'photoAlbum' || screen === 'photoReview') return
     if (activePhotoKind === 'spot') return
     const controller = new AbortController()
     photoPageBusy.current = true
     setPhotoPage({ key: activePhotoKey, items: [], hasNext: false, loading: true, error: false })
-    const request = activePhotoKind === 'mountain' ? communityApi.mountainPreview(mountainId, controller.signal)
-      : communityApi.coursePreview(selectedCourse.id, controller.signal)
+    const request = activePhotoKind === 'mountain' ? communityApi.mountainDetail(mountainId, controller.signal)
+      : communityApi.courseDetail(mountainId, selectedCourse.id, controller.signal)
     void request.then(result => {
       if (controller.signal.aborted) return
       const targetId = activePhotoKind === 'mountain' ? mountainId : selectedCourse.id
@@ -707,13 +742,13 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         ...result.reviews.map(review => ({ ...toReview(review), targetId })),
       ])
       if ('summary' in result) setMountainSummary(result.summary as CommunityMountainReviewSummaryDto)
-      setPhotoPage({ key: activePhotoKey, items: result.photos.slice(0, 10).map(toGalleryPhoto),
+      setPhotoPage({ key: activePhotoKey, items: result.photos.slice(0, 10).map(photo => toGalleryPhoto(photo, activePhotoKind)),
         hasNext: result.photos.length > 10, loading: false, error: false })
     }).catch(error => {
       if (!controller.signal.aborted) { setPhotoPage({ key: activePhotoKey, items: [], hasNext: false, loading: false, error: true }); notify(error instanceof Error ? error.message : '사진과 후기를 불러오지 못했습니다.') }
     }).finally(() => { if (!controller.signal.aborted) photoPageBusy.current = false })
     return () => controller.abort()
-  }, [activePhotoKey, activePhotoKind, mountainId, notify, photoPageRetry, selectedCourse.id])
+  }, [activePhotoKey, activePhotoKind, mountainId, notify, photoPageRetry, screen, selectedCourse.id])
   const currentReviews = (kind: ReviewKind, targetId: string) => reviews.filter(review => review.kind === kind && review.targetId === targetId)
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
   const mountainReviews = currentReviews('mountain', mountainId)
@@ -727,6 +762,10 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const selectedSpotReviews = selectedSpot ? currentReviews('spot', selectedSpot.id) : []
   const spotGalleryPhotos = selectedSpot && photoPage.key === `spot:${mountainId}:${selectedSpot.id}` ? photoPage.items : []
   const courseReviews = currentReviews('course', selectedCourse.id)
+  const courseRating = selectedCourse.averageRating ?? (() => {
+    const ratings = courseReviews.flatMap(review => review.rating == null ? [] : [review.rating])
+    return ratings.length > 0 ? ratings.reduce((total, rating) => total + rating, 0) / ratings.length : undefined
+  })()
   const mountainGalleryPhotos = photoPage.key === `mountain:${mountainId}` ? photoPage.items : []
   const courseGalleryPhotos = photoPage.key === `course:${selectedCourse.id}` ? photoPage.items : []
   const fullReviews = reviewList.key === reviewListKey ? reviewList.items : []
@@ -743,7 +782,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     if (next) setLightboxPhotoId(next.id)
   }
   const fullReviewStatus = reviewList.key === reviewListKey && <>
-    {(reviewList.loading || reviewList.hasNext) && <div ref={reviewListEnd} role="status">{reviewList.loading ? '후기를 불러오는 중…' : ''}</div>}
+    {(reviewList.loading || reviewList.hasNext) && <div ref={reviewListEnd}>{reviewList.loading && <CommunityReviewSkeleton count={fullReviews.length === 0 ? 3 : 1} />}</div>}
     {reviewList.error && <button type="button" className="community-inline-link" onClick={() => {
       if (fullReviews.length === 0) setReviewListRetry(current => current + 1)
       else setReviewList(current => ({ ...current, error: false }))
@@ -753,9 +792,25 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const galleryTitle = galleryKind === 'mountain' ? mountain.name : galleryKind === 'course' ? selectedCourse.name : selectedSpot?.name ?? '스팟'
   const selectedGalleryIndex = galleryPhotos.findIndex(photo => photo.id === galleryPhotoId)
   const selectedGalleryPhoto = galleryPhotos[selectedGalleryIndex]
-  const renderPhotoStatus = (showInitialSkeleton = true) => photoPage.key === activePhotoKey && <>
-    {showInitialSkeleton && photoPage.loading && photoPage.items.length === 0 && <CommunityPhotoSkeleton />}
-    {photoPage.error && <button type="button" className="community-inline-link" onClick={() => {
+  useEffect(() => {
+    if (screen !== 'photoReview' || !galleryPhotoId) return
+    const photoId = Number(galleryPhotoId.replace(/^photo:/, ''))
+    if (!Number.isSafeInteger(photoId) || photoId <= 0) return
+    const controller = new AbortController()
+    setDelayedPhotoDetailId('')
+    const skeletonTimer = window.setTimeout(() => setDelayedPhotoDetailId(galleryPhotoId), 200)
+    setPhotoDetail({ id: galleryPhotoId, photo: null, error: false })
+    void communityApi.photoDetail(photoId, controller.signal).then(photo => {
+      if (!controller.signal.aborted) setPhotoDetail({ id: galleryPhotoId, photo: toDetailedGalleryPhoto(photo), error: false })
+    }).catch(error => {
+      if (!controller.signal.aborted) { setPhotoDetail({ id: galleryPhotoId, photo: null, error: true }); notify(error instanceof Error ? error.message : '사진 후기를 불러오지 못했습니다.') }
+    }).finally(() => window.clearTimeout(skeletonTimer))
+    return () => { controller.abort(); window.clearTimeout(skeletonTimer) }
+  }, [galleryPhotoId, notify, photoDetailRetry, screen])
+  const renderPhotoStatus = (showInitialSkeleton = true) => <>
+    {showInitialSkeleton && (spotPhotosLoading || photoPage.loading && photoPage.items.length === 0
+      && (photoPage.key === activePhotoKey || screen === 'photoAlbum')) && <CommunityPhotoSkeleton />}
+    {photoPage.key === activePhotoKey && photoPage.error && <button type="button" className="community-inline-link" onClick={() => {
       if (photoPage.items.length === 0) setPhotoPageRetry(current => current + 1)
       else setPhotoPage(current => ({ ...current, error: false }))
     }}>사진 다시 불러오기</button>}
@@ -772,14 +827,15 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       photoPageBusy.current = true
       setPhotoPage(current => ({ ...current, loading: true }))
       void fetchPhotos(activePhotoKind, mountainId, selectedSpot?.targetType, selectedSpot?.targetId, selectedCourse.id, controller.signal, photoPage.items.length).then(result => {
-        if (!controller.signal.aborted) setPhotoPage(current => ({ ...current, items: [...current.items, ...result.slice(0, 10).map(toGalleryPhoto)],
+        if (!controller.signal.aborted) setPhotoPage(current => ({ ...current, items: [...current.items, ...result.slice(0, 10).map(photo => toGalleryPhoto(photo, activePhotoKind))],
           hasNext: result.length > 10, loading: false, error: false }))
       }).catch(error => {
         if (!controller.signal.aborted) { setPhotoPage(current => ({ ...current, loading: false, error: true })); notify(error instanceof Error ? error.message : '사진을 더 불러오지 못했습니다.') }
       }).finally(() => { if (!controller.signal.aborted) photoPageBusy.current = false })
     }
     if (nearEnd) { load(); return () => controller.abort() }
-    const root = end === photoStripEnd.current ? end?.parentElement : null
+    const root = screen === 'photoAlbum' ? end?.closest<HTMLElement>('.community-gallery-album')
+      : end === photoStripEnd.current ? end?.parentElement : null
     const observer = new IntersectionObserver(entries => { if (entries[0]?.isIntersecting) load() }, { root, rootMargin: '160px' })
     observer.observe(end!)
     return () => { observer.disconnect(); controller.abort() }
@@ -838,7 +894,12 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     if (content) content.scrollTop = 0
   }
   const openGalleryPhoto = (kind: ReviewKind, id: string) => { setGalleryKind(kind); setGalleryPhotoId(id); move('photoReview') }
-  const openGallery = (kind: ReviewKind) => { setGalleryKind(kind); move('photoAlbum') }
+  const openGallery = (kind: ReviewKind) => {
+    setGalleryKind(kind)
+    setPhotoPage({ key: '', items: [], hasNext: false, loading: true, error: false })
+    photoPageBusy.current = false
+    move('photoAlbum')
+  }
   const focusSpot = (id: string) => {
     const spot = spots.find(item => item.id === id)
     if (!spot) return
@@ -1091,14 +1152,20 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       {mountainPhotoTotal > 0 && <div className="community-detail-photos">{mountainGalleryPhotos.length > 0 && <CommunityPhotoStrip kindLabel="산" photos={mountainGalleryPhotos}
         totalCount={mountainPhotoTotal} endRef={photoStripEnd} onViewAll={() => openGallery('mountain')} onOpen={id => openGalleryPhoto('mountain', id)} />}{renderPhotoStatus()}</div>}
       <div className="community-review-heading"><strong>방문자 후기</strong></div>
-      <ReviewCarousel type="mountain" reviews={mountainReviews}
+      <ReviewCarousel type="mountain" reviews={mountainReviews} loading={communityLoading}
         onReviewClick={() => move('mountainReviewList')} onViewAll={() => move('mountainReviewList')} />
     </>
   const mountainHeaderScore = mountainReviewTotal > 0 && <span className="community-detail-score">
-    <span className="community-detail-score__summary"><span>★ {mountainRating?.toFixed(1) ?? '0.0'}</span><small>후기 {mountainReviewTotal}</small></span>
+    <span>★ {mountainRating?.toFixed(1) ?? '0.0'}</span><small>후기 {mountainReviewTotal}</small>
   </span>
   const courseHeaderScore = <span className="community-detail-score community-course-detail-score">
-    <span>{selectedCourse.averageRating !== undefined ? `★ ${selectedCourse.averageRating.toFixed(1)}` : '평점 없음'}</span>
+    <span>{courseRating !== undefined ? `★ ${courseRating.toFixed(1)}` : '평점 없음'}</span>
+    <span className="community-course-detail-score__separator" aria-hidden="true">·</span>
+    <span className="community-course-detail-score__distance">{selectedCourse.distanceKm} km</span>
+    <small>후기 {Math.max(selectedCourse.baselineReviews, courseReviews.length)}</small>
+  </span>
+  const spotHeaderScore = selectedSpot && <span className="community-detail-score community-spot-detail-score">
+    <small>후기 {Math.max(selectedSpot.baselineReviews, selectedSpotReviews.length)}</small>
   </span>
   return <main ref={rootRef} className="community-page" aria-label={title}>
     <TopBar title={title} showLeading={screen !== 'mountainSelect' || Boolean(onExit)} showAction={false} onBack={back} className="community-page__topbar" />
@@ -1208,7 +1275,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
               ? <img className="community-preview-row__photo" src={spot.photos[0] ?? currentReviews('spot', spot.id).flatMap(review => review.photos)[0]} alt="" loading="lazy" />
               : <span className="community-preview-row__photo-placeholder" aria-hidden="true"><Icon name="Photo" size={24} /></span>}
             <span className="community-preview-row__text"><strong>{spot.name}</strong>
-              <small>사진 {Math.max(spot.baselinePhotos, spot.photos.length + currentReviews('spot', spot.id).flatMap(review => review.photos).length)}장 · 후기 {Math.max(spot.baselineReviews, currentReviews('spot', spot.id).length)}</small></span><Icon name="ChevronRight" size={18} /></button>
+              <small>후기 {Math.max(spot.baselineReviews, currentReviews('spot', spot.id).length)}</small></span><Icon name="ChevronRight" size={18} /></button>
           </div>)}
           {mapCategory === 'spot' && <div ref={spotListEnd} role="status">{spotListLoading ? '스팟을 불러오는 중…' : ''}</div>}
           {spotListError && <button type="button" className="community-inline-link" onClick={() => {
@@ -1246,31 +1313,29 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         style={sheetStyle}
         handleProps={handleProps} bodyHidden={hideSheetBody}
         title={screen === 'mountainDetail' ? mountain.name : screen === 'spotDetail' ? selectedSpot?.name ?? '스팟' : selectedCourse.name}
-        headerAction={screen === 'mountainDetail' ? mountainHeaderScore : screen === 'courseDetail' ? courseHeaderScore : undefined}
+        headerAction={screen === 'mountainDetail' ? mountainHeaderScore : screen === 'spotDetail' ? spotHeaderScore : screen === 'courseDetail' ? courseHeaderScore : undefined}
         content={screen === 'mountainDetail' ? mountainReviewContent : screen === 'spotDetail' ? spotDetailFailure
           ? <div role="alert">{spotDetailFailure}<Button onClick={() => setSpotDetailRetry(value => value + 1)}>다시 조회</Button></div>
           : !selectedSpot ? <p role="status">스팟 상세를 불러오는 중이에요.</p> : (isSpotHidden(votes[selectedSpot.id]) ?
           <><EmptyState showIcon={false} title="이 스팟은 현재 숨겨져 있어요." description="부정 평가가 기준에 도달해 지도와 목록에 표시되지 않습니다. 내 평가를 취소하거나 변경하면 다시 표시될 수 있어요." />
             {votes[selectedSpot.id]?.viewer && <section className="community-vote"><h3>내 평가 변경</h3><div><button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'yes'} onClick={() => castVote('yes')}>맞는 정보예요 <span>{votes[selectedSpot.id]?.yes ?? 0}</span></button><button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'no'} onClick={() => castVote('no')}>맞지 않아요 <span>{votes[selectedSpot.id]?.no ?? 0}</span></button></div></section>}</> : <>
-            <p className="community-detail-meta">사진 {Math.max(selectedSpot.baselinePhotos, spotGalleryPhotos.length)}장 · 후기 {Math.max(selectedSpot.baselineReviews, selectedSpotReviews.length)}</p>
             <div className="community-detail-photos">{spotGalleryPhotos.length > 0 && <CommunityPhotoStrip kindLabel="스팟" photos={spotGalleryPhotos}
               totalCount={selectedSpot.baselinePhotos} endRef={photoStripEnd} onViewAll={() => openGallery('spot')} onOpen={id => openGalleryPhoto('spot', id)} />}{renderPhotoStatus()}
-              {spotGalleryPhotos.length === 0 && !photoPage.loading && !photoPage.error && <p className="community-gallery-empty">아직 등록된 사진이 없어요.</p>}</div>
+              {spotGalleryPhotos.length === 0 && !spotPhotosLoading && !photoPage.error && <p className="community-gallery-empty">아직 등록된 사진이 없어요.</p>}</div>
             <div className="community-review-heading"><strong>방문자 후기</strong></div>
-            <ReviewCarousel type="spot" reviews={selectedSpotReviews}
+            <ReviewCarousel type="spot" reviews={selectedSpotReviews} loading={spotPhotosLoading}
               onReviewClick={() => move('spotReviewList')} onViewAll={() => move('spotReviewList')} />
             <section className="community-vote"><h3>이 스팟 정보가 맞나요?</h3><p>다른 사용자가 위치와 종류를 확인하는 데 도움이 돼요.</p>
               <div><button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'yes'} onClick={() => castVote('yes')}>맞는 정보예요 <span>{votes[selectedSpot.id]?.yes ?? 0}</span></button>
                 <button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'no'} onClick={() => castVote('no')}>맞지 않아요 <span>{votes[selectedSpot.id]?.no ?? 0}</span></button></div>
           </section>
           </>) : <>
-          <p className="community-detail-meta">{selectedCourse.averageRating !== undefined && `★ ${selectedCourse.averageRating.toFixed(1)} · `}{selectedCourse.distanceKm} km · 후기 {Math.max(selectedCourse.baselineReviews, courseReviews.length)}</p>
           <div className="community-detail-photos">{courseGalleryPhotos.length > 0 && <CommunityPhotoStrip kindLabel="코스" photos={courseGalleryPhotos}
-            totalCount={selectedCourse.baselinePhotos} endRef={photoStripEnd} onViewAll={() => openGallery('course')} onOpen={id => openGalleryPhoto('course', id)} />}{renderPhotoStatus(selectedCourse.baselinePhotos > 0)}
-            {courseGalleryPhotos.length === 0 && (!photoPage.loading || selectedCourse.baselinePhotos === 0) && !photoPage.error
+            totalCount={selectedCourse.baselinePhotos} endRef={photoStripEnd} onViewAll={() => openGallery('course')} onOpen={id => openGalleryPhoto('course', id)} />}{renderPhotoStatus()}
+            {courseGalleryPhotos.length === 0 && !photoPage.loading && !photoPage.error
               && <p className="community-gallery-empty">아직 등록된 사진이 없어요.</p>}</div>
           <div className="community-review-heading"><strong>방문자 후기</strong></div>
-          <ReviewCarousel type="course" reviews={courseReviews}
+          <ReviewCarousel type="course" reviews={courseReviews} loading={photoPage.loading}
             onReviewClick={() => move('courseReviewList')} onViewAll={() => move('courseReviewList')} />
         </>}
         showFooter={!readOnly && !(screen === 'spotDetail' && (!selectedSpot || !!spotDetailFailure || isSpotHidden(votes[selectedSpot.id])))}
@@ -1281,9 +1346,11 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         })} />} />
     </>}
 
-    {screen === 'photoAlbum' && <><CommunityPhotoAlbum photos={galleryPhotos} title={galleryTitle} onOpen={id => openGalleryPhoto(galleryKind, id)} />
-      {photoPage.hasNext && <div ref={photoAlbumEnd} role="status">{photoPage.loading ? '사진을 더 불러오는 중…' : ''}</div>}
-      {renderPhotoStatus()}</>}
+    {screen === 'photoAlbum' && <CommunityPhotoAlbum photos={galleryPhotos} title={galleryTitle}
+      loading={photoPage.loading && galleryPhotos.length === 0} onOpen={id => openGalleryPhoto(galleryKind, id)}>
+      {photoPage.hasNext && <div ref={photoAlbumEnd} className="community-gallery-album__end" role="status">{photoPage.loading ? '사진을 더 불러오는 중…' : ''}</div>}
+      {renderPhotoStatus(false)}
+    </CommunityPhotoAlbum>}
     {screen === 'spotReviewList' && selectedSpot && <section className="community-gallery-page community-review-list-page" aria-label={`${selectedSpot.name} 후기 목록`}>
       <h2>{selectedSpot.name} 후기</h2>
       {reviewList.key === reviewListKey && (fullReviews.length > 0 || !reviewList.loading) && <ReviewQuotes reviews={fullReviews}
@@ -1302,7 +1369,12 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         photos={fullReviewPhotos} onPhotoOpen={setLightboxPhotoId} />}
       {fullReviewStatus}
     </section>}
-    {screen === 'photoReview' && selectedGalleryPhoto && <CommunityPhotoReview photo={selectedGalleryPhoto} kind={galleryKind} index={selectedGalleryIndex} total={galleryPhotos.length}
+    {screen === 'photoReview' && selectedGalleryPhoto && <CommunityPhotoReview key={galleryPhotoId} photo={selectedGalleryPhoto}
+      detail={photoDetail?.id === galleryPhotoId ? photoDetail.photo : null}
+      showDetailSkeleton={delayedPhotoDetailId === galleryPhotoId && photoDetail?.id === galleryPhotoId && !photoDetail.photo && !photoDetail.error}
+      detailError={photoDetail?.id === galleryPhotoId && photoDetail.error}
+      onRetry={() => setPhotoDetailRetry(current => current + 1)}
+      kind={galleryKind} index={selectedGalleryIndex} total={galleryPhotos.length}
       onPrevious={() => setGalleryPhotoId(galleryPhotos[selectedGalleryIndex - 1].id)}
       onNext={() => setGalleryPhotoId(galleryPhotos[selectedGalleryIndex + 1].id)} />}
 

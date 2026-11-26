@@ -24,6 +24,6 @@ public record CommunitySpotDetailResponse(
         long photoCount,
         String representativePhotoUrl,
         List<CommunityReviewResponse> reviews,
-        List<CommunityPhotoResponse> photos
+        List<CommunityPhotoPreviewResponse> photos
 ) {
 }

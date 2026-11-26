@@ -98,7 +98,7 @@ class FacilityPostgisIntegrationTest {
                 INSERT INTO course (mountain_id, course_name, course_geometry, source_id, source_hash, imported_at)
                 VALUES (?, 'link-test', ST_GeomFromText('LINESTRING(10 10,10.02 10)',4326), ?, ?, now())
                 """, mountainId, seed.sourceId(), "c".repeat(64));
-        var facility = assigned(point("link-once", 10.01, 10.0001, FacilityType.RESTROOM), mountainId);
+        var facility = assigned(point("link-once", 10.01, 10.00032, FacilityType.RESTROOM), mountainId);
         importer.importFile(document(List.of(facility)));
         long facilityId = jdbc.queryForObject("SELECT facility_id FROM facility WHERE source_id = ? AND source_record_id = 'link-once'",
                 Long.class, seed.sourceId());

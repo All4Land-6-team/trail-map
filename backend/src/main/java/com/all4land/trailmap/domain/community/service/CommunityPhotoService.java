@@ -3,6 +3,7 @@ package com.all4land.trailmap.domain.community.service;
 import com.all4land.trailmap.domain.community.dto.request.CommunityPhotoConfirmRequest;
 import com.all4land.trailmap.domain.community.dto.request.CommunityPhotoUploadUrlRequest;
 import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoPreviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoUploadUrlResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewEnvironmentResponse;
 import com.all4land.trailmap.domain.community.entity.CommunityPhotoTargetType;
@@ -91,23 +92,23 @@ public class CommunityPhotoService {
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.PHOTO_NOT_FOUND));
     }
 
-    public List<CommunityPhotoResponse> getMountainPhotos(Long userId, Long mountainId, Integer limit, Integer offset) {
+    public List<CommunityPhotoPreviewResponse> getMountainPhotos(Long userId, Long mountainId, Integer limit, Integer offset) {
         validateUser(userId);
         if (!mapQueryRepository.existsMountain(mountainId)) {
             throw new CommunityException(CommunityErrorCode.MOUNTAIN_NOT_FOUND);
         }
-        return toResponses(photoQueryRepository.findMountainPhotos(mountainId, limit, offset));
+        return toPreviews(photoQueryRepository.findMountainPhotos(mountainId, limit, offset));
     }
 
-    public List<CommunityPhotoResponse> getCoursePhotos(Long userId, Long courseId, Integer limit, Integer offset) {
+    public List<CommunityPhotoPreviewResponse> getCoursePhotos(Long userId, Long mountainId, Long courseId, Integer limit, Integer offset) {
         validateUser(userId);
-        if (!mapQueryRepository.existsCourse(courseId)) {
+        if (!mapQueryRepository.findCourseMountainId(courseId).filter(mountainId::equals).isPresent()) {
             throw new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND);
         }
-        return toResponses(photoQueryRepository.findCoursePhotos(courseId, limit, offset));
+        return toPreviews(photoQueryRepository.findCoursePhotos(courseId, limit, offset));
     }
 
-    public List<CommunityPhotoResponse> getSpotPhotos(
+    public List<CommunityPhotoPreviewResponse> getSpotPhotos(
             Long userId,
             Long mountainId,
             CommunitySpotTargetType targetType,
@@ -122,7 +123,7 @@ public class CommunityPhotoService {
         if (spotQueryRepository.findSpot(userId, mountainId, targetType, targetId).isEmpty()) {
             throw new CommunityException(CommunityErrorCode.SPOT_NOT_FOUND);
         }
-        return toResponses(photoQueryRepository.findSpotPhotos(targetType, targetId, limit, offset));
+        return toPreviews(photoQueryRepository.findSpotPhotos(targetType, targetId, limit, offset));
     }
 
     public CommunityPhotoResponse getPhoto(Long userId, Long photoId) {
@@ -210,8 +211,9 @@ public class CommunityPhotoService {
         }
     }
 
-    private List<CommunityPhotoResponse> toResponses(List<CommunityPhotoQueryResult> photos) {
-        return photos.stream().map(this::toResponse).toList();
+    private List<CommunityPhotoPreviewResponse> toPreviews(List<CommunityPhotoQueryResult> photos) {
+        return photos.stream().map(photo -> new CommunityPhotoPreviewResponse(
+                photo.photoId(), r2PhotoStorage.createReadUrl(photo.objectKey()))).toList();
     }
 
     private CommunityPhotoResponse toResponse(CommunityPhotoQueryResult photo) {

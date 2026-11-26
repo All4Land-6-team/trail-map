@@ -214,6 +214,53 @@ public class CommunitySpotCommandRepository {
                 .addValue("matchingMethod", matchingMethod));
     }
 
+    public void linkToNearbyCourseRoutes(Long spotId, Long mountainId) {
+        jdbcTemplate.update("""
+                INSERT INTO spot_course (user_spot_id, course_id, distance_meters, matching_method)
+                SELECT spot.spot_id,
+                       course.course_id,
+                       ST_Distance(spot.spot_location::geography, course.course_geometry::geography),
+                       'SPATIAL_BUFFER'
+                FROM user_spot spot
+                JOIN course ON course.mountain_id = spot.mountain_id
+                WHERE spot.spot_id = :spotId
+                  AND spot.mountain_id = :mountainId
+                  AND ST_DWithin(
+                        spot.spot_location::geography,
+                        course.course_geometry::geography,
+                        40
+                      )
+                ON CONFLICT DO NOTHING
+                """, new MapSqlParameterSource()
+                .addValue("spotId", spotId)
+                .addValue("mountainId", mountainId));
+    }
+
+    public void linkToNearbyCourseStarts(Long spotId, Long mountainId) {
+        jdbcTemplate.update("""
+                INSERT INTO spot_course (user_spot_id, course_id, distance_meters, matching_method)
+                SELECT spot.spot_id,
+                       course.course_id,
+                       ST_Distance(
+                           spot.spot_location::geography,
+                           ST_StartPoint(course.course_geometry)::geography
+                       ),
+                       'SPATIAL_BUFFER'
+                FROM user_spot spot
+                JOIN course ON course.mountain_id = spot.mountain_id
+                WHERE spot.spot_id = :spotId
+                  AND spot.mountain_id = :mountainId
+                  AND ST_DWithin(
+                        spot.spot_location::geography,
+                        ST_StartPoint(course.course_geometry)::geography,
+                        250
+                      )
+                ON CONFLICT DO NOTHING
+                """, new MapSqlParameterSource()
+                .addValue("spotId", spotId)
+                .addValue("mountainId", mountainId));
+    }
+
     public Optional<CreatedUserSpotQueryResult> findByClientRequestId(Long userId, UUID clientRequestId) {
         return jdbcTemplate.query("""
                 SELECT spot_id,

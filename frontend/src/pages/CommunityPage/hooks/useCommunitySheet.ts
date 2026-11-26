@@ -13,7 +13,7 @@ const MIN_VISIBLE_MAP = 170
 const DETAIL_MAP_CLEARANCE = 96
 const REVIEW_HEIGHT = 485
 const COMPACT_REVIEW_HEIGHT = 464
-const PHOTO_HEIGHT = 310
+const PHOTO_HEIGHT = 292
 const PHOTO_STAGE_GAP = 8
 const REVIEW_TO_FULL_GAP = 55
 const SNAP_MAGNET_DISTANCE = 22
@@ -122,11 +122,16 @@ export function useCommunitySheet(detail = false, mapPreview = false, compactDet
     const body = sheet?.querySelector<HTMLElement>('.af-bottom-sheet__body')
     const content = body?.querySelector<HTMLElement>('.af-bottom-sheet__content')
     const carousel = sheet?.querySelector<HTMLElement>('.community-review-carousel')
+    const mountainEmpty = sheet?.querySelector<HTMLElement>('.community-mountain-empty')
     const footer = body?.querySelector<HTMLElement>('.af-bottom-sheet__footer')
-    if (!sheet || !body || !content || !carousel || !footer) return clamp(fallback, minimum, maximum)
+    if (!sheet || !body || !content || !footer || (!carousel && !mountainEmpty)) return clamp(fallback, minimum, maximum)
+    if (mountainEmpty && !carousel) return clamp(fallback, minimum, maximum)
     const bodyGap = Number.parseFloat(getComputedStyle(body).rowGap || getComputedStyle(body).gap) || 0
     const sheetStyle = getComputedStyle(sheet)
-    const carouselBottom = carousel.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top + content.scrollTop
+    const contentBottom = content.getBoundingClientRect().top - sheet.getBoundingClientRect().top + content.scrollHeight
+    const carouselBottom = carousel
+      ? carousel.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top + content.scrollTop
+      : contentBottom
     const target = carouselBottom + footer.getBoundingClientRect().height + bodyGap
       + (Number.parseFloat(sheetStyle.paddingTop) || 0) + (Number.parseFloat(sheetStyle.paddingBottom) || 0)
     return clamp(target, minimum, maximum)

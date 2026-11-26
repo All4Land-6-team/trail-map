@@ -28,6 +28,13 @@ class WeatherClassifierTest {
     }
 
     @Test
+    void 운량이_없어도_ASOS_날씨상태로_흐림을_분류한다() {
+        var cloudy = new KmaAsosObservation(OBSERVED_AT, null, null, "흐림");
+
+        assertThat(WeatherClassifier.classify(null, cloudy)).isEqualTo(WeatherCode.CLOUDY);
+    }
+
+    @Test
     void 시정이_천미터_미만이면_안개로_분류한다() {
         var grid = new KmaGridObservation(OBSERVED_AT, 8.0, 0.0, 0.0, 0.9, 0.0);
 

@@ -32,11 +32,11 @@ class CommunityQueryControllerTest {
 
     @Test
     void 코스별_사용자_스팟은_시설_종류와_등록_출처를_반환한다() throws Exception {
-        given(queryService.getCourseUserSpots(7L, 3L)).willReturn(List.of(
+        given(queryService.getCourseUserSpots(7L, 4L, 3L)).willReturn(List.of(
                 new CommunitySpotResponse(CommunitySpotTargetType.USER_SPOT, 10L, 4L, "쉼터",
                         CommunitySpotType.REST_AREA, 126.98, 37.66, "PENDING",
                         0, 0, null, 0, 0, null)));
-        mockMvc.perform(get("/v1/community/courses/3/user-spots").header("X-User-Id", "7"))
+        mockMvc.perform(get("/v1/community/mountains/4/courses/3/user-spots").header("X-User-Id", "7"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].targetType").value("USER_SPOT"))
                 .andExpect(jsonPath("$.data[0].type").value("REST_AREA"));
@@ -44,12 +44,12 @@ class CommunityQueryControllerTest {
 
     @Test
     void 코스별_사진_스팟_조회와_ID_검증을_지원한다() throws Exception {
-        given(queryService.getCoursePhotoSpots(7L, 3L)).willReturn(List.of());
-        mockMvc.perform(get("/v1/community/courses/3/photo-spots").header("X-User-Id", "7"))
+        given(queryService.getCoursePhotoSpots(7L, 4L, 3L)).willReturn(List.of());
+        mockMvc.perform(get("/v1/community/mountains/4/courses/3/photo-spots").header("X-User-Id", "7"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
-        mockMvc.perform(get("/v1/community/courses/0/photo-spots").header("X-User-Id", "7"))
+        mockMvc.perform(get("/v1/community/mountains/4/courses/0/photo-spots").header("X-User-Id", "7"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/v1/community/courses/3/photo-spots"))
+        mockMvc.perform(get("/v1/community/mountains/4/courses/3/photo-spots"))
                 .andExpect(status().isUnauthorized());
     }
 

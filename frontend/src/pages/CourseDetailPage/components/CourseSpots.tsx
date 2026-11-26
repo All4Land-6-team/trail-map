@@ -3,7 +3,6 @@ import { Icon } from "../../../components/common/Icon";
 import { Button } from "../../../components/common/Button";
 import { TabBar } from "../../../components/layout";
 import { EmptyState } from "../../../components/feedback";
-import { COURSE_FACILITY_RADIUS_METERS } from "../../../api/courseFacilities";
 import type { CourseFacilitiesState, CourseSpot, SpotCategory } from "../../../types/courseDetail";
 import { isFoodSpot, SPOT_CATEGORIES, spotCategoryLabel } from "../../../utils/courseProfile";
 
@@ -12,6 +11,8 @@ import type { ComponentProps } from "react";
 type Props = {
   control: ComponentProps<typeof CourseControl>;
   spots: readonly CourseSpot[];
+  spotList?: CourseFacilitiesState;
+  onRetrySpotList?: () => void;
   category: SpotCategory;
   selectedId?: string;
   restrooms: CourseFacilitiesState;
@@ -26,7 +27,7 @@ type Props = {
   onOpen: (spot: CourseSpot) => void;
 };
 
-export function CourseSpots({ control, spots, category, selectedId, restrooms, onRetryRestrooms, water, onRetryWater, shelters, onRetryShelters, userSpots, onRetryUserSpots, onCategory, onOpen }: Props) {
+export function CourseSpots({ control, spots, spotList, onRetrySpotList, category, selectedId, restrooms, onRetryRestrooms, water, onRetryWater, shelters, onRetryShelters, userSpots, onRetryUserSpots, onCategory, onOpen }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const lastAutoScrolledFoodId = useRef<string | undefined>(undefined);
   const facilityGroups = [
@@ -63,9 +64,6 @@ export function CourseSpots({ control, spots, category, selectedId, restrooms, o
       items={SPOT_CATEGORIES.map(item => ({ ...item, controls: "course-spots-content" }))}
       onValueChange={value => onCategory(value as SpotCategory)} />
     <h2>{spotCategoryLabel(category)}{category !== "control" && countReady ? ` · ${spots.length}곳` : ""}</h2>
-    {includesFacilities && facilityGroups.some(group => group.state.status !== "unavailable") && <p className="course-spots__notice">
-      공식 시설은 코스 경로에서 {COURSE_FACILITY_RADIUS_METERS}m 이내입니다.
-    </p>}
     {(category === "water" || (category === "all" && water.status === "success" && water.spots.length > 0)) && <p className="course-spots__notice">
       음수대는 샘터·약수터를 포함합니다. 현재 이용 가능 여부와 음용 적합 여부는 확인되지 않았어요.
     </p>}
@@ -80,12 +78,17 @@ export function CourseSpots({ control, spots, category, selectedId, restrooms, o
           <div><dt>위치</dt><dd>{selectedPlace.coordinate.join(', ')}</dd></div>
         </dl>
       </article>}
-      {includesUserSpots && userSpots.status === 'loading' && <p role="status">사용자 스팟을 불러오는 중이에요.</p>}
-      {includesUserSpots && userSpots.status === 'unavailable' && <p role="status">이 코스의 사용자 스팟 조회를 준비 중이에요.</p>}
-      {includesUserSpots && userSpots.status === 'error' && <div className="course-spots__status">
+      {spotList && category !== 'control' && category !== 'food' && spotList.status === 'loading' && <p role="status">스팟을 불러오는 중이에요.</p>}
+      {spotList && category !== 'control' && category !== 'food' && spotList.status === 'unavailable' && <p role="status">이 코스의 스팟 조회를 준비 중이에요.</p>}
+      {spotList && category !== 'control' && category !== 'food' && spotList.status === 'error' && <div className="course-spots__status">
+        <p role="alert">{spotList.message}</p><Button variant="secondary" onClick={onRetrySpotList}>스팟 다시 조회</Button>
+      </div>}
+      {!spotList && includesUserSpots && userSpots.status === 'loading' && <p role="status">사용자 스팟을 불러오는 중이에요.</p>}
+      {!spotList && includesUserSpots && userSpots.status === 'unavailable' && <p role="status">이 코스의 사용자 스팟 조회를 준비 중이에요.</p>}
+      {!spotList && includesUserSpots && userSpots.status === 'error' && <div className="course-spots__status">
         <p role="alert">{userSpots.message}</p><Button variant="secondary" onClick={onRetryUserSpots}>사용자 스팟 다시 조회</Button>
       </div>}
-      {facilityGroups.map(({ kind, label, state, retry }) => <div key={kind}>
+      {!spotList && facilityGroups.map(({ kind, label, state, retry }) => <div key={kind}>
         {state.status === "loading" && <p className="course-spots__status" role="status">주변 {label}{kind === "restroom" ? "을" : "를"} 불러오는 중이에요.</p>}
         {state.status === "error" && <div className="course-spots__status">
           <p role="alert">{state.message}</p><Button variant="secondary" onClick={retry}>{label} 다시 조회</Button>
@@ -101,7 +104,7 @@ export function CourseSpots({ control, spots, category, selectedId, restrooms, o
             {isFoodSpot(spot) ? <>
               <span>{spot.kind === 'cafe' ? '카페' : '음식점'} · OpenStreetMap 지도 정보</span>
             </> : spot.facilityId !== undefined ? <>
-              <span>경로까지 약 {Math.round(spot.distanceMeters ?? 0)}m</span>
+              {spot.distanceMeters !== undefined && <span>경로까지 약 {Math.round(spot.distanceMeters)}m</span>}
               <span>사진 {spot.photoCount}장 · 후기 {spot.reviewCount}개</span>
             </> : spot.example ? <span>지도 표시 위치는 화면 예시입니다</span>
               : <span>사진 {spot.photoCount ?? 0}장 · 후기 {spot.reviewCount ?? 0}개</span>}

@@ -23,16 +23,16 @@ class CoursePhotoSpotServiceTest {
         when(reviews.existsUser(1L)).thenReturn(true);
         when(maps.findCourseMountainId(9L)).thenReturn(Optional.of(4L));
         when(spots.findCoursePhotoSpots(1L, 4L, 9L)).thenReturn(List.of());
-        assertEquals(List.of(), service.getCoursePhotoSpots(1L, 9L));
+        assertEquals(List.of(), service.getCoursePhotoSpots(1L, 4L, 9L));
         verify(spots).findCoursePhotoSpots(1L, 4L, 9L);
     }
 
     @Test
     void 없는_사용자나_코스는_스팟_조회하지_않는다() {
-        assertThrows(CommunityException.class, () -> service.getCoursePhotoSpots(1L, 9L));
+        assertThrows(CommunityException.class, () -> service.getCoursePhotoSpots(1L, 4L, 9L));
         when(reviews.existsUser(1L)).thenReturn(true);
         when(maps.findCourseMountainId(9L)).thenReturn(Optional.empty());
-        assertThrows(CommunityException.class, () -> service.getCoursePhotoSpots(1L, 9L));
+        assertThrows(CommunityException.class, () -> service.getCoursePhotoSpots(1L, 4L, 9L));
         verifyNoInteractions(spots);
     }
 }

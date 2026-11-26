@@ -35,7 +35,7 @@ public class CommunityQueryController {
 
     private final CommunityQueryService queryService;
 
-    @GetMapping("/mountains/{mountainId}/courses")
+    @GetMapping("/mountains/{mountainId}/courses-list")
     public ResponseEntity<SuccessResponse<List<CommunityCourseResponse>>> getCourses(
             @CurrentUserId Long userId,
             @Positive @PathVariable Long mountainId
@@ -61,7 +61,7 @@ public class CommunityQueryController {
         return response(SuccessResponse.ok(queryService.getMapMarkers(userId, mountainId, request)));
     }
 
-    @GetMapping("/mountains/{mountainId}/spots/list")
+    @GetMapping("/mountains/{mountainId}/spots-list")
     public ResponseEntity<SuccessResponse<CommunitySpotPageResponse>> getSpotPage(
             @CurrentUserId Long userId,
             @Positive @PathVariable Long mountainId,
@@ -72,23 +72,25 @@ public class CommunityQueryController {
         return response(SuccessResponse.ok(queryService.getSpotPage(userId, mountainId, type, size, cursor)));
     }
 
-    @GetMapping("/courses/{courseId}/photo-spots")
+    @GetMapping("/mountains/{mountainId}/courses/{courseId}/photo-spots")
     public ResponseEntity<SuccessResponse<List<CommunitySpotResponse>>> getCoursePhotoSpots(
             @CurrentUserId Long userId,
+            @Positive @PathVariable Long mountainId,
             @Positive @PathVariable Long courseId
     ) {
-        return response(SuccessResponse.ok(queryService.getCoursePhotoSpots(userId, courseId)));
+        return response(SuccessResponse.ok(queryService.getCoursePhotoSpots(userId, mountainId, courseId)));
     }
 
-    @GetMapping("/courses/{courseId}/user-spots")
+    @GetMapping("/mountains/{mountainId}/courses/{courseId}/user-spots")
     public ResponseEntity<SuccessResponse<List<CommunitySpotResponse>>> getCourseUserSpots(
             @CurrentUserId Long userId,
+            @Positive @PathVariable Long mountainId,
             @Positive @PathVariable Long courseId
     ) {
-        return response(SuccessResponse.ok(queryService.getCourseUserSpots(userId, courseId)));
+        return response(SuccessResponse.ok(queryService.getCourseUserSpots(userId, mountainId, courseId)));
     }
 
-    @GetMapping("/mountains/{mountainId}/spots/{targetType}/{targetId}")
+    @GetMapping("/mountains/{mountainId}/spots/{targetType}/{targetId}/detail")
     public ResponseEntity<SuccessResponse<CommunitySpotDetailResponse>> getSpot(
             @CurrentUserId Long userId,
             @Positive @PathVariable Long mountainId,
@@ -107,13 +109,14 @@ public class CommunityQueryController {
         return response(SuccessResponse.ok(queryService.getMountainReviews(userId, mountainId, page)));
     }
 
-    @GetMapping("/courses/{courseId}/reviews")
+    @GetMapping("/mountains/{mountainId}/courses/{courseId}/reviews")
     public ResponseEntity<SuccessResponse<List<CommunityReviewResponse>>> getCourseReviews(
             @CurrentUserId Long userId,
+            @Positive @PathVariable Long mountainId,
             @Positive @PathVariable Long courseId,
             @Valid @ModelAttribute CommunityReviewPageRequest page
     ) {
-        return response(SuccessResponse.ok(queryService.getCourseReviews(userId, courseId, page)));
+        return response(SuccessResponse.ok(queryService.getCourseReviews(userId, mountainId, courseId, page)));
     }
 
     @GetMapping("/mountains/{mountainId}/spots/{targetType}/{targetId}/reviews")

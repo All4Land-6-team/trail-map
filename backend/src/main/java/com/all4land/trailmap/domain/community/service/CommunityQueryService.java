@@ -2,7 +2,7 @@ package com.all4land.trailmap.domain.community.service;
 
 import com.all4land.trailmap.domain.community.dto.request.CommunityReviewPageRequest;
 import com.all4land.trailmap.domain.community.dto.request.CommunitySpotMapRequest;
-import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoPreviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityCoordinateResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityCourseResponse;
@@ -10,6 +10,7 @@ import com.all4land.trailmap.domain.community.dto.response.CommunitySpotDetailRe
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotPageResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotMapResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityCourseSpotListResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityMountainReviewSummaryResponse;
 import com.all4land.trailmap.domain.community.entity.CommunityReviewKind;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
@@ -88,6 +89,24 @@ public class CommunityQueryService {
         return spotQueryRepository.findMapMarkers(userId, mountainId, request);
     }
 
+    public List<CommunitySpotMapResponse> getCourseMapMarkers(
+            Long userId,
+            Long courseId,
+            CommunitySpotType type
+    ) {
+        validateUser(userId);
+        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
+        return spotQueryRepository.findCourseMapMarkers(userId, mountainId, courseId, type);
+    }
+
+    public List<CommunityCourseSpotListResponse> getCourseSpotList(Long userId, Long courseId) {
+        validateUser(userId);
+        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
+        return spotQueryRepository.findCourseSpotList(userId, mountainId, courseId);
+    }
+
     public CommunitySpotPageResponse getSpotPage(Long userId, Long mountainId, CommunitySpotType type, int size, String cursor) {
         validateUser(userId);
         validateMountain(mountainId);
@@ -130,18 +149,16 @@ public class CommunityQueryService {
         }
     }
 
-    public List<CommunitySpotResponse> getCoursePhotoSpots(Long userId, Long courseId) {
+    public List<CommunitySpotResponse> getCoursePhotoSpots(Long userId, Long mountainId, Long courseId) {
         validateUser(userId);
-        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
-                .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
+        validateCourseMountain(mountainId, courseId);
         return spotQueryRepository.findCoursePhotoSpots(userId, mountainId, courseId).stream()
                 .map(this::toSpotResponse).toList();
     }
 
-    public List<CommunitySpotResponse> getCourseUserSpots(Long userId, Long courseId) {
+    public List<CommunitySpotResponse> getCourseUserSpots(Long userId, Long mountainId, Long courseId) {
         validateUser(userId);
-        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
-                .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
+        validateCourseMountain(mountainId, courseId);
         return spotQueryRepository.findCourseUserSpots(userId, mountainId, courseId,
                         List.of("REST_AREA", "DRINKING_FOUNTAIN", "RESTROOM", "PHOTO_SPOT")).stream()
                 .map(this::toSpotResponse).toList();
@@ -190,13 +207,12 @@ public class CommunityQueryService {
 
     public List<CommunityReviewResponse> getCourseReviews(
             Long userId,
+            Long mountainId,
             Long courseId,
             CommunityReviewPageRequest page
     ) {
         validateUser(userId);
-        if (!mapQueryRepository.existsCourse(courseId)) {
-            throw new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND);
-        }
+        validateCourseMountain(mountainId, courseId);
         return toReviewResponses(
                 reviewQueryRepository.findCourseReviews(courseId, page.resolvedLimit(), page.resolvedOffset()),
                 CommunityReviewKind.COURSE
@@ -255,7 +271,7 @@ public class CommunityQueryService {
     private CommunitySpotDetailResponse toSpotDetailResponse(
             CommunitySpotQueryResult spot,
             List<CommunityReviewResponse> reviews,
-            List<CommunityPhotoResponse> photos
+            List<CommunityPhotoPreviewResponse> photos
     ) {
         return new CommunitySpotDetailResponse(
                 spot.targetType(),

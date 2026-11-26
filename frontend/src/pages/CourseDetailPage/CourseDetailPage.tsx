@@ -15,7 +15,7 @@ import type { CommunityReview } from "../../types/community";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
 import type { CourseRequest } from "../../types/course";
-import type { CourseDetailView, CourseSpot, CourseSpotRequest, ProfileVisibility } from "../../types/courseDetail";
+import type { CourseDetailView, CourseFacilitiesState, CourseSpot, CourseSpotRequest, ProfileVisibility } from "../../types/courseDetail";
 import { courseSpotAction, isFoodSpot, selectCourseSpots, toggleProfileMetric } from "../../utils/courseProfile";
 import { detailAnalysisView, detailRouteLabel } from "../../utils/courseDetailAnalysis";
 import { useCourseAnalysis } from "./hooks/useCourseAnalysis";
@@ -23,10 +23,8 @@ import { CourseAnalysis } from "./components/CourseAnalysis";
 import { CourseSpots } from "./components/CourseSpots";
 import { useCourseDetail } from "./hooks/useCourseDetail";
 import { useParkControl } from "./hooks/useParkControl";
-import { useCourseFacilities } from "../../hooks/useCourseFacilities";
-import { useCourseUserSpots } from "../../hooks/useCourseUserSpots";
+import { useCourseSpotList } from "../../hooks/useCourseSpotList";
 import { coursePhotoSpotDisplay } from "../../utils/coursePhotoSpotDisplay";
-import { withCourseFacilities } from "../../utils/courseFacilities";
 import { useDetailSheet } from "./hooks/useDetailSheet";
 import "./course-detail.css";
 
@@ -67,32 +65,37 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
     view.tab === "spots" && view.category === "control");
   const examplePhotos = import.meta.env.DEV && import.meta.env.VITE_COURSE_PHOTO_SPOTS_SOURCE === "mock"
     && mountainId === "bukhansan" && courseId === "bukhansan-baegundae";
-  const userRequest = useCourseUserSpots(mountainId, courseId, !examplePhotos && !!data && view.tab === "spots"
-    && view.category !== "control", data?.course.analysisReference?.mountainId);
-  const userState = coursePhotoSpotDisplay(userRequest.state, data?.spots ?? EMPTY_SPOTS, examplePhotos);
-  const userSpots = userState.status === "success" ? userState.spots : EMPTY_SPOTS;
+  const spotRequest = useCourseSpotList(courseId, data?.course.backendCourseId,
+    !!data && view.tab === "spots" && view.category !== "control" && view.category !== "food");
+  const listState = spotRequest.state;
+  const listSpots = listState.status === "success" ? listState.spots : EMPTY_SPOTS;
+  const groupState = (kind: CourseSpot["kind"]): CourseFacilitiesState => listState.status === "success"
+    ? { status: "success", spots: listSpots.filter(spot => spot.kind === kind && spot.communityTarget?.targetType === "FACILITY") }
+    : listState;
+  const restrooms = groupState("restroom");
+  const water = groupState("water");
+  const shelters = groupState("shelter");
+  const userState: CourseFacilitiesState = examplePhotos
+    ? coursePhotoSpotDisplay(listState, data?.spots ?? EMPTY_SPOTS, true)
+    : listState.status === "success"
+      ? { status: "success", spots: listSpots.filter(spot => spot.communityTarget?.targetType === "USER_SPOT") }
+      : listState;
   const { state: analysisState, retry: retryAnalysis } = useCourseAnalysis(data?.course ?? null);
   const analysisView = useMemo(() => detailAnalysisView(data?.course ?? null, analysisState), [data, analysisState]);
   const { samples } = analysisView;
   const selectionKey = JSON.stringify([mountainId, courseId, analysisView.analysis?.analysisId]);
-  const restrooms = useCourseFacilities(courseId, data?.course.backendCourseId,
-    view.tab === "spots" && (view.category === "all" || view.category === "restroom"));
-  const restroomSpots = restrooms.state.status === "success" ? restrooms.state.spots : EMPTY_SPOTS;
-  const water = useCourseFacilities(courseId, data?.course.backendCourseId,
-    view.tab === "spots" && (view.category === "all" || view.category === "water"), "DRINKING_WATER");
-  const waterSpots = water.state.status === "success" ? water.state.spots : EMPTY_SPOTS;
-  const shelters = useCourseFacilities(courseId, data?.course.backendCourseId,
-    view.tab === "spots" && (view.category === "all" || view.category === "shelter"), "SHELTER");
-  const shelterSpots = shelters.state.status === "success" ? shelters.state.spots : EMPTY_SPOTS;
   const reviewExcerpts: CommunityReview[] = communityReviews.map(review => ({
     id: String(review.reviewId), kind: "course" as const, targetId: String(review.targetId), content: review.content,
     photos: review.photoUrls, rating: review.rating ?? undefined, author: review.author, createdAt: review.createdAt,
+    environment: review.environment ?? undefined,
   })).slice(0, 4);
   const reviewTotal = communityCourse?.reviewCount ?? communityReviews.length;
   const mapCourse = useMemo(() => data ? { ...data.course, routeCoordinates: analysisView.routeCoordinates } : null, [data, analysisView]);
   const courses = useMemo(() => mapCourse && mapCourse.routeCoordinates.length > 1 ? [mapCourse] : [], [mapCourse]);
-  const allSpots = useMemo(() => withCourseFacilities(userSpots, [...restroomSpots, ...waterSpots, ...shelterSpots]),
-    [userSpots, restroomSpots, waterSpots, shelterSpots]);
+  const allSpots = useMemo(() => examplePhotos
+    ? [...listSpots.filter(spot => spot.kind !== "photo"),
+      ...(data?.spots ?? EMPTY_SPOTS).filter(spot => spot.kind === "photo" && spot.example)]
+    : listSpots, [data?.spots, examplePhotos, listSpots]);
   const spots = useMemo(() => view.category === "food" ? osmFoodSpot ? [osmFoodSpot] : EMPTY_SPOTS
     : selectCourseSpots(allSpots, view.category), [allSpots, osmFoodSpot, view.category]);
   const summitCoordinate = useMemo(() => samples.reduce<(typeof samples)[number] | null>((highest, point) =>
@@ -103,16 +106,20 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
 
   useEffect(() => {
     const controller = new AbortController();
+    let communityMountainId: number | null = null;
     void mountainApi.list(controller.signal).then(mountains => {
       const mountain = mountains.find(item => String(item.mountainId) === mountainId || item.externalId === mountainId)
         ?? mountains.find(item => item.name === ({ bukhansan: "북한산", dobongsan: "도봉산", gwanaksan: "관악산" } as Record<string, string>)[mountainId]);
       if (!mountain) return null;
+      communityMountainId = mountain.mountainId;
       return communityApi.courses(String(mountain.mountainId), controller.signal);
     }).then(courses => {
       if (!courses) return null;
       const course = courses.find(item => `db-${item.courseId}` === courseId || String(item.courseId) === courseId || item.externalId === courseId);
       setCommunityCourse(course ?? null);
-      return course ? communityApi.courseReviews(String(course.courseId), controller.signal, 4) : null;
+      return course && communityMountainId !== null
+        ? communityApi.courseReviews(String(communityMountainId), String(course.courseId), controller.signal, 4)
+        : null;
     }).then(reviews => {
       if (reviews) setCommunityReviews(reviews);
     }).catch(() => {
@@ -203,10 +210,11 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
             onSelect={index => setSelection({ key: selectionKey, index })} onToggle={toggleMetric} onReviewsOpen={onReviewsOpen ? () => onReviewsOpen(request) : undefined} />
           : <CourseSpots control={control} spots={spots} category={view.category}
             selectedId={view.category === "food" ? osmFoodSpot?.id : view.spotId}
-            userSpots={userState} onRetryUserSpots={userRequest.retry}
-            restrooms={restrooms.state} onRetryRestrooms={restrooms.retry}
-            water={water.state} onRetryWater={water.retry}
-            shelters={shelters.state} onRetryShelters={shelters.retry}
+            spotList={listState} onRetrySpotList={spotRequest.retry}
+            userSpots={userState} onRetryUserSpots={spotRequest.retry}
+            restrooms={restrooms} onRetryRestrooms={spotRequest.retry}
+            water={water} onRetryWater={spotRequest.retry}
+            shelters={shelters} onRetryShelters={spotRequest.retry}
             onCategory={category => changeView({ tab: "spots", category })} onOpen={openSpot} />}
         footer={<div className="course-detail-actions">
           <Button variant="secondary" aria-pressed={saved} onClick={save}
