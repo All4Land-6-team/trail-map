@@ -98,7 +98,7 @@ public class FacilityImportRepository {
                   AND ST_DWithin(
                         facility.facility_location::geography,
                         course.course_geometry::geography,
-                        30
+                        40
                       )
                 ON CONFLICT DO NOTHING
                 """, new MapSqlParameterSource("sourceId", sourceId)

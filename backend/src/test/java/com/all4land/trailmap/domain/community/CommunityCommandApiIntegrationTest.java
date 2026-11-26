@@ -281,6 +281,36 @@ class CommunityCommandApiIntegrationTest {
     }
 
     @Test
+    void 새_스팟을_경로_40m_안의_다른_코스에도_연결한다() throws Exception {
+        long nearCourseId = jdbcTemplate.queryForObject("""
+                INSERT INTO course (mountain_id, course_name, course_geometry, source_id, source_hash, imported_at)
+                VALUES (?, '근처 코스', ST_GeomFromText('LINESTRING(126.977 37.661315,126.986 37.661315)', 4326), ?, ?, now())
+                RETURNING course_id
+                """, Long.class, mountainId, sourceId, hash());
+        long farCourseId = jdbcTemplate.queryForObject("""
+                INSERT INTO course (mountain_id, course_name, course_geometry, source_id, source_hash, imported_at)
+                VALUES (?, '먼 코스', ST_GeomFromText('LINESTRING(126.977 37.661405,126.986 37.661405)', 4326), ?, ?, now())
+                RETURNING course_id
+                """, Long.class, mountainId, sourceId, hash());
+        long hikeRecordId = insertCompletedHike(courseId, 2);
+
+        mockMvc.perform(asUser(post("/v1/community/mountains/" + mountainId + "/spots"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(spotJson(hikeRecordId, true)))
+                .andExpect(status().isCreated());
+
+        long spotId = jdbcTemplate.queryForObject(
+                "SELECT spot_id FROM user_spot WHERE user_id = ? AND spot_name = '새 화장실'",
+                Long.class, userId);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM spot_course WHERE user_spot_id = ? AND course_id = ? AND matching_method = 'SPATIAL_BUFFER'",
+                Integer.class, spotId, nearCourseId)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM spot_course WHERE user_spot_id = ? AND course_id = ?",
+                Integer.class, spotId, farCourseId)).isZero();
+    }
+
+    @Test
     void 등산_중에도_기존_스팟_후기와_새_스팟_첫_후기를_등록한다() throws Exception {
         long activeHikeId = insertActiveHike(courseId, "IN_PROGRESS");
 
