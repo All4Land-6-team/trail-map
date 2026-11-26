@@ -66,9 +66,9 @@ public class CommunityQueryController {
             @CurrentUserId Long userId,
             @Positive @PathVariable Long mountainId,
             @Positive @PathVariable Long courseId,
-            @Valid @ModelAttribute CommunitySpotMapRequest request
+            @RequestParam(required = false) CommunitySpotType type
     ) {
-        return response(SuccessResponse.ok(queryService.getCourseMapMarkers(userId, mountainId, courseId, request)));
+        return response(SuccessResponse.ok(queryService.getCourseMapMarkers(userId, mountainId, courseId, type)));
     }
 
     @GetMapping("/mountains/{mountainId}/spots-list")

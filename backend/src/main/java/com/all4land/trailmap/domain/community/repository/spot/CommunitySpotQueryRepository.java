@@ -163,6 +163,18 @@ public class CommunitySpotQueryRepository {
             ORDER BY spot.target_type, spot.target_id
             """;
 
+    private static final String COURSE_MAP_MARKER_SQL = SPOT_CTE + """
+            SELECT spot.target_type, spot.target_id, spot.mountain_id, spot.name, spot.spot_type,
+                   ST_X(spot.location) AS longitude, ST_Y(spot.location) AS latitude
+            FROM community_spot spot
+            WHERE (CAST(:spotType AS varchar) IS NULL OR spot.spot_type = CAST(:spotType AS varchar))
+              AND EXISTS (SELECT 1 FROM spot_course link
+                   WHERE link.course_id = :courseId
+                     AND ((spot.target_type = 'FACILITY' AND link.facility_id = spot.target_id)
+                       OR (spot.target_type = 'USER_SPOT' AND link.user_spot_id = spot.target_id)))
+            ORDER BY spot.target_type, spot.target_id
+            """;
+
     private static final String SPOT_PAGE_SQL = SPOT_CTE + ", spot_page AS (" + SPOT_SELECT + """
             )
             SELECT *
@@ -254,6 +266,19 @@ public class CommunitySpotQueryRepository {
                 .addValue("spotType", request.type() == null ? null : request.type().name())
                 .addValue("courseId", request.courseId());
         return jdbcTemplate.query(MAP_MARKER_SQL, parameters, (rs, row) -> new CommunitySpotMapResponse(
+                CommunitySpotTargetType.valueOf(rs.getString("target_type")), rs.getLong("target_id"),
+                rs.getLong("mountain_id"), rs.getString("name"), CommunitySpotType.valueOf(rs.getString("spot_type")),
+                rs.getDouble("longitude"), rs.getDouble("latitude")
+        ));
+    }
+
+    public List<CommunitySpotMapResponse> findCourseMapMarkers(
+            Long userId, Long mountainId, Long courseId, CommunitySpotType type
+    ) {
+        var parameters = spotParameters(userId, mountainId)
+                .addValue("spotType", type == null ? null : type.name())
+                .addValue("courseId", courseId);
+        return jdbcTemplate.query(COURSE_MAP_MARKER_SQL, parameters, (rs, row) -> new CommunitySpotMapResponse(
                 CommunitySpotTargetType.valueOf(rs.getString("target_type")), rs.getLong("target_id"),
                 rs.getLong("mountain_id"), rs.getString("name"), CommunitySpotType.valueOf(rs.getString("spot_type")),
                 rs.getDouble("longitude"), rs.getDouble("latitude")

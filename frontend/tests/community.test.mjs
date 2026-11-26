@@ -490,7 +490,7 @@ test('커뮤니티 지도는 현재 영역의 공식 시설을 조회하고 출�
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(apiSource, /west: String\(bounds\.west\)[\s\S]*north: String\(bounds\.north\)/);
   assert.match(mapSource, /map\.on\('moveend', report\)/);
-  assert.match(pageSource, /const spotRequest = courseId[\s\S]*communityApi\.courseSpots\(mountainId, courseId, queryBounds, controller\.signal, type\)[\s\S]*communityApi\.spots\(mountainId, queryBounds, controller\.signal, type\)/);
+  assert.match(pageSource, /const spotRequest = courseId[\s\S]*communityApi\.courseSpots\(mountainId, courseId, controller\.signal, type\)[\s\S]*communityApi\.spots\(mountainId, queryBounds, controller\.signal, type\)/);
   assert.match(pageSource, /targetType: spot\.targetType/);
 });
 

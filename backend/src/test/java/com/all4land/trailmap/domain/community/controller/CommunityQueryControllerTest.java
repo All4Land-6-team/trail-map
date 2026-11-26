@@ -15,6 +15,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -78,14 +79,10 @@ class CommunityQueryControllerTest {
 
     @Test
     void 코스_상세_지도_스팟은_코스_경로에_포함된다() throws Exception {
-        given(queryService.getCourseMapMarkers(eq(7L), eq(3L), eq(9L), any())).willReturn(List.of());
+        given(queryService.getCourseMapMarkers(eq(7L), eq(3L), eq(9L), isNull())).willReturn(List.of());
 
         mockMvc.perform(get("/v1/community/mountains/3/courses/9/spots/map")
-                        .header("X-User-Id", "7")
-                        .param("west", "126.9")
-                        .param("south", "37.5")
-                        .param("east", "127.1")
-                        .param("north", "37.8"))
+                        .header("X-User-Id", "7"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(0));
     }

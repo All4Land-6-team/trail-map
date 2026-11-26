@@ -92,14 +92,12 @@ public class CommunityQueryService {
             Long userId,
             Long mountainId,
             Long courseId,
-            CommunitySpotMapRequest request
+            CommunitySpotType type
     ) {
         validateUser(userId);
         validateMountain(mountainId);
         validateCourseMountain(mountainId, courseId);
-        return spotQueryRepository.findMapMarkers(userId, mountainId, new CommunitySpotMapRequest(
-                request.west(), request.south(), request.east(), request.north(), request.type(), courseId
-        ));
+        return spotQueryRepository.findCourseMapMarkers(userId, mountainId, courseId, type);
     }
 
     public CommunitySpotPageResponse getSpotPage(Long userId, Long mountainId, CommunitySpotType type, int size, String cursor) {
