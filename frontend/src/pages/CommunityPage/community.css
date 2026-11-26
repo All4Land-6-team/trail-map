@@ -223,6 +223,8 @@
 .community-gallery-review__author-row { display:flex; min-width:0; align-items:center; justify-content:space-between; gap:8px; margin-top:2px; }
 .community-gallery-review__author-row > strong { min-width:0; overflow:hidden; flex:1; text-overflow:ellipsis; white-space:nowrap; }
 .community-gallery-review__author-row span { color:var(--af-green); font-weight:700; }
+.community-gallery-review__rating .review-rating { color:#956f00; font-weight:700; }
+.community-gallery-review__rating .review-rating > span { color:var(--af-ink); }
 .community-gallery-review__text p { margin:8px 0 0; white-space:pre-wrap; }
 .community-quote-list { display:flex; flex-direction:column; gap:6px; }
 .community-quote { position:relative; padding:12px 13px; border-radius:12px; background:#f3f7f1; font-size:11px; line-height:16px; }
