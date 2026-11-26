@@ -322,13 +322,17 @@ class CommunityQueryApiIntegrationTest {
                 .andExpect(jsonPath("$.data.summary.reviewCount").value(1))
                 .andExpect(jsonPath("$.data.summary.averageRating").value(4.5))
                 .andExpect(jsonPath("$.data.reviews.length()").value(1))
-                .andExpect(jsonPath("$.data.photos.length()").value(2));
+                .andExpect(jsonPath("$.data.photos.length()").value(2))
+                .andExpect(jsonPath("$.data.photos[0].photoId").isNumber())
+                .andExpect(jsonPath("$.data.photos[0].url").isString())
+                .andExpect(jsonPath("$.data.photos[0].author").doesNotExist());
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/photos")
                         .param("limit", "1").param("offset", "0")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].reviewRating").doesNotExist());
+                .andExpect(jsonPath("$.data[0].reviewRating").doesNotExist())
+                .andExpect(jsonPath("$.data[0].author").doesNotExist());
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/photos")
                         .param("limit", "1").param("offset", "1")))
                 .andExpect(status().isOk())

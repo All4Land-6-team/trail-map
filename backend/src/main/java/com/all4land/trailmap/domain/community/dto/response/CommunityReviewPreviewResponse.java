@@ -4,6 +4,6 @@ import java.util.List;
 
 public record CommunityReviewPreviewResponse(
         List<CommunityReviewResponse> reviews,
-        List<CommunityPhotoResponse> photos
+        List<CommunityPhotoPreviewResponse> photos
 ) {
 }

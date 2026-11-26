@@ -2,7 +2,7 @@ package com.all4land.trailmap.domain.community.service;
 
 import com.all4land.trailmap.domain.community.dto.request.CommunityReviewPageRequest;
 import com.all4land.trailmap.domain.community.dto.request.CommunitySpotMapRequest;
-import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoPreviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityReviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityCoordinateResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityCourseResponse;
@@ -271,7 +271,7 @@ public class CommunityQueryService {
     private CommunitySpotDetailResponse toSpotDetailResponse(
             CommunitySpotQueryResult spot,
             List<CommunityReviewResponse> reviews,
-            List<CommunityPhotoResponse> photos
+            List<CommunityPhotoPreviewResponse> photos
     ) {
         return new CommunitySpotDetailResponse(
                 spot.targetType(),

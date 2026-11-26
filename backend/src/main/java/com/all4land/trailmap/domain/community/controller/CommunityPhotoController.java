@@ -3,6 +3,7 @@ package com.all4land.trailmap.domain.community.controller;
 import com.all4land.trailmap.domain.community.dto.request.CommunityPhotoConfirmRequest;
 import com.all4land.trailmap.domain.community.dto.request.CommunityPhotoUploadUrlRequest;
 import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoPreviewResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityPhotoUploadUrlResponse;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.service.CommunityPhotoService;
@@ -50,7 +51,7 @@ public class CommunityPhotoController {
     }
 
     @GetMapping("/mountains/{mountainId}/photos")
-    public ResponseEntity<SuccessResponse<List<CommunityPhotoResponse>>> getMountainPhotos(
+    public ResponseEntity<SuccessResponse<List<CommunityPhotoPreviewResponse>>> getMountainPhotos(
             @CurrentUserId Long userId,
             @Positive @PathVariable Long mountainId,
             @Min(1) @Max(100) @RequestParam(required = false) Integer limit,
@@ -60,7 +61,7 @@ public class CommunityPhotoController {
     }
 
     @GetMapping("/mountains/{mountainId}/courses/{courseId}/photos")
-    public ResponseEntity<SuccessResponse<List<CommunityPhotoResponse>>> getCoursePhotos(
+    public ResponseEntity<SuccessResponse<List<CommunityPhotoPreviewResponse>>> getCoursePhotos(
             @CurrentUserId Long userId,
             @Positive @PathVariable Long mountainId,
             @Positive @PathVariable Long courseId,
@@ -71,7 +72,7 @@ public class CommunityPhotoController {
     }
 
     @GetMapping("/mountains/{mountainId}/spots/{targetType}/{targetId}/photos")
-    public ResponseEntity<SuccessResponse<List<CommunityPhotoResponse>>> getSpotPhotos(
+    public ResponseEntity<SuccessResponse<List<CommunityPhotoPreviewResponse>>> getSpotPhotos(
             @CurrentUserId Long userId,
             @Positive @PathVariable Long mountainId,
             @PathVariable CommunitySpotTargetType targetType,

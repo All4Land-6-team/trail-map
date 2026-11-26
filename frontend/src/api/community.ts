@@ -56,7 +56,8 @@ export type CommunityReviewDto = {
 }
 
 export type CommunityMountainReviewSummaryDto = { reviewCount: number; averageRating: number | null; photoCount: number }
-export type CommunityReviewPreviewDto = { reviews: CommunityReviewDto[]; photos: CommunityPhotoDto[] }
+export type CommunityPhotoPreviewDto = { photoId: number; url: string }
+export type CommunityReviewPreviewDto = { reviews: CommunityReviewDto[]; photos: CommunityPhotoPreviewDto[] }
 export type CommunityMountainDetailDto = CommunityReviewPreviewDto & { summary: CommunityMountainReviewSummaryDto }
 export type CommunitySpotDetailDto = CommunitySpotDto & CommunityReviewPreviewDto
 
@@ -168,11 +169,13 @@ export const communityApi = {
   spotReviews: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
     request<CommunityReviewDto[]>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/reviews?limit=${limit}&offset=${offset}`, { signal }),
   mountainPhotos: (mountainId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
-    request<CommunityPhotoDto[]>(`/mountains/${mountainId}/photos?limit=${limit}&offset=${offset}`, { signal }),
+    request<CommunityPhotoPreviewDto[]>(`/mountains/${mountainId}/photos?limit=${limit}&offset=${offset}`, { signal }),
   coursePhotos: (mountainId: string, courseId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
-    request<CommunityPhotoDto[]>(`/mountains/${mountainId}/courses/${courseId}/photos?limit=${limit}&offset=${offset}`, { signal }),
+    request<CommunityPhotoPreviewDto[]>(`/mountains/${mountainId}/courses/${courseId}/photos?limit=${limit}&offset=${offset}`, { signal }),
   spotPhotos: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
-    request<CommunityPhotoDto[]>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/photos?limit=${limit}&offset=${offset}`, { signal }),
+    request<CommunityPhotoPreviewDto[]>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/photos?limit=${limit}&offset=${offset}`, { signal }),
+  photoDetail: (photoId: number, signal?: AbortSignal) =>
+    request<CommunityPhotoDto>(`/photos/${photoId}`, { signal }),
   courseUserSpots: (mountainId: string, courseId: string, signal?: AbortSignal) =>
     request<CommunitySpotDto[]>(`/mountains/${mountainId}/courses/${courseId}/user-spots`, { signal }),
   coursePhotoSpots: (mountainId: string, courseId: string, signal?: AbortSignal) =>

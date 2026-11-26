@@ -5,7 +5,7 @@ import { Chip } from '../../components/common/Chip'
 import { BottomNavigation, TopBar, type BottomDestination } from '../../components/layout'
 import { BottomSheet, ConfirmDialog, ModalLayer } from '../../components/overlay'
 import { EmptyState, Toast } from '../../components/feedback'
-import { CommunityApiError, communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityEligibilityDto, type CommunityMapSpotDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
+import { CommunityApiError, communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityEligibilityDto, type CommunityMapSpotDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityPhotoPreviewDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
 import { mountainApi, type MountainDto } from '../../api/mountainApi'
 import type { CommunityReview, CommunityCourseReviewTarget, CommunitySpotTargetType, Coordinate, ReviewDraft, ReviewKind, SpotType } from '../../types/community'
 import type { CompletedHike } from '../../store/hikeSessionStore'
@@ -123,7 +123,11 @@ function toReview(review: CommunityReviewDto): CommunityReview {
     author: review.author, createdAt: review.createdAt, environment: review.environment ?? undefined }
 }
 
-function toGalleryPhoto(photo: CommunityPhotoDto): CommunityGalleryPhoto {
+function toGalleryPhoto(photo: CommunityPhotoPreviewDto, kind: ReviewKind): CommunityGalleryPhoto {
+  return { id: `photo:${photo.photoId}`, src: photo.url, source: kind === 'spot' ? 'spot' : 'review' }
+}
+
+function toDetailedGalleryPhoto(photo: CommunityPhotoDto): CommunityGalleryPhoto {
   return { id: `photo:${photo.photoId}`, src: photo.url, author: photo.author,
     exampleText: photo.reviewContent ?? undefined, exampleRating: photo.reviewRating ?? undefined,
     exampleDate: new Date(photo.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }),
@@ -258,6 +262,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const reviewListEnd = useRef<HTMLDivElement>(null)
   const [photoPage, setPhotoPage] = useState<{ key: string; items: CommunityGalleryPhoto[]; hasNext: boolean; loading: boolean; error: boolean }>({ key: '', items: [], hasNext: false, loading: false, error: false })
   const [photoPageRetry, setPhotoPageRetry] = useState(0)
+  const [photoDetail, setPhotoDetail] = useState<{ id: string; photo: CommunityGalleryPhoto | null; error: boolean } | null>(null)
+  const [delayedPhotoDetailId, setDelayedPhotoDetailId] = useState('')
+  const [photoDetailRetry, setPhotoDetailRetry] = useState(0)
   const [spotDetailRetry, setSpotDetailRetry] = useState(0)
   const [spotDetailFailure, setSpotDetailFailure] = useState('')
   const photoPageBusy = useRef(false)
@@ -351,7 +358,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       setCourses(loadedCourses)
       setMountainSummary(mountainDetail.summary)
       setReviews(mountainDetail.reviews.map(toReview))
-      setPhotoPage({ key: `mountain:${mountainId}`, items: mountainDetail.photos.slice(0, 10).map(toGalleryPhoto),
+      setPhotoPage({ key: `mountain:${mountainId}`, items: mountainDetail.photos.slice(0, 10).map(photo => toGalleryPhoto(photo, 'mountain')),
         hasNext: mountainDetail.photos.length > 10, loading: false, error: false })
       const activeCourse = activeHike?.hikeRecordId && spotRegistrationMode === 'active'
         ? findCommunityCourse(loadedCourses, activeHike.courseId)
@@ -605,7 +612,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       ])
       setPhotoPage({
         key: `spot:${mountainId}:${spot.id}`,
-        items: result.photos.slice(0, 10).map(toGalleryPhoto),
+        items: result.photos.slice(0, 10).map(photo => toGalleryPhoto(photo, 'spot')),
         hasNext: result.photos.length > 10,
         loading: false,
         error: false,
@@ -705,7 +712,22 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const spotPhotosLoading = screen === 'spotDetail' && !!selectedSpot
     && (photoPage.key !== activePhotoKey || photoPage.loading)
   useEffect(() => {
-    if (!activePhotoKind || !activePhotoKey || !mountainId) return
+    if (screen !== 'photoAlbum' || !activePhotoKind || !activePhotoKey || !mountainId) return
+    const controller = new AbortController()
+    photoPageBusy.current = true
+    setPhotoPage({ key: activePhotoKey, items: [], hasNext: false, loading: true, error: false })
+    void fetchPhotos(activePhotoKind, mountainId, selectedSpot?.targetType, selectedSpot?.targetId,
+      selectedCourse.id, controller.signal, 0).then(result => {
+      if (!controller.signal.aborted) setPhotoPage({ key: activePhotoKey,
+        items: result.slice(0, 10).map(photo => toGalleryPhoto(photo, activePhotoKind)),
+        hasNext: result.length > 10, loading: false, error: false })
+    }).catch(error => {
+      if (!controller.signal.aborted) { setPhotoPage({ key: activePhotoKey, items: [], hasNext: false, loading: false, error: true }); notify(error instanceof Error ? error.message : '사진을 불러오지 못했습니다.') }
+    }).finally(() => { if (!controller.signal.aborted) photoPageBusy.current = false })
+    return () => { controller.abort(); photoPageBusy.current = false }
+  }, [activePhotoKey, activePhotoKind, mountainId, notify, photoPageRetry, screen, selectedCourse.id, selectedSpot?.targetId, selectedSpot?.targetType])
+  useEffect(() => {
+    if (!activePhotoKind || !activePhotoKey || !mountainId || screen === 'photoAlbum' || screen === 'photoReview') return
     if (activePhotoKind === 'spot') return
     const controller = new AbortController()
     photoPageBusy.current = true
@@ -720,13 +742,13 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         ...result.reviews.map(review => ({ ...toReview(review), targetId })),
       ])
       if ('summary' in result) setMountainSummary(result.summary as CommunityMountainReviewSummaryDto)
-      setPhotoPage({ key: activePhotoKey, items: result.photos.slice(0, 10).map(toGalleryPhoto),
+      setPhotoPage({ key: activePhotoKey, items: result.photos.slice(0, 10).map(photo => toGalleryPhoto(photo, activePhotoKind)),
         hasNext: result.photos.length > 10, loading: false, error: false })
     }).catch(error => {
       if (!controller.signal.aborted) { setPhotoPage({ key: activePhotoKey, items: [], hasNext: false, loading: false, error: true }); notify(error instanceof Error ? error.message : '사진과 후기를 불러오지 못했습니다.') }
     }).finally(() => { if (!controller.signal.aborted) photoPageBusy.current = false })
     return () => controller.abort()
-  }, [activePhotoKey, activePhotoKind, mountainId, notify, photoPageRetry, selectedCourse.id])
+  }, [activePhotoKey, activePhotoKind, mountainId, notify, photoPageRetry, screen, selectedCourse.id])
   const currentReviews = (kind: ReviewKind, targetId: string) => reviews.filter(review => review.kind === kind && review.targetId === targetId)
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
   const mountainReviews = currentReviews('mountain', mountainId)
@@ -770,8 +792,24 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const galleryTitle = galleryKind === 'mountain' ? mountain.name : galleryKind === 'course' ? selectedCourse.name : selectedSpot?.name ?? '스팟'
   const selectedGalleryIndex = galleryPhotos.findIndex(photo => photo.id === galleryPhotoId)
   const selectedGalleryPhoto = galleryPhotos[selectedGalleryIndex]
+  useEffect(() => {
+    if (screen !== 'photoReview' || !galleryPhotoId) return
+    const photoId = Number(galleryPhotoId.replace(/^photo:/, ''))
+    if (!Number.isSafeInteger(photoId) || photoId <= 0) return
+    const controller = new AbortController()
+    setDelayedPhotoDetailId('')
+    const skeletonTimer = window.setTimeout(() => setDelayedPhotoDetailId(galleryPhotoId), 200)
+    setPhotoDetail({ id: galleryPhotoId, photo: null, error: false })
+    void communityApi.photoDetail(photoId, controller.signal).then(photo => {
+      if (!controller.signal.aborted) setPhotoDetail({ id: galleryPhotoId, photo: toDetailedGalleryPhoto(photo), error: false })
+    }).catch(error => {
+      if (!controller.signal.aborted) { setPhotoDetail({ id: galleryPhotoId, photo: null, error: true }); notify(error instanceof Error ? error.message : '사진 후기를 불러오지 못했습니다.') }
+    }).finally(() => window.clearTimeout(skeletonTimer))
+    return () => { controller.abort(); window.clearTimeout(skeletonTimer) }
+  }, [galleryPhotoId, notify, photoDetailRetry, screen])
   const renderPhotoStatus = (showInitialSkeleton = true) => <>
-    {showInitialSkeleton && (spotPhotosLoading || photoPage.key === activePhotoKey && photoPage.loading && photoPage.items.length === 0) && <CommunityPhotoSkeleton />}
+    {showInitialSkeleton && (spotPhotosLoading || photoPage.loading && photoPage.items.length === 0
+      && (photoPage.key === activePhotoKey || screen === 'photoAlbum')) && <CommunityPhotoSkeleton />}
     {photoPage.key === activePhotoKey && photoPage.error && <button type="button" className="community-inline-link" onClick={() => {
       if (photoPage.items.length === 0) setPhotoPageRetry(current => current + 1)
       else setPhotoPage(current => ({ ...current, error: false }))
@@ -789,14 +827,15 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       photoPageBusy.current = true
       setPhotoPage(current => ({ ...current, loading: true }))
       void fetchPhotos(activePhotoKind, mountainId, selectedSpot?.targetType, selectedSpot?.targetId, selectedCourse.id, controller.signal, photoPage.items.length).then(result => {
-        if (!controller.signal.aborted) setPhotoPage(current => ({ ...current, items: [...current.items, ...result.slice(0, 10).map(toGalleryPhoto)],
+        if (!controller.signal.aborted) setPhotoPage(current => ({ ...current, items: [...current.items, ...result.slice(0, 10).map(photo => toGalleryPhoto(photo, activePhotoKind))],
           hasNext: result.length > 10, loading: false, error: false }))
       }).catch(error => {
         if (!controller.signal.aborted) { setPhotoPage(current => ({ ...current, loading: false, error: true })); notify(error instanceof Error ? error.message : '사진을 더 불러오지 못했습니다.') }
       }).finally(() => { if (!controller.signal.aborted) photoPageBusy.current = false })
     }
     if (nearEnd) { load(); return () => controller.abort() }
-    const root = end === photoStripEnd.current ? end?.parentElement : null
+    const root = screen === 'photoAlbum' ? end?.closest<HTMLElement>('.community-gallery-album')
+      : end === photoStripEnd.current ? end?.parentElement : null
     const observer = new IntersectionObserver(entries => { if (entries[0]?.isIntersecting) load() }, { root, rootMargin: '160px' })
     observer.observe(end!)
     return () => { observer.disconnect(); controller.abort() }
@@ -855,7 +894,12 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     if (content) content.scrollTop = 0
   }
   const openGalleryPhoto = (kind: ReviewKind, id: string) => { setGalleryKind(kind); setGalleryPhotoId(id); move('photoReview') }
-  const openGallery = (kind: ReviewKind) => { setGalleryKind(kind); move('photoAlbum') }
+  const openGallery = (kind: ReviewKind) => {
+    setGalleryKind(kind)
+    setPhotoPage({ key: '', items: [], hasNext: false, loading: true, error: false })
+    photoPageBusy.current = false
+    move('photoAlbum')
+  }
   const focusSpot = (id: string) => {
     const spot = spots.find(item => item.id === id)
     if (!spot) return
@@ -1302,9 +1346,11 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         })} />} />
     </>}
 
-    {screen === 'photoAlbum' && <><CommunityPhotoAlbum photos={galleryPhotos} title={galleryTitle} onOpen={id => openGalleryPhoto(galleryKind, id)} />
-      {photoPage.hasNext && <div ref={photoAlbumEnd} role="status">{photoPage.loading ? '사진을 더 불러오는 중…' : ''}</div>}
-      {renderPhotoStatus()}</>}
+    {screen === 'photoAlbum' && <CommunityPhotoAlbum photos={galleryPhotos} title={galleryTitle}
+      loading={photoPage.loading && galleryPhotos.length === 0} onOpen={id => openGalleryPhoto(galleryKind, id)}>
+      {photoPage.hasNext && <div ref={photoAlbumEnd} className="community-gallery-album__end" role="status">{photoPage.loading ? '사진을 더 불러오는 중…' : ''}</div>}
+      {renderPhotoStatus(false)}
+    </CommunityPhotoAlbum>}
     {screen === 'spotReviewList' && selectedSpot && <section className="community-gallery-page community-review-list-page" aria-label={`${selectedSpot.name} 후기 목록`}>
       <h2>{selectedSpot.name} 후기</h2>
       {reviewList.key === reviewListKey && (fullReviews.length > 0 || !reviewList.loading) && <ReviewQuotes reviews={fullReviews}
@@ -1323,7 +1369,12 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         photos={fullReviewPhotos} onPhotoOpen={setLightboxPhotoId} />}
       {fullReviewStatus}
     </section>}
-    {screen === 'photoReview' && selectedGalleryPhoto && <CommunityPhotoReview photo={selectedGalleryPhoto} kind={galleryKind} index={selectedGalleryIndex} total={galleryPhotos.length}
+    {screen === 'photoReview' && selectedGalleryPhoto && <CommunityPhotoReview key={galleryPhotoId} photo={selectedGalleryPhoto}
+      detail={photoDetail?.id === galleryPhotoId ? photoDetail.photo : null}
+      showDetailSkeleton={delayedPhotoDetailId === galleryPhotoId && photoDetail?.id === galleryPhotoId && !photoDetail.photo && !photoDetail.error}
+      detailError={photoDetail?.id === galleryPhotoId && photoDetail.error}
+      onRetry={() => setPhotoDetailRetry(current => current + 1)}
+      kind={galleryKind} index={selectedGalleryIndex} total={galleryPhotos.length}
       onPrevious={() => setGalleryPhotoId(galleryPhotos[selectedGalleryIndex - 1].id)}
       onNext={() => setGalleryPhotoId(galleryPhotos[selectedGalleryIndex + 1].id)} />}
 
