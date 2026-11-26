@@ -261,6 +261,7 @@ public class CommunityCommandService {
                 .map(CreatedUserSpotQueryResult::spotId)
                 .orElseThrow(() -> new IllegalStateException("스팟 등록 결과를 찾지 못했습니다.")));
         spotCommandRepository.linkToCourse(spotId, hike.courseId(), "USER_SELECTED");
+        spotCommandRepository.linkToNearbyCourseStarts(spotId, mountainId);
         var existingReview = spotReviewRepository.findByHikeRecordIdAndSpotIdAndDeletedAtIsNull(hike.hikeRecordId(), spotId);
         if (existingReview.isPresent()) {
             return createdSpotResponse(userId, spotCommandRepository.findByClientRequestId(userId, request.clientRequestId())
@@ -405,6 +406,7 @@ public class CommunityCommandService {
             noVotes = spotVoteRepository.countBySpotIdAndVoteType(target.targetId(), CommunityVoteType.NO);
             status = spotCommandRepository.updateUserSpotVisibility(target.targetId(), noVotes);
         }
+        status = noVotes >= 3 ? "HIDDEN" : "VISIBLE";
         return new CommunitySpotVoteResponse(
                 target.targetType(),
                 target.targetId(),

@@ -137,7 +137,7 @@ function fetchPhotos(kind: ReviewKind, mountainId: string, spotTargetType: Commu
   return communityApi.spotPhotos(mountainId, spotTargetType, spotTargetId, signal, 11, offset)
 }
 
-function toVote(spot: CommunityMapSpotDto): SpotVote {
+function toVote(spot: Pick<CommunitySpotDto, 'yesVotes' | 'noVotes' | 'viewerVote'>): SpotVote {
   return { yes: spot.yesVotes, no: spot.noVotes, viewer: normalizeVote(spot.viewerVote) }
 }
 
@@ -463,7 +463,6 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     if (cached && Date.now() - cached.fetchedAt < MAP_SPOT_CACHE_MS && coversMapBounds(cached.bounds, mapBounds)) {
       if ((screen === 'map' || screen === 'courseDetail') && shownMapSpotKey.current !== cacheKey) {
         setMapSpots(cached.spots.map(toMapSpot))
-        setVotes(current => ({ ...Object.fromEntries(cached.spots.map(spot => [`${spot.targetType}:${spot.targetId}`, toVote(spot)])), ...current }))
         shownMapSpotKey.current = cacheKey
       }
       return
@@ -483,7 +482,6 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
         loaded.forEach(spot => { if (!merged.has(spot.id)) merged.set(spot.id, spot) })
         return [...merged.values()]
       })
-      setVotes(current => ({ ...current, ...Object.fromEntries(result.map(spot => [`${spot.targetType}:${spot.targetId}`, toVote(spot)])) }))
     }).catch(error => {
       if (!controller.signal.aborted) notify(error instanceof Error ? error.message : '주변 스팟을 불러오지 못했습니다.')
     })

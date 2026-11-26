@@ -176,7 +176,10 @@ class CommunityQueryApiIntegrationTest {
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].targetType").value("FACILITY"))
                 .andExpect(jsonPath("$.data[0].reviewCount").doesNotExist())
-                .andExpect(jsonPath("$.data[0].photoCount").doesNotExist());
+                .andExpect(jsonPath("$.data[0].photoCount").doesNotExist())
+                .andExpect(jsonPath("$.data[0].yesVotes").doesNotExist())
+                .andExpect(jsonPath("$.data[0].noVotes").doesNotExist())
+                .andExpect(jsonPath("$.data[0].viewerVote").doesNotExist());
     }
 
     @Test

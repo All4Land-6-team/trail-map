@@ -46,6 +46,9 @@ public class CommunitySpotQueryRepository {
                 FROM facility
                 JOIN data_source source ON source.source_id = facility.source_id
                 WHERE facility.mountain_id = :mountainId
+                  AND (SELECT count(*) FROM spot_vote vote
+                       WHERE vote.facility_id = facility.facility_id
+                         AND vote.vote_type = 'NO') < 3
 
                 UNION ALL
 
@@ -62,6 +65,9 @@ public class CommunitySpotQueryRepository {
                 WHERE spot.mountain_id = :mountainId
                   AND spot.deleted_at IS NULL
                   AND spot.spot_status <> 'HIDDEN'
+                  AND (SELECT count(*) FROM spot_vote vote
+                       WHERE vote.spot_id = spot.spot_id
+                         AND vote.vote_type = 'NO') < 3
             )
             """;
 
@@ -146,16 +152,7 @@ public class CommunitySpotQueryRepository {
 
     private static final String MAP_MARKER_SQL = SPOT_CTE + """
             SELECT spot.target_type, spot.target_id, spot.mountain_id, spot.name, spot.spot_type,
-                   ST_X(spot.location) AS longitude, ST_Y(spot.location) AS latitude, spot.status,
-                   (SELECT count(*) FROM spot_vote vote WHERE vote.vote_type = 'YES'
-                     AND ((spot.target_type = 'FACILITY' AND vote.facility_id = spot.target_id)
-                       OR (spot.target_type = 'USER_SPOT' AND vote.spot_id = spot.target_id))) AS yes_votes,
-                   (SELECT count(*) FROM spot_vote vote WHERE vote.vote_type = 'NO'
-                     AND ((spot.target_type = 'FACILITY' AND vote.facility_id = spot.target_id)
-                       OR (spot.target_type = 'USER_SPOT' AND vote.spot_id = spot.target_id))) AS no_votes,
-                   (SELECT vote.vote_type FROM spot_vote vote WHERE vote.user_id = :userId
-                     AND ((spot.target_type = 'FACILITY' AND vote.facility_id = spot.target_id)
-                       OR (spot.target_type = 'USER_SPOT' AND vote.spot_id = spot.target_id)) LIMIT 1) AS viewer_vote
+                   ST_X(spot.location) AS longitude, ST_Y(spot.location) AS latitude
             FROM community_spot spot
             WHERE ST_Intersects(spot.location, ST_MakeEnvelope(:west, :south, :east, :north, 4326))
               AND (CAST(:spotType AS varchar) IS NULL OR spot.spot_type = CAST(:spotType AS varchar))
@@ -259,8 +256,7 @@ public class CommunitySpotQueryRepository {
         return jdbcTemplate.query(MAP_MARKER_SQL, parameters, (rs, row) -> new CommunitySpotMapResponse(
                 CommunitySpotTargetType.valueOf(rs.getString("target_type")), rs.getLong("target_id"),
                 rs.getLong("mountain_id"), rs.getString("name"), CommunitySpotType.valueOf(rs.getString("spot_type")),
-                rs.getDouble("longitude"), rs.getDouble("latitude"), rs.getString("status"),
-                rs.getLong("yes_votes"), rs.getLong("no_votes"), enumValue(rs.getString("viewer_vote"), CommunityVoteType.class)
+                rs.getDouble("longitude"), rs.getDouble("latitude")
         ));
     }
 

@@ -391,7 +391,7 @@ class CommunityCommandApiIntegrationTest {
         castVote(userId, voteUrl, "YES")
                 .andExpect(jsonPath("$.data.yesVotes").value(1))
                 .andExpect(jsonPath("$.data.noVotes").value(2))
-                .andExpect(jsonPath("$.data.status").value("RECONFIRMATION_REQUIRED"))
+                .andExpect(jsonPath("$.data.status").value("VISIBLE"))
                 .andExpect(jsonPath("$.data.hidden").doesNotExist());
 
         mockMvc.perform(asUser(get("/v1/community/mountains/" + mountainId + "/spots"))
@@ -404,7 +404,7 @@ class CommunityCommandApiIntegrationTest {
     }
 
     @Test
-    void 공식_시설은_부정_평가가_3건이어도_숨기지_않는다() throws Exception {
+    void 공식_시설도_부정_평가_3건이면_숨긴다() throws Exception {
         long secondUserId = insertUser("둘째");
         long thirdUserId = insertUser("셋째");
         String voteUrl = "/v1/community/mountains/%d/spots/FACILITY/%d/vote"
@@ -414,12 +414,12 @@ class CommunityCommandApiIntegrationTest {
         castVote(secondUserId, voteUrl, "NO");
         castVote(thirdUserId, voteUrl, "NO")
                 .andExpect(jsonPath("$.data.noVotes").value(3))
-                .andExpect(jsonPath("$.data.status").value("AVAILABLE"))
+                .andExpect(jsonPath("$.data.status").value("HIDDEN"))
                 .andExpect(jsonPath("$.data.hidden").doesNotExist());
 
         mockMvc.perform(asUser(get("/v1/community/mountains/%d/spots/FACILITY/%d"
                         .formatted(mountainId, facilityId))))
-                .andExpect(status().isOk());
+                .andExpect(status().isNotFound());
     }
 
     private MockHttpServletRequestBuilder asUser(MockHttpServletRequestBuilder request) {

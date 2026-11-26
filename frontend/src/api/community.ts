@@ -37,7 +37,7 @@ export type CommunitySpotDto = {
 }
 
 export type CommunitySpotBounds = { west: number; south: number; east: number; north: number }
-export type CommunityMapSpotDto = Omit<CommunitySpotDto, 'reviewCount' | 'photoCount' | 'representativePhotoUrl'>
+export type CommunityMapSpotDto = Pick<CommunitySpotDto, 'targetType' | 'targetId' | 'mountainId' | 'name' | 'type' | 'longitude' | 'latitude'>
 export type CommunitySpotPageDto = { items: CommunitySpotDto[]; nextCursor: string | null; hasNext: boolean }
 
 export type CommunityReviewDto = {
