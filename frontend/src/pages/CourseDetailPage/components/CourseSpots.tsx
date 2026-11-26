@@ -3,7 +3,6 @@ import { Icon } from "../../../components/common/Icon";
 import { Button } from "../../../components/common/Button";
 import { TabBar } from "../../../components/layout";
 import { EmptyState } from "../../../components/feedback";
-import { COURSE_FACILITY_RADIUS_METERS } from "../../../api/courseFacilities";
 import type { CourseFacilitiesState, CourseSpot, SpotCategory } from "../../../types/courseDetail";
 import { isFoodSpot, SPOT_CATEGORIES, spotCategoryLabel } from "../../../utils/courseProfile";
 
@@ -63,9 +62,6 @@ export function CourseSpots({ control, spots, category, selectedId, restrooms, o
       items={SPOT_CATEGORIES.map(item => ({ ...item, controls: "course-spots-content" }))}
       onValueChange={value => onCategory(value as SpotCategory)} />
     <h2>{spotCategoryLabel(category)}{category !== "control" && countReady ? ` · ${spots.length}곳` : ""}</h2>
-    {includesFacilities && facilityGroups.some(group => group.state.status !== "unavailable") && <p className="course-spots__notice">
-      공식 시설은 코스 경로에서 {COURSE_FACILITY_RADIUS_METERS}m 이내입니다.
-    </p>}
     {(category === "water" || (category === "all" && water.status === "success" && water.spots.length > 0)) && <p className="course-spots__notice">
       음수대는 샘터·약수터를 포함합니다. 현재 이용 가능 여부와 음용 적합 여부는 확인되지 않았어요.
     </p>}
