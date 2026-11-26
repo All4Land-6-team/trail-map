@@ -87,10 +87,11 @@
 .community-page__sheet .af-bottom-sheet__title-row { flex:none; min-height:26px; margin-top:7px; }
 .community-page__sheet--map .af-bottom-sheet__body { gap:0; }
 .community-page__sheet--map .af-bottom-sheet__title-row { position:relative; z-index:5; min-height:44px; justify-content:flex-start; margin-top:2px; }
-.community-page__sheet--map .community-review-info { position:static; margin-left:6px; }
+.community-page__sheet--map .community-review-info { position:static; margin-left:3px; }
 .community-review-info { position:relative; flex:none; }
 .community-review-info__button { display:flex; width:44px; height:44px; align-items:center; justify-content:flex-start; padding:0 0 0 2px; border:0; color:var(--af-green-dark); background:transparent; }
 .community-review-info__button span { display:grid; width:14px; height:14px; place-items:center; border:1.25px solid currentColor; border-radius:50%; font:700 9px/1 "Noto Sans KR",sans-serif; }
+.community-page__sheet--map .community-review-info__button span { transform:translateY(1.2px); }
 .community-review-info__tooltip { position:absolute; z-index:6; top:calc(100% + 2px); right:0; display:none; max-width:calc(100dvw - 40px); padding:8px 10px; border:1px solid var(--af-line); border-radius:8px; color:var(--af-ink); background:#fff; box-shadow:0 3px 10px #173d3226; font:500 11px/18px "Noto Sans KR",sans-serif; white-space:nowrap; }
 .community-page__sheet--map .community-review-info__tooltip { right:auto; left:0; width:max-content; max-width:min(260px,100%); white-space:normal; }
 .community-review-info[data-open="true"] .community-review-info__tooltip { display:block; }
