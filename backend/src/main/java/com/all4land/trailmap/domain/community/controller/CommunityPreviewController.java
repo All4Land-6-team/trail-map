@@ -26,8 +26,8 @@ public class CommunityPreviewController {
     private final CommunityQueryService queryService;
     private final CommunityPhotoService photoService;
 
-    @GetMapping("/mountains/{mountainId}/preview")
-    public ResponseEntity<SuccessResponse<CommunityMountainPreviewResponse>> mountainPreview(
+    @GetMapping("/mountains/{mountainId}/detail")
+    public ResponseEntity<SuccessResponse<CommunityMountainPreviewResponse>> mountainDetail(
             @CurrentUserId Long userId, @Positive @PathVariable Long mountainId
     ) {
         var preview = new CommunityMountainPreviewResponse(
@@ -38,13 +38,15 @@ public class CommunityPreviewController {
         return response(SuccessResponse.ok(preview));
     }
 
-    @GetMapping("/courses/{courseId}/preview")
-    public ResponseEntity<SuccessResponse<CommunityReviewPreviewResponse>> coursePreview(
-            @CurrentUserId Long userId, @Positive @PathVariable Long courseId
+    @GetMapping("/mountains/{mountainId}/courses/{courseId}/detail")
+    public ResponseEntity<SuccessResponse<CommunityReviewPreviewResponse>> courseDetail(
+            @CurrentUserId Long userId,
+            @Positive @PathVariable Long mountainId,
+            @Positive @PathVariable Long courseId
     ) {
         var preview = new CommunityReviewPreviewResponse(
-                queryService.getCourseReviews(userId, courseId, THREE_REVIEWS),
-                photoService.getCoursePhotos(userId, courseId, 11, 0)
+                queryService.getCourseReviews(userId, mountainId, courseId, THREE_REVIEWS),
+                photoService.getCoursePhotos(userId, mountainId, courseId, 11, 0)
         );
         return response(SuccessResponse.ok(preview));
     }

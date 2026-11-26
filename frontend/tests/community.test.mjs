@@ -426,7 +426,7 @@ test('산·스팟·코스 후기 전체보기에서 처음 20개와 다음 20개
   const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(page, /communityApi\.mountainReviews\(mountainId, controller\.signal, 21\)/);
   assert.match(page, /communityApi\.spotReviews\(mountainId, listSpot!\.targetType, listSpot!\.targetId, controller\.signal, 21\)/);
-  assert.match(page, /communityApi\.courseReviews\(detailCourseId, controller\.signal, 21, offset\)/);
+  assert.match(page, /communityApi\.courseReviews\(mountainId, detailCourseId, controller\.signal, 21, offset\)/);
   assert.match(page, /new IntersectionObserver/);
 });
 
@@ -439,7 +439,7 @@ test('산 전체 스팟 목록은 지도 영역 없이 유형과 이어보기 �
   };
   try {
     await communityApi.spotList('2', undefined, 'RESTROOM', 'next-page');
-    assert.equal(calls[0], 'http://localhost:8080/api/v1/community/mountains/2/spots/list?size=20&type=RESTROOM&cursor=next-page');
+    assert.equal(calls[0], 'http://localhost:8080/api/v1/community/mountains/2/spots-list?size=20&type=RESTROOM&cursor=next-page');
     const page = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
     assert.match(page, /communityApi\.spotList\(mountainId, controller\.signal, listType, spotListCursor\)/);
     assert.match(page, /new IntersectionObserver\([\s\S]*\{ root, rootMargin: '120px' \}/);
@@ -507,7 +507,7 @@ test('커뮤니티 상세는 대상별 필요한 데이터를 중복 호출 없�
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(apiSource, /CommunityCourseDto[\s\S]*representativePhotoUrl: string \| null/);
   assert.doesNotMatch(pageSource, /courseResult\.map\(course => communityApi\.courseReviews/);
-  assert.match(pageSource, /communityApi\.coursePreview\(selectedCourse\.id/);
+  assert.match(pageSource, /communityApi\.courseDetail\(mountainId, selectedCourse\.id/);
   assert.doesNotMatch(apiSource, /spotPreview/);
   assert.match(pageSource, /communityApi\.spotDetail\([\s\S]*result\.reviews[\s\S]*result\.photos/);
   assert.match(pageSource, /코스 후기 \(\{visibleCourseTargets\.length\}개\)/);
@@ -621,7 +621,7 @@ test('24시간 이내 완료 산행은 같은 코스라도 각각 최신순으�
 
 test('일반 코스 상세는 사진 없이 최신 후기 4개만 요청한다', () => {
   const source = readFileSync(new URL('../src/pages/CourseDetailPage/CourseDetailPage.tsx', import.meta.url), 'utf8');
-  assert.match(source, /communityApi\.courseReviews\(String\(course\.courseId\), controller\.signal, 4\)/);
+  assert.match(source, /communityApi\.courseReviews\(String\(communityMountainId\), String\(course\.courseId\), controller\.signal, 4\)/);
   assert.doesNotMatch(source, /communityApi\.coursePhotos/);
 });
 

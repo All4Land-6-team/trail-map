@@ -99,9 +99,9 @@ public class CommunityPhotoService {
         return toResponses(photoQueryRepository.findMountainPhotos(mountainId, limit, offset));
     }
 
-    public List<CommunityPhotoResponse> getCoursePhotos(Long userId, Long courseId, Integer limit, Integer offset) {
+    public List<CommunityPhotoResponse> getCoursePhotos(Long userId, Long mountainId, Long courseId, Integer limit, Integer offset) {
         validateUser(userId);
-        if (!mapQueryRepository.existsCourse(courseId)) {
+        if (!mapQueryRepository.findCourseMountainId(courseId).filter(mountainId::equals).isPresent()) {
             throw new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND);
         }
         return toResponses(photoQueryRepository.findCoursePhotos(courseId, limit, offset));

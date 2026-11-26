@@ -103,16 +103,20 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
 
   useEffect(() => {
     const controller = new AbortController();
+    let communityMountainId: number | null = null;
     void mountainApi.list(controller.signal).then(mountains => {
       const mountain = mountains.find(item => String(item.mountainId) === mountainId || item.externalId === mountainId)
         ?? mountains.find(item => item.name === ({ bukhansan: "북한산", dobongsan: "도봉산", gwanaksan: "관악산" } as Record<string, string>)[mountainId]);
       if (!mountain) return null;
+      communityMountainId = mountain.mountainId;
       return communityApi.courses(String(mountain.mountainId), controller.signal);
     }).then(courses => {
       if (!courses) return null;
       const course = courses.find(item => `db-${item.courseId}` === courseId || String(item.courseId) === courseId || item.externalId === courseId);
       setCommunityCourse(course ?? null);
-      return course ? communityApi.courseReviews(String(course.courseId), controller.signal, 4) : null;
+      return course && communityMountainId !== null
+        ? communityApi.courseReviews(String(communityMountainId), String(course.courseId), controller.signal, 4)
+        : null;
     }).then(reviews => {
       if (reviews) setCommunityReviews(reviews);
     }).catch(() => {

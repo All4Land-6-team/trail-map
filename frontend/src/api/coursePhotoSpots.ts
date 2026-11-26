@@ -34,7 +34,7 @@ async function loadCourseSpots({ mountainId, courseId }: CourseRequest, signal: 
 }
 
 async function fetchSpots(dbId: number, mountainId: number, courseId: string, signal: AbortSignal, photosOnly: boolean): Promise<CourseSpot[]> {
-  const spots = await (photosOnly ? communityApi.coursePhotoSpots : communityApi.courseUserSpots)(String(dbId), signal);
+  const spots = await (photosOnly ? communityApi.coursePhotoSpots : communityApi.courseUserSpots)(String(mountainId), String(dbId), signal);
   const ids = new Set<number>();
   return spots.map(spot => {
     const kind = fromSpotType(spot.type);

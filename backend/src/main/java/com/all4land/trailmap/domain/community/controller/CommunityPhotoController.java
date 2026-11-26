@@ -59,14 +59,15 @@ public class CommunityPhotoController {
         return response(SuccessResponse.ok(photoService.getMountainPhotos(userId, mountainId, limit, offset)));
     }
 
-    @GetMapping("/courses/{courseId}/photos")
+    @GetMapping("/mountains/{mountainId}/courses/{courseId}/photos")
     public ResponseEntity<SuccessResponse<List<CommunityPhotoResponse>>> getCoursePhotos(
             @CurrentUserId Long userId,
+            @Positive @PathVariable Long mountainId,
             @Positive @PathVariable Long courseId,
             @Min(1) @Max(100) @RequestParam(required = false) Integer limit,
             @Min(0) @RequestParam(required = false) Integer offset
     ) {
-        return response(SuccessResponse.ok(photoService.getCoursePhotos(userId, courseId, limit, offset)));
+        return response(SuccessResponse.ok(photoService.getCoursePhotos(userId, mountainId, courseId, limit, offset)));
     }
 
     @GetMapping("/mountains/{mountainId}/spots/{targetType}/{targetId}/photos")

@@ -32,7 +32,7 @@ test('산·코스 외부 ID를 실제 코스 ID로 매핑해 사진 스팟을 �
   };
   try {
     const spots = await loadCoursePhotoSpots({ mountainId: 'bukhansan', courseId: 'baegundae' }, new AbortController().signal);
-    assert.ok(calls[2].endsWith('/courses/23/photo-spots'));
+    assert.ok(calls[2].endsWith('/mountains/7/courses/23/photo-spots'));
     assert.equal(spots[0].id, 'USER_SPOT:8');
     assert.deepEqual(spots[0].coordinate, [127, 37]);
     assert.deepEqual(spots[0].communityTarget, { mountainId: '7', targetType: 'USER_SPOT', targetId: '8' });
@@ -45,7 +45,7 @@ test('미연결 코스·다른 산 응답·조회 오류를 실제 빈 결과와
     globalThis.fetch = async url => Response.json({ data: String(url).endsWith('/mountains') ? [mountain] : [] });
     assert.equal(await loadCoursePhotoSpots({ mountainId: 'bukhansan', courseId: 'missing' }, new AbortController().signal), null);
     globalThis.fetch = async url => Response.json({ data: String(url).endsWith('/mountains') ? [mountain]
-      : String(url).endsWith('/courses') ? [course] : [{ ...spot, mountainId: 9 }] });
+      : String(url).endsWith('/courses-list') ? [course] : [{ ...spot, mountainId: 9 }] });
     await assert.rejects(loadCoursePhotoSpots({ mountainId: '7', courseId: '23' }, new AbortController().signal), /응답이 올바르지/);
     globalThis.fetch = async () => Response.json({ message: '조회 실패' }, { status: 503 });
     await assert.rejects(loadCoursePhotoSpots({ mountainId: '7', courseId: '23' }, new AbortController().signal), /조회 실패/);
@@ -55,7 +55,7 @@ test('미연결 코스·다른 산 응답·조회 오류를 실제 빈 결과와
 test('실제 경로 화면의 DB 코스 ID로 사진 스팟을 직접 조회한다', async () => {
   const original = globalThis.fetch;
   globalThis.fetch = async url => {
-    assert.ok(String(url).endsWith('/courses/23/photo-spots'));
+    assert.ok(String(url).endsWith('/mountains/7/courses/23/photo-spots'));
     return Response.json({ data: [spot] });
   };
   try {
@@ -71,15 +71,15 @@ test('같은 산에서 코스를 전환하면 해당 DB 코스 ID로 조회하�
     const path = String(url);
     calls.push(path);
     return Response.json({ data: path.endsWith('/mountains') ? [mountain]
-      : path.endsWith('/courses') ? [course, { ...course, courseId: 24, externalId: 'other' }]
-      : path.endsWith('/courses/23/photo-spots') ? [spot] : [] });
+      : path.endsWith('/courses-list') ? [course, { ...course, courseId: 24, externalId: 'other' }]
+      : path.endsWith('/mountains/7/courses/23/photo-spots') ? [spot] : [] });
   };
   try {
     const first = await loadCoursePhotoSpots({ mountainId: 'bukhansan', courseId: 'baegundae' }, new AbortController().signal);
     const second = await loadCoursePhotoSpots({ mountainId: 'bukhansan', courseId: 'other' }, new AbortController().signal);
     assert.equal(first[0].id, 'USER_SPOT:8');
     assert.deepEqual(second, []);
-    assert.ok(calls.at(-1).endsWith('/courses/24/photo-spots'));
+    assert.ok(calls.at(-1).endsWith('/mountains/7/courses/24/photo-spots'));
   } finally { globalThis.fetch = original; }
 });
 
@@ -132,7 +132,7 @@ test('코스의 사용자 스팟 네 종류를 공식 시설과 같은 번호여
   const original = globalThis.fetch;
   const types = ['RESTROOM', 'DRINKING_FOUNTAIN', 'REST_AREA', 'PHOTO_SPOT'];
   globalThis.fetch = async url => {
-    assert.ok(String(url).endsWith('/courses/23/user-spots'));
+    assert.ok(String(url).endsWith('/mountains/7/courses/23/user-spots'));
     return Response.json({ data: types.map((type, i) => ({ ...spot, type, targetId: i + 1 })) });
   };
   try {

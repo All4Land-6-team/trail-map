@@ -56,7 +56,7 @@ export type CommunityReviewDto = {
 
 export type CommunityMountainReviewSummaryDto = { reviewCount: number; averageRating: number | null; photoCount: number }
 export type CommunityReviewPreviewDto = { reviews: CommunityReviewDto[]; photos: CommunityPhotoDto[] }
-export type CommunityMountainPreviewDto = CommunityReviewPreviewDto & { summary: CommunityMountainReviewSummaryDto }
+export type CommunityMountainDetailDto = CommunityReviewPreviewDto & { summary: CommunityMountainReviewSummaryDto }
 export type CommunitySpotDetailDto = CommunitySpotDto & CommunityReviewPreviewDto
 
 export type EligibleHikeDto = {
@@ -132,7 +132,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const communityApi = {
   courses: (mountainId: string, signal?: AbortSignal) =>
-    request<CommunityCourseDto[]>(`/mountains/${mountainId}/courses`, { signal }),
+    request<CommunityCourseDto[]>(`/mountains/${mountainId}/courses-list`, { signal }),
   spots: (mountainId: string, bounds: CommunitySpotBounds, signal?: AbortSignal, type?: CommunitySpotDto['type'], courseId?: string) => {
     const query = new URLSearchParams({
       west: String(bounds.west), south: String(bounds.south), east: String(bounds.east), north: String(bounds.north),
@@ -145,30 +145,30 @@ export const communityApi = {
     const query = new URLSearchParams({ size: '20' })
     if (type) query.set('type', type)
     if (cursor) query.set('cursor', cursor)
-    return request<CommunitySpotPageDto>(`/mountains/${mountainId}/spots/list?${query}`, { signal })
+    return request<CommunitySpotPageDto>(`/mountains/${mountainId}/spots-list?${query}`, { signal })
   },
   spotDetail: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal) =>
-    request<CommunitySpotDetailDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}`, { signal }),
+    request<CommunitySpotDetailDto>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/detail`, { signal }),
   mountainReviews: (mountainId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
     request<CommunityReviewDto[]>(`/mountains/${mountainId}/reviews?limit=${limit}&offset=${offset}`, { signal }),
-  mountainPreview: (mountainId: string, signal?: AbortSignal) =>
-    request<CommunityMountainPreviewDto>(`/mountains/${mountainId}/preview`, { signal }),
-  coursePreview: (courseId: string, signal?: AbortSignal) =>
-    request<CommunityReviewPreviewDto>(`/courses/${courseId}/preview`, { signal }),
-  courseReviews: (courseId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
-    request<CommunityReviewDto[]>(`/courses/${courseId}/reviews?limit=${limit}&offset=${offset}`, { signal }),
+  mountainDetail: (mountainId: string, signal?: AbortSignal) =>
+    request<CommunityMountainDetailDto>(`/mountains/${mountainId}/detail`, { signal }),
+  courseDetail: (mountainId: string, courseId: string, signal?: AbortSignal) =>
+    request<CommunityReviewPreviewDto>(`/mountains/${mountainId}/courses/${courseId}/detail`, { signal }),
+  courseReviews: (mountainId: string, courseId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
+    request<CommunityReviewDto[]>(`/mountains/${mountainId}/courses/${courseId}/reviews?limit=${limit}&offset=${offset}`, { signal }),
   spotReviews: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal, limit = 100, offset = 0) =>
     request<CommunityReviewDto[]>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/reviews?limit=${limit}&offset=${offset}`, { signal }),
   mountainPhotos: (mountainId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
     request<CommunityPhotoDto[]>(`/mountains/${mountainId}/photos?limit=${limit}&offset=${offset}`, { signal }),
-  coursePhotos: (courseId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
-    request<CommunityPhotoDto[]>(`/courses/${courseId}/photos?limit=${limit}&offset=${offset}`, { signal }),
+  coursePhotos: (mountainId: string, courseId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
+    request<CommunityPhotoDto[]>(`/mountains/${mountainId}/courses/${courseId}/photos?limit=${limit}&offset=${offset}`, { signal }),
   spotPhotos: (mountainId: string, targetType: CommunitySpotDto['targetType'], targetId: string, signal?: AbortSignal, limit = 11, offset = 0) =>
     request<CommunityPhotoDto[]>(`/mountains/${mountainId}/spots/${targetType}/${targetId}/photos?limit=${limit}&offset=${offset}`, { signal }),
-  courseUserSpots: (courseId: string, signal?: AbortSignal) =>
-    request<CommunitySpotDto[]>(`/courses/${courseId}/user-spots`, { signal }),
-  coursePhotoSpots: (courseId: string, signal?: AbortSignal) =>
-    request<CommunitySpotDto[]>(`/courses/${courseId}/photo-spots`, { signal }),
+  courseUserSpots: (mountainId: string, courseId: string, signal?: AbortSignal) =>
+    request<CommunitySpotDto[]>(`/mountains/${mountainId}/courses/${courseId}/user-spots`, { signal }),
+  coursePhotoSpots: (mountainId: string, courseId: string, signal?: AbortSignal) =>
+    request<CommunitySpotDto[]>(`/mountains/${mountainId}/courses/${courseId}/photo-spots`, { signal }),
   mountainEligibility: (mountainId: string, signal?: AbortSignal) =>
     request<CommunityEligibilityDto>(`/mountains/${mountainId}/review-eligibility`, { signal }),
   eligibleHikes: (mountainId: string, signal?: AbortSignal) =>

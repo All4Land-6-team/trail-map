@@ -130,18 +130,16 @@ public class CommunityQueryService {
         }
     }
 
-    public List<CommunitySpotResponse> getCoursePhotoSpots(Long userId, Long courseId) {
+    public List<CommunitySpotResponse> getCoursePhotoSpots(Long userId, Long mountainId, Long courseId) {
         validateUser(userId);
-        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
-                .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
+        validateCourseMountain(mountainId, courseId);
         return spotQueryRepository.findCoursePhotoSpots(userId, mountainId, courseId).stream()
                 .map(this::toSpotResponse).toList();
     }
 
-    public List<CommunitySpotResponse> getCourseUserSpots(Long userId, Long courseId) {
+    public List<CommunitySpotResponse> getCourseUserSpots(Long userId, Long mountainId, Long courseId) {
         validateUser(userId);
-        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
-                .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
+        validateCourseMountain(mountainId, courseId);
         return spotQueryRepository.findCourseUserSpots(userId, mountainId, courseId,
                         List.of("REST_AREA", "DRINKING_FOUNTAIN", "RESTROOM", "PHOTO_SPOT")).stream()
                 .map(this::toSpotResponse).toList();
@@ -190,13 +188,12 @@ public class CommunityQueryService {
 
     public List<CommunityReviewResponse> getCourseReviews(
             Long userId,
+            Long mountainId,
             Long courseId,
             CommunityReviewPageRequest page
     ) {
         validateUser(userId);
-        if (!mapQueryRepository.existsCourse(courseId)) {
-            throw new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND);
-        }
+        validateCourseMountain(mountainId, courseId);
         return toReviewResponses(
                 reviewQueryRepository.findCourseReviews(courseId, page.resolvedLimit(), page.resolvedOffset()),
                 CommunityReviewKind.COURSE

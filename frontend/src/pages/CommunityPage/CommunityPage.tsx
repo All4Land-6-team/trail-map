@@ -132,7 +132,7 @@ function toGalleryPhoto(photo: CommunityPhotoDto): CommunityGalleryPhoto {
 
 function fetchPhotos(kind: ReviewKind, mountainId: string, spotTargetType: CommunitySpotTargetType | undefined, spotTargetId: string | undefined, courseId: string, signal: AbortSignal, offset: number) {
   if (kind === 'mountain') return communityApi.mountainPhotos(mountainId, signal, 11, offset)
-  if (kind === 'course') return communityApi.coursePhotos(courseId, signal, 11, offset)
+  if (kind === 'course') return communityApi.coursePhotos(mountainId, courseId, signal, 11, offset)
   if (!spotTargetType || !spotTargetId) throw new Error('스팟 정보를 찾지 못했습니다.')
   return communityApi.spotPhotos(mountainId, spotTargetType, spotTargetId, signal, 11, offset)
 }
@@ -334,16 +334,16 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     setMountainSummary(null)
     void Promise.all([
       communityApi.courses(mountainId, controller.signal),
-      communityApi.mountainPreview(mountainId, controller.signal),
+      communityApi.mountainDetail(mountainId, controller.signal),
       initialScreen === 'review' ? communityApi.mountainEligibility(mountainId, controller.signal) : Promise.resolve(null),
-    ]).then(([courseResult, mountainPreview, initialReviewEligibility]) => {
+    ]).then(([courseResult, mountainDetail, initialReviewEligibility]) => {
       const loadedCourses = courseResult.map(toCourse)
       if (controller.signal.aborted) return
       setCourses(loadedCourses)
-      setMountainSummary(mountainPreview.summary)
-      setReviews(mountainPreview.reviews.map(toReview))
-      setPhotoPage({ key: `mountain:${mountainId}`, items: mountainPreview.photos.slice(0, 10).map(toGalleryPhoto),
-        hasNext: mountainPreview.photos.length > 10, loading: false, error: false })
+      setMountainSummary(mountainDetail.summary)
+      setReviews(mountainDetail.reviews.map(toReview))
+      setPhotoPage({ key: `mountain:${mountainId}`, items: mountainDetail.photos.slice(0, 10).map(toGalleryPhoto),
+        hasNext: mountainDetail.photos.length > 10, loading: false, error: false })
       const activeCourse = activeHike?.hikeRecordId && spotRegistrationMode === 'active'
         ? findCommunityCourse(loadedCourses, activeHike.courseId)
         : undefined
@@ -401,7 +401,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     const targetId = kind === 'mountain' ? mountainId : kind === 'spot' ? detailSpotId : detailCourseId
     const request = kind === 'mountain' ? communityApi.mountainReviews(mountainId, controller.signal, 21)
       : kind === 'spot' ? communityApi.spotReviews(mountainId, listSpot!.targetType, listSpot!.targetId, controller.signal, 21)
-        : communityApi.courseReviews(detailCourseId, controller.signal, 21)
+        : communityApi.courseReviews(mountainId, detailCourseId, controller.signal, 21)
     reviewListBusy.current = true
     setReviewList({ key: reviewListKey, items: [], hasNext: false, loading: true, error: false })
     void request.then(result => {
@@ -426,7 +426,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       const offset = reviewList.items.length
       const request = kind === 'mountain' ? communityApi.mountainReviews(mountainId, controller.signal, 21, offset)
         : kind === 'spot' ? communityApi.spotReviews(mountainId, listSpot!.targetType, listSpot!.targetId, controller.signal, 21, offset)
-          : communityApi.courseReviews(detailCourseId, controller.signal, 21, offset)
+          : communityApi.courseReviews(mountainId, detailCourseId, controller.signal, 21, offset)
       setReviewList(current => ({ ...current, loading: true }))
       void request.then(result => {
         if (controller.signal.aborted) return
@@ -695,8 +695,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     const controller = new AbortController()
     photoPageBusy.current = true
     setPhotoPage({ key: activePhotoKey, items: [], hasNext: false, loading: true, error: false })
-    const request = activePhotoKind === 'mountain' ? communityApi.mountainPreview(mountainId, controller.signal)
-      : communityApi.coursePreview(selectedCourse.id, controller.signal)
+    const request = activePhotoKind === 'mountain' ? communityApi.mountainDetail(mountainId, controller.signal)
+      : communityApi.courseDetail(mountainId, selectedCourse.id, controller.signal)
     void request.then(result => {
       if (controller.signal.aborted) return
       const targetId = activePhotoKind === 'mountain' ? mountainId : selectedCourse.id
