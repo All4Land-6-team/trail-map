@@ -9,12 +9,25 @@ type ReviewCarouselProps = {
   onReviewClick: (review: CommunityReview) => void
   onViewAll: () => void
   limit?: number
+  loading?: boolean
 }
 
 const typeLabels: Record<ReviewKind, string> = { mountain: '산', course: '코스', spot: '스팟' }
 
-export function ReviewCarousel({ type, reviews, onReviewClick, onViewAll, limit = 4 }: ReviewCarouselProps) {
+function ReviewCardSkeleton() {
+  return <div className="community-review-card community-review-card--skeleton" role="listitem" aria-hidden="true">
+    <span className="community-review-card__photo" />
+    <span className="community-review-card__body">
+      <span className="community-review-card__skeleton-line community-review-card__skeleton-line--date" />
+      <span className="community-review-card__skeleton-line community-review-card__skeleton-line--author" />
+      <span className="community-review-card__skeleton-line community-review-card__skeleton-line--content" />
+    </span>
+  </div>
+}
+
+export function ReviewCarousel({ type, reviews, onReviewClick, onViewAll, limit = 4, loading = false }: ReviewCarouselProps) {
   const visibleReviews = reviews.slice(0, limit)
+  const showSkeleton = loading && visibleReviews.length === 0
   const trackRef = useRef<HTMLDivElement>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const trackItemCount = visibleReviews.length + 1
@@ -45,12 +58,12 @@ export function ReviewCarousel({ type, reviews, onReviewClick, onViewAll, limit 
 
   return <section className="community-review-carousel" aria-label={`${typeLabels[type]} 후기 미리보기`}>
     <div ref={trackRef} className="community-review-carousel__track" role="list">
-      {visibleReviews.length === 0
+      {showSkeleton ? <ReviewCardSkeleton /> : visibleReviews.length === 0
         ? <><EmptyReviewCard type={type} /><MoreReviewsCard type={type} onClick={onViewAll} /></>
         : <>{visibleReviews.map(review => <ReviewCard key={review.id} type={type} review={review} onClick={() => onReviewClick(review)} />)}
           <MoreReviewsCard type={type} onClick={onViewAll} /></>}
     </div>
-    {paginationCount > 0 && <div className="community-review-carousel__pagination" role="group" aria-label={`${typeLabels[type]} 후기 카드 선택`}>
+    {!showSkeleton && paginationCount > 0 && <div className="community-review-carousel__pagination" role="group" aria-label={`${typeLabels[type]} 후기 카드 선택`}>
       {Array.from({ length: paginationCount }, (_, index) => <button key={index} type="button" className={index === activeIndex ? 'is-active' : ''}
         aria-label={`${index + 1}번째 ${typeLabels[type]} 후기`} aria-current={index === activeIndex ? 'true' : undefined}
         onClick={() => moveTo(index)} />)}

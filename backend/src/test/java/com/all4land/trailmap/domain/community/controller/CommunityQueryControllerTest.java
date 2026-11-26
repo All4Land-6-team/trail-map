@@ -77,6 +77,20 @@ class CommunityQueryControllerTest {
     }
 
     @Test
+    void 코스_상세_지도_스팟은_코스_경로에_포함된다() throws Exception {
+        given(queryService.getCourseMapMarkers(eq(7L), eq(3L), eq(9L), any())).willReturn(List.of());
+
+        mockMvc.perform(get("/v1/community/mountains/3/courses/9/spots/map")
+                        .header("X-User-Id", "7")
+                        .param("west", "126.9")
+                        .param("south", "37.5")
+                        .param("east", "127.1")
+                        .param("north", "37.8"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
     void 지도_영역이_빠졌거나_뒤집히면_400을_반환한다() throws Exception {
         mockMvc.perform(get("/v1/community/mountains/3/spots")
                         .header("X-User-Id", "7")

@@ -16,9 +16,9 @@ export function ReviewCard({ type, review, onClick }: ReviewCardProps) {
       : <span className="community-review-card__photo community-review-card__photo--placeholder"><Icon name="Photo" size={28} color="currentColor" /></span>}
     <span className="community-review-card__body">
       <span className="community-review-card__record"><time dateTime={review.createdAt}>{dateLabel(review.createdAt)}</time>
-        <ReviewEnvironmentBadge environment={review.environment} compact /></span>
+        <span className="community-review-card__weather"><ReviewEnvironmentBadge environment={review.environment} compact /></span></span>
       <span className="community-review-card__author-row"><strong>{review.author ?? '나'}</strong>
-        {type === 'course' && review.rating != null && <ReviewRating value={review.rating} />}</span>
+        {type === 'course' && review.rating != null && <span className="community-review-card__rating"><ReviewRating value={review.rating} /></span>}</span>
       <span className="community-review-card__content">{review.content}</span>
     </span>
   </article>

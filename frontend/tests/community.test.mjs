@@ -175,12 +175,27 @@ test('상세 사진 로딩에는 스켈레톤을 적용하고 바텀시트 진�
   const gallery = readFileSync(new URL('../src/pages/CommunityPage/components/SpotPhotoGallery.tsx', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
   assert.match(source, /showInitialSkeleton && photoPage\.loading && photoPage\.items\.length === 0 && <CommunityPhotoSkeleton/);
-  assert.match(source, /renderPhotoStatus\(selectedCourse\.baselinePhotos > 0\)/);
-  assert.match(source, /\(!photoPage\.loading \|\| selectedCourse\.baselinePhotos === 0\)/);
+  assert.match(source, /renderPhotoStatus\(\)/);
+  assert.match(source, /courseGalleryPhotos\.length === 0 && !photoPage\.loading && !photoPage\.error/);
   assert.match(gallery, /className="community-gallery-more-card"[\s\S]*사진<br \/>더보기/);
   assert.doesNotMatch(gallery, />전체보기/);
-  assert.match(styles, /community-gallery-more-card \{[^}]*flex:0 0 96px;[^}]*height:150px/);
+  assert.match(styles, /community-gallery-more-card \{[^}]*flex:0 0 96px;[^}]*height:132px/);
   assert.doesNotMatch(styles, /community-sheet-enter/);
+});
+
+test('전체 후기 목록 로딩에는 안내 문구 대신 후기 스켈레톤을 표시한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
+  assert.match(source, /reviewList\.loading && <CommunityReviewSkeleton count=\{fullReviews\.length === 0 \? 3 : 1\}/);
+  assert.doesNotMatch(source, /후기를 불러오는 중…/);
+  assert.match(styles, /\.community-review-skeleton \{/);
+});
+
+test('코스 상세는 코스 평점을 제목에만 표시한다', () => {
+  const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /const courseRating = selectedCourse\.averageRating \?\? \(\(\) =>/);
+  assert.match(source, /courseRating !== undefined \? `★ \$\{courseRating\.toFixed\(1\)\}`/);
+  assert.doesNotMatch(source, /\{courseRating !== undefined && `★ \$\{courseRating\.toFixed\(1\)\} · `\}/);
 });
 
 test('스팟·코스 상세 바텀시트는 드래그 중 단계 높이를 다시 측정하지 않는다', () => {
@@ -475,7 +490,7 @@ test('커뮤니티 지도는 현재 영역의 공식 시설을 조회하고 출�
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   assert.match(apiSource, /west: String\(bounds\.west\)[\s\S]*north: String\(bounds\.north\)/);
   assert.match(mapSource, /map\.on\('moveend', report\)/);
-  assert.match(pageSource, /communityApi\.spots\(mountainId, queryBounds, controller\.signal, type, courseId\)/);
+  assert.match(pageSource, /const spotRequest = courseId[\s\S]*communityApi\.courseSpots\(mountainId, courseId, queryBounds, controller\.signal, type\)[\s\S]*communityApi\.spots\(mountainId, queryBounds, controller\.signal, type\)/);
   assert.match(pageSource, /targetType: spot\.targetType/);
 });
 
@@ -639,6 +654,15 @@ test('산·코스·스팟 상세 후기는 공통 가로 캐러셀을 사용한�
   assert.match(cardSource, /아직 등록된 후기가 없어요\./);
 });
 
+test('상세 후기 캐러셀은 후기 로딩 중 스켈레톤을 표시한다', () => {
+  const source = readFileSync(new URL('../src/components/review/ReviewCarousel.tsx', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../src/components/review/review-carousel.css', import.meta.url), 'utf8');
+  assert.match(source, /loading\?: boolean/);
+  assert.match(source, /showSkeleton = loading && visibleReviews\.length === 0/);
+  assert.match(source, /community-review-card--skeleton/);
+  assert.match(styles, /community-review-card--skeleton/);
+});
+
 test('전체 후기의 다중 사진은 장수를 표시하고 같은 후기 안에서 탐색한다', () => {
   const pageSource = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   const cssSource = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
@@ -696,13 +720,20 @@ test('후기 환경정보는 공통 팝오버로 표시하고 카드 클릭과 �
   assert.match(cardCssSource, /community-review-card__content \{[^}]*-webkit-line-clamp: 2/);
   assert.match(cardSource, /community-review-card__open/);
   assert.match(cardSource, /community-review-card__record[\s\S]*ReviewEnvironmentBadge/);
-  assert.match(cardSource, /community-review-card__author-row[\s\S]*Rating/);
+  assert.match(cardSource, /community-review-card__weather[\s\S]*ReviewEnvironmentBadge/);
+  assert.match(cardSource, /community-review-card__rating[\s\S]*ReviewRating/);
   assert.match(pageSource, /community-quote__record-row[\s\S]*ReviewEnvironmentBadge/);
   assert.match(pageSource, /community-quote__author-row/);
   assert.match(gallerySource, /community-gallery-review__record[\s\S]*ReviewEnvironmentBadge/);
   assert.match(gallerySource, /community-gallery-review__author-row/);
   assert.match(pageSource, /weatherStatus === 'PENDING'[\s\S]*setPhotoPageRetry/);
   assert.equal(existsSync(new URL('../src/assets/icons/weather/time-daytime.svg', import.meta.url)), true);
+});
+
+test('후기 캐러셀 페이지 인디케이터는 활성 상태를 부드럽게 전환하고 모션 감소를 지원한다', () => {
+  const cssSource = readFileSync(new URL('../src/components/review/review-carousel.css', import.meta.url), 'utf8');
+  assert.match(cssSource, /community-review-carousel__pagination button \{[^}]*transition: width 220ms cubic-bezier/);
+  assert.match(cssSource, /prefers-reduced-motion: reduce[\s\S]*?community-review-carousel__pagination button \{ transition: none; \}/);
 });
 
 test('환경정보 기준은 후기 등록에 전달하고 사진 확정에서는 다시 저장하지 않는다', () => {
