@@ -586,7 +586,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     if (!match) return
     const controller = new AbortController()
     setSpotDetailFailure('')
-    setPhotoPage({ key: `spot:${mountainId}:${match[2]}`, items: [], hasNext: false, loading: true, error: false })
+    setPhotoPage({ key: `spot:${mountainId}:${detailSpotId}`, items: [], hasNext: false, loading: true, error: false })
     void communityApi.spotDetail(mountainId, match[1] as CommunitySpotDto['targetType'], match[2], controller.signal).then(result => {
       if (controller.signal.aborted) return
       const spot = toSpot(result)
@@ -702,6 +702,8 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const activePhotoKey = activePhotoKind === 'mountain' ? `mountain:${mountainId}`
     : activePhotoKind === 'spot' && selectedSpot ? `spot:${mountainId}:${selectedSpot.id}`
       : activePhotoKind === 'course' && selectedCourse.id ? `course:${selectedCourse.id}` : ''
+  const spotPhotosLoading = screen === 'spotDetail' && !!selectedSpot
+    && (photoPage.key !== activePhotoKey || photoPage.loading)
   useEffect(() => {
     if (!activePhotoKind || !activePhotoKey || !mountainId) return
     if (activePhotoKind === 'spot') return
@@ -768,9 +770,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const galleryTitle = galleryKind === 'mountain' ? mountain.name : galleryKind === 'course' ? selectedCourse.name : selectedSpot?.name ?? '스팟'
   const selectedGalleryIndex = galleryPhotos.findIndex(photo => photo.id === galleryPhotoId)
   const selectedGalleryPhoto = galleryPhotos[selectedGalleryIndex]
-  const renderPhotoStatus = (showInitialSkeleton = true) => photoPage.key === activePhotoKey && <>
-    {showInitialSkeleton && photoPage.loading && photoPage.items.length === 0 && <CommunityPhotoSkeleton />}
-    {photoPage.error && <button type="button" className="community-inline-link" onClick={() => {
+  const renderPhotoStatus = (showInitialSkeleton = true) => <>
+    {showInitialSkeleton && (spotPhotosLoading || photoPage.key === activePhotoKey && photoPage.loading && photoPage.items.length === 0) && <CommunityPhotoSkeleton />}
+    {photoPage.key === activePhotoKey && photoPage.error && <button type="button" className="community-inline-link" onClick={() => {
       if (photoPage.items.length === 0) setPhotoPageRetry(current => current + 1)
       else setPhotoPage(current => ({ ...current, error: false }))
     }}>사진 다시 불러오기</button>}
@@ -1275,9 +1277,9 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
             {votes[selectedSpot.id]?.viewer && <section className="community-vote"><h3>내 평가 변경</h3><div><button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'yes'} onClick={() => castVote('yes')}>맞는 정보예요 <span>{votes[selectedSpot.id]?.yes ?? 0}</span></button><button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'no'} onClick={() => castVote('no')}>맞지 않아요 <span>{votes[selectedSpot.id]?.no ?? 0}</span></button></div></section>}</> : <>
             <div className="community-detail-photos">{spotGalleryPhotos.length > 0 && <CommunityPhotoStrip kindLabel="스팟" photos={spotGalleryPhotos}
               totalCount={selectedSpot.baselinePhotos} endRef={photoStripEnd} onViewAll={() => openGallery('spot')} onOpen={id => openGalleryPhoto('spot', id)} />}{renderPhotoStatus()}
-              {spotGalleryPhotos.length === 0 && !photoPage.loading && !photoPage.error && <p className="community-gallery-empty">아직 등록된 사진이 없어요.</p>}</div>
+              {spotGalleryPhotos.length === 0 && !spotPhotosLoading && !photoPage.error && <p className="community-gallery-empty">아직 등록된 사진이 없어요.</p>}</div>
             <div className="community-review-heading"><strong>방문자 후기</strong></div>
-            <ReviewCarousel type="spot" reviews={selectedSpotReviews} loading={photoPage.loading}
+            <ReviewCarousel type="spot" reviews={selectedSpotReviews} loading={spotPhotosLoading}
               onReviewClick={() => move('spotReviewList')} onViewAll={() => move('spotReviewList')} />
             <section className="community-vote"><h3>이 스팟 정보가 맞나요?</h3><p>다른 사용자가 위치와 종류를 확인하는 데 도움이 돼요.</p>
               <div><button type="button" disabled={readOnly} aria-pressed={votes[selectedSpot.id]?.viewer === 'yes'} onClick={() => castVote('yes')}>맞는 정보예요 <span>{votes[selectedSpot.id]?.yes ?? 0}</span></button>

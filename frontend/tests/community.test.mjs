@@ -174,7 +174,9 @@ test('상세 사진 로딩에는 스켈레톤을 적용하고 바텀시트 진�
   const source = readFileSync(new URL('../src/pages/CommunityPage/CommunityPage.tsx', import.meta.url), 'utf8');
   const gallery = readFileSync(new URL('../src/pages/CommunityPage/components/SpotPhotoGallery.tsx', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../src/pages/CommunityPage/community.css', import.meta.url), 'utf8');
-  assert.match(source, /showInitialSkeleton && photoPage\.loading && photoPage\.items\.length === 0 && <CommunityPhotoSkeleton/);
+  assert.match(source, /spotPhotosLoading \|\| photoPage\.key === activePhotoKey && photoPage\.loading && photoPage\.items\.length === 0\) && <CommunityPhotoSkeleton/);
+  assert.match(source, /setPhotoPage\(\{ key: `spot:\$\{mountainId\}:\$\{detailSpotId\}`, items: \[\], hasNext: false, loading: true/);
+  assert.match(source, /spotGalleryPhotos\.length === 0 && !spotPhotosLoading && !photoPage\.error/);
   assert.match(source, /renderPhotoStatus\(\)/);
   assert.match(source, /courseGalleryPhotos\.length === 0 && !photoPage\.loading && !photoPage\.error/);
   assert.match(gallery, /className="community-gallery-more-card"[\s\S]*사진<br \/>더보기/);
