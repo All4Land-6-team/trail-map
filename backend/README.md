@@ -130,6 +130,7 @@ TERRAIN_CACHE_MAX_AGE=PT1H
 - `GET /api/v1/community/mountains/{mountainId}/spots`: 지도 영역의 공식 시설과 사용자 스팟을 함께 조회합니다. `west`, `south`, `east`, `north`가 필수이며 `type`으로 종류를 선택할 수 있습니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots/map`: 지도 이동 시 현재 화면 영역·유형 조건으로 전체 스팟의 마커 표시 필드만 조회합니다. 후기·사진 집계는 포함하지 않습니다.
 - `GET /api/v1/courses/{courseId}/spots/map`: 코스에 연결된 공식 시설·사용자 스팟의 지도 마커를 조회합니다. `type`으로 종류를 선택할 수 있으며 지도 경계 좌표는 받지 않습니다. 후기·사진·투표 정보는 포함하지 않습니다.
+- `GET /api/v1/courses/{courseId}/spots-list`: 같은 코스 연결·숨김 조건으로 공식 시설·사용자 스팟을 조회하고, 상세 목록에 필요한 경로까지 거리(공식 시설), 사진 수, 후기 수와 지도 좌표를 반환합니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots-list`: 선택한 산 전체의 공식 시설·사용자 스팟을 `size`(기본 20, 최대 20)개씩 조회합니다. 기본 정렬은 최신 후기가 등록된 순서이며, `type` 필터와 응답의 `nextCursor`를 다음 요청의 `cursor`에 전달합니다. 커서는 산·필터에 묶여 있어 다른 조건에 재사용할 수 없습니다.
 - `GET /api/v1/community/mountains/{mountainId}/spots/{targetType}/{targetId}/detail`: 스팟 상세·투표·후기·사진 집계와 최신 후기 3개·사진 첫 11개를 조회합니다.
 - `GET /api/v1/community/mountains/{mountainId}/detail`: 산 후기 요약, 최신 후기 3개, 사진 첫 11개를 한 번에 조회합니다.

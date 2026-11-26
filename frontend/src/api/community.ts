@@ -38,6 +38,7 @@ export type CommunitySpotDto = {
 
 export type CommunitySpotBounds = { west: number; south: number; east: number; north: number }
 export type CommunityMapSpotDto = Pick<CommunitySpotDto, 'targetType' | 'targetId' | 'mountainId' | 'name' | 'type' | 'longitude' | 'latitude'>
+export type CommunityCourseSpotListDto = CommunityMapSpotDto & { distanceMeters: number | null; photoCount: number; reviewCount: number }
 export type CommunitySpotPageDto = { items: CommunitySpotDto[]; nextCursor: string | null; hasNext: boolean }
 
 export type CommunityReviewDto = {
@@ -146,6 +147,8 @@ export const communityApi = {
     const suffix = query.toString() ? `?${query}` : ''
     return request<CommunityMapSpotDto[]>(`/courses/${courseId}/spots/map${suffix}`, { signal }, '/api/v1')
   },
+  courseSpotList: (courseId: string, signal?: AbortSignal) =>
+    request<CommunityCourseSpotListDto[]>(`/courses/${courseId}/spots-list`, { signal }, '/api/v1'),
   spotList: (mountainId: string, signal?: AbortSignal, type?: CommunitySpotDto['type'], cursor?: string) => {
     const query = new URLSearchParams({ size: '20' })
     if (type) query.set('type', type)

@@ -2,6 +2,7 @@ package com.all4land.trailmap.domain.community.repository.spot;
 
 import com.all4land.trailmap.domain.community.dto.request.CommunitySpotMapRequest;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotMapResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityCourseSpotListResponse;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotType;
 import com.all4land.trailmap.domain.community.entity.CommunityVoteType;
@@ -163,16 +164,33 @@ public class CommunitySpotQueryRepository {
             ORDER BY spot.target_type, spot.target_id
             """;
 
+    private static final String COURSE_SPOT_FILTER = """
+            WHERE EXISTS (SELECT 1 FROM spot_course link
+                   WHERE link.course_id = :courseId
+                     AND ((spot.target_type = 'FACILITY' AND link.facility_id = spot.target_id)
+                       OR (spot.target_type = 'USER_SPOT' AND link.user_spot_id = spot.target_id)))
+            """;
+
     private static final String COURSE_MAP_MARKER_SQL = SPOT_CTE + """
             SELECT spot.target_type, spot.target_id, spot.mountain_id, spot.name, spot.spot_type,
                    ST_X(spot.location) AS longitude, ST_Y(spot.location) AS latitude
             FROM community_spot spot
-            WHERE (CAST(:spotType AS varchar) IS NULL OR spot.spot_type = CAST(:spotType AS varchar))
-              AND EXISTS (SELECT 1 FROM spot_course link
-                   WHERE link.course_id = :courseId
-                     AND ((spot.target_type = 'FACILITY' AND link.facility_id = spot.target_id)
-                       OR (spot.target_type = 'USER_SPOT' AND link.user_spot_id = spot.target_id)))
+            """ + COURSE_SPOT_FILTER + """
+            AND (CAST(:spotType AS varchar) IS NULL OR spot.spot_type = CAST(:spotType AS varchar))
             ORDER BY spot.target_type, spot.target_id
+            """;
+
+    private static final String COURSE_SPOT_LIST_SQL = SPOT_CTE + ", course_spot AS (" + SPOT_SELECT
+            + COURSE_SPOT_FILTER + """
+            )
+            SELECT course_spot.*,
+                   CASE WHEN course_spot.target_type = 'FACILITY'
+                        THEN ST_Distance(ST_SetSRID(ST_MakePoint(course_spot.longitude, course_spot.latitude), 4326)::geography,
+                                         course.course_geometry::geography)
+                        ELSE NULL END AS distance_meters
+            FROM course_spot
+            JOIN course ON course.course_id = :courseId
+            ORDER BY course_spot.target_type, course_spot.target_id
             """;
 
     private static final String SPOT_PAGE_SQL = SPOT_CTE + ", spot_page AS (" + SPOT_SELECT + """
@@ -283,6 +301,17 @@ public class CommunitySpotQueryRepository {
                 rs.getLong("mountain_id"), rs.getString("name"), CommunitySpotType.valueOf(rs.getString("spot_type")),
                 rs.getDouble("longitude"), rs.getDouble("latitude")
         ));
+    }
+
+    public List<CommunityCourseSpotListResponse> findCourseSpotList(Long userId, Long mountainId, Long courseId) {
+        return jdbcTemplate.query(COURSE_SPOT_LIST_SQL,
+                spotParameters(userId, mountainId).addValue("courseId", courseId),
+                (rs, row) -> new CommunityCourseSpotListResponse(
+                        CommunitySpotTargetType.valueOf(rs.getString("target_type")), rs.getLong("target_id"),
+                        rs.getLong("mountain_id"), rs.getString("name"), CommunitySpotType.valueOf(rs.getString("spot_type")),
+                        rs.getDouble("longitude"), rs.getDouble("latitude"),
+                        rs.getObject("distance_meters", Double.class), rs.getLong("photo_count"), rs.getLong("review_count")
+                ));
     }
 
     public List<CommunitySpotQueryResult> findSpotPage(

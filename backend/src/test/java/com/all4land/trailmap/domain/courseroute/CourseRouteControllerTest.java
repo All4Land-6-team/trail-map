@@ -2,6 +2,8 @@ package com.all4land.trailmap.domain.courseroute;
 
 import com.all4land.trailmap.domain.courseroute.controller.CourseRouteController;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotType;
+import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
+import com.all4land.trailmap.domain.community.dto.response.CommunityCourseSpotListResponse;
 import com.all4land.trailmap.domain.community.service.CommunityQueryService;
 import com.all4land.trailmap.domain.courseroute.dto.response.CourseRouteResponse;
 import com.all4land.trailmap.domain.courseroute.exception.CourseRouteException;
@@ -37,6 +39,23 @@ class CourseRouteControllerTest {
         mvc.perform(get("/v1/courses/0/spots/map").header("X-User-Id", "7"))
                 .andExpect(status().isBadRequest());
         mvc.perform(get("/v1/courses/9/spots/map"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void courseSpotListReturnsCardFieldsAndValidatesRequest() throws Exception {
+        when(communityQueryService.getCourseSpotList(7L, 9L)).thenReturn(List.of(
+                new CommunityCourseSpotListResponse(CommunitySpotTargetType.FACILITY, 11L, 3L,
+                        "화장실", CommunitySpotType.RESTROOM, 126.98, 37.66, 12.5, 2, 1)));
+        mvc.perform(get("/v1/courses/9/spots-list").header("X-User-Id", "7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].targetType").value("FACILITY"))
+                .andExpect(jsonPath("$.data[0].distanceMeters").value(12.5))
+                .andExpect(jsonPath("$.data[0].photoCount").value(2))
+                .andExpect(jsonPath("$.data[0].reviewCount").value(1));
+        mvc.perform(get("/v1/courses/0/spots-list").header("X-User-Id", "7"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/v1/courses/9/spots-list"))
                 .andExpect(status().isUnauthorized());
     }
 

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { loadCoursePhotoSpots, loadCourseUserSpots } from '../src/api/coursePhotoSpots.ts';
 import { spotReviewPath } from '../src/routes/communityRoutes.ts';
 import { communitySpotKey, communitySpotTargetId, resolveSpotSelection } from '../src/utils/communitySpotIdentity.ts';
-import { courseSpotAction } from '../src/utils/courseProfile.ts';
+import { courseSpotAction, selectCourseSpots } from '../src/utils/courseProfile.ts';
 import { createServer } from 'vite';
 import { coursePhotoSpotDisplay } from '../src/utils/coursePhotoSpotDisplay.ts';
 
@@ -11,6 +11,31 @@ const mountain = { mountainId: 7, externalId: 'bukhansan' };
 const course = { courseId: 23, mountainId: 7, externalId: 'baegundae' };
 const spot = { targetType: 'USER_SPOT', targetId: 8, mountainId: 7, type: 'PHOTO_SPOT', name: '전망 바위',
   longitude: 127, latitude: 37, photoCount: 2, reviewCount: 1, status: 'PENDING' };
+
+test('코스 상세 목록 API 한 번으로 공식·사용자 음수대와 카드 집계를 받는다', async () => {
+  const server = await createServer({ server: { middlewareMode: true, watch: null }, appType: 'custom' });
+  const original = globalThis.fetch;
+  const calls = [];
+  try {
+    const { communityApi } = await server.ssrLoadModule('/src/api/community.ts');
+    const { toCourseSpotList } = await server.ssrLoadModule('/src/hooks/useCourseSpotList.ts');
+    globalThis.fetch = async url => {
+      calls.push(String(url));
+      return Response.json({ data: [
+        { ...spot, targetType: 'FACILITY', targetId: 1, type: 'DRINKING_FOUNTAIN', distanceMeters: 28 },
+        { ...spot, targetId: 1, type: 'DRINKING_FOUNTAIN', distanceMeters: null },
+      ] });
+    };
+    const result = toCourseSpotList(await communityApi.courseSpotList('23'), 'db-23');
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].endsWith('/api/v1/courses/23/spots-list'));
+    assert.deepEqual(result.map(item => [item.id, item.kind]), [['facility-1', 'water'], ['USER_SPOT:1', 'water']]);
+    assert.equal(selectCourseSpots(result, 'water').length, 2);
+    assert.equal(result[0].distanceMeters, 28);
+    assert.equal(result[0].photoCount, 2);
+    assert.equal(result[1].reviewCount, 1);
+  } finally { globalThis.fetch = original; await server.close(); }
+});
 
 test('홈 코스 지도는 공용 API 마커를 시설·사용자 스팟으로 변환한다', async () => {
   const server = await createServer({ server: { middlewareMode: true, watch: null }, appType: 'custom' });

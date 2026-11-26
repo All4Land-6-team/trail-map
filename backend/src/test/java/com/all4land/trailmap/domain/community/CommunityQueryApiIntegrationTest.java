@@ -183,6 +183,31 @@ class CommunityQueryApiIntegrationTest {
     }
 
     @Test
+    void 코스_목록과_지도는_같은_연결_스팟을_보이고_목록만_집계를_포함한다() throws Exception {
+        jdbcTemplate.update("INSERT INTO spot_course (facility_id, course_id, matching_method) VALUES (?, ?, 'SPATIAL_BUFFER')",
+                facilityId, courseId);
+        jdbcTemplate.update("INSERT INTO spot_course (user_spot_id, course_id, matching_method) VALUES (?, ?, 'SPATIAL_BUFFER')",
+                userSpotId, courseId);
+
+        mockMvc.perform(asUser(get("/v1/courses/" + courseId + "/spots/map")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2));
+        mockMvc.perform(asUser(get("/v1/courses/" + courseId + "/spots-list")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].targetType").value("FACILITY"))
+                .andExpect(jsonPath("$.data[0].type").value("RESTROOM"))
+                .andExpect(jsonPath("$.data[0].distanceMeters").isNumber())
+                .andExpect(jsonPath("$.data[0].photoCount").value(2))
+                .andExpect(jsonPath("$.data[0].reviewCount").value(1))
+                .andExpect(jsonPath("$.data[0].yesVotes").doesNotExist())
+                .andExpect(jsonPath("$.data[1].targetType").value("USER_SPOT"))
+                .andExpect(jsonPath("$.data[1].type").value("DRINKING_FOUNTAIN"))
+                .andExpect(jsonPath("$.data[1].distanceMeters").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.data[1].reviewCount").value(1));
+    }
+
+    @Test
     void 산_전체_스팟_목록은_지도_영역과_무관하게_커서로_이어_조회한다() throws Exception {
         jdbcTemplate.update("UPDATE spot_review SET created_at = '2026-10-30T09:00:00Z' WHERE facility_id = ?", facilityId);
         jdbcTemplate.update("UPDATE spot_review SET created_at = '2026-10-31T09:00:00Z' WHERE spot_id = ?", userSpotId);

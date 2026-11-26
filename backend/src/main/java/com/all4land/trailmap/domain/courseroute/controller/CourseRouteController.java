@@ -1,6 +1,7 @@
 package com.all4land.trailmap.domain.courseroute.controller;
 
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotMapResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityCourseSpotListResponse;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotType;
 import com.all4land.trailmap.domain.community.service.CommunityQueryService;
 import com.all4land.trailmap.domain.courseroute.dto.response.CourseRouteResponse;
@@ -37,5 +38,12 @@ public class CourseRouteController {
             @Positive @PathVariable Long courseId,
             @RequestParam(required = false) CommunitySpotType type) {
         return SuccessResponse.ok(communityQueryService.getCourseMapMarkers(userId, courseId, type));
+    }
+
+    @GetMapping("/courses/{courseId}/spots-list")
+    public SuccessResponse<List<CommunityCourseSpotListResponse>> getCourseSpotList(
+            @CurrentUserId Long userId,
+            @Positive @PathVariable Long courseId) {
+        return SuccessResponse.ok(communityQueryService.getCourseSpotList(userId, courseId));
     }
 }

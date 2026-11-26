@@ -10,6 +10,7 @@ import com.all4land.trailmap.domain.community.dto.response.CommunitySpotDetailRe
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotPageResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunitySpotMapResponse;
+import com.all4land.trailmap.domain.community.dto.response.CommunityCourseSpotListResponse;
 import com.all4land.trailmap.domain.community.dto.response.CommunityMountainReviewSummaryResponse;
 import com.all4land.trailmap.domain.community.entity.CommunityReviewKind;
 import com.all4land.trailmap.domain.community.entity.CommunitySpotTargetType;
@@ -97,6 +98,13 @@ public class CommunityQueryService {
         Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
         return spotQueryRepository.findCourseMapMarkers(userId, mountainId, courseId, type);
+    }
+
+    public List<CommunityCourseSpotListResponse> getCourseSpotList(Long userId, Long courseId) {
+        validateUser(userId);
+        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
+        return spotQueryRepository.findCourseSpotList(userId, mountainId, courseId);
     }
 
     public CommunitySpotPageResponse getSpotPage(Long userId, Long mountainId, CommunitySpotType type, int size, String cursor) {
