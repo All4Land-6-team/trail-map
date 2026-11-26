@@ -87,6 +87,7 @@ export function CourseDetailPage({ mountainId, courseId, view = DEFAULT_VIEW, ha
   const reviewExcerpts: CommunityReview[] = communityReviews.map(review => ({
     id: String(review.reviewId), kind: "course" as const, targetId: String(review.targetId), content: review.content,
     photos: review.photoUrls, rating: review.rating ?? undefined, author: review.author, createdAt: review.createdAt,
+    environment: review.environment ?? undefined,
   })).slice(0, 4);
   const reviewTotal = communityCourse?.reviewCount ?? communityReviews.length;
   const mapCourse = useMemo(() => data ? { ...data.course, routeCoordinates: analysisView.routeCoordinates } : null, [data, analysisView]);
