@@ -169,9 +169,9 @@ function ReviewQuotes({ reviews, scrollable = false, limit, showRating = false, 
       {thumbnail(photos?.filter(photo => photo.review?.id === review.id) ?? [], '내 후기')}
       <div className="community-quote__text"><div className="community-quote__record-row">
         <time dateTime={review.createdAt}>{new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' }).format(new Date(review.createdAt))}</time>
-        <ReviewEnvironmentBadge environment={review.environment} compact /></div>
+        <span className="community-quote__weather"><ReviewEnvironmentBadge environment={review.environment} compact /></span></div>
         <div className="community-quote__author-row"><span className="community-quote__author">{review.author ?? '나'}</span>
-          {showRating && review.rating != null && <ReviewRating value={review.rating} />}</div>
+          {showRating && review.rating != null && <span className="community-quote__rating"><ReviewRating value={review.rating} /></span>}</div>
         <p>{review.content}</p>
         </div>
     </div></div>)}

@@ -219,6 +219,7 @@
 .community-gallery-review__image .community-gallery-placeholder small { font-size:12px; }
 .community-gallery-review__text { margin-top:14px; padding:15px; border-radius:12px; color:var(--af-ink); background:#fff; font-size:13px; line-height:21px; }
 .community-gallery-review__record { display:flex; min-width:0; align-items:center; justify-content:space-between; gap:8px; color:#617b6c; font-size:12px; line-height:24px; }
+.community-gallery-review__weather,.community-gallery-review__rating { display:flex; width:72px; flex:none; align-items:center; justify-content:center; }
 .community-gallery-review__author-row { display:flex; min-width:0; align-items:center; justify-content:space-between; gap:8px; margin-top:2px; }
 .community-gallery-review__author-row > strong { min-width:0; overflow:hidden; flex:1; text-overflow:ellipsis; white-space:nowrap; }
 .community-gallery-review__author-row span { color:var(--af-green); font-weight:700; }
@@ -228,6 +229,7 @@
 .community-quote__row { display:flex; align-items:center; gap:10px; }
 .community-quote__text { flex:1; min-width:0; }
 .community-quote__record-row { display:flex; min-width:0; height:24px; align-items:center; justify-content:space-between; gap:6px; color:#617b6c; }
+.community-quote__weather,.community-quote__rating { display:flex; width:72px; flex:none; align-items:center; justify-content:center; }
 .community-quote__author-row { display:flex; min-width:0; height:18px; align-items:center; justify-content:space-between; gap:7px; }
 .community-quote__author { min-width:0; overflow:hidden; flex:1; color:var(--af-ink); font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
 .community-quote__text p { display:-webkit-box; overflow:hidden; margin:5px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; -webkit-box-orient:vertical; -webkit-line-clamp:2; }

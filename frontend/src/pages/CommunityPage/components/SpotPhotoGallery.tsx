@@ -97,9 +97,9 @@ export function CommunityPhotoReview({ photo, kind, index, total, onPrevious, on
     <div className="community-gallery-review__image"><PhotoContent photo={photo} /></div>
     <article className="community-gallery-review__text">
       <div className="community-gallery-review__record"><time dateTime={photo.review?.createdAt}>{date}</time>
-        <ReviewEnvironmentBadge environment={photo.environment ?? photo.review?.environment} /></div>
+        <span className="community-gallery-review__weather"><ReviewEnvironmentBadge environment={photo.environment ?? photo.review?.environment} /></span></div>
       <div className="community-gallery-review__author-row"><strong>{nickname}</strong>
-        {kind === 'course' && (rating != null ? <ReviewRating value={rating} /> : <span>평점 없음</span>)}</div>
+        {kind === 'course' && (rating != null ? <span className="community-gallery-review__rating"><ReviewRating value={rating} /></span> : <span>평점 없음</span>)}</div>
       <p>{content}</p>
     </article>
   </section>
