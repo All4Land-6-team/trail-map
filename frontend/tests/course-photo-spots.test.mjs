@@ -12,6 +12,22 @@ const course = { courseId: 23, mountainId: 7, externalId: 'baegundae' };
 const spot = { targetType: 'USER_SPOT', targetId: 8, mountainId: 7, type: 'PHOTO_SPOT', name: '전망 바위',
   longitude: 127, latitude: 37, photoCount: 2, reviewCount: 1, status: 'PENDING' };
 
+test('홈 코스 지도는 공용 API 마커를 시설·사용자 스팟으로 변환한다', async () => {
+  const server = await createServer({ server: { middlewareMode: true, watch: null }, appType: 'custom' });
+  try {
+    const { toCourseMapSpots } = await server.ssrLoadModule('/src/hooks/useCourseMapSpots.ts');
+    const markers = [
+      { ...spot, targetType: 'FACILITY', targetId: 8, type: 'RESTROOM' },
+      { ...spot, targetId: 8, type: 'PHOTO_SPOT' },
+      { ...spot, targetId: 9, type: 'OTHER' },
+    ];
+    const result = toCourseMapSpots(markers, 'db-23');
+    assert.deepEqual(result.map(item => [item.id, item.kind]), [['facility-8', 'restroom'], ['USER_SPOT:8', 'photo']]);
+    assert.deepEqual(result[0].communityTarget, { mountainId: '7', targetType: 'FACILITY', targetId: '8' });
+    assert.deepEqual(result[1].coordinate, [127, 37]);
+  } finally { await server.close(); }
+});
+
 test('사진 스팟은 먼저 지도에 초점을 맞추고 같은 스팟을 다시 선택해야 상세를 연다', () => {
   const first = { id: 'USER_SPOT:8', kind: 'photo', communityTarget: { targetId: '8' } };
   const second = { id: 'USER_SPOT:9', kind: 'photo', communityTarget: { targetId: '9' } };

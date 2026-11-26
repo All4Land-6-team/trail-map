@@ -24,8 +24,8 @@ export function CourseMap({ onOsmFoodOpen, ...props }: CourseMapProps) {
   const selectedOsmFood = osmFoodSelection?.courseId === courseId ? osmFoodSelection.poi : null;
   const serverId = props.selected?.routeSource ? props.selected.backendCourseId : undefined;
   const foodSelected = filter === "food";
-  const { spots, loading, failed } = useCourseMapSpots(courseId, props.mountainId ?? "", serverId,
-    props.selected?.analysisReference?.mountainId, visible && !foodSelected, foodSelected ? "all" : filter);
+  const { spots, loading, failed, retry } = useCourseMapSpots(courseId, serverId,
+    visible && !foodSelected, foodSelected ? "all" : filter);
 
   return <>
     <CourseRouteMap {...props} extraMapAction={serverId !== undefined && <MapAction
@@ -48,8 +48,8 @@ export function CourseMap({ onOsmFoodOpen, ...props }: CourseMapProps) {
           onClick={() => setFilter(kind)} />)}
       </div>
       <div className="course-facility-status" role="status">
-        {!foodSelected && (failed.length ? "스팟 조회 실패" : loading ? "스팟 조회 중" : !spots.length ? "주변 스팟 없음" : "")}
-        {failed.length > 0 && <button type="button" onClick={() => failed.forEach(request => request.retry())}>다시 시도</button>}
+        {!foodSelected && (failed ? "스팟 조회 실패" : loading ? "스팟 조회 중" : !spots.length ? "주변 스팟 없음" : "")}
+        {failed && <button type="button" onClick={retry}>다시 시도</button>}
       </div>
     </div>}
   </>;
