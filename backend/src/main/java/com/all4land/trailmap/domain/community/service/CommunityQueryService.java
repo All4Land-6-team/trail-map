@@ -90,13 +90,12 @@ public class CommunityQueryService {
 
     public List<CommunitySpotMapResponse> getCourseMapMarkers(
             Long userId,
-            Long mountainId,
             Long courseId,
             CommunitySpotType type
     ) {
         validateUser(userId);
-        validateMountain(mountainId);
-        validateCourseMountain(mountainId, courseId);
+        Long mountainId = mapQueryRepository.findCourseMountainId(courseId)
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.COURSE_NOT_FOUND));
         return spotQueryRepository.findCourseMapMarkers(userId, mountainId, courseId, type);
     }
 

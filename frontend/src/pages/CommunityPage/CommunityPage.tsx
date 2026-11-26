@@ -482,7 +482,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
     }
     const queryBounds = bufferMapBounds(mapBounds)
     const spotRequest = courseId
-      ? communityApi.courseSpots(mountainId, courseId, controller.signal, type)
+      ? communityApi.courseSpots(courseId, controller.signal, type)
       : communityApi.spots(mountainId, queryBounds, controller.signal, type)
     void spotRequest.then(result => {
       if (controller.signal.aborted) return

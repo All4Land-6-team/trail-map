@@ -115,8 +115,8 @@ export class CommunityApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/community${path}`, {
+async function request<T>(path: string, init?: RequestInit, basePath = '/api/v1/community'): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${basePath}${path}`, {
     ...init,
     headers: authHeaders({
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
@@ -140,11 +140,11 @@ export const communityApi = {
     if (type) query.set('type', type)
     return request<CommunityMapSpotDto[]>(`/mountains/${mountainId}/spots/map?${query}`, { signal })
   },
-  courseSpots: (mountainId: string, courseId: string, signal?: AbortSignal, type?: CommunitySpotDto['type']) => {
+  courseSpots: (courseId: string, signal?: AbortSignal, type?: CommunitySpotDto['type']) => {
     const query = new URLSearchParams()
     if (type) query.set('type', type)
     const suffix = query.toString() ? `?${query}` : ''
-    return request<CommunityMapSpotDto[]>(`/mountains/${mountainId}/courses/${courseId}/spots/map${suffix}`, { signal })
+    return request<CommunityMapSpotDto[]>(`/courses/${courseId}/spots/map${suffix}`, { signal }, '/api/v1')
   },
   spotList: (mountainId: string, signal?: AbortSignal, type?: CommunitySpotDto['type'], cursor?: string) => {
     const query = new URLSearchParams({ size: '20' })

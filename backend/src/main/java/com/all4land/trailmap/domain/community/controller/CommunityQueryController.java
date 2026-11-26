@@ -61,16 +61,6 @@ public class CommunityQueryController {
         return response(SuccessResponse.ok(queryService.getMapMarkers(userId, mountainId, request)));
     }
 
-    @GetMapping("/mountains/{mountainId}/courses/{courseId}/spots/map")
-    public ResponseEntity<SuccessResponse<List<CommunitySpotMapResponse>>> getCourseMapMarkers(
-            @CurrentUserId Long userId,
-            @Positive @PathVariable Long mountainId,
-            @Positive @PathVariable Long courseId,
-            @RequestParam(required = false) CommunitySpotType type
-    ) {
-        return response(SuccessResponse.ok(queryService.getCourseMapMarkers(userId, mountainId, courseId, type)));
-    }
-
     @GetMapping("/mountains/{mountainId}/spots-list")
     public ResponseEntity<SuccessResponse<CommunitySpotPageResponse>> getSpotPage(
             @CurrentUserId Long userId,
