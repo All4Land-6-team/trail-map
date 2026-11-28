@@ -19,6 +19,7 @@
     "test:course-detail": "node --experimental-strip-types --test tests/course-detail.test.mjs tests/course-detail-analysis.test.mjs tests/course-detail-analysis-view.test.mjs",
     "test:park-controls": "node --experimental-strip-types --test tests/park-controls.test.mjs",
     "test:course-photo-spots": "node --experimental-strip-types --test tests/course-photo-spots.test.mjs tests/course-facilities-view.test.mjs",
+    "test:community-course-spots": "node --experimental-strip-types --test tests/community-course-spots.test.mjs",
     "test:comparison": "node --experimental-strip-types --test tests/course-comparison.test.mjs tests/course-comparison-guides.test.mjs",
     "test:schedules": "node --experimental-strip-types --test tests/real-course-schedule.test.mjs tests/schedule-offline.test.mjs tests/schedule-lock.test.mjs",
     "test:terrain": "node --experimental-strip-types --test tests/map-terrain.test.mjs",
