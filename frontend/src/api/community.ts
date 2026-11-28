@@ -133,13 +133,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const communityApi = {
   courses: (mountainId: string, signal?: AbortSignal) =>
     request<CommunityCourseDto[]>(`/mountains/${mountainId}/courses`, { signal }),
-  spots: (mountainId: string, bounds: CommunitySpotBounds, signal?: AbortSignal, type?: CommunitySpotDto['type'], courseId?: string) => {
+  spots: (mountainId: string, bounds: CommunitySpotBounds, signal?: AbortSignal, type?: CommunitySpotDto['type']) => {
     const query = new URLSearchParams({
       west: String(bounds.west), south: String(bounds.south), east: String(bounds.east), north: String(bounds.north),
     })
     if (type) query.set('type', type)
-    if (courseId) query.set('courseId', courseId)
     return request<CommunityMapSpotDto[]>(`/mountains/${mountainId}/spots/map?${query}`, { signal })
+  },
+  courseSpots: (mountainId: string, courseId: string, bounds: CommunitySpotBounds, signal?: AbortSignal) => {
+    const query = new URLSearchParams({
+      west: String(bounds.west), south: String(bounds.south), east: String(bounds.east), north: String(bounds.north), courseId,
+    })
+    return request<CommunitySpotDto[]>(`/mountains/${mountainId}/spots?${query}`, { signal })
   },
   spotList: (mountainId: string, signal?: AbortSignal, type?: CommunitySpotDto['type'], cursor?: string) => {
     const query = new URLSearchParams({ size: '20' })

@@ -7,6 +7,7 @@ import { BottomSheet, ConfirmDialog, ModalLayer } from '../../components/overlay
 import { EmptyState, Toast } from '../../components/feedback'
 import { CommunityApiError, communityApi, fromSpotType, toSpotType, type CommunityCourseDto, type CommunityEligibilityDto, type CommunityMapSpotDto, type CommunityMountainReviewSummaryDto, type CommunityPhotoDto, type CommunityReviewDto, type CommunitySpotDto } from '../../api/community'
 import { mountainApi, type MountainDto } from '../../api/mountainApi'
+import { loadCommunityCourseSpots } from '../../api/communityCourseSpots'
 import type { CommunityReview, CommunityCourseReviewTarget, CommunitySpotTargetType, Coordinate, ReviewDraft, ReviewKind, SpotType } from '../../types/community'
 import type { CompletedHike } from '../../store/hikeSessionStore'
 import type { CommunitySpot, SpotVote } from '../../types/community'
@@ -257,6 +258,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
   const [mapBounds, setMapBounds] = useState<CommunityMapBounds | null>(null)
   const mapSpotCache = useRef(new Map<string, { bounds: CommunityMapBounds; spots: CommunityMapSpotDto[]; fetchedAt: number }>())
   const shownMapSpotKey = useRef('')
+  const courseSpotCache = useRef(new Map<string, { spots: CommunitySpotDto[]; fetchedAt: number }>())
   const [reviews, setReviews] = useState<CommunityReview[]>([])
   const [mountainSummary, setMountainSummary] = useState<CommunityMountainReviewSummaryDto | null>(null)
   const [votes, setVotes] = useState<Record<string, SpotVote>>({})
@@ -445,39 +447,76 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       && current.east === bounds.east && current.north === bounds.north ? current : bounds)
   }, [])
 
+  // 코스 상세의 "이 코스 스팟만"은 지도 화면 영역이 아니라 코스 경로 기준으로 조회한다.
+  // 코스 상세 스팟 탭도 같은 조회(loadCommunityCourseSpots)를 사용해 두 화면의 스팟 목록을 맞춘다.
   useEffect(() => {
-    if (!mountainId || !mapBounds || !['map', 'spotDetail', 'courseDetail', 'spotPicker', 'newSpot'].includes(screen)) return
-    if (screen === 'courseDetail' && !courseSpotsOnly) {
+    if (!mountainId || screen !== 'courseDetail') return
+    if (!courseSpotsOnly) {
       setMapSpots([])
       shownMapSpotKey.current = ''
       return
     }
-    const detailCourse = screen === 'courseDetail' ? findCommunityCourse(courses, detailCourseId) : undefined
-    if (screen === 'courseDetail' && !detailCourse) return
+    const detailCourse = findCommunityCourse(courses, detailCourseId)
+    const courseId = Number(detailCourse?.id)
+    const databaseMountainId = Number(mountainId)
+    if (!detailCourse || !Number.isSafeInteger(courseId) || courseId <= 0 || !Number.isSafeInteger(databaseMountainId)) return
+    const cacheKey = `courseDetail:${mountainId}:${courseId}`
+    const show = (result: readonly CommunitySpotDto[]) => {
+      const loaded = result.map(toMapSpot)
+      setMapSpots(loaded)
+      setSpots(current => {
+        const merged = new Map(current.map(spot => [spot.id, spot]))
+        loaded.forEach(spot => { if (!merged.has(spot.id)) merged.set(spot.id, spot) })
+        return [...merged.values()]
+      })
+      setVotes(current => ({ ...current, ...Object.fromEntries(result.map(spot => [`${spot.targetType}:${spot.targetId}`, toVote(spot)])) }))
+      shownMapSpotKey.current = cacheKey
+    }
+    const cached = courseSpotCache.current.get(cacheKey)
+    if (cached && Date.now() - cached.fetchedAt < MAP_SPOT_CACHE_MS) {
+      if (shownMapSpotKey.current !== cacheKey) show(cached.spots)
+      return
+    }
+    if (shownMapSpotKey.current !== cacheKey) {
+      setMapSpots([])
+      shownMapSpotKey.current = ''
+    }
+    const controller = new AbortController()
+    void loadCommunityCourseSpots(databaseMountainId, courseId, detailCourse.coordinates, controller.signal).then(result => {
+      if (controller.signal.aborted) return
+      courseSpotCache.current.set(cacheKey, { spots: result, fetchedAt: Date.now() })
+      show(result)
+    }).catch(error => {
+      if (!controller.signal.aborted) notify(error instanceof Error ? error.message : '코스 스팟을 불러오지 못했습니다.')
+    })
+    return () => controller.abort()
+  }, [courses, detailCourseId, courseSpotsOnly, mountainId, notify, screen])
+
+  useEffect(() => {
+    if (!mountainId || !mapBounds || !['map', 'spotDetail', 'spotPicker', 'newSpot'].includes(screen)) return
     const controller = new AbortController()
     const type = screen === 'map' && mapCategory === 'spot' && spotTypeFilter !== 'all'
       ? toSpotType(spotTypeFilter) : undefined
-    const courseId = screen === 'courseDetail' && courseSpotsOnly ? detailCourse?.id : undefined
-    const cacheKey = `${screen}:${mountainId}:${type ?? 'all'}:${courseId ?? 'all'}`
+    const cacheKey = `${screen}:${mountainId}:${type ?? 'all'}`
     const cached = mapSpotCache.current.get(cacheKey)
     if (cached && Date.now() - cached.fetchedAt < MAP_SPOT_CACHE_MS && coversMapBounds(cached.bounds, mapBounds)) {
-      if ((screen === 'map' || screen === 'courseDetail') && shownMapSpotKey.current !== cacheKey) {
+      if (screen === 'map' && shownMapSpotKey.current !== cacheKey) {
         setMapSpots(cached.spots.map(toMapSpot))
         setVotes(current => ({ ...Object.fromEntries(cached.spots.map(spot => [`${spot.targetType}:${spot.targetId}`, toVote(spot)])), ...current }))
         shownMapSpotKey.current = cacheKey
       }
       return
     }
-    if ((screen === 'map' || screen === 'courseDetail') && shownMapSpotKey.current !== cacheKey) {
+    if (screen === 'map' && shownMapSpotKey.current !== cacheKey) {
       setMapSpots([])
       shownMapSpotKey.current = cacheKey
     }
     const queryBounds = bufferMapBounds(mapBounds)
-    void communityApi.spots(mountainId, queryBounds, controller.signal, type, courseId).then(result => {
+    void communityApi.spots(mountainId, queryBounds, controller.signal, type).then(result => {
       if (controller.signal.aborted) return
       mapSpotCache.current.set(cacheKey, { bounds: queryBounds, spots: result, fetchedAt: Date.now() })
       const loaded = result.map(toMapSpot)
-      if (screen === 'map' || screen === 'courseDetail') setMapSpots(loaded)
+      if (screen === 'map') setMapSpots(loaded)
       setSpots(current => {
         const merged = new Map(current.map(spot => [spot.id, spot]))
         loaded.forEach(spot => { if (!merged.has(spot.id)) merged.set(spot.id, spot) })
@@ -488,7 +527,7 @@ export function CommunityPage({ initialScreen = 'mountainSelect', initialMountai
       if (!controller.signal.aborted) notify(error instanceof Error ? error.message : '주변 스팟을 불러오지 못했습니다.')
     })
     return () => controller.abort()
-  }, [courses, detailCourseId, courseSpotsOnly, mapBounds, mapCategory, mountainId, notify, screen, spotTypeFilter])
+  }, [mapBounds, mapCategory, mountainId, notify, screen, spotTypeFilter])
 
   const listType = mapCategory === 'spot' && spotTypeFilter !== 'all' ? toSpotType(spotTypeFilter) : undefined
   useEffect(() => {
