@@ -6,10 +6,10 @@ import { EmptyState } from "../../../components/feedback";
 import type { CourseDetailData, ProfileVisibility } from "../../../types/courseDetail";
 import type { CourseAnalysisState } from "../../../types/courseAnalysis";
 import type { CommunityReview } from "../../../types/community";
-import { detailAnalysisView, formatProfileValue, profileSlopeDirection, profileSlopeSectionAt, summarizeProfileSlope } from "../../../utils/courseDetailAnalysis";
+import { detailAnalysisView, formatProfileValue, profileSlopeDirection, profileSlopeSectionAt, summarizeProfileSlope, topSteepProfileSections } from "../../../utils/courseDetailAnalysis";
 import { CourseAnalysisStatus } from "./CourseAnalysisStatus";
 import { CourseBasicInfo } from "./CourseBasicInfo";
-import { analysisSteepNotice, steepSlopeThreshold } from "../../../utils/courseComparison";
+import { steepRatioGrade, steepSlopeThreshold } from "../../../utils/courseComparison";
 
 type Props = {
   data: CourseDetailData;
@@ -30,24 +30,26 @@ export function CourseAnalysis({ data, analysisState, analysisView, onRetryAnaly
   const { analysis, samples, development } = analysisView;
   const metrics = analysis?.metrics;
   const sample = samples[selectedIndex];
-  const steepNotice = analysisSteepNotice(analysis);
   const [slopeMode, setSlopeMode] = useState<'summary' | 'raw'>('summary');
   const slopeSections = useMemo(() => summarizeProfileSlope(samples), [samples]);
   const selectedSection = sample ? profileSlopeSectionAt(slopeSections, sample.distanceKm) : null;
   const threshold = steepSlopeThreshold(analysis);
+  const highlightedSections = useMemo(() => topSteepProfileSections(slopeSections, threshold), [slopeSections, threshold]);
   return <div className="course-analysis" role="tabpanel" id="course-analysis-panel" aria-label="코스 상세">
     <header className="course-analysis__intro">
       <h1>{course.name}</h1>
       <p>{!course.routeSource && <>{formatProfileValue(metrics?.distanceMeters == null ? null : metrics.distanceMeters / 1000, "km", 2)}{" · "}</>}
         {"상승 "}{formatProfileValue(metrics?.elevationGainMeters, "m")}
-        {" · 급경사 "}{formatProfileValue(metrics?.steepSectionRatioPercent, "%")}</p>
+        {" · 급경사 비중 "}{steepRatioGrade(metrics?.steepSectionRatioPercent)}</p>
     </header>
     {course.routeSource && <CourseBasicInfo course={course} />}
-    {steepNotice && <p className="course-analysis-status">{steepNotice}</p>}
     <CourseAnalysisStatus state={analysisState} development={development} onRetry={onRetryAnalysis} />
     <section className="course-analysis__profile" aria-label="코스 프로필">
       <div className="course-analysis__heading"><h2>코스 프로필</h2><span>최고 {formatProfileValue(metrics?.maxElevationMeters, "m")}</span></div>
       {sample ? <>
+        {visibility.elevation && highlightedSections.length > 0 && <p className="course-profile-highlights">
+          <span aria-hidden="true" />50m 평균 기준 급경사 상위 {highlightedSections.length}개 구간
+        </p>}
         <div className="course-profile-options">
           <Checkbox label="고도" showLabel checked={visibility.elevation} containerClassName="course-profile-options__elevation" onChange={() => onToggle("elevation")} />
           <Checkbox label="경사도" showLabel checked={visibility.slope} containerClassName="course-profile-options__slope" onChange={() => onToggle("slope")} />
@@ -71,7 +73,7 @@ export function CourseAnalysis({ data, analysisState, analysisView, onRetryAnaly
           </p>
         </>}
         <CourseProfileChart samples={samples} selectedIndex={selectedIndex} visibility={visibility} onSelect={onSelect}
-          slopeMode={slopeMode} slopeSections={slopeSections} steepThreshold={threshold} />
+          slopeMode={slopeMode} slopeSections={slopeSections} steepThreshold={threshold} highlightedSections={highlightedSections} />
         {visibility.slope && <div className="course-profile-guide">
           <p className="course-profile-legend"><span className="course-profile-legend__up">+ 오르막</span><span className="course-profile-legend__down">− 내리막</span><span>0% 평지</span></p>
           <details><summary>경사 그래프 읽는 법</summary>

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { courseAnalysisUrl, loadCourseAnalysis, parseCourseAnalysisProfile } from '../src/api/courseAnalysis.ts';
 import { detailAnalysisView, detailRouteLabel, courseProfileAxes, formatProfileValue,
-  summarizeProfileSlope, profileSlopeSectionAt, profileSlopeDirection } from '../src/utils/courseDetailAnalysis.ts';
+  summarizeProfileSlope, profileSlopeSectionAt, profileSlopeDirection, topSteepProfileSections } from '../src/utils/courseDetailAnalysis.ts';
 import { developmentAnalysisReference } from '../src/utils/courseComparison.ts';
 import { analysis, noAnalysis, profile, envelope, fullCoverageAnalysis, fullCoverageProfile } from './fixtures/course-analysis.mjs';
 
@@ -167,6 +167,29 @@ const slopePoints = pairs => pairs.map(([meters, slopePercent], index) => ({
   distanceKm: meters / 1000, slopePercent, elevationMeters: 100 + index, coordinate: [127, 37],
 }));
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-8, `${actual} != ${expected}`);
+
+test('강조 구간은 50m 평균의 절대 경사 상위 세 곳이며 오르막·내리막·경계와 원본을 보존한다', () => {
+  const samples = slopePoints([[0, null], [50, 20], [100, -60], [150, 45], [200, -35], [250, 19.99]]);
+  const sections = summarizeProfileSlope(samples);
+  const original = structuredClone(sections);
+  const top = topSteepProfileSections(sections, 20);
+  assert.deepEqual(top.map(s => s.slopePercent), [-60, 45, -35]);
+  assert.deepEqual(top.map(s => [s.startKm, s.endKm]), [[.05, .1], [.1, .15], [.15, .2]]);
+  assert.deepEqual(sections, original);
+  assert.deepEqual(topSteepProfileSections(sections, 60).map(s => s.slopePercent), [-60]);
+});
+
+test('급경사가 부족하면 실제 개수만 강조하고 동률은 출발점 순서이며 결측과 모르는 기준은 제외한다', () => {
+  const sections = summarizeProfileSlope(slopePoints([[0, null], [50, -20], [100, 20], [150, null], [200, 19]]));
+  assert.deepEqual(topSteepProfileSections(sections, 20).map(s => s.startKm), [0, .05]);
+  assert.deepEqual(topSteepProfileSections(sections, 21), []);
+  for (const threshold of [null, 0, -1, NaN, Infinity]) assert.deepEqual(topSteepProfileSections(sections, threshold), []);
+  for (const section of [
+    { startKm: 0, endKm: 0, slopePercent: 100 },
+    { startKm: -.05, endKm: 0, slopePercent: 100 },
+    { startKm: 0, endKm: .05, slopePercent: NaN },
+  ]) assert.deepEqual(topSteepProfileSections([section], 20), []);
+});
 
 test('50m 경사는 샘플 개수가 아닌 구간 거리로 가중하며 긴 구간은 경계에서 나눈다', () => {
   const samples = slopePoints([[0, null], [10, 100], [50, 0], [90, -20], [120, 20]]);

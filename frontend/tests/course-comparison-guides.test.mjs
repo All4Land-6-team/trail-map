@@ -206,14 +206,13 @@ test('공식 안내와 분석 응답의 현재 코스 ID·산·버전이 다르�
   assert.equal(comparisonGuideView({ id: 'db-8', analysis: null }, reversed).guide.durationSeconds, 5400);
 });
 
-test('분석 API 오류에도 공식 시간·출처·확인일·안내 구간과 비교 막대를 표시한다', () => {
+test('분석 API 오류에도 공식 시간·안내 구간과 비교 막대를 유지하고 링크·확인일은 숨긴다', () => {
   const html = render(ready()), card = timeCard(html);
-  for (const text of ['1시간 30분', '2시간 40분', '1시간', '확인 2026-11-01', '왕복 시간이 아니에요', '공식 안내 시작']) {
+  for (const text of ['1시간 30분', '2시간 40분', '1시간', '왕복 시간이 아니에요', '공식 안내 시작']) {
     assert.ok(card.includes(text), text);
   }
   assert.equal((card.match(/class="cart-metric-track"/g) ?? []).length, 3);
-  assert.equal((card.match(/target="_blank" rel="noopener noreferrer"/g) ?? []).length, 3);
-  for (const id of [8, 1, 10]) assert.ok(card.includes(`vcursId=121500V${String(id).padStart(3, '0')}`));
+  assert.doesNotMatch(card, /<a\b|vcursId=|확인 2026-11-01/);
   for (const color of colors) assert.ok(card.includes(color));
   assert.match(html, /분석을 불러오지 못/);
   assert.doesNotMatch(card, /9999|예상 시간 비교|>0분</);
@@ -232,8 +231,8 @@ test('분석 예상 시간과 담은 코스의 시간이 있어도 공식 안내
   const html = render(ready(), values), card = timeCard(html);
   assert.match(card, /1시간 30분/);
   assert.doesNotMatch(card, />10분<|9999/);
-  assert.match(html, /급경사 거리 비율 비교/);
-  assert.match(html, /12\.3%/);
+  assert.match(html, /급경사 비중 비교/);
+  assert.match(html, /data-steep-grade="하"/);
   assert.match(html, /1\.5 km/);
 });
 
@@ -248,14 +247,14 @@ test('안내가 없으면 분석의 예상 시간이나 예시 시간으로 대�
   assert.match(card, /공식 안내 다시 불러오기/);
 });
 
-test('공식 안내 일부 실패는 성공한 코스의 시간과 링크를 유지하며 재시도를 제공한다', () => {
+test('공식 안내 일부 실패는 성공한 코스의 시간을 유지하며 링크 없이 재시도를 제공한다', () => {
   const state = ready();
   state.courses[1] = { id: 'db-1', status: 'error', message: '공식 안내 정보를 불러오지 못했어요.' };
   const card = timeCard(render(state));
   assert.match(card, /1시간 30분/);
   assert.doesNotMatch(card, /2시간 40분/);
   assert.equal((card.match(/class="cart-metric-track"/g) ?? []).length, 2);
-  assert.equal((card.match(/target="_blank"/g) ?? []).length, 2);
+  assert.doesNotMatch(card, /target="_blank"|<a\b|확인 2026-11-01/);
   assert.match(card, /공식 안내 다시 불러오기/);
 });
 

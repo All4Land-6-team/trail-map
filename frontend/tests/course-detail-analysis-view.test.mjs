@@ -1,5 +1,14 @@
 import assert from 'node:assert/strict';
 import test, { after } from 'node:test';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
+import * as chartCore from 'echarts/core';
+import * as chartTypes from 'echarts/charts';
+import * as chartComponents from 'echarts/components';
+import * as chartRenderers from 'echarts/renderers';
+import * as profileUtils from '../src/utils/courseProfile.ts';
+import * as analysisUtils from '../src/utils/courseDetailAnalysis.ts';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createServer, loadEnv } from 'vite';
@@ -29,25 +38,23 @@ function render(state, selectedIndex = 0) {
   }));
 }
 
-test('상세 급경사 비율은 API 값을 반올림하고 서비스 계산 기준을 설명한다', () => {
+test('상세의 급경사 비중은 등급만 표시하고 첨부된 설명과 분석 상태는 표시하지 않는다', () => {
   const value = analysis();
   value.metrics.steepSectionRatioPercent = 12.34567;
   value.settings.steepSlopeThresholdPercent = 20;
   value.settings.steepSlopeMethod = 'absolute_slope_gte_distance_weighted';
   const html = render({ status: 'success', data: { analysis: value, profile: profile(value).data, profileError: null } });
-  assert.match(html, /급경사 12\.3%/);
-  assert.match(html, /오르막·내리막 경사 절댓값 20% 이상/);
-  assert.match(html, /경사를 계산할 수 없는 구간은 제외/);
-  assert.doesNotMatch(html, /12\.34567%/);
+  assert.match(html, /급경사 비중 하/);
+  assert.doesNotMatch(html, /급경사 12\.3%|12\.34567%|분석 상태 ·|현재 코스 v|급경사 비율은/);
 });
 
-function renderMetrics(thresholds) {
+function renderMetrics(thresholds, ratios = [0, 12.34567, null]) {
   const courses = cartCatalog.slice(0, 3);
   const analysisCourses = courses.map((course, index) => {
     const value = analysis(index + 1);
     value.settings.steepSlopeThresholdPercent = thresholds[index];
     value.settings.steepSlopeMethod = 'absolute_slope_gte_distance_weighted';
-    value.metrics.steepSectionRatioPercent = [0, 12.34567, null][index];
+    value.metrics.steepSectionRatioPercent = ratios[index];
     return { id: course.id, name: course.name, shortName: course.shortName, color: course.color,
       development: false, analysis: value, profile: null, profileError: null };
   });
@@ -57,16 +64,22 @@ function renderMetrics(thresholds) {
   }));
 }
 
-test('비교표는 평균 경사 대신 급경사 비율을 표시하고 미계산 시간과 결측을 유지한다', () => {
+test('비교표의 급경사 카드는 등급만 표시하고 퍼센트·숫자·비율 막대를 제거한다', () => {
   const html = renderMetrics([20, 20, 20]);
-  assert.match(html, /급경사 거리 비율 비교/);
-  assert.doesNotMatch(html, /평균 경사 비교|>12\.34567%</);
-  assert.match(html, /width:12\.34567%/);
-  assert.match(html, /막대 전체 길이는 100%/);
-  assert.match(html, /0\.0%/);
-  assert.match(html, /12\.3%/);
-  assert.match(html, /경사 절댓값 20% 이상/);
-  assert.equal((html.match(/class="cart-metric-track"/g) ?? []).length, 5);
+  const card = html.match(/<section class="cart-metric-card" aria-label="급경사 비중 비교">[\s\S]*?<\/section>/)?.[0];
+  assert.ok(card);
+  assert.equal((card.match(/data-steep-grade="하"/g) ?? []).length, 2);
+  assert.match(card, /data-steep-grade="—"/);
+  assert.doesNotMatch(card, /%|cart-metric-track|30|60/);
+  assert.equal((html.match(/class="cart-metric-track"/g) ?? []).length, 3);
+});
+
+test('두세 코스의 상중하 경계와 결측을 독립적으로 표시하고 기준이 다르면 등급 비교를 만들지 않는다', () => {
+  const html = renderMetrics([20, 20, 20], [29.99, 30, 60]);
+  for (const grade of ['하', '중', '상']) assert.match(html, new RegExp(`data-steep-grade="${grade}"`));
+  const incompatible = renderMetrics([20, 30, 20], [10, 50, 90]);
+  assert.equal((incompatible.match(/data-steep-grade="—"/g) ?? []).length, 3);
+  assert.doesNotMatch(incompatible, /data-steep-grade="[상중하]"/);
 });
 
 test('상세는 50m 평균·원본 전환과 방향·퍼센트·결측 해석을 제공하며 원본 선택 값을 보존한다', () => {
@@ -79,6 +92,49 @@ test('상세는 50m 평균·원본 전환과 방향·퍼센트·결측 해석을
   assert.match(html, /aria-pressed="true"[^>]*>50m 평균/);
   assert.match(html, /-12\.3%/);
   assert.match(html, /course-profile-chart--stacked/);
+});
+
+test('실제 차트 SVG의 고도 선은 강조 범위 색상을 사용하고 강조가 없으면 원래 녹색을 유지한다', () => {
+  const source = readFileSync(new URL('../src/components/chart/CourseProfileChart.tsx', import.meta.url), 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: {
+    module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022,
+  } }).outputText;
+  chartCore.use([chartTypes.LineChart, ...Object.values(chartRenderers)]);
+  const samples = [0, 1, 2, 3, 4].map(i => ({ distanceKm: i * .05, elevationMeters: 100 + i * 10,
+    slopePercent: i ? 20 : null, coordinate: [127, 37] }));
+  const sections = analysisUtils.summarizeProfileSlope(samples);
+  const top = analysisUtils.topSteepProfileSections(sections, 20);
+  const renderSvg = highlightedSections => {
+    const chart = chartCore.init(null, null, { renderer: 'svg', ssr: true, width: 350, height: 360 });
+    const effects = [];
+    let refIndex = 0;
+    const modules = {
+      react: { useMemo: f => f(), useRef: value => ({ current: refIndex++ === 0 ? {} : value }),
+        useEffect: effect => effects.push(effect) },
+      'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
+      'echarts/core': { ...chartCore, init: () => chart }, 'echarts/charts': chartTypes,
+      'echarts/components': chartComponents, 'echarts/renderers': chartRenderers,
+      '../../utils/courseProfile': profileUtils, '../../utils/courseDetailAnalysis': analysisUtils,
+    };
+    const context = vm.createContext({ exports: {}, require: name => {
+      assert.ok(name in modules, name); return modules[name];
+    }, ResizeObserver: class { observe() {} disconnect() {} } });
+    try {
+      vm.runInContext(compiled, context);
+      context.exports.CourseProfileChart({ samples, visibility: { elevation: true, slope: true }, selectedIndex: 0,
+        onSelect() {}, slopeMode: 'summary', slopeSections: sections, steepThreshold: 20, highlightedSections });
+      effects.forEach(effect => effect());
+      return chart.renderToSVGString();
+    } finally { chart.dispose(); }
+  };
+  const highlighted = renderSvg(top);
+  const gradient = [...highlighted.matchAll(/<linearGradient\b[^>]*id="([^"]+)"[^>]*>[\s\S]*?<\/linearGradient>/g)]
+    .find(match => match[0].includes('#c44f2c'));
+  assert.ok(gradient, '급경사 색상이 포함된 고도 gradient');
+  assert.ok(highlighted.includes(`stroke="url(#${gradient[1]})"`), '고도 선이 실제로 해당 gradient를 사용');
+  const plain = renderSvg([]);
+  assert.doesNotMatch(plain, /#c44f2c/);
+  assert.match(plain, /stroke="#19765b"/);
 });
 
 test('서로 다른 급경사 기준은 안내하고 비교 막대로 같은 기준처럼 표시하지 않는다', () => {
@@ -100,12 +156,12 @@ test('연결된 개발용 코스는 상세 진입 가능하고 비교·상세의
   assert.equal(course.analysisReference.mountainId, localAnalysisConfigured ? localAnalysisMountainId : 1);
 });
 
-test('API 요약·반올림된 읽기 값·미확인 상태가 표시되고 기본 정보의 예시 지표는 섞이지 않는다', () => {
+test('API 요약·반올림된 원본 읽기 값과 개발용 경로 표시는 유지하고 삭제한 분석 상세는 숨긴다', () => {
   const value = analysis(), stored = profile(value).data;
   stored.samples[1].slopePercent = -12.3456789;
   const html = render({ status: 'success', data: { analysis: value, profile: stored, profileError: null } }, 1);
   assert.match(html, /1\.50 km/); assert.match(html, /812\.3 m/); assert.match(html, /-12\.3%/);
-  assert.match(html, /확인 필요/); assert.match(html, /실제 등산로 정보가 아니에요/);
+  assert.doesNotMatch(html, /분석 상태 ·|확인 필요/); assert.match(html, /실제 등산로 정보가 아니에요/);
   assert.doesNotMatch(html, /99\.00|9999|12\.3456789%/);
 });
 
@@ -123,7 +179,7 @@ test('로딩·미연결·오류·NO_DATA는 예시 그래프 없이 상태와 �
     [{ status: 'loading' }, /불러오는 중/],
     [{ status: 'unavailable', message: '아직 연결되지 않았어요' }, /아직 연결되지/],
     [{ status: 'error', message: '서버 연결 실패' }, /분석 다시 불러오기/],
-    [{ status: 'success', data: { analysis: noAnalysis(1), profile: null, profileError: null } }, /분석 없음/],
+    [{ status: 'success', data: { analysis: noAnalysis(1), profile: null, profileError: null } }, /표시할 분석 프로필이 없어요/],
   ]) {
     const html = render(state);
     assert.match(html, text); assert.match(html, /표시할 분석 프로필이 없어요/);
@@ -131,14 +187,14 @@ test('로딩·미연결·오류·NO_DATA는 예시 그래프 없이 상태와 �
   }
 });
 
-test('이전 분석과 프로필 조회 실패를 현재 분석으로 오인하지 않게 표시한다', () => {
+test('프로필 조회 실패와 재시도를 유지하고 삭제한 버전·분석 상세를 다시 표시하지 않는다', () => {
   const value = analysis(1, { qualityStatus: 'OUTDATED', currentCourseVersion: 2 });
   const html = render({ status: 'success', data: { analysis: value, profile: null, profileError: '조회 실패' } });
-  assert.match(html, /이전 분석/); assert.match(html, /현재 코스 v2/); assert.match(html, /분석 코스 v1/);
+  assert.doesNotMatch(html, /이전 분석|현재 코스 v2|분석 코스 v1/);
   assert.match(html, /프로필을 불러오지 못/); assert.match(html, /분석 다시 불러오기/);
 });
 
-test('실제 후보 경로의 단위 가정은 접힌 상세 상태 바깥에 표시하고 예시 경로로 바꾸지 않는다', () => {
+test('실제 코스의 성공 상태 설명을 제거해도 API 단위·품질 정보 자체는 유지한다', () => {
   for (const qualityStatus of ['PARTIAL', 'OUTDATED', 'NO_DATA']) {
     const value = analysis(1, { sourceKind: 'unknown', qualityStatus, qualityReasons: ['ASSUMED_ELEVATION_UNIT'] });
     value.settings.elevationUnitSource = 'assumed';
@@ -146,10 +202,9 @@ test('실제 후보 경로의 단위 가정은 접힌 상세 상태 바깥에 �
       state: { status: 'success', data: { analysis: value, profile: null, profileError: null } },
       development: false, onRetry() {},
     }));
-    const visible = html.slice(0, html.indexOf('<details'));
-    assert.match(visible, /m로 가정한 분석/);
-    assert.match(visible, /검증 전 수치/);
-    assert.doesNotMatch(html, /개발용 예시 경로|실제 등산로 정보가 아니/);
+    assert.equal(html, '');
+    assert.equal(value.settings.elevationUnitSource, 'assumed');
+    assert.equal(value.qualityStatus, qualityStatus);
   }
 });
 

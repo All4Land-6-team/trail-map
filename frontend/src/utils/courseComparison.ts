@@ -76,6 +76,12 @@ export function formatSteepRatio(value: number | null | undefined): string {
   return value == null ? '—' : `${value.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 }
 
+/** 급경사 거리 비중의 서비스 표시 등급. 코스 전체 난이도와는 별개이며 원본 API 값은 유지한다. */
+export function steepRatioGrade(value: number | null | undefined): '상' | '중' | '하' | '—' {
+  if (value == null || !Number.isFinite(value) || value < 0 || value > 100) return '—';
+  return value < 30 ? '하' : value < 60 ? '중' : '상';
+}
+
 export function steepSlopeThreshold(analysis: CourseAnalysis | null): number | null {
   const settings = analysis?.settings;
   const threshold = settings?.steepSlopeThresholdPercent;

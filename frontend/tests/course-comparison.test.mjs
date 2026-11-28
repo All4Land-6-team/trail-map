@@ -3,7 +3,7 @@ import test from 'node:test';
 import { courseComparisonUrl, loadCourseComparison, parseCourseAnalysis, parseCourseAnalysisProfile, parseCourseComparison } from '../src/api/courseAnalysis.ts';
 import { analysisQualityReasons, analysisUnitAssumptionNotice, comparisonCourseViews, comparisonRequest, developmentAnalysisReference,
   elevationAxisBounds, formatAnalysisDistance, formatAnalysisDuration, withComparisonColors,
-  analysisSteepNotice, formatSteepRatio, steepSlopeThreshold } from '../src/utils/courseComparison.ts';
+  analysisSteepNotice, formatSteepRatio, steepSlopeThreshold, steepRatioGrade } from '../src/utils/courseComparison.ts';
 import { formatElevationTooltip, positionElevationTooltip } from '../src/utils/elevationTooltip.ts';
 import { analysis, noAnalysis, comparison, profile, fullCoverageAnalysis, fullCoverageProfile } from './fixtures/course-analysis.mjs';
 
@@ -28,6 +28,13 @@ test('급경사 계산 정책을 보존하고 0·결측·소수점 표시를 구
   ]) {
     const invalid = structuredClone(value); change(invalid.settings);
     assert.throws(() => parseCourseAnalysis(invalid));
+  }
+});
+
+test('급경사 비중 등급은 30·60 경계를 정확히 구분하고 결측이나 잘못된 값을 하로 만들지 않는다', () => {
+  for (const [value, grade] of [[0, '하'], [29.999, '하'], [30, '중'], [59.999, '중'], [60, '상'], [100, '상'],
+    [null, '—'], [undefined, '—'], [NaN, '—'], [Infinity, '—'], [-1, '—'], [100.001, '—']]) {
+    assert.equal(steepRatioGrade(value), grade, String(value));
   }
 });
 

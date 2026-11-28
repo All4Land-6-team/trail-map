@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "../../../components/common/Button";
 import { Typography } from "../../../components/common/Typography";
 import { BottomNavigation, TopBar, type BottomDestination } from "../../../components/layout";
-import { analysisSteepNotice, formatAnalysisDistance, formatAnalysisDuration, formatSteepRatio,
+import { formatAnalysisDistance, formatAnalysisDuration, steepRatioGrade,
   steepSlopeThreshold, type ComparisonCourseView } from "../../../utils/courseComparison";
 import type { CourseComparisonState } from "../../../types/courseAnalysis";
 import type { CourseGuideComparisonState } from "../../../types/courseGuide";
@@ -54,7 +54,6 @@ export function ComparisonMetricsScreen({
   const steepThresholds = new Set(analysisCourses.filter(course => course.analysis?.metrics.steepSectionRatioPercent != null)
     .map(course => steepSlopeThreshold(course.analysis)));
   const differentSteepPolicies = steepThresholds.has(null) || steepThresholds.size > 1;
-  const steepNotices = [...new Set(analysisCourses.map(course => analysisSteepNotice(course.analysis)).filter(value => value !== null))];
   const guideViews = new Map(analysisCourses.map(course => [course.id, comparisonGuideView(course, guideState)]));
   const guideFor = (course: ComparisonCourseView) => {
     const view = guideViews.get(course.id);
@@ -72,9 +71,9 @@ export function ComparisonMetricsScreen({
     { id: 'duration', label: '공식 안내 시간 비교',
       getValue: course => guideFor(course)?.durationSeconds ?? null,
       formatValue: course => formatAnalysisDuration(guideFor(course)?.durationSeconds) },
-    { id: 'steep', label: '급경사 거리 비율 비교',
+    { id: 'steep', label: '급경사 비중 비교',
       getValue: course => course.analysis?.metrics.steepSectionRatioPercent ?? null,
-      formatValue: course => formatSteepRatio(course.analysis?.metrics.steepSectionRatioPercent) },
+      formatValue: course => differentSteepPolicies ? '—' : steepRatioGrade(course.analysis?.metrics.steepSectionRatioPercent) },
   ];
 
   return (
@@ -102,11 +101,10 @@ export function ComparisonMetricsScreen({
         <Typography as="h2" variant="headingCard" className="cart-metrics-heading">코스별 비교</Typography>
         <div className="cart-metric-cards">
           {metrics.map((metric) => {
-            const maxValue = metric.id === 'steep' ? 100 : Math.max(...analysisCourses.map((course) => metric.getValue(course) ?? 0), 1);
+            const maxValue = Math.max(...analysisCourses.map((course) => metric.getValue(course) ?? 0), 1);
             return (
               <section className="cart-metric-card" key={metric.label} aria-label={metric.label}>
                 <Typography as="h3" variant="buttonLabel">{metric.label}</Typography>
-                {metric.id === 'steep' && <Typography as="p" variant="bodySmall" className="cart-metrics-note">막대 전체 길이는 100%예요.</Typography>}
                 <ul className="cart-metric-rows">
                   {analysisCourses.map((course, index) => {
                     const value = metric.getValue(course);
@@ -120,19 +118,17 @@ export function ComparisonMetricsScreen({
                           </Typography>
                           <Typography variant="bodyMedium" className="cart-metric-course-name" title={course.name}>{course.shortName}</Typography>
                         </span>
-                        <Typography variant="buttonLabel" className="cart-metric-value">
+                        <Typography variant="buttonLabel" className={`cart-metric-value${metric.id === 'steep' ? ' cart-metric-grade' : ''}`}
+                          data-steep-grade={metric.id === 'steep' ? metric.formatValue(course) : undefined}>
                           {metric.formatValue(course)}
                         </Typography>
-                        {value != null && !(metric.id === 'steep' && differentSteepPolicies)
+                        {value != null && metric.id !== 'steep'
                           && <span className="cart-metric-track" aria-hidden="true">
                           <span style={{ width: `${(value / maxValue) * 100}%`, backgroundColor: course.color }} />
                         </span>}
                         {metric.id === 'duration' && <Typography as="p" variant="bodySmall" className="cart-metric-guide">
                           {guide ? <>
                             <span className="cart-metric-guide-route">{guide.routeLabel}</span>
-                            <a href={guide.sourceUrl} target="_blank" rel="noopener noreferrer"
-                              aria-label={`${course.name} 국립공원공단 코스 안내 (새 창)`}>국립공원공단 코스 안내 ↗</a>
-                            <span>확인 {guide.checkedOn}</span>
                           </> : guideView && guideView.status !== 'available' ? guideView.message : null}
                         </Typography>}
                       </li>
@@ -154,7 +150,7 @@ export function ComparisonMetricsScreen({
                   {differentSteepPolicies && <Typography as="p" variant="bodySmall" className="cart-metrics-note">
                     급경사 기준이 다르거나 확인되지 않은 코스가 있어 직접 비교하기 어려워요. 분석 상태에서 각 기준을 확인해 주세요.
                   </Typography>}
-                  {steepNotices.length === 1 && <Typography as="p" variant="bodySmall" className="cart-metrics-note">{steepNotices[0]}</Typography>}
+                  <Typography as="p" variant="bodySmall" className="cart-metrics-note">급경사 구간의 비중을 상·중·하로 표시해요.</Typography>
                 </>}
               </section>
             );

@@ -28,7 +28,9 @@
 .course-list-sheet__controls .af-select { width: 100%; min-width: 0; height: 31px; min-height: 31px; padding-left: 10px; padding-right: 25px; font-size: 12px; }
 .course-list-sheet__filter.af-chip { height: 31px; gap: 5px; padding: 0 11px; }
 .course-list-sheet__filter--active.af-chip { border-color: #19765b; background: #edf5ee; }
-.course-list-sheet .af-bottom-sheet__content { flex: 1 1 0; min-height: 0; margin-top: 7px; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; }
+.course-list-sheet .af-bottom-sheet__content { flex: 1 1 0; min-height: 0; margin-top: 7px; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: none; scrollbar-gutter: auto; }
+.course-list-sheet .af-bottom-sheet__content::-webkit-scrollbar,
+.course-filter .af-bottom-sheet__content::-webkit-scrollbar { display: none; }
 .course-quick-filters { display: flex; gap: 6px; height: 31px; margin-left: 18px; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: none; }
 .course-quick-filters::-webkit-scrollbar, .course-carousel::-webkit-scrollbar { display: none; }
 .course-quick-filters .af-chip { flex: none; padding: 0 14px; }
@@ -53,7 +55,7 @@
 .course-filter .af-bottom-sheet__title-row { flex: none; height: 32px; min-height: 32px; margin-top: 4px; }
 .course-filter .af-bottom-sheet__title { font-size: 12px; line-height: 18px; font-weight: 500; }
 .course-filter .af-bottom-sheet__close { color: var(--af-green); }
-.course-filter .af-bottom-sheet__content { flex: 1 1 0; min-height: 0; padding-top: 21px; overflow-y: auto; }
+.course-filter .af-bottom-sheet__content { flex: 1 1 0; min-height: 0; padding-top: 21px; overflow-y: auto; scrollbar-width: none; }
 .course-filter__fields { display: flex; flex-direction: column; gap: 20px; }
 .course-filter__group { position: relative; min-width: 0; margin: 0; padding: 0; border: 0; }
 .course-filter__group legend { margin: 0 0 11px; padding: 0; font-size: 12px; line-height: 18px; }

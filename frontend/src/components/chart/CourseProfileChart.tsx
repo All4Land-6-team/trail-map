@@ -18,9 +18,10 @@ type Props = {
   slopeMode: 'summary' | 'raw';
   slopeSections: readonly SlopeSection[];
   steepThreshold: number | null;
+  highlightedSections?: readonly SlopeSection[];
 };
 
-export function CourseProfileChart({ samples, visibility, selectedIndex, onSelect, slopeMode, slopeSections, steepThreshold }: Props) {
+export function CourseProfileChart({ samples, visibility, selectedIndex, onSelect, slopeMode, slopeSections, steepThreshold, highlightedSections = [] }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType | null>(null);
   const dragging = useRef<number | null>(null);
@@ -82,16 +83,23 @@ export function CourseProfileChart({ samples, visibility, selectedIndex, onSelec
       grid: stacked ? [{ ...GRID, top: 30, height: 112, bottom: undefined }, { ...GRID, top: 194 }] : GRID,
       xAxis: stacked ? [xAxis(0, false), xAxis(1, true)] : xAxis(0, true),
       yAxis: [...(visibility.elevation ? [yAxis('elevation', 0, elevationMin, elevationMax)] : []), ...(visibility.slope ? [yAxis('slope', slopeAxis, slopeMin, slopeMax)] : [])],
-      visualMap: visibility.slope ? { type: 'piecewise', show: false, dimension: 1, seriesIndex: visibility.elevation ? 1 : 0,
+      visualMap: [
+        ...(visibility.elevation && highlightedSections.length ? [{ type: 'piecewise', show: false, dimension: 0, seriesIndex: 0,
+          pieces: [...highlightedSections].sort((a, b) => a.startKm - b.startKm)
+            .map(section => ({ gte: section.startKm, lt: section.endKm, color: '#c44f2c' })),
+          outOfRange: { color: '#19765b' } }] : []),
+        ...(visibility.slope ? [{ type: 'piecewise', show: false, dimension: 1, seriesIndex: visibility.elevation ? 1 : 0,
         // 유한한 양 끝을 지정해야 0에만 경계가 있는 SVG gradient의 색상 역전을 피한다.
         pieces: [...(slopeMin < 0 ? [{ gte: slopeMin, lt: 0, color: '#286b9b' }] : []),
-          { value: 0, color: '#617b6c' }, ...(slopeMax > 0 ? [{ gt: 0, lte: slopeMax, color: '#a75212' }] : [])] } : [],
+          { value: 0, color: '#617b6c' }, ...(slopeMax > 0 ? [{ gt: 0, lte: slopeMax, color: '#a75212' }] : [])] }] : []),
+      ],
       series: [
         ...(visibility.elevation ? [{ id: "elevation", name: "고도", type: "line", xAxisIndex: 0, yAxisIndex: 0,
           data: samples.map(point => [point.distanceKm, point.elevationMeters]), smooth: false, connectNulls: false,
           symbol: "circle", symbolSize: (_: unknown, params: { dataIndex: number }) => params.dataIndex === selectedIndex ? 9 : 0,
           itemStyle: { color: "#fff", borderColor: "#19765b", borderWidth: 2 },
-          lineStyle: { color: "#19765b", width: 2 }, areaStyle: { color: "#e4f1e7", opacity: 1 }, emphasis: { disabled: true } }] : []),
+          lineStyle: { ...(highlightedSections.length ? {} : { color: '#19765b' }), width: 2 },
+          areaStyle: { color: "#e4f1e7", opacity: 1 }, emphasis: { disabled: true } }] : []),
         ...(visibility.slope ? [{ id: "slope", name: "경사도", type: "line", xAxisIndex: slopeAxis, yAxisIndex: slopeAxis,
           data: slopeData, smooth: false, connectNulls: false, symbol: 'none',
           lineStyle: { width: 2 }, emphasis: { disabled: true },
@@ -109,7 +117,7 @@ export function CourseProfileChart({ samples, visibility, selectedIndex, onSelec
         ...(visibility.elevation ? [cursor('elevation-cursor', 0, [elevationMin, elevationMax])] : []),
       ],
     }, { notMerge: true });
-  }, [samples, sample, visibility, selectedIndex, stacked, slopeMode, slopeSections, slopeData, steepThreshold]);
+  }, [samples, sample, visibility, selectedIndex, stacked, slopeMode, slopeSections, slopeData, steepThreshold, highlightedSections]);
 
   // 표시 항목 수가 바뀌면 CSS 높이가 바뀐다. ResizeObserver를 기다리기 전에도 새 grid에 맞춘다.
   useEffect(() => { chartRef.current?.resize(); }, [stacked]);

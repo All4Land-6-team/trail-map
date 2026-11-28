@@ -39,7 +39,8 @@ test('공식 안내를 필터와 기본 상세에 연결하고 경로 길이와 
   assert.equal(selectCourses([course], { ...DEFAULT_COURSE_FILTERS, difficulty: 'intermediate' }, 'difficulty').length, 1);
   assert.equal(selectCourses([course], { ...DEFAULT_COURSE_FILTERS, difficulty: 'advanced' }, 'difficulty').length, 0);
   const html = renderToStaticMarkup(createElement(CourseBasicInfo, { course }));
-  for (const label of ['중급', '공식 등급 중', '2시간 40분', '3.73 km', '3.4 km', '국립공원공단', '왕복 시간이 아니에요']) assert.ok(html.includes(label));
+  for (const label of ['중급', '공식 등급 중', '2시간 40분', '3.73 km', '3.4 km']) assert.ok(html.includes(label));
+  assert.doesNotMatch(html, /국립공원공단|왕복 시간이 아니에요|초급 코스에도|확인일|<a\b/);
   assert.equal(course.elevationGainMeters, null);
   for (const malformed of [{ ...guide, sourceUrl: 'javascript:alert(1)' }, { ...guide, difficultyGrade: '상' }]) {
     assert.throws(() => api.parseCourseRoute(route({ guide: malformed, durationSeconds: 9600, difficulty: 'INTERMEDIATE' }), 'bukhansan'));
