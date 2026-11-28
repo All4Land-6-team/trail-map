@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, type KeyboardEvent, type PointerEvent } from "react";
-import { LineChart } from "echarts/charts";
+import { LineChart, ScatterChart } from "echarts/charts";
 import { AriaComponent, GridComponent, MarkLineComponent, TitleComponent, VisualMapPiecewiseComponent } from "echarts/components";
 import { init, use as registerEChartsModules, type EChartsType } from "echarts/core";
+import { LabelLayout } from "echarts/features";
 import { SVGRenderer } from "echarts/renderers";
 import type { CourseProfileSample, ProfileVisibility } from "../../types/courseDetail";
 import { nearestProfileIndex } from "../../utils/courseProfile";
 import { courseProfileAxes, formatProfileValue, profileSlopeDirection, profileSlopeSectionAt, type SlopeSection } from "../../utils/courseDetailAnalysis";
 
 // #14 CourseElevationChart의 모듈 등록·SVG 렌더링·ResizeObserver 방식을 공용 그래프로 확장.
-registerEChartsModules([LineChart, AriaComponent, GridComponent, MarkLineComponent, TitleComponent, VisualMapPiecewiseComponent, SVGRenderer]);
+registerEChartsModules([LineChart, ScatterChart, AriaComponent, GridComponent, MarkLineComponent, TitleComponent, VisualMapPiecewiseComponent, LabelLayout, SVGRenderer]);
 const GRID = { top: 32, right: 18, bottom: 42, left: 58 };
+type ElevationPoint = [distanceKm: number, elevationMeters: number | null];
 type Props = {
   samples: readonly CourseProfileSample[];
   visibility: ProfileVisibility;
@@ -39,6 +41,30 @@ export function CourseProfileChart({ samples, visibility, selectedIndex, onSelec
     }
     return points;
   }, [samples, slopeMode, slopeSections]);
+  const highlights = useMemo(() => {
+    // 경계는 원본 고도 선과 같은 선형 보간을 쓰고, 결측 앞뒤는 연결하지 않는다.
+    const elevationAt = (km: number) => {
+      const index = samples.findIndex(point => point.distanceKm >= km);
+      if (index < 0) return null;
+      const after = samples[index], before = samples[index - 1];
+      if (after.distanceKm === km) return after.elevationMeters;
+      if (!before || before.elevationMeters === null || after.elevationMeters === null) return null;
+      return before.elevationMeters + (after.elevationMeters - before.elevationMeters)
+        * (km - before.distanceKm) / (after.distanceKm - before.distanceKm);
+    };
+    return highlightedSections.map((section, index) => {
+      const points: ElevationPoint[] = [
+        [section.startKm, elevationAt(section.startKm)],
+        ...samples.filter(point => point.distanceKm > section.startKm && point.distanceKm < section.endKm)
+          .map((point): ElevationPoint => [point.distanceKm, point.elevationMeters]),
+        [section.endKm, elevationAt(section.endKm)],
+      ];
+      const middleKm = (section.startKm + section.endKm) / 2;
+      const middleElevation = elevationAt(middleKm);
+      const anchor: ElevationPoint | undefined = middleElevation === null ? points.find(point => point[1] !== null) : [middleKm, middleElevation];
+      return { rank: index + 1, points, anchor };
+    });
+  }, [samples, highlightedSections]);
 
   useEffect(() => {
     if (!host.current) return;
@@ -50,7 +76,8 @@ export function CourseProfileChart({ samples, visibility, selectedIndex, onSelec
   }, []);
 
   useEffect(() => {
-    if (!chartRef.current || !sample) return;
+    const chart = chartRef.current;
+    if (!chart || !sample) return;
     const axes = courseProfileAxes(samples, slopeData.map(point => point[1]));
     const { distanceMax, elevationMin, elevationMax } = axes;
     const thresholdExtent = steepThreshold === null ? 0 : Math.ceil(steepThreshold * 1.25 / 5) * 5;
@@ -76,9 +103,15 @@ export function CourseProfileChart({ samples, visibility, selectedIndex, onSelec
       lineStyle: { color: '#7b9b8a', width: 1, type: 'dashed' }, z: 3 });
     const title = (text: string, top: number) => ({ text, left: GRID.left - 5, top, padding: 0,
       textStyle: { fontSize: 11, fontWeight: 600, color: '#34584a', fontFamily: 'Noto Sans KR' } });
-    chartRef.current.setOption({
+    const highlightData = highlights.flatMap(section => [...section.points, [section.points.at(-1)![0], null]]);
+    const rankData = highlights.flatMap(section => {
+      const anchor = section.anchor;
+      return !anchor || anchor[1] === null ? [] : [{ value: anchor,
+        label: { formatter: String(section.rank), position: anchor[1] > (elevationMin + elevationMax) / 2 ? 'bottom' : 'top' } }];
+    });
+    chart.setOption({
       animation: false,
-      aria: { enabled: true, description: `코스 진행 방향의 거리별 고도와 경사도. 경사는 ${slopeMode === 'summary' ? '50m 구간 평균' : '원본'}입니다. 양수는 오르막, 음수는 내리막이며 빈 구간은 결측입니다. 좌우 방향키로 원본 위치를 선택할 수 있습니다.` },
+      aria: { enabled: true, description: `코스 진행 방향의 거리별 고도와 경사도. 경사는 ${slopeMode === 'summary' ? '50m 구간 평균' : '원본'}입니다. 양수는 오르막, 음수는 내리막이며 빈 구간은 결측입니다.${visibility.elevation && highlights.length ? ' 굵은 주황색 선과 번호는 50m 평균 절대 경사가 큰 순서의 급경사 구간입니다.' : ''} 좌우 방향키로 원본 위치를 선택할 수 있습니다.` },
       title: [...(visibility.elevation ? [title('고도 (m)', 5)] : []), ...(visibility.slope ? [title(`경사 (%) · ${slopeMode === 'summary' ? '50m 평균' : '원본'}`, stacked ? 166 : 5)] : [])],
       grid: stacked ? [{ ...GRID, top: 30, height: 112, bottom: undefined }, { ...GRID, top: 194 }] : GRID,
       xAxis: stacked ? [xAxis(0, false), xAxis(1, true)] : xAxis(0, true),
@@ -115,9 +148,38 @@ export function CourseProfileChart({ samples, visibility, selectedIndex, onSelec
             itemStyle: { color: '#fff', borderColor: slopeColor, borderWidth: 2 }, z: 5 },
           cursor('slope-cursor', slopeAxis, [slopeMin, slopeMax]) ] : []),
         ...(visibility.elevation ? [cursor('elevation-cursor', 0, [elevationMin, elevationMax])] : []),
+        ...(visibility.elevation && highlights.length ? [
+          { id: 'steep-outline', type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: highlightData,
+            symbol: 'none', silent: true, connectNulls: false, smooth: false,
+            lineStyle: { color: '#fff', width: 9, cap: 'round', join: 'round' }, z: 4 },
+          { id: 'steep-highlight', name: '급경사 강조', type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: highlightData,
+            symbol: 'none', silent: true, connectNulls: false, smooth: false,
+            lineStyle: { color: '#c44f2c', width: 5, cap: 'round', join: 'round' }, z: 5 },
+          { id: 'steep-ranks', name: '급경사 순위', type: 'scatter', xAxisIndex: 0, yAxisIndex: 0,
+            data: rankData,
+            symbolSize: 6, silent: true, itemStyle: { color: '#c44f2c', borderColor: '#fff', borderWidth: 1, opacity: 1 },
+            label: { show: true, distance: 7, color: '#fff', fontSize: 12, fontWeight: 700,
+              backgroundColor: '#a33c1e', borderColor: '#fff', borderWidth: 2, borderRadius: 11,
+              width: 22, height: 22, align: 'center', verticalAlign: 'middle' },
+            labelLayout: ({ dataIndex }: { dataIndex: number }) => {
+              // 좁거나 긴 코스에서도 번호 간 28px 간격과 고도 그래프 안쪽 경계를 유지한다.
+              const left = GRID.left + 14, right = chart.getWidth() - GRID.right - 14;
+              const positions = rankData.map((point, index) => ({ index,
+                x: Math.max(left, Math.min(right, GRID.left + point.value[0] / distanceMax * (chart.getWidth() - GRID.left - GRID.right))) }))
+                .sort((a, b) => a.x - b.x);
+              for (let i = 1; i < positions.length; i++) positions[i].x = Math.max(positions[i].x, positions[i - 1].x + 28);
+              positions[positions.length - 1].x = Math.min(right, positions.at(-1)!.x);
+              for (let i = positions.length - 2; i >= 0; i--) positions[i].x = Math.min(positions[i].x, positions[i + 1].x - 28);
+              return { x: positions.find(point => point.index === dataIndex)!.x, align: 'center', hideOverlap: false };
+            },
+            labelLine: { show: true, lineStyle: { color: '#a33c1e', width: 1 } }, z: 6 },
+          { id: 'elevation-selection', name: '선택 고도', type: 'line', xAxisIndex: 0, yAxisIndex: 0,
+            data: [[sample.distanceKm, sample.elevationMeters]], symbol: 'circle', symbolSize: 9, silent: true,
+            itemStyle: { color: '#fff', borderColor: '#19765b', borderWidth: 2 }, z: 7 },
+        ] : []),
       ],
     }, { notMerge: true });
-  }, [samples, sample, visibility, selectedIndex, stacked, slopeMode, slopeSections, slopeData, steepThreshold, highlightedSections]);
+  }, [samples, sample, visibility, selectedIndex, stacked, slopeMode, slopeSections, slopeData, steepThreshold, highlightedSections, highlights]);
 
   // 표시 항목 수가 바뀌면 CSS 높이가 바뀐다. ResizeObserver를 기다리기 전에도 새 grid에 맞춘다.
   useEffect(() => { chartRef.current?.resize(); }, [stacked]);

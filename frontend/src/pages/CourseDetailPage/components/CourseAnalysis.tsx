@@ -48,7 +48,7 @@ export function CourseAnalysis({ data, analysisState, analysisView, onRetryAnaly
       <div className="course-analysis__heading"><h2>코스 프로필</h2><span>최고 {formatProfileValue(metrics?.maxElevationMeters, "m")}</span></div>
       {sample ? <>
         {visibility.elevation && highlightedSections.length > 0 && <p className="course-profile-highlights">
-          <span aria-hidden="true" />50m 평균 기준 급경사 상위 {highlightedSections.length}개 구간
+          <span aria-hidden="true">1</span>50m 평균 기준 급경사 상위 {highlightedSections.length}개 구간 · 번호순
         </p>}
         <div className="course-profile-options">
           <Checkbox label="고도" showLabel checked={visibility.elevation} containerClassName="course-profile-options__elevation" onChange={() => onToggle("elevation")} />
