@@ -6,7 +6,6 @@ import ts from 'typescript';
 import * as chartCore from 'echarts/core';
 import * as chartTypes from 'echarts/charts';
 import * as chartComponents from 'echarts/components';
-import * as chartFeatures from 'echarts/features';
 import * as chartRenderers from 'echarts/renderers';
 import * as profileUtils from '../src/utils/courseProfile.ts';
 import * as analysisUtils from '../src/utils/courseDetailAnalysis.ts';
@@ -100,9 +99,9 @@ function renderProfileChart(samples, highlightedSections, options = {}) {
   const compiled = ts.transpileModule(source, { compilerOptions: {
     module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022,
   } }).outputText;
-  chartCore.use([chartTypes.LineChart, chartTypes.ScatterChart, chartComponents.AriaComponent,
+  chartCore.use([chartTypes.LineChart, chartComponents.AriaComponent,
     chartComponents.GridComponent, chartComponents.MarkLineComponent, chartComponents.TitleComponent,
-    chartComponents.VisualMapPiecewiseComponent, chartFeatures.LabelLayout, chartRenderers.SVGRenderer]);
+    chartComponents.VisualMapPiecewiseComponent, chartRenderers.SVGRenderer]);
   const sections = analysisUtils.summarizeProfileSlope(samples);
   const size = { width: options.width ?? 350, height: 360 };
   const chart = chartCore.init(null, null, { renderer: 'svg', ssr: true, ...size });
@@ -116,7 +115,7 @@ function renderProfileChart(samples, highlightedSections, options = {}) {
       useEffect: effect => effects.push(effect) },
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     'echarts/core': { ...chartCore, init: () => chart }, 'echarts/charts': chartTypes,
-    'echarts/components': chartComponents, 'echarts/features': chartFeatures, 'echarts/renderers': chartRenderers,
+    'echarts/components': chartComponents, 'echarts/renderers': chartRenderers,
     '../../utils/courseProfile': profileUtils, '../../utils/courseDetailAnalysis': analysisUtils,
   };
   const context = vm.createContext({ exports: {}, require: name => {
@@ -140,58 +139,54 @@ test('실제 차트 SVG의 고도 선은 강조 범위 색상을 사용하고 �
     .find(match => match[0].includes('#c44f2c'));
   assert.ok(gradient, '급경사 색상이 포함된 고도 gradient');
   assert.ok(highlighted.includes(`stroke="url(#${gradient[1]})"`), '고도 선이 실제로 해당 gradient를 사용');
-  const highlight = option.series.find(series => series.id === 'steep-highlight');
-  const outline = option.series.find(series => series.id === 'steep-outline');
-  assert.equal(highlight.lineStyle.width, 5);
-  assert.ok(outline.lineStyle.width > highlight.lineStyle.width);
-  assert.match(highlighted, /stroke="#c44f2c" stroke-width="5"/);
-  assert.ok(option.series.find(series => series.id === 'elevation-selection').z > highlight.z);
+  assert.equal(option.series.find(series => series.id === 'elevation').lineStyle.width, 2);
+  assert.equal(option.series.some(series => ['steep-highlight', 'steep-outline', 'steep-ranks'].includes(series.id)), false);
   const { svg: plain, option: plainOption } = renderProfileChart(samples, []);
   assert.doesNotMatch(plain, /#c44f2c/);
   assert.match(plain, /stroke="#19765b"/);
   assert.equal(plainOption.series.some(series => series.id === 'steep-ranks'), false);
 });
 
-test('긴 코스의 인접한 50m 강조 세 곳은 좁은 SVG에서도 번호가 겹치지 않고 모드와 선택을 유지한다', () => {
-  const samples = Array.from({ length: 511 }, (_, i) => ({ distanceKm: i / 100, elevationMeters: 100 + i,
-    slopePercent: i ? 20 : null, coordinate: [127, 37] }));
-  const sections = [{ startKm: 2.2, endKm: 2.25, slopePercent: 60 },
-    { startKm: 2.25, endKm: 2.3, slopePercent: -50 }, { startKm: 2.3, endKm: 2.35, slopePercent: 40 }];
-  for (const width of [280, 350]) for (const slopeMode of ['summary', 'raw']) {
-    const { svg, option } = renderProfileChart(samples, sections, { width, slopeMode, selectedIndex: 225 });
-    const ranks = [...svg.matchAll(/<text\b([^>]*)>([123])<\/text>/g)].filter(match => match[1].includes('fill="#fff"'));
-    assert.deepEqual(ranks.map(match => match[2]).sort(), ['1', '2', '3']);
-    const centers = ranks.map(match => {
-      const translation = match[1].match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
-      return [translation[0] + Number(match[1].match(/\bx="([-\d.]+)"/)?.[1] ?? 0),
-        translation[1] + Number(match[1].match(/\by="([-\d.]+)"/)?.[1] ?? 0)];
-    });
-    for (let i = 0; i < centers.length; i++) {
-      assert.ok(centers[i][0] >= 13 && centers[i][0] <= width - 13);
-      for (let j = i + 1; j < centers.length; j++) {
-        assert.ok(Math.abs(centers[i][0] - centers[j][0]) >= 24 || Math.abs(centers[i][1] - centers[j][1]) >= 24,
-          `번호 겹침: ${width}px, ${slopeMode}, ${JSON.stringify(centers)}`);
+test('강조 구간 안에서만 고도·경사의 세로선이 주황색 실선이고 벗어나면 기존 점선으로 복귀한다', () => {
+  const samples = Array.from({ length: 21 }, (_, i) => ({ distanceKm: i / 100, elevationMeters: i === 8 ? null : 100 + i,
+    slopePercent: i ? 40 : null, coordinate: [127, 37] }));
+  const original = structuredClone(samples);
+  const sections = [{ startKm: .05, endKm: .1, slopePercent: 60 }, { startKm: .15, endKm: .2, slopePercent: -50 }];
+  for (const slopeMode of ['summary', 'raw']) {
+    for (const [selectedIndex, active] of [[4, false], [5, true], [7, true], [8, false], [10, false], [15, true], [20, true], [4, false]]) {
+      const { svg, option } = renderProfileChart(samples, sections, { slopeMode, selectedIndex });
+      for (const id of ['elevation-cursor', 'slope-cursor']) {
+        const cursor = option.series.find(series => series.id === id);
+        assert.equal(cursor.lineStyle.color, active ? '#c44f2c' : '#7b9b8a');
+        assert.equal(cursor.lineStyle.type, active ? 'solid' : 'dashed');
+        assert.equal(cursor.lineStyle.width, active ? 2 : 1);
+        assert.ok(cursor.data.every(point => point[0] === samples[selectedIndex].distanceKm));
       }
+      assert.match(svg, active ? /stroke="#c44f2c" stroke-width="2"/ : /stroke="#7b9b8a"/);
+      const elevation = option.series.find(series => series.id === 'elevation');
+      assert.deepEqual(elevation.data, samples.map(point => [point.distanceKm, point.elevationMeters]));
+      assert.equal(elevation.connectNulls, false);
+      assert.deepEqual(option.visualMap.find(map => map.dimension === 0).pieces.map(range => [range.gte, range.lt]),
+        sections.map(section => [section.startKm, section.endKm]));
     }
-    const selected = option.series.find(series => series.id === 'elevation-selection');
-    assert.deepEqual(selected.data, [[samples[225].distanceKm, samples[225].elevationMeters]]);
-    const ranges = option.visualMap.find(map => map.dimension === 0).pieces;
-    assert.deepEqual(ranges.map(range => [range.gte, range.lt]), sections.map(section => [section.startKm, section.endKm]));
   }
-  const slopeOnly = renderProfileChart(samples, sections, { visibility: { elevation: false, slope: true } });
-  assert.equal(slopeOnly.option.series.some(series => series.id === 'steep-ranks'), false);
+  assert.deepEqual(samples, original);
 });
 
-test('강조 경계는 원본 선 위에서 보간하고 고도 결측은 연결하거나 번호로 만들지 않는다', () => {
-  const samples = [0, 1, 2, 3, 4].map(i => ({ distanceKm: i * .05, elevationMeters: i === 2 ? null : 100 + i * 10,
-    slopePercent: i ? 20 : null, coordinate: [127, 37] }));
-  const { option } = renderProfileChart(samples, [{ startKm: .025, endKm: .175, slopePercent: 20 }]);
-  const highlight = option.series.find(series => series.id === 'steep-highlight');
-  assert.deepEqual(highlight.data, [[.025, 105], [.05, 110], [.1, null], [.15000000000000002, 130], [.175, 135], [.175, null]]);
-  assert.equal(highlight.connectNulls, false);
-  const missing = renderProfileChart(samples.map(point => ({ ...point, elevationMeters: null })),
-    [{ startKm: 0, endKm: .05, slopePercent: 20 }]);
-  assert.equal(missing.option.series.find(series => series.id === 'steep-ranks').data.length, 0);
+test('단일 그래프에서도 세로선의 강조 규칙이 같고 강조 구간이 없으면 번호·강조 덧선을 만들지 않는다', () => {
+  const samples = [0, 1, 2].map(i => ({ distanceKm: i * .025, elevationMeters: 100 + i,
+    slopePercent: i ? 40 : null, coordinate: [127, 37] }));
+  const section = { startKm: 0, endKm: .05, slopePercent: 40 };
+  for (const visibility of [{ elevation: true, slope: false }, { elevation: false, slope: true }]) {
+    for (const highlighted of [[], [section]]) {
+      const { option } = renderProfileChart(samples, highlighted, { visibility, selectedIndex: 1 });
+      const cursors = option.series.filter(series => series.id.endsWith('-cursor'));
+      assert.equal(cursors.length, 1);
+      assert.equal(cursors[0].lineStyle.color, highlighted.length ? '#c44f2c' : '#7b9b8a');
+      assert.equal(cursors[0].lineStyle.type, highlighted.length ? 'solid' : 'dashed');
+      assert.equal(option.series.some(series => series.id.startsWith('steep-')), false);
+    }
+  }
 });
 
 test('서로 다른 급경사 기준은 안내하고 비교 막대로 같은 기준처럼 표시하지 않는다', () => {

@@ -52,7 +52,7 @@
 .course-profile-options__elevation { color: var(--af-green-dark); }
 .course-profile-options__slope { color: #a75212; }
 .course-profile-highlights { display: flex; align-items: center; gap: 6px; margin: 4px 0; color: #9c3d22; font-size: 11px; line-height: 18px; }
-.course-profile-highlights > span { flex: 0 0 22px; height: 22px; border: 2px solid #fff; border-radius: 50%; background: #a33c1e; color: #fff; font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; }
+.course-profile-highlights > span { width: 18px; height: 3px; border-radius: 2px; background: #c44f2c; }
 .course-profile-readout { display: flex; min-height: 42px; margin: 0; border: 1px solid var(--af-line); border-radius: 8px; background: #f8faf7; }
 .course-profile-readout > div { display: flex; flex: 1 1 0; min-width: 0; align-items: center; justify-content: center; flex-direction: column; }
 .course-profile-readout > div + div { border-left: 1px solid var(--af-line); }
