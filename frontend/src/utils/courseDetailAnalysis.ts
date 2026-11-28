@@ -61,6 +61,16 @@ export function courseProfileAxes(samples: readonly CourseProfileSample[], slope
 
 export type SlopeSection = { startKm: number; endKm: number; slopePercent: number };
 
+/** 같은 50m 요약에서 급경사 기준을 충족한 최대 세 구간. 동률은 출발점에 가까운 순서다. */
+export function topSteepProfileSections(sections: readonly SlopeSection[], threshold: number | null): SlopeSection[] {
+  if (threshold === null || !Number.isFinite(threshold) || threshold <= 0) return [];
+  return sections.filter(section => Number.isFinite(section.startKm) && Number.isFinite(section.endKm)
+    && section.startKm >= 0 && section.endKm > section.startKm
+    && Number.isFinite(section.slopePercent) && Math.abs(section.slopePercent) >= threshold)
+    .sort((a, b) => Math.abs(b.slopePercent) - Math.abs(a.slopePercent) || a.startKm - b.startKm)
+    .slice(0, 3);
+}
+
 /** 표시 전용 구간 요약. 원본의 부호 있는 경사를 거리로 가중하며 결측 전후는 합치지 않는다. */
 export function summarizeProfileSlope(samples: readonly CourseProfileSample[], intervalMeters = 50): SlopeSection[] {
   if (!Number.isFinite(intervalMeters) || intervalMeters <= 0) throw new RangeError('구간 길이는 양수여야 합니다.');

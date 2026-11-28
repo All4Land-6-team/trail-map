@@ -19,5 +19,6 @@
 }
 .af-bottom-sheet.snapping-map-sheet .af-bottom-sheet__handle-row:focus-visible { outline: 2px solid var(--af-green); outline-offset: -3px; border-radius: 25px 25px 0 0; }
 .af-bottom-sheet.snapping-map-sheet .af-bottom-sheet__body { overflow: hidden; }
-.af-bottom-sheet.snapping-map-sheet .af-bottom-sheet__content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
+.af-bottom-sheet.snapping-map-sheet .af-bottom-sheet__content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: none; scrollbar-gutter: auto; }
+.af-bottom-sheet.snapping-map-sheet .af-bottom-sheet__content::-webkit-scrollbar { display: none; }
 @media (prefers-reduced-motion: reduce) { .af-bottom-sheet.snapping-map-sheet { transition: none; } }
