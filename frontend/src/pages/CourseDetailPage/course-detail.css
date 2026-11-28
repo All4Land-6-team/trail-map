@@ -71,9 +71,8 @@
 .course-profile-legend { display: flex; flex-wrap: wrap; gap: 16px; }
 .course-profile-legend__up { color: #a75212; }
 .course-profile-legend__down { color: #286b9b; }
-.course-profile-chart { position: relative; width: 100%; height: 240px; margin-top: 8px; touch-action: none; cursor: crosshair; }
+.course-profile-chart { position: relative; width: 100%; height: 240px; margin-top: 8px; touch-action: none; cursor: crosshair; outline: none; }
 .course-profile-chart--stacked { height: 360px; }
-.course-profile-chart:focus-visible { outline: 2px solid var(--af-green); outline-offset: -2px; border-radius: 6px; }
 .course-profile-chart__render { width: 100%; height: 100%; pointer-events: none; }
 .course-analysis__reviews { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 4px; border-top: 1px solid #e4ebe4; }
 .course-analysis__reviews .af-review-quote { width: 100%; margin: 0; padding: 12px 13px; border-radius: 12px; background: #f3f7f1; }
