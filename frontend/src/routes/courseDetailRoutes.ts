@@ -1,5 +1,5 @@
 import type { CourseRequest } from "../types/course";
-import type { CourseDetailView, CourseFoodPlace } from "../types/courseDetail";
+import type { CourseDetailView, CourseFoodPlace, CourseSpot } from "../types/courseDetail";
 import { SPOT_CATEGORIES } from "../utils/courseProfile.ts";
 import { coursePaths } from "./courseRoutes.ts";
 
@@ -39,6 +39,11 @@ export function courseDetailPath(request: CourseRequest, view: CourseDetailView,
 
 export function courseFoodDetailPath(request: CourseRequest, foodPlace: CourseFoodPlace, returnTo?: string | null) {
   return courseDetailPath(request, { tab: "spots", category: "food", spotId: foodPlace.id, foodPlace }, returnTo);
+}
+
+/** 코스 상세 `스팟·통제정보` 탭의 전체 필터에서 해당 스팟이 선택된 경로를 만든다. */
+export function courseSpotDetailPath(request: CourseRequest, spot: Pick<CourseSpot, "id">, returnTo?: string | null) {
+  return courseDetailPath(request, { tab: "spots", category: "all", spotId: spot.id }, returnTo);
 }
 
 export function cartCourseDetailPath(request: CourseRequest, returnTo: string) {

@@ -8,7 +8,8 @@ import { EmptyState, Toast } from "../../components/feedback";
 import { BottomSheet } from "../../components/overlay";
 import { useSnappingMapSheet } from "../../hooks/useSnappingMapSheet";
 import { coursePaths } from "../../routes/courseRoutes";
-import { courseFoodDetailPath } from "../../routes/courseDetailRoutes";
+import { courseFoodDetailPath, courseSpotDetailPath } from "../../routes/courseDetailRoutes";
+import type { CourseSpot } from "../../types/courseDetail";
 import { canScheduleCourse } from "../../utils/courseIdentity";
 import { homePaths, navigateFromHome } from "../../routes/homeRoutes";
 import { setCourseSaved, useSavedCourseIds } from "../../store/courseSelectionStore";
@@ -94,6 +95,14 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
     const request = { mountainId, courseId: selectedCourse.id };
     navigateFromHome(courseFoodDetailPath(request, poi, coursePaths.list(mountainId, selectedCourse.id)));
   }
+  function openSpot(spot: CourseSpot) {
+    if (!selectedCourse?.detailAvailable) {
+      notify("이 코스의 상세 정보를 준비 중이에요.");
+      return;
+    }
+    const request = { mountainId, courseId: selectedCourse.id };
+    navigateFromHome(courseSpotDetailPath(request, spot, coursePaths.list(mountainId, selectedCourse.id)));
+  }
   function navigateTab(destination: BottomDestination) {
     if (destination === "home") onBack();
     else navigateFromHome(homePaths[destination]);
@@ -124,7 +133,7 @@ export function CourseListPage({ mountainId, initialCourseId, onBack = () => nav
           mapBottomInset={mapBottomInset}
           enhanced={enhancedMap}
           onPreviewStart={previewControls.begin} onPreviewEnd={previewControls.end}
-          onSelect={selectExplicitly} onNotify={notify} onOsmFoodOpen={openFood} />
+          onSelect={selectExplicitly} onNotify={notify} onOsmFoodOpen={openFood} onSpotOpen={openSpot} />
         <TopBar title={mountain.name} onBack={onBack} showAction={false} className="course-page__top" />
       </div>
       <BottomSheet title={`${mountain.name} 코스 ${courses.length}개`} showClose={false} showDescription={false}
