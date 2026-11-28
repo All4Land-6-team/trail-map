@@ -28,7 +28,8 @@ export function CourseMap({ onOsmFoodOpen, onSpotOpen, ...props }: CourseMapProp
   const serverId = props.selected?.routeSource ? props.selected.backendCourseId : undefined;
   const foodSelected = filter === "food";
   const { spots, loading, failed } = useCourseMapSpots(courseId, props.mountainId ?? "", serverId,
-    props.selected?.analysisReference?.mountainId, visible && !foodSelected, foodSelected ? "all" : filter);
+    props.selected?.analysisReference?.mountainId, visible && !foodSelected, foodSelected ? "all" : filter,
+    props.selected?.routeCoordinates);
 
   return <>
     <CourseRouteMap {...props} extraMapAction={serverId !== undefined && <MapAction
